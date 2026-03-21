@@ -2,9 +2,100 @@ import React from 'react';
 import { 
   Shield, Clock, Lock, CheckCircle, Activity, Users, ScanFace, 
   MonitorCheck, ShieldAlert, Cpu, Network, Server, FileCheck, 
-  Lightbulb, Power, Video, ServerCrash 
+  Lightbulb, Power, Video, ServerCrash, ChevronRight
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { Navbar } from '../components/Navbar';
+
+const SmoothHero = () => {
+  // The "Expensive" Easing: This curve creates a heavy, professional feel
+  const transition = { duration: 0.9, ease: [0.22, 1, 0.36, 1] };
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.12, delayChildren: 0.2 }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 30 },
+    visible: { opacity: 1, y: 0, transition }
+  };
+
+  return (
+    <section className="relative min-h-screen w-full bg-white flex flex-col items-center justify-center overflow-hidden">
+      
+      {/* 1. Animated Technical Grid Background */}
+      <div className="absolute inset-0 z-0 opacity-[0.05] pointer-events-none" 
+           style={{ 
+             backgroundImage: 'linear-gradient(#4f46e5 1px, transparent 1px), linear-gradient(90deg, #4f46e5 1px, transparent 1px)', 
+             backgroundSize: '50px 50px' 
+           }} 
+      />
+
+      {/* 2. Floating "Security Pulse" Glow */}
+      <motion.div 
+        animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.2, 0.1] }}
+        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute w-[600px] h-[600px] bg-indigo-200 rounded-full blur-[120px] -z-10"
+      />
+
+      <motion.div 
+        className="relative z-10 text-center px-4 max-w-5xl pt-24"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        {/* Badge Animation */}
+        <motion.div variants={itemVariants} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 mb-8">
+          <div className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600">Next Gen AI Monitoring</span>
+        </motion.div>
+
+        {/* Headline: The "Masked" Slide-Up Effect */}
+        <motion.h1 variants={itemVariants} className="text-5xl md:text-7xl lg:text-8xl font-black text-slate-950 tracking-tighter leading-[0.95] mb-8">
+          Secure Exams. <br className="hidden md:block" />
+          <span className="text-indigo-600">Intelligently</span> Managed.
+        </motion.h1>
+
+        {/* Subtext */}
+        <motion.p variants={itemVariants} className="text-lg md:text-xl text-slate-500 max-w-2xl mx-auto mb-10 leading-relaxed font-medium">
+          ExamVault provides an unhackable, AI-driven environment for institutional and professional online assessments.
+        </motion.p>
+
+        {/* Buttons with "Tactile" Tap Effect */}
+        <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-center justify-center gap-5">
+          <motion.button 
+            whileHover={{ scale: 1.05, y: -2 }}
+            whileTap={{ scale: 0.95 }}
+            className="group relative px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg shadow-2xl shadow-indigo-200 overflow-hidden transition-colors hover:bg-indigo-700"
+          >
+            <span className="relative z-10 flex items-center gap-2">
+              Start Your Exam <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+            </span>
+          </motion.button>
+          
+          <motion.button 
+            whileHover={{ x: 5 }}
+            className="px-8 py-4 text-slate-600 font-bold text-lg flex items-center gap-2 hover:text-indigo-600 transition-colors"
+          >
+            Book a Live Demo
+          </motion.button>
+        </motion.div>
+      </motion.div>
+
+      {/* 3. Subtle "Scanning Line" Overlay */}
+      <motion.div 
+        initial={{ top: "-10%" }}
+        animate={{ top: "110%" }}
+        transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+        className="absolute left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-indigo-400/30 to-transparent z-20 pointer-events-none"
+      />
+    </section>
+  );
+};
 
 export default function LandingPage() {
   const features = [
@@ -53,32 +144,8 @@ export default function LandingPage() {
     <div className="page-wrapper p-0 m-0 overflow-hidden relative bg-[#fafafa]">
       <Navbar />
       
-      {/* Vercel-style Technical Grid Background */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:24px_24px]"></div>
-      <div className="absolute left-0 right-0 top-[-10%] z-0 m-auto h-[400px] w-[600px] rounded-full bg-primary-500 opacity-[0.15] blur-[120px]"></div>
-
-      {/* 1. Hero Section */}
-      <main className="hero-section relative z-10 pt-28 pb-20">
-        <div className="hero-content smooth-appear max-w-4xl mx-auto text-center px-4">
-          <span className="inline-flex items-center gap-2 border border-primary-100 bg-primary-50/50 text-primary-700 font-semibold px-4 py-1.5 rounded-full text-xs tracking-wide uppercase mb-6 cursor-default shadow-sm backdrop-blur-sm">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary-500 animate-pulse"></span> Next Generation AI Proctoring
-          </span>
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-[#0f172a] tracking-tight mb-6 leading-[1.1]">
-            Secure Exams, <br className="hidden md:block" /> Intelligently Monitored.
-          </h1>
-          <p className="text-lg md:text-xl text-[#64748b] max-w-2xl mx-auto mb-10 leading-relaxed font-medium">
-            ProctoShield provides a secure, reliable, and fair environment for academic and professional online examinations globally.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button onClick={() => window.location.href='/login'} className="bg-[#6366f1] text-white px-8 py-3.5 rounded-xl font-bold text-base shadow-[0_8px_24px_rgba(99,102,241,0.25)] hover:shadow-[0_12px_32px_rgba(99,102,241,0.35)] hover:-translate-y-0.5 transition-all w-full sm:w-auto active:scale-[0.98] hover:scale-[1.03] active:scale-95 transition-transform duration-300">
-              Start Free Trial
-            </button>
-            <button className="bg-transparent border border-slate-200 text-slate-700 px-8 py-3.5 rounded-xl font-bold text-base hover:bg-slate-50 hover:text-slate-900 transition-all w-full sm:w-auto active:scale-[0.98] hover:scale-[1.03] active:scale-95 transition-transform duration-300">
-              Book a Demo
-            </button>
-          </div>
-        </div>
-      </main>
+      {/* 1. SmoothHero Custom Component */}
+      <SmoothHero />
 
       {/* 2. Stats Section */}
       <section className="stats-section relative z-10 smooth-appear" style={{ animationDelay: '0.2s' }}>
