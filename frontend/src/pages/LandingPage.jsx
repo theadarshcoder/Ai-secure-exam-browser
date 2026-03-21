@@ -208,20 +208,59 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 4. Deep-Dive Feature Cards */}
-      <section className="features-section bg-[#fafafa] relative z-10 smooth-appear border-y border-slate-100 py-24">
-        <div className="text-center mb-16 px-4">
-          <h2 className="text-3xl md:text-4xl font-bold text-[#0f172a] mb-4 tracking-tight">Technical Deep-Dive</h2>
-          <p className="text-[#64748b] max-w-2xl mx-auto text-lg">Industry-leading monitoring architecture built for scale.</p>
+      {/* 4. Elite Features Integrity Grid */}
+      <section className="relative z-10 py-32 bg-[#0F172A] overflow-hidden border-y border-slate-800/50">
+        {/* Large-scale Indigo and Emerald radial blurs */}
+        <div className="absolute top-0 left-0 w-[800px] h-[800px] bg-indigo-600/10 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
+        <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-emerald-600/10 rounded-full blur-[100px] translate-x-1/3 translate-y-1/3 pointer-events-none" />
+        
+        <div className="text-center mb-24 relative z-10 px-4">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-white mb-6 tracking-tighter">
+            Integrity Architecture
+          </h2>
+          <p className="text-slate-400 max-w-2xl mx-auto text-lg md:text-xl font-medium">
+            Industry-leading monitoring built for elite academic institutions.
+          </p>
         </div>
-        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        
+        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 relative z-10">
           {features.map((feature, idx) => (
-            <div key={idx} className="bg-white p-8 rounded-xl border border-slate-100 shadow-[0_8px_24px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.06)] transition-all cursor-default group hover:-translate-y-1">
-              <div className="w-12 h-12 bg-primary-50 text-primary-600 rounded-lg flex items-center justify-center mb-6 group-hover:bg-primary-100 group-hover:scale-110 group-hover:-rotate-6 transition-all duration-300">
-                {feature.icon}
+            <div key={idx} className="group relative rounded-[2.5rem] p-[1px] overflow-hidden bg-gradient-to-b from-slate-700/50 to-transparent hover:from-indigo-500/60 hover:to-indigo-500/0 transition-colors duration-700 cursor-default">
+              
+              {/* Inner Card - Deep Frosted Glass */}
+              <div className="relative h-full bg-[#0F172A]/90 backdrop-blur-2xl rounded-[2.5rem] p-10 flex flex-col items-start transition-colors duration-500">
+                
+                {/* 3D Glass/Metallic Icon Simulation */}
+                <div className="mb-10 relative">
+                  {/* Soft Indigo Underglow (Shadows: Large, Blurred, Colored) */}
+                  <div className="absolute inset-0 bg-indigo-500 rounded-2xl blur-xl opacity-0 group-hover:opacity-50 transition-opacity duration-700" />
+                  
+                  {/* The Metallic Container */}
+                  <div className="relative w-24 h-24 rounded-[1.5rem] bg-gradient-to-br from-slate-700 to-slate-900 border border-t-slate-500/60 border-l-slate-500/60 shadow-[0_20px_40px_rgba(0,0,0,0.6),inset_0_2px_15px_rgba(255,255,255,0.15)] flex items-center justify-center transform group-hover:scale-110 group-hover:-translate-y-3 group-hover:-rotate-3 transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]">
+                    {React.cloneElement(feature.icon, { 
+                      size: 44, 
+                      strokeWidth: 1.5,
+                      className: 'text-indigo-400 drop-shadow-[0_0_20px_rgba(99,102,241,0.6)] group-hover:text-indigo-200 transition-colors duration-500' 
+                    })}
+                    
+                    {/* Glass glare effect inside icon */}
+                    <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/10 to-transparent rounded-t-[1.5rem] pointer-events-none" />
+                  </div>
+                </div>
+
+                <div className="mb-5 relative z-10">
+                  <h3 className="text-[1.5rem] font-extrabold text-white tracking-tight leading-tight group-hover:text-indigo-50 transition-colors duration-500">
+                    {feature.title}
+                  </h3>
+                </div>
+                
+                <p className="text-base font-medium text-slate-400 leading-relaxed group-hover:text-slate-300 transition-colors duration-500 relative z-10">
+                  {feature.desc}
+                </p>
+
+                {/* Ambient Floor Reflection */}
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-8 bg-indigo-500/20 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
               </div>
-              <h3 className="text-xl font-bold text-[#0f172a] mb-3">{feature.title}</h3>
-              <p className="text-sm font-medium text-[#64748b] leading-relaxed">{feature.desc}</p>
             </div>
           ))}
         </div>
