@@ -1,206 +1,1115 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
-import { Shield, Activity, ScanFace, Lock, MonitorCheck, Server } from 'lucide-react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { motion, useScroll, useTransform, useSpring, AnimatePresence, useMotionValueEvent, useMotionValue, useInView } from 'framer-motion';
+import { Shield, Activity, ScanFace, Lock, MonitorCheck, Server, ChevronRight, Cpu, Eye, QrCode, Check } from 'lucide-react';
+import { useSonification } from '../hooks/useSonification';
+import DynamicGlow from '../components/DynamicGlow';
+import StaggeredTypography from '../components/StaggeredTypography';
+import RefractiveCard from '../components/RefractiveCard';
+import ScrollHUD from '../components/ScrollHUD';
+import InfiniteMarquee from '../components/InfiniteMarquee';
+import VisionLogo from '../components/VisionLogo';
 
-// ==========================================
-// 1. CRED-Style Navbar
-// ==========================================
-const CredNavbar = () => (
-  <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-6 mix-blend-difference overflow-hidden">
-    <div className="flex items-center gap-3">
-      <Shield className="text-white w-8 h-8" />
-      <span className="text-white font-bold tracking-[0.2em] text-sm uppercase">ProctoShield</span>
-    </div>
-    <div className="flex gap-8 items-center">
-      <div className="hidden md:flex gap-8 text-white/70 text-sm font-semibold tracking-wider">
-        <a href="#features" className="hover:text-white transition-colors">FEATURES</a>
-        <a href="#security" className="hover:text-white transition-colors">SECURITY</a>
+const HybridNavbar = () => {
+  const { playVaultThud, playTick } = useSonification();
+  return (
+    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-6 mix-blend-difference overflow-hidden text-white pointer-events-none">
+      <div className="flex items-center gap-3 pointer-events-auto cursor-pointer" onMouseEnter={playTick}>
+        <VisionLogo className="w-12 h-12 text-white" />
+        <span className="text-white font-bold tracking-[0.2em] text-sm uppercase">Vision</span>
       </div>
-      <button className="bg-white text-black px-6 py-3 font-bold text-sm tracking-widest uppercase hover:bg-slate-200 transition-colors">
-        Login Options
-      </button>
+      <div className="flex gap-8 items-center pointer-events-auto">
+
+        <button 
+          onMouseEnter={playTick}
+          onClick={() => { playVaultThud(); window.location.href = '/login'; }}
+          className="bg-white text-black px-6 py-3 font-bold text-sm tracking-widest uppercase hover:bg-slate-200 transition-colors"
+        >
+          Login Options
+        </button>
+      </div>
+    </nav>
+  );
+};
+
+const AnimatedStat = ({ target, suffix, label }) => {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    const steps = 60;
+    const increment = target / steps;
+    let current = 0;
+    const timer = setInterval(() => {
+      current += increment;
+      if (current >= target) { setCount(target); clearInterval(timer); }
+      else setCount(Math.floor(current));
+    }, 30);
+    return () => clearInterval(timer);
+  }, [target]);
+  return (
+    <div className="flex flex-col items-center">
+      <span className="text-2xl md:text-3xl font-bold text-slate-900 tabular-nums tracking-tight">{count}{suffix}</span>
+      <span className="text-[10px] font-semibold text-slate-400 tracking-widest uppercase mt-1">{label}</span>
     </div>
-  </nav>
+  );
+};
+
+const MagneticButton = ({ children, onClick, className }) => {
+  const ref = useRef(null);
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const springX = useSpring(x, { stiffness: 300, damping: 20 });
+  const springY = useSpring(y, { stiffness: 300, damping: 20 });
+  
+  const handleMove = (e) => {
+    const rect = ref.current.getBoundingClientRect();
+    x.set((e.clientX - rect.left - rect.width / 2) * 0.35);
+    y.set((e.clientY - rect.top - rect.height / 2) * 0.35);
+  };
+  
+  const handleLeave = () => { x.set(0); y.set(0); };
+  
+  return (
+    <motion.button ref={ref} style={{ x: springX, y: springY }} onMouseMove={handleMove} onMouseLeave={handleLeave} onClick={onClick} className={className}>
+      {children}
+    </motion.button>
+  );
+};
+
+const FloatingCard = ({ delay, duration, x, y, rotate, children, className }) => (
+  <motion.div
+    initial={{ opacity: 0, scale: 0.8 }}
+    animate={{ opacity: 1, scale: 1, y: [0, -10, 0], rotate: [rotate, rotate + 4, rotate - 4, rotate] }}
+    transition={{ 
+      opacity: { duration: 1, delay },
+      scale: { duration: 1, delay },
+      y: { duration: duration, repeat: Infinity, ease: "easeInOut", delay },
+      rotate: { duration: duration * 1.5, repeat: Infinity, ease: "easeInOut", delay }
+    }}
+    className={`absolute pointer-events-none rounded-2xl border bg-white/70 backdrop-blur-md flex-col p-4 z-0 ${className}`}
+    style={{ left: x, top: y }}
+  >
+    {children}
+  </motion.div>
 );
 
-// ==========================================
-// 2. CRED-Style Hero
-// ==========================================
-const CredHero = () => {
+const CurvedNeonGrid = () => {
   return (
-    <section className="relative h-screen w-full bg-black flex flex-col items-center justify-center text-center px-4 overflow-hidden pt-20">
-      <motion.p 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 1, delay: 0.2 }}
-        className="text-white/60 tracking-[0.4em] uppercase text-sm font-bold mb-12"
+    <div className="absolute inset-x-0 bottom-0 h-[45%] md:h-[65%] overflow-hidden z-0 pointer-events-none">
+      <svg
+        viewBox="0 0 1000 450"
+        className="w-full h-full"
+        preserveAspectRatio="none"
       >
-        Not every platform makes the cut.
-      </motion.p>
-      
-      <motion.h1 
-        initial={{ opacity: 0, y: 50 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-        className="text-6xl md:text-8xl lg:text-[140px] font-serif text-white tracking-tighter leading-[0.9] mb-8"
-        style={{ fontFamily: "'Playfair Display', serif" }}
-      >
-        built for the <br />
-        integrity-driven
-      </motion.h1>
+        <defs>
+          <linearGradient id="glowBlue" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%"   stopColor="transparent" />
+            <stop offset="30%"  stopColor="transparent" />
+            <stop offset="50%"  stopColor="#60a5fa" stopOpacity="1" />
+            <stop offset="70%"  stopColor="transparent" />
+            <stop offset="100%" stopColor="transparent" />
+          </linearGradient>
+          <linearGradient id="glowViolet" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%"   stopColor="transparent" />
+            <stop offset="30%"  stopColor="transparent" />
+            <stop offset="50%"  stopColor="#818cf8" stopOpacity="1" />
+            <stop offset="70%"  stopColor="transparent" />
+            <stop offset="100%" stopColor="transparent" />
+          </linearGradient>
+          <linearGradient id="glowEmerald" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%"   stopColor="transparent" />
+            <stop offset="30%"  stopColor="transparent" />
+            <stop offset="50%"  stopColor="#34d399" stopOpacity="1" />
+            <stop offset="70%"  stopColor="transparent" />
+            <stop offset="100%" stopColor="transparent" />
+          </linearGradient>
+        </defs>
 
-      <motion.p 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 1, delay: 0.8 }}
-        className="text-white/80 text-xl md:text-2xl font-light tracking-wide max-w-2xl mt-12"
-      >
-        ProctoShield is a premium environment enabling elite institutions to conduct uncompromised assessments.
-      </motion.p>
+        {[...Array(16)].map((_, i) => {
+          const yEdge   = 220 + i * 16;
+          const yCenter = 60  + i * 12;
+          const pathD = `M -50,${yEdge} Q 500,${yCenter} 1050,${yEdge}`;
+          const glowId = i % 3 === 0 ? "glowEmerald" : i % 3 === 1 ? "glowBlue" : "glowViolet";
+          const dur = 5 + (i % 4) * 1.2;
 
-      {/* Download / Start Button mapping */}
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.5, duration: 2 }}
-        className="absolute bottom-12 right-12 border border-white/20 p-6 flex flex-col gap-4 backdrop-blur-sm hover:border-white/50 transition-colors cursor-pointer"
-        onClick={() => window.location.href='/login'}
-      >
-        <span className="text-white font-bold text-sm tracking-widest uppercase text-right">
-          Launch Environment
-        </span>
-        <div className="w-24 h-24 bg-white/5 flex items-center justify-center border border-white/10">
-          <Shield className="w-10 h-10 text-white" />
-        </div>
-      </motion.div>
+          return (
+            <g key={i}>
+              {/* Static dim baseline */}
+              <path d={pathD} fill="none" stroke="rgba(51,65,85,0.35)" strokeWidth="1.2" />
+              {/* Moving glow slug */}
+              <motion.path
+                d={pathD}
+                fill="none"
+                stroke={`url(#${glowId})`}
+                strokeWidth="3"
+                pathLength={1}
+                strokeDasharray="0.18 1"
+                initial={{ strokeDashoffset: 1.2 }}
+                animate={{ strokeDashoffset: -0.2 }}
+                transition={{
+                  duration: dur,
+                  repeat: Infinity,
+                  ease: "linear",
+                  delay: i * 0.35,
+                }}
+              />
+            </g>
+          );
+        })}
+      </svg>
+      {/* Fade out bottom so lines dissolve into black floor */}
+      <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black via-black/70 to-transparent" />
+    </div>
+  );
+};
+
+const KineticTextSequence = () => {
+  const [phase, setPhase] = useState(0);
+
+  useEffect(() => {
+    const sequence = [
+      { t: 800, p: 1 },
+      { t: 1600, p: 2 },
+      { t: 2400, p: 3 }, // clear screen
+      { t: 2600, p: 4 }, // show final
+    ];
+    const timers = sequence.map(s => setTimeout(() => setPhase(s.p), s.t));
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  const singleWordVariants = {
+    initial: { scale: 1.5, opacity: 0, rotateX: 90, z: -300, filter: 'blur(10px)' },
+    animate: { scale: 1, opacity: 1, rotateX: 0, z: 0, filter: 'blur(0px)', transition: { type: 'spring', stiffness: 500, damping: 25, mass: 1.5 } },
+    exit: { scale: 0.8, opacity: 0, rotateX: -90, z: 200, filter: 'blur(10px)', transition: { duration: 0.25 } }
+  };
+
+  const finalVariants = {
+    initial: { opacity: 0, scale: 0.9, rotateX: 45, z: -100 },
+    animate: { opacity: 1, scale: 1, rotateX: 0, z: 0, transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] } }
+  };
+
+  const metallicText = "bg-gradient-to-b from-zinc-100 via-zinc-400 to-zinc-600 bg-clip-text text-transparent drop-shadow-2xl";
+
+  return (
+    <div style={{ perspective: '2000px' }} className="relative z-30 flex flex-col items-center justify-center h-auto w-full px-6 py-8">
+      <AnimatePresence mode="popLayout">
+        {phase === 0 && (
+          <motion.h1 key="w1" variants={singleWordVariants} initial="initial" animate="animate" exit="exit" className={`absolute text-7xl md:text-9xl font-black tracking-tighter uppercase text-white`} style={{ transformStyle: 'preserve-3d' }}>
+            JUST YOU
+          </motion.h1>
+        )}
+        {phase === 1 && (
+          <motion.h1 key="w2" variants={singleWordVariants} initial="initial" animate="animate" exit="exit" className={`absolute text-7xl md:text-9xl font-black tracking-tighter uppercase text-white`} style={{ transformStyle: 'preserve-3d' }}>
+            THE SCREEN
+          </motion.h1>
+        )}
+        {phase === 2 && (
+          <motion.h1 key="w3" variants={singleWordVariants} initial="initial" animate="animate" exit="exit" className={`absolute text-7xl md:text-9xl font-black tracking-tighter uppercase text-white`} style={{ transformStyle: 'preserve-3d' }}>
+            THE TRUTH
+          </motion.h1>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {phase === 4 && (
+          <motion.div key="final" variants={finalVariants} initial="initial" animate="animate" style={{ transformStyle: 'preserve-3d' }} className="flex flex-col items-center text-center">
+             <h1 className={`text-5xl md:text-7xl lg:text-[6.5rem] font-black uppercase tracking-tighter ${metallicText} flex items-center gap-2 md:gap-4 mb-4`}>
+                UNCOMPROMISED EXAMS<span className="w-4 h-4 md:w-6 md:h-6 bg-emerald-500 rounded-full shadow-[0_0_40px_rgba(16,185,129,1)] animate-pulse"></span>
+             </h1>
+             <p className="text-zinc-400 text-lg md:text-xl font-medium max-w-2xl tracking-wide opacity-90 mt-4">
+               A perfect score means nothing if the process is broken<br />We protect the integrity of the test so your hard work actually matters
+             </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const CredHeroParallax = () => {
+  const { playVaultThud } = useSonification();
+  
+  return (
+    <section id="hero" className="w-full bg-black h-screen overflow-hidden relative flex flex-col">
+      <style>
+        {`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,800;0,900;1,700&display=swap');
+          .font-playfair { font-family: 'Playfair Display', serif; }`}
+      </style>
+
+      {/* Neon Base Floor — positioned absolutely at bottom */}
+      <CurvedNeonGrid />
+
+      {/* Center content — fills the screen minus navbar height */}
+      <div className="flex-1 flex items-center justify-center pt-20 pb-8 relative z-30">
+        <KineticTextSequence />
+      </div>
+
+
     </section>
   );
 };
 
-// ==========================================
-// 3. Scroll-Linked "Trust" Story
-// ==========================================
-const CredStoryParallax = () => {
-  const { scrollYProgress } = useScroll();
-  const opacity = useTransform(scrollYProgress, [0.1, 0.3, 0.4], [0.1, 1, 0]);
-  const y = useTransform(scrollYProgress, [0.1, 0.4], [50, -100]);
+const CleanFeatureBlocks = () => {
+  return (
+    <div className="w-full bg-[#030303] py-16 md:py-24 flex flex-col gap-20 border-t border-white/5 relative z-10">
+      
+      {/* Feature 1: Identity */}
+      <motion.section
+        className="max-w-7xl mx-auto px-6 md:px-12 w-full flex flex-col md:flex-row items-center gap-16 lg:gap-24"
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-80px' }}
+        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+      >
+        {/* Identity Check Visual — Premium Redesign */}
+        {(() => {
+          const [stepIndex, setStepIndex] = React.useState(0);
+          const [clock, setClock] = React.useState('');
+          const steps = [
+            { label: 'Detecting face…', color: 'text-indigo-400' },
+            { label: 'Mapping geometry…', color: 'text-indigo-400' },
+            { label: 'Matching records…', color: 'text-amber-400' },
+            { label: '✓ Identity confirmed', color: 'text-emerald-400' },
+          ];
+          React.useEffect(() => {
+            const tick = () => setClock(new Date().toLocaleTimeString('en-US', { hour12: false }));
+            tick();
+            const t = setInterval(tick, 1000);
+            return () => clearInterval(t);
+          }, []);
+          React.useEffect(() => {
+            const t = setInterval(() => setStepIndex(i => (i + 1) % steps.length), 2200);
+            return () => clearInterval(t);
+          }, []);
+          const step = steps[stepIndex];
+          return (
+            <div className="w-full md:w-1/2 aspect-[16/10] bg-[#06060e] rounded-2xl border border-white/[0.06] shadow-[0_0_80px_rgba(0,0,0,0.9),0_0_0_1px_rgba(99,102,241,0.07)] overflow-hidden flex flex-col group relative">
+              {/* ── Title bar ── */}
+              <div className="h-9 bg-[#0d0d18] border-b border-white/[0.05] flex items-center justify-between px-4 shrink-0">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-white/10 group-hover:bg-[#ff5f56] transition-colors duration-300" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-white/10 group-hover:bg-[#ffbd2e] transition-colors duration-300" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-white/10 group-hover:bg-[#27c93f] transition-colors duration-300" />
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-white/20 text-[10px] font-mono tracking-[0.25em] uppercase">vision.identity</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-white/25 text-[10px] font-mono tabular-nums">{clock}</span>
+                  <motion.div animate={{ opacity: [1, 0.2, 1] }} transition={{ duration: 1.8, repeat: Infinity }} className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_6px_rgba(99,102,241,0.8)]" />
+                  <span className="text-indigo-400/80 text-[10px] font-mono tracking-widest">LIVE</span>
+                </div>
+              </div>
+
+              {/* Main viewport */}
+              <div className="flex-1 overflow-hidden bg-[#050510] flex flex-col">
+                {/* Dot-grid texture */}
+                <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle, rgba(99,102,241,0.25) 1px, transparent 1px)', backgroundSize: '22px 22px', opacity: 0.6, pointerEvents: 'none' }} />
+
+                {/* Step ticker */}
+                <div className="shrink-0 h-8 flex items-center justify-center border-b border-white/[0.04]">
+                  <AnimatePresence mode="wait">
+                    <motion.span key={stepIndex} initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }} transition={{ duration: 0.3 }}
+                      className={`text-[10px] font-mono tracking-[0.2em] ${step.color} uppercase`}>{step.label}</motion.span>
+                  </AnimatePresence>
+                </div>
+
+                {/* Content: dual mini-panels + log */}
+                <div className="flex-1 flex flex-col px-4 pt-3 pb-3 gap-2.5 overflow-hidden relative z-10">
+                  {/* Top row */}
+                  <div className="flex gap-2.5" style={{ height: '42%' }}>
+                    {/* Face scanner panel */}
+                    <div className="flex-1 bg-black/30 rounded-xl border border-indigo-500/10 flex flex-col overflow-hidden">
+                      <div className="flex items-center gap-2 px-3 pt-2.5 pb-2 border-b border-white/[0.04]">
+                        <ScanFace className="w-3 h-3 text-indigo-400" strokeWidth={1.5} />
+                        <span className="text-indigo-400/70 text-[9px] font-mono tracking-widest uppercase">Face Scan</span>
+                      </div>
+                      <div className="flex-1 relative flex items-center justify-center">
+                        {/* Corner brackets */}
+                        <div className="absolute top-2 left-2 w-4 h-4 border-t border-l border-indigo-500/60" />
+                        <div className="absolute top-2 right-2 w-4 h-4 border-t border-r border-indigo-500/60" />
+                        <div className="absolute bottom-2 left-2 w-4 h-4 border-b border-l border-indigo-500/60" />
+                        <div className="absolute bottom-2 right-2 w-4 h-4 border-b border-r border-indigo-500/60" />
+                        <motion.div animate={{ rotate: 360 }} transition={{ duration: 18, repeat: Infinity, ease: 'linear' }} className="absolute w-14 h-14 rounded-full border border-dashed border-indigo-500/20" />
+                        <ScanFace strokeWidth={1.1} className="w-8 h-8 text-indigo-400 drop-shadow-[0_0_14px_rgba(99,102,241,1)] relative z-10" />
+                        {/* Scan line */}
+                        <motion.div
+                          animate={{ y: [0, 80, 0] }}
+                          transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+                          className="absolute left-4 right-4 h-px z-20 pointer-events-none"
+                          style={{ top: '15%', background: 'linear-gradient(90deg, transparent, rgba(99,102,241,0.8) 50%, transparent)', boxShadow: '0 0 6px rgba(99,102,241,0.6)' }} />
+                      </div>
+                    </div>
+                    {/* Biometric confidence panel */}
+                    <div className="flex-1 bg-black/30 rounded-xl border border-indigo-500/10 flex flex-col overflow-hidden">
+                      <div className="flex items-center gap-2 px-3 pt-2.5 pb-2 border-b border-white/[0.04]">
+                        <Shield className="w-3 h-3 text-indigo-400" strokeWidth={1.5} />
+                        <span className="text-indigo-400/70 text-[9px] font-mono tracking-widest uppercase">Biometrics</span>
+                      </div>
+                      <div className="flex-1 flex flex-col justify-center gap-2.5 px-3 py-2">
+                        {[{ label: 'Face Match', val: 99, color: 'bg-indigo-500' }, { label: 'Liveness', val: 94, color: 'bg-emerald-500' }, { label: 'ID Verify', val: 87, color: 'bg-amber-400' }].map((m, i) => (
+                          <div key={i} className="flex flex-col gap-1">
+                            <div className="flex justify-between">
+                              <span className="text-white/30 text-[8px] font-mono tracking-wider">{m.label}</span>
+                              <span className="text-white/40 text-[8px] font-mono tabular-nums">{m.val}%</span>
+                            </div>
+                            <div className="h-0.5 bg-white/5 rounded-full overflow-hidden">
+                              <motion.div
+                                animate={{ scaleX: [(m.val - 8) / 100, m.val / 100, (m.val - 4) / 100, m.val / 100] }}
+                                transition={{ duration: 3 + i, repeat: Infinity, ease: 'easeInOut' }}
+                                style={{ transformOrigin: 'left', width: '100%', willChange: 'transform' }}
+                                className={`h-full ${m.color} rounded-full`} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Verify log table */}
+                  <div className="flex-1 bg-black/30 rounded-xl border border-white/[0.04] overflow-hidden flex flex-col">
+                    <div className="flex justify-between items-center px-4 py-2 border-b border-white/[0.04]">
+                      <span className="text-white/20 text-[9px] font-mono tracking-widest uppercase w-1/4">Check</span>
+                      <span className="text-white/20 text-[9px] font-mono tracking-widest uppercase w-1/2">Result</span>
+                      <span className="text-white/20 text-[9px] font-mono tracking-widest uppercase w-1/4 text-right">Score</span>
+                    </div>
+                    <div className="overflow-hidden flex-1 relative">
+                      <motion.div animate={{ y: [0, -5 * 26] }} transition={{ duration: 5, repeat: Infinity, ease: 'linear', repeatType: 'loop' }} className="flex flex-col">
+                        {[...[
+                          { check: 'Face detect',  result: 'Matched',   score: '99%', color: 'text-emerald-300', badge: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300' },
+                          { check: 'Liveness',     result: 'Real',      score: '94%', color: 'text-emerald-300', badge: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300' },
+                          { check: 'ID document',  result: 'Scanning…', score: '—',   color: 'text-indigo-300', badge: 'bg-indigo-500/20 border-indigo-500/30 text-indigo-300' },
+                          { check: 'Multi-person', result: 'Clear',     score: '100%',color: 'text-emerald-300', badge: '' },
+                          { check: 'Spoof detect', result: 'Passed',    score: '97%', color: 'text-emerald-300', badge: '' },
+                        ], ...[
+                          { check: 'Face detect',  result: 'Matched',   score: '99%', color: 'text-emerald-300', badge: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300' },
+                          { check: 'Liveness',     result: 'Real',      score: '94%', color: 'text-emerald-300', badge: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300' },
+                          { check: 'ID document',  result: 'Scanning…', score: '—',   color: 'text-indigo-300', badge: 'bg-indigo-500/20 border-indigo-500/30 text-indigo-300' },
+                          { check: 'Multi-person', result: 'Clear',     score: '100%',color: 'text-emerald-300', badge: '' },
+                          { check: 'Spoof detect', result: 'Passed',    score: '97%', color: 'text-emerald-300', badge: '' },
+                        ]].map((row, i) => (
+                          <div key={i} className={`flex justify-between items-center px-4 py-1.5 border-b border-white/[0.03] ${row.color}`}>
+                            <span className="text-[9px] font-mono w-1/4">{row.check}</span>
+                            <span className="text-[9px] font-mono w-1/2">{row.badge ? <span className={`px-1.5 py-0.5 rounded border ${row.badge} text-[9px]`}>{row.result}</span> : row.result}</span>
+                            <span className="text-[9px] font-mono w-1/4 text-right">{row.score}</span>
+                          </div>
+                        ))}
+                      </motion.div>
+                      <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pill bar */}
+                <div className="shrink-0 px-5 py-3 flex items-center justify-between border-t border-white/[0.04] bg-[#050510]">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm border border-emerald-500/20 rounded-full px-2.5 py-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.8)]" />
+                      <span className="text-emerald-400 text-[9px] font-mono tracking-widest uppercase">Liveness</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm border border-emerald-500/20 rounded-full px-2.5 py-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.8)]" />
+                      <span className="text-emerald-400 text-[9px] font-mono tracking-widest uppercase">Face</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm border border-indigo-500/30 rounded-full px-2.5 py-1">
+                      <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }} className="w-2 h-2 rounded-full border border-indigo-400 border-t-transparent" />
+                      <span className="text-indigo-300 text-[9px] font-mono tracking-widest uppercase">ID Doc</span>
+                    </div>
+                  </div>
+                  <span className="text-white/25 text-[9px] font-mono tabular-nums tracking-wider">99.3% conf.</span>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Text */}
+        <div className="w-full md:w-1/2 flex flex-col">
+          <span className="text-indigo-400 font-bold mb-4 font-mono tracking-wider text-sm flex items-center gap-4">
+            Step 1 Verify
+          </span>
+          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 leading-[1.1] tracking-tight">
+            Know exactly who is taking the test
+          </h2>
+          <ul className="flex flex-col gap-5 text-slate-400 mb-10 text-lg">
+            <li className="flex items-start gap-4">
+               <div className="mt-1 bg-indigo-500/20 p-1 rounded-full"><Check className="w-4 h-4 text-indigo-400" /></div>
+               <span>Instant face and ID verification before the exam starts</span>
+            </li>
+            <li className="flex items-start gap-4">
+               <div className="mt-1 bg-indigo-500/20 p-1 rounded-full"><Check className="w-4 h-4 text-indigo-400" /></div>
+               <span>Continuous tracking ensures nobody swaps places</span>
+            </li>
+            <li className="flex items-start gap-4">
+               <div className="mt-1 bg-indigo-500/20 p-1 rounded-full"><Check className="w-4 h-4 text-indigo-400" /></div>
+               <span>Automatic cross-checking against student records</span>
+            </li>
+          </ul>
+        </div>
+      </motion.section>
+
+      {/* Feature 2: Lockdown (Text Left, Visual Right) */}
+      <motion.section
+        className="max-w-7xl mx-auto px-6 md:px-12 w-full flex flex-col-reverse md:flex-row items-center gap-16 lg:gap-24"
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-80px' }}
+        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.05 }}
+      >
+        {/* Text */}
+        <div className="w-full md:w-1/2 flex flex-col">
+          <span className="text-emerald-400 font-bold mb-4 font-mono tracking-wider text-sm flex items-center gap-4">
+            Step 2 Secure
+          </span>
+          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 leading-[1.1] tracking-tight">
+            Total environment lockdown
+          </h2>
+          <ul className="flex flex-col gap-5 text-slate-400 mb-10 text-lg">
+            <li className="flex items-start gap-4">
+               <div className="mt-1 bg-emerald-500/20 p-1 rounded-full"><Check className="w-4 h-4 text-emerald-400" /></div>
+               <span>Blocks all other apps, tabs, and screen-sharing tools</span>
+            </li>
+            <li className="flex items-start gap-4">
+               <div className="mt-1 bg-emerald-500/20 p-1 rounded-full"><Check className="w-4 h-4 text-emerald-400" /></div>
+               <span>Disables copy-paste, printing, and secondary monitors</span>
+            </li>
+            <li className="flex items-start gap-4">
+               <div className="mt-1 bg-emerald-500/20 p-1 rounded-full"><Check className="w-4 h-4 text-emerald-400" /></div>
+               <span>Limits internet access exclusively to the exam portal</span>
+            </li>
+          </ul>
+        </div>
+        {/* Feature 2 Visual — Lockdown */}
+        {(() => {
+          const [lockStep, setLockStep] = React.useState(0);
+          const [clock2, setClock2] = React.useState('');
+          const lockSteps = [
+            { label: 'Suspending processes…', color: 'text-emerald-400' },
+            { label: 'Blocking net egress…',  color: 'text-emerald-400' },
+            { label: 'Disabling clipboard…',  color: 'text-amber-400'   },
+            { label: '✓ Environment secured', color: 'text-emerald-400' },
+          ];
+          const rows = [
+            { proc: 'anydesk.exe',    pid: '4921', status: 'KILLED',      color: 'text-rose-400'    },
+            { proc: 'TeamViewer',     pid: '3810', status: 'KILLED',      color: 'text-rose-400'    },
+            { proc: 'screen-share',   pid: '5102', status: 'BLOCKED',     color: 'text-amber-400'   },
+            { proc: 'net egress',     pid: 'eth1', status: 'RESTRICTED',  color: 'text-amber-400'   },
+            { proc: 'clipboard',      pid: 'sys',  status: 'DISABLED',    color: 'text-emerald-400' },
+            { proc: 'print spooler', pid: '2048', status: 'STOPPED',     color: 'text-emerald-400' },
+          ];
+          React.useEffect(() => {
+            const tick = () => setClock2(new Date().toLocaleTimeString('en-US', { hour12: false }));
+            tick(); const t = setInterval(tick, 1000); return () => clearInterval(t);
+          }, []);
+          React.useEffect(() => {
+            const t = setInterval(() => setLockStep(i => (i + 1) % lockSteps.length), 2000);
+            return () => clearInterval(t);
+          }, []);
+          const ls = lockSteps[lockStep];
+          return (
+            <div className="w-full md:w-1/2 aspect-[16/10] bg-[#06060e] rounded-2xl border border-white/[0.06] shadow-[0_0_80px_rgba(0,0,0,0.9),0_0_0_1px_rgba(16,185,129,0.07)] overflow-hidden flex flex-col group relative">
+              {/* Title bar */}
+              <div className="h-9 bg-[#0a0f0d] border-b border-white/[0.05] flex items-center justify-between px-4 shrink-0">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-white/10 group-hover:bg-[#ff5f56] transition-colors duration-300" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-white/10 group-hover:bg-[#ffbd2e] transition-colors duration-300" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-white/10 group-hover:bg-[#27c93f] transition-colors duration-300" />
+                </div>
+                <span className="text-white/20 text-[10px] font-mono tracking-[0.25em] uppercase">vision.lockdown</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-white/25 text-[10px] font-mono tabular-nums">{clock2}</span>
+                  <motion.div animate={{ opacity: [1, 0.2, 1] }} transition={{ duration: 1.8, repeat: Infinity }} className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
+                  <span className="text-emerald-400/80 text-[10px] font-mono tracking-widest">ACTIVE</span>
+                </div>
+              </div>
+
+              {/* Main viewport */}
+              <div className="flex-1 overflow-hidden bg-[#04080a] flex flex-col">
+                {/* Dot grid */}
+                <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle, rgba(16,185,129,0.15) 1px, transparent 1px)', backgroundSize: '22px 22px', opacity: 0.7, pointerEvents: 'none' }} />
+
+                {/* Step ticker */}
+                <div className="shrink-0 h-8 flex items-center justify-center border-b border-white/[0.04]">
+                  <AnimatePresence mode="wait">
+                    <motion.span key={lockStep} initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }} transition={{ duration: 0.3 }}
+                      className={`text-[10px] font-mono tracking-[0.2em] ${ls.color} uppercase`}>{ls.label}</motion.span>
+                  </AnimatePresence>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 flex flex-col px-4 pt-3 pb-3 gap-2.5 overflow-hidden relative z-10">
+                  {/* Top row */}
+                  <div className="flex gap-2.5" style={{ height: '42%' }}>
+                    {/* Lock status panel */}
+                    <div className="flex-1 bg-black/30 rounded-xl border border-emerald-500/10 flex flex-col overflow-hidden">
+                      <div className="flex items-center gap-2 px-3 pt-2.5 pb-2 border-b border-white/[0.04]">
+                        <Lock className="w-3 h-3 text-emerald-400" strokeWidth={1.5} />
+                        <span className="text-emerald-400/70 text-[9px] font-mono tracking-widest uppercase">Lockdown</span>
+                      </div>
+                      <div className="flex-1 relative flex items-center justify-center">
+                        <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.3, 0.1] }} transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+                          style={{ willChange: 'transform, opacity' }}
+                          className="absolute w-12 h-12 rounded-full bg-emerald-500/20 blur-lg" />
+                        <Lock strokeWidth={1.1} className="w-7 h-7 text-emerald-400 drop-shadow-[0_0_12px_rgba(16,185,129,0.9)] relative z-10" />
+                      </div>
+                    </div>
+                    {/* Network panel */}
+                    <div className="flex-1 bg-black/30 rounded-xl border border-emerald-500/10 flex flex-col overflow-hidden">
+                      <div className="flex items-center gap-2 px-3 pt-2.5 pb-2 border-b border-white/[0.04]">
+                        <Activity className="w-3 h-3 text-emerald-400" strokeWidth={1.5} />
+                        <span className="text-emerald-400/70 text-[9px] font-mono tracking-widest uppercase">Network</span>
+                      </div>
+                      <div className="flex-1 flex flex-col justify-center gap-2 px-3 py-2">
+                        {[{ label: 'Exam portal', status: 'ALLOWED', color: 'text-emerald-400' }, { label: 'External web', status: 'BLOCKED', color: 'text-rose-400' }, { label: 'Screen share', status: 'BLOCKED', color: 'text-rose-400' }].map((n, i) => (
+                          <div key={i} className="flex justify-between items-center">
+                            <span className="text-white/30 text-[8px] font-mono tracking-wider">{n.label}</span>
+                            <span className={`text-[8px] font-mono font-bold tracking-widest ${n.color}`}>{n.status}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Process kill table */}
+                  <div className="flex-1 bg-black/30 rounded-xl border border-white/[0.04] overflow-hidden flex flex-col">
+                    <div className="flex justify-between items-center px-4 py-2 border-b border-white/[0.04]">
+                      <span className="text-white/20 text-[9px] font-mono tracking-widest uppercase w-1/3">Process</span>
+                      <span className="text-white/20 text-[9px] font-mono tracking-widest uppercase w-1/4 text-center">PID</span>
+                      <span className="text-white/20 text-[9px] font-mono tracking-widest uppercase w-1/3 text-right">Status</span>
+                    </div>
+                    <div className="overflow-hidden flex-1 relative">
+                      <motion.div animate={{ y: [0, -rows.length * 26] }} transition={{ duration: 5, repeat: Infinity, ease: 'linear', repeatType: 'loop' }} className="flex flex-col">
+                        {[...rows, ...rows].map((r, i) => (
+                          <div key={i} className="flex justify-between items-center px-4 py-1.5 border-b border-white/[0.03]">
+                            <span className="text-white/50 text-[9px] font-mono w-1/3 truncate">{r.proc}</span>
+                            <span className="text-white/30 text-[9px] font-mono w-1/4 text-center">{r.pid}</span>
+                            <span className={`text-[9px] font-mono font-bold tracking-widest ${r.color} w-1/3 text-right`}>{r.status}</span>
+                          </div>
+                        ))}
+                      </motion.div>
+                      <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pill bar */}
+                <div className="shrink-0 px-5 py-3 flex items-center justify-between border-t border-white/[0.04] bg-[#04080a]">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm border border-emerald-500/20 rounded-full px-2.5 py-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.8)]" />
+                      <span className="text-emerald-400 text-[9px] font-mono tracking-widest uppercase">Display</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm border border-emerald-500/20 rounded-full px-2.5 py-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.8)]" />
+                      <span className="text-emerald-400 text-[9px] font-mono tracking-widest uppercase">Clipboard</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm border border-amber-500/20 rounded-full px-2.5 py-1">
+                      <motion.div animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.5, repeat: Infinity }} className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                      <span className="text-amber-300 text-[9px] font-mono tracking-widest uppercase">Net</span>
+                    </div>
+                  </div>
+                  <span className="text-white/25 text-[9px] font-mono tracking-wider">3 threats blocked</span>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+      </motion.section>
+
+      {/* Feature 3: Monitor (Visual Left, Text Right) */}
+      <motion.section
+        className="max-w-7xl mx-auto px-6 md:px-12 w-full flex flex-col md:flex-row items-center gap-16 lg:gap-24"
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-80px' }}
+        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.05 }}
+      >
+        {/* Feature 3 Visual — Monitor */}
+        {(() => {
+          const [monStep, setMonStep] = React.useState(0);
+          const [clock3, setClock3] = React.useState('');
+          const monSteps = [
+            { label: 'Calibrating gaze…',   color: 'text-zinc-400'  },
+            { label: 'Audio analysis on…', color: 'text-rose-400'   },
+            { label: 'Anomaly detected!',  color: 'text-amber-400'  },
+            { label: '✓ All clear',         color: 'text-emerald-400'},
+          ];
+          const events = [
+            { time: '10:42:01', event: 'Audio Spike',  conf: '98%',  color: 'text-rose-300',  badge: 'bg-rose-500/20 border-rose-500/30 text-rose-300' },
+            { time: '10:41:55', event: 'Looking Away', conf: '12%',  color: 'text-zinc-400',  badge: '' },
+            { time: '10:40:12', event: 'Tab Switch',   conf: '100%', color: 'text-amber-300', badge: 'bg-amber-500/20 border-amber-500/30 text-amber-300' },
+            { time: '10:39:40', event: 'Key Anomaly',  conf: '45%',  color: 'text-white/50',  badge: '' },
+            { time: '10:38:05', event: 'Multi-Face',   conf: '95%',  color: 'text-rose-300',  badge: 'bg-rose-500/20 border-rose-500/30 text-rose-300' },
+          ];
+          React.useEffect(() => {
+            const tick = () => setClock3(new Date().toLocaleTimeString('en-US', { hour12: false }));
+            tick(); const t = setInterval(tick, 1000); return () => clearInterval(t);
+          }, []);
+          React.useEffect(() => {
+            const t = setInterval(() => setMonStep(i => (i + 1) % monSteps.length), 2000);
+            return () => clearInterval(t);
+          }, []);
+          const ms = monSteps[monStep];
+          return (
+            <div className="w-full md:w-1/2 aspect-[16/10] bg-[#06060e] rounded-2xl border border-white/[0.06] shadow-[0_0_80px_rgba(0,0,0,0.9),0_0_0_1px_rgba(244,63,94,0.07)] overflow-hidden flex flex-col group relative">
+              {/* Title bar */}
+              <div className="h-9 bg-[#0e0a0a] border-b border-white/[0.05] flex items-center justify-between px-4 shrink-0">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-white/10 group-hover:bg-[#ff5f56] transition-colors duration-300" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-white/10 group-hover:bg-[#ffbd2e] transition-colors duration-300" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-white/10 group-hover:bg-[#27c93f] transition-colors duration-300" />
+                </div>
+                <span className="text-white/20 text-[10px] font-mono tracking-[0.25em] uppercase">vision.monitor</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-white/25 text-[10px] font-mono tabular-nums">{clock3}</span>
+                  <motion.div animate={{ opacity: [1, 0.2, 1] }} transition={{ duration: 1.4, repeat: Infinity }} className="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.8)]" />
+                  <span className="text-rose-400/80 text-[10px] font-mono tracking-widest">WATCH</span>
+                </div>
+              </div>
+
+              {/* Main viewport */}
+              <div className="flex-1 relative overflow-hidden bg-[#080508] flex flex-col">
+                {/* Dot grid */}
+                <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle, rgba(244,63,94,0.12) 1px, transparent 1px)', backgroundSize: '22px 22px', opacity: 0.8 }} />
+
+                {/* Step ticker */}
+                <div className="absolute top-4 left-0 right-0 flex justify-center z-30">
+                  <AnimatePresence mode="wait">
+                    <motion.span key={monStep} initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }} transition={{ duration: 0.3 }}
+                      className={`text-[10px] font-mono tracking-[0.2em] ${ms.color} uppercase`}>{ms.label}</motion.span>
+                  </AnimatePresence>
+                </div>
+
+                {/* Content: dual mini-panels */}
+                <div className="flex-1 flex flex-col px-5 pt-9 pb-3 gap-3 relative z-10 overflow-hidden">
+                  {/* Top row: Audio + Gaze */}
+                  <div className="flex gap-3" style={{ height: '42%' }}>
+                    {/* Audio waveform */}
+                    <div className="flex-1 bg-black/30 rounded-xl border border-rose-500/10 flex flex-col overflow-hidden">
+                      <div className="flex items-center gap-2 px-3 pt-2.5 pb-2 border-b border-white/[0.04]">
+                        <Activity className="w-3 h-3 text-rose-400" />
+                        <span className="text-rose-400/70 text-[9px] font-mono tracking-widest uppercase">Audio dB</span>
+                      </div>
+                      <div className="flex-1 flex items-end justify-between px-3 pb-2.5 gap-0.5">
+                        {[...Array(18)].map((_, i) => {
+                          const h = 15 + ((i * 37 + 13) % 60);
+                          return (
+                            <motion.div key={i}
+                              animate={{ scaleY: [0.4, 1, 0.6, 1] }}
+                              style={{ height: `${h}%`, transformOrigin: 'bottom', willChange: 'transform' }}
+                              transition={{ duration: 0.6 + (i % 4) * 0.15, repeat: Infinity, ease: 'easeInOut', delay: i * 0.05 }}
+                              className="flex-1 bg-gradient-to-t from-rose-600/60 to-rose-400/30 rounded-t-sm"
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                    {/* Gaze tracker */}
+                    <div className="flex-1 bg-black/30 rounded-xl border border-indigo-500/10 flex flex-col overflow-hidden">
+                      <div className="flex items-center gap-2 px-3 pt-2.5 pb-2 border-b border-white/[0.04]">
+                        <Eye className="w-3 h-3 text-indigo-400" />
+                        <span className="text-indigo-400/70 text-[9px] font-mono tracking-widest uppercase">Gaze</span>
+                      </div>
+                      <div className="flex-1 relative flex items-center justify-center">
+                        {/* crosshair */}
+                        <div className="absolute w-12 h-12 border border-white/10 rounded-full" />
+                        <div className="absolute w-5 h-5 border border-white/10 rounded-full" />
+                        <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white/5" />
+                        <div className="absolute top-1/2 left-0 right-0 h-px bg-white/5" />
+                        <motion.div
+                          animate={{ x: [-16, 12, -8, 18, -4, 6, -16], y: [-8, 10, -14, 4, 12, -6, -8] }}
+                          transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+                          className="relative z-10 w-3 h-3 rounded-full bg-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.9)]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Event log table */}
+                  <div className="flex-1 bg-black/30 rounded-xl border border-white/[0.04] overflow-hidden flex flex-col">
+                    <div className="flex justify-between items-center px-4 py-2 border-b border-white/[0.04]">
+                      <span className="text-white/20 text-[9px] font-mono tracking-widest uppercase w-1/4">Time</span>
+                      <span className="text-white/20 text-[9px] font-mono tracking-widest uppercase w-1/2">Event</span>
+                      <span className="text-white/20 text-[9px] font-mono tracking-widest uppercase w-1/4 text-right">Conf</span>
+                    </div>
+                    <div className="overflow-hidden flex-1 relative">
+                      <motion.div animate={{ y: [0, -events.length * 26] }} transition={{ duration: 4, repeat: Infinity, ease: 'linear', repeatType: 'loop' }} className="flex flex-col">
+                        {[...events, ...events].map((ev, i) => (
+                          <div key={i} className={`flex justify-between items-center px-4 py-1.5 border-b border-white/[0.03] ${ev.color}`}>
+                            <span className="text-[9px] font-mono w-1/4">{ev.time}</span>
+                            <span className="text-[9px] font-mono w-1/2">
+                              {ev.badge ? <span className={`px-1.5 py-0.5 rounded border ${ev.badge} text-[9px]`}>{ev.event}</span> : ev.event}
+                            </span>
+                            <span className="text-[9px] font-mono w-1/4 text-right">{ev.conf}</span>
+                          </div>
+                        ))}
+                      </motion.div>
+                      <div className="absolute bottom-0 left-0 right-0 h-14 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pill bar */}
+                <div className="shrink-0 px-5 py-3 flex items-center justify-between border-t border-white/[0.04] bg-[#080508]">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm border border-rose-500/20 rounded-full px-2.5 py-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-[0_0_5px_rgba(244,63,94,0.8)]" />
+                      <span className="text-rose-400 text-[9px] font-mono tracking-widest uppercase">Audio</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm border border-indigo-500/20 rounded-full px-2.5 py-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-[0_0_5px_rgba(99,102,241,0.8)]" />
+                      <span className="text-indigo-300 text-[9px] font-mono tracking-widest uppercase">Gaze</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm border border-amber-500/20 rounded-full px-2.5 py-1">
+                      <motion.div animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.2, repeat: Infinity }} className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                      <span className="text-amber-300 text-[9px] font-mono tracking-widest uppercase">Events</span>
+                    </div>
+                  </div>
+                  <span className="text-white/25 text-[9px] font-mono tracking-wider">AI score 94.1</span>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+        {/* Text */}
+        <div className="w-full md:w-1/2 flex flex-col">
+          <span className="text-zinc-300 font-bold mb-4 font-mono tracking-wider text-sm flex items-center gap-4">
+            Step 3 Monitor
+          </span>
+          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 leading-[1.1] tracking-tight">
+            Smart automated proctoring
+          </h2>
+          <ul className="flex flex-col gap-5 text-slate-400 mb-10 text-lg">
+            <li className="flex items-start gap-4">
+               <div className="mt-1 bg-white/10 p-1 rounded-full"><Check className="w-4 h-4 text-white" /></div>
+               <span>Tracks eye movement to ensure focus remains on the screen</span>
+            </li>
+            <li className="flex items-start gap-4">
+               <div className="mt-1 bg-white/10 p-1 rounded-full"><Check className="w-4 h-4 text-white" /></div>
+               <span>Flags background voices or unusual audio spikes immediately</span>
+            </li>
+            <li className="flex items-start gap-4">
+               <div className="mt-1 bg-white/10 p-1 rounded-full"><Check className="w-4 h-4 text-white" /></div>
+               <span>Alerts human reviewers only when suspicious activity occurs</span>
+            </li>
+          </ul>
+        </div>
+      </motion.section>
+
+    </div>
+  );
+};
+
+
+const MagneticText = ({ children, isActive }) => {
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const springX = useSpring(x, { stiffness: 150, damping: 15, mass: 0.1 });
+  const springY = useSpring(y, { stiffness: 150, damping: 15, mass: 0.1 });
+
+  const handleMouse = (e) => {
+    if (!isActive) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    x.set((e.clientX - centerX) * 0.2);
+    y.set((e.clientY - centerY) * 0.2);
+  };
 
   return (
-    <section className="relative h-[150vh] bg-black">
-      <div className="sticky top-0 h-screen w-full flex items-center justify-center overflow-hidden">
-        <motion.div style={{ opacity, y }} className="max-w-4xl px-8 text-center md:text-left">
-          <h2 className="text-5xl md:text-7xl font-serif text-white leading-tight tracking-tight mb-8" style={{ fontFamily: "'Playfair Display', serif" }}>
-            the story of <br />
-            ProctoShield <br />
-            begins with trust.
-          </h2>
-          <p className="text-3xl md:text-5xl font-serif text-white/30 leading-tight tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
-            we believe institutions who've proven their rigor <span className="text-white">deserve the absolute best.</span>
-          </p>
+    <motion.div 
+      onMouseMove={handleMouse} 
+      onMouseLeave={() => { x.set(0); y.set(0); }} 
+      style={{ x: springX, y: springY }} 
+      className="w-fit"
+    >
+      {children}
+    </motion.div>
+  );
+};
+
+const CredMockupSequence = () => {
+  const trackRef = useRef(null);
+  const { scrollYProgress } = useScroll({ target: trackRef, offset: ["start start", "end end"] });
+  const [activeStep, setActiveStep] = useState(0);
+  const springProgress = useSpring(scrollYProgress, { stiffness: 400, damping: 90, mass: 0.1 });
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  const rotateX = useSpring(useTransform(mouseY, [-0.5, 0.5], [10, -10]), { stiffness: 300, damping: 30 });
+  const rotateY = useSpring(useTransform(mouseX, [-0.5, 0.5], [-10, 10]), { stiffness: 300, damping: 30 });
+
+  const handleMockupHover = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width - 0.5;
+    const py = (e.clientY - rect.top) / rect.height - 0.5;
+    mouseX.set(px);
+    mouseY.set(py);
+  };
+  
+  const handleMockupLeave = () => { mouseX.set(0); mouseY.set(0); };
+
+  useMotionValueEvent(scrollYProgress, "change", (latest) => {
+    if (latest < 0.33) {
+      if (activeStep !== 0) setActiveStep(0);
+    } else if (latest < 0.66) {
+      if (activeStep !== 1) setActiveStep(1);
+    } else {
+      if (activeStep !== 2) setActiveStep(2);
+    }
+  });
+
+  const mockupStates = [
+    {
+      id: 0,
+      icon: <ScanFace className="text-indigo-400 w-12 h-12" />,
+      color: "indigo",
+      text: "BIOMETRIC SYNC",
+      bg: "bg-indigo-500/10",
+      border: "border-indigo-500/30",
+      innerBorder: "border-indigo-500/20",
+      textColor: "text-indigo-500",
+      effect: "animate-[ping_3s_ease-out_infinite]"
+    },
+    {
+      id: 1,
+      icon: <Lock className="text-emerald-400 w-12 h-12" />,
+      color: "emerald",
+      text: "SHIELD ACTIVE",
+      bg: "bg-emerald-500/10",
+      border: "border-emerald-500/30",
+      innerBorder: "border-emerald-500/20",
+      textColor: "text-emerald-500",
+      effect: "animate-pulse"
+    },
+    {
+      id: 2,
+      icon: <Activity className="text-rose-400 w-12 h-12" />,
+      color: "rose",
+      text: "AI VIGILANCE",
+      bg: "bg-rose-500/10",
+      border: "border-rose-500/30",
+      innerBorder: "border-rose-500/20",
+      textColor: "text-rose-500",
+      effect: "animate-bounce"
+    }
+  ];
+
+  const gridColors = {
+    indigo: "rgba(99, 102, 241, 0.4)",
+    emerald: "rgba(16, 185, 129, 0.4)",
+    rose: "rgba(244, 63, 94, 0.4)"
+  };
+
+  return (
+    <section id="features" ref={trackRef} className="relative bg-[#030303] w-full" style={{ height: "150vh" }}>
+      {/* Dynamic Marquee Divider */}
+      <div className="w-full h-16 border-y border-white/5 bg-[#080808] overflow-hidden flex items-center relative z-20">
+        <div className="absolute inset-0 bg-gradient-to-r from-[#030303] via-transparent to-[#030303] z-10" />
+        <motion.div
+          animate={{ x: [0, -1000] }}
+          transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+          className="flex whitespace-nowrap gap-12 font-mono text-xs tracking-[0.3em] text-white/20 uppercase"
+        >
+          {Array(8).fill("Continuous Verification · Zero Trust Environment · AI-Powered Proctoring · ").map((text, i) => (
+            <span key={i}>{text}</span>
+          ))}
         </motion.div>
       </div>
-    </section>
-  );
-};
 
-// ==========================================
-// 4. Massive Phone/Browser Mockup 400vh Track
-// ==========================================
-const CredMockupSequence = () => {
-  return (
-    <section className="relative bg-black w-full" style={{ height: "400vh" }}>
-      {/* 
-        This is a classic CRED native scroll-jacked track. 
-        Left side: 3 massive text blocks taking 100vh each.
-        Right side: A sticky container holding a Browser Mockup.
-      */}
-      <div className="flex w-full max-w-7xl mx-auto h-full px-8 relative">
-        
-        {/* Left Scroll Track */}
-        <div className="w-1/2 flex flex-col relative z-20">
-          <div className="h-screen flex flex-col justify-center">
-            <h3 className="text-white text-5xl md:text-6xl font-black tracking-tight mb-6">biometric handshake.</h3>
-            <p className="text-white/60 text-2xl font-light max-w-md leading-relaxed">A seamless 3-second identity verification against structural university databases.</p>
-          </div>
-          <div className="h-screen flex flex-col justify-center">
-            <h3 className="text-white text-5xl md:text-6xl font-black tracking-tight mb-6">environment lockdown.</h3>
-            <p className="text-white/60 text-2xl font-light max-w-md leading-relaxed">Immediate suspension of background applications, display mirroring, and network bleed.</p>
-          </div>
-          <div className="h-screen flex flex-col justify-center">
-            <h3 className="text-white text-5xl md:text-6xl font-black tracking-tight mb-6">AI-powered vigilance.</h3>
-            <p className="text-white/60 text-2xl font-light max-w-md leading-relaxed">Real-time eye-tracking and peripheral audio monitoring to ensure absolute fairness.</p>
-          </div>
-          {/* Bottom buffer */}
-          <div className="h-screen"></div>
+      <div className="flex w-full max-w-7xl mx-auto h-[calc(100%-7rem)] px-8 relative mt-12">
+        <div className="absolute left-4 top-0 bottom-0 w-1 bg-white/10 z-10 hidden md:block">
+           <motion.div 
+             style={{ scaleY: springProgress, originY: 0 }} 
+             className="w-full h-full bg-white relative"
+           />
         </div>
 
-        {/* Right Sticky Mockup */}
-        <div className="w-1/2 h-screen sticky top-0 flex flex-col items-center justify-center p-12">
-          {/* Glass Mockup Window */}
-          <div className="w-full aspect-[4/3] bg-[#0c0c0c] border border-white/10 rounded-2xl overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.8)] relative flex flex-col">
-            
-            {/* Fake Safari Top Bar */}
-            <div className="h-10 border-b border-white/10 flex items-center px-4 gap-2 bg-[#141414]">
+        <div className="w-full md:w-1/2 flex flex-col relative z-20 pl-0 md:pl-8 lg:pl-16 pr-4 md:pr-12 lg:pr-16 justify-center">
+          {[
+            { step: "01", title: "Identity verified", desc: "Instant biometric face scan cross-checks with student records to ensure no start until confirmed", color: "indigo" },
+            { step: "02", title: "Environment secured", desc: "Background apps suspended, screen-sharing blocked and copy-paste disabled to keep the exam secure", color: "emerald" },
+            { step: "03", title: "Live monitoring", desc: "Every eye movement and audio spike is logged and flagged for review in real-time", color: "rose" }
+          ].map((item, i) => {
+            const isActive = activeStep === i;
+            return (
+              <motion.div 
+                key={i} 
+                className={"py-16 md:py-24 flex flex-col justify-center relative pl-10 md:pl-12 transition-all duration-700 " + (isActive ? "opacity-100 scale-100" : "opacity-30 scale-95")}
+              >
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2">
+                  <span className={"font-mono text-xs font-bold transition-colors duration-700 " + (isActive ? "text-" + item.color + "-400" : "text-white/20")}>
+                    {item.step}
+                  </span>
+                  <div className={"w-1 transition-all duration-700 rounded-full " + (isActive ? "h-12 shadow-[0_0_15px_rgba(255,255,255,0.5)] bg-" + item.color + "-500 shadow-" + item.color + "-500/50" : "h-4 bg-white/10")} />
+                </div>
+
+                <MagneticText isActive={isActive}>
+                   <h3 className="text-white text-4xl lg:text-5xl font-black tracking-tight mb-4">{item.title}</h3>
+                </MagneticText>
+                
+                <p className="text-white/60 text-lg md:text-xl font-light max-w-sm lg:max-w-md leading-relaxed">{item.desc}</p>
+              </motion.div>
+            );
+          })}
+        </div>
+
+        <div className="hidden md:flex w-1/2 h-[calc(100vh-6rem)] sticky top-24 flex-col items-center justify-center p-8 perspective-1000 z-30">
+          <motion.div 
+            onMouseMove={handleMockupHover}
+            onMouseLeave={handleMockupLeave}
+            style={{ rotateX, rotateY }}
+            className="w-[90%] max-w-[420px] aspect-[4/3] bg-[#0c0c0c] border border-white/10 rounded-2xl overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.8)] relative flex flex-col origin-center"
+          >
+            <div className="h-10 border-b border-white/10 flex items-center px-4 gap-2 bg-[#141414] z-20 shrink-0">
               <div className="w-3 h-3 rounded-full bg-red-500/50"></div>
               <div className="w-3 h-3 rounded-full bg-amber-500/50"></div>
               <div className="w-3 h-3 rounded-full bg-emerald-500/50"></div>
-              <div className="mx-auto bg-black/50 px-6 py-1 rounded-md text-[10px] text-white/30 font-mono tracking-widest border border-white/5">EXAMVAULT CORE</div>
+              <div className="mx-auto bg-black/50 px-6 py-1 rounded-md text-[10px] text-white/50 font-mono tracking-widest border border-white/5">VISION // KERNEL</div>
             </div>
 
-            {/* Mockup Inside Visuals - CRED uses cross-fading screenshots but we'll use an abstract radar/grid */}
-            <div className="flex-1 relative flex items-center justify-center bg-black overflow-hidden">
-               <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] opacity-50"></div>
+            <div className="flex-1 relative flex items-center justify-center bg-black overflow-hidden z-10 w-full h-full" style={{ perspective: "1000px" }}>
+               <motion.div 
+                 className="absolute origin-top pointer-events-none z-0"
+                 style={{ 
+                   width: '300%', height: '300%',
+                   top: '-50%', left: '-100%',
+                   rotateX: 75,
+                   backgroundImage: `linear-gradient(${gridColors[mockupStates[activeStep].color]} 1px, transparent 1px), linear-gradient(90deg, ${gridColors[mockupStates[activeStep].color]} 1px, transparent 1px)`,
+                   backgroundSize: '80px 80px',
+                   backgroundPositionY: useTransform(springProgress, [0, 1], ['0px', '4000px']),
+                   transition: 'background-image 0.5s ease-in-out'
+                 }}
+               >
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent" />
+               </motion.div>
                
-               <div className="relative z-10 w-32 h-32 rounded-full border border-indigo-500/30 flex items-center justify-center">
-                  <div className="absolute w-full h-full border border-indigo-500/20 rounded-full animate-[ping_3s_ease-out_infinite]"></div>
-                  <div className="w-16 h-16 rounded-full bg-indigo-500/20 border border-indigo-500/50 flex items-center justify-center backdrop-blur-md">
-                    <ScanFace className="text-indigo-400 w-8 h-8" />
-                  </div>
-               </div>
+               <AnimatePresence mode="wait">
+                 <motion.div 
+                    key={activeStep}
+                    initial={{ opacity: 0, scale: 0.8, filter: "blur(10px)" }}
+                    animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                    exit={{ opacity: 0, scale: 1.2, filter: "blur(10px)" }}
+                    transition={{ duration: 0.4 }}
+                    className="absolute inset-0 flex flex-col items-center justify-center"
+                 >
+                    <div className="relative flex items-center justify-center">
+                       <svg className="absolute w-[140px] h-[140px] -rotate-90 pointer-events-none opacity-50 z-20">
+                         <circle cx="70" cy="70" r="68" stroke="currentColor" strokeWidth="2" fill="none" className="text-white/10" />
+                         <motion.circle 
+                            cx="70" cy="70" r="68" 
+                            stroke="currentColor" 
+                            strokeWidth="2" fill="none" 
+                            className={mockupStates[activeStep].textColor} 
+                            strokeDasharray="427" 
+                            style={{ strokeDashoffset: useTransform(springProgress, [0, 1], [427, 0]) }} 
+                         />
+                       </svg>
 
-               {/* Scanning Line */}
+                       <div className={`relative w-28 h-28 rounded-full border ${mockupStates[activeStep].border} flex items-center justify-center ${mockupStates[activeStep].bg} backdrop-blur-md z-10`}>
+                           <div className={`absolute w-full h-full border ${mockupStates[activeStep].innerBorder} rounded-full ${mockupStates[activeStep].effect}`}></div>
+                           {React.cloneElement(mockupStates[activeStep].icon, { className: mockupStates[activeStep].icon.props.className.replace('w-12 h-12', 'w-10 h-10') })}
+                       </div>
+                    </div>
+
+                    <span className={"mt-6 tracking-[0.4em] font-mono text-[10px] md:text-xs font-bold " + mockupStates[activeStep].textColor + " z-10"}>
+                      {mockupStates[activeStep].text}
+                    </span>
+                 </motion.div>
+               </AnimatePresence>
+
                <motion.div 
                  animate={{ top: ["0%", "100%", "0%"] }}
-                 transition={{ duration: 4, ease: "linear", repeat: Infinity }}
-                 className="absolute left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent shadow-[0_0_20px_theme(colors.indigo.500)]"
+                 transition={{ duration: 3, ease: "linear", repeat: Infinity }}
+                 className="absolute left-0 w-full h-[2px] bg-white/20 shadow-[0_0_30px_rgba(255,255,255,0.5)] z-0 pointer-events-none"
                />
             </div>
             
-          </div>
+          </motion.div>
         </div>
-
       </div>
     </section>
   );
 };
 
-// ==========================================
-// 5. White Contrast Rewards Block
-// ==========================================
+const CredStatsGrid = () => {
+  return (
+    <section id="stats" className="bg-black text-zinc-100 py-16 px-6 md:px-12 border-y border-zinc-800/60">
+      <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-16 justify-between items-center">
+        <div className="lg:w-1/3 flex flex-col justify-center">
+          <h2 className="text-4xl md:text-5xl font-bold mb-6 tracking-tight leading-tight text-slate-50">
+            Built for exams that actually matter
+          </h2>
+          <p className="text-slate-400 text-base font-normal leading-[1.7] max-w-sm">
+            Crafted for the weight of your future
+          </p>
+        </div>
+
+        <div className="lg:w-3/5 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+           {[ 
+             { stat: "0.2ms", label: "Latency Injection", icon: <Activity className="w-4 h-4 text-indigo-400" /> },
+             { stat: "99.9%", label: "Biometric Accuracy", icon: <ScanFace className="w-4 h-4 text-emerald-400" /> },
+             { stat: "1.2B+", label: "Telemetry Points", icon: <Server className="w-4 h-4 text-rose-400" /> },
+             { stat: "100%", label: "Uptime SLA", icon: <Shield className="w-4 h-4 text-amber-400" /> }
+           ].map((item, i) => (
+             <RefractiveCard key={i} className="p-0 shadow-none border-none">
+               <div className="flex items-center gap-3 mb-10">
+                 <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center border border-zinc-700 group-hover:border-zinc-600 transition-colors duration-300">
+                   {item.icon}
+                 </div>
+                 <div className="text-slate-400 text-xs font-semibold uppercase tracking-widest group-hover:text-slate-300 transition-colors duration-300">
+                   {item.label}
+                 </div>
+               </div>
+               
+               <div className="text-4xl md:text-5xl font-bold tracking-tight text-slate-50">
+                 {item.stat}
+               </div>
+             </RefractiveCard>
+           ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
 const CredWhiteFeatures = () => {
   const cards = [
-    { title: "zero-latency streaming.", desc: "WebRTC protocols optimized for seamless video without lagging your timer.", icon: <Activity size={32}/> },
-    { title: "anti-vm protection.", desc: "Detection matrices blocking Virtual Machines, RDPs, and Screen-Sharing.", icon: <MonitorCheck size={32}/> },
-    { title: "offline resilience.", desc: "Sync-Back technology allows continuation during minor net partitions.", icon: <Server size={32}/> }
+    { title: "Live video proctoring", desc: "Real-time webcam monitoring with automated anomaly detection on every frame", icon: <Activity className="text-white group-hover:text-indigo-400 transition-colors duration-500" size={24}/> },
+    { title: "Screen-share blocking", desc: "Detects and prevents virtual machines, RDP sessions, and screen mirroring instantly", icon: <MonitorCheck className="text-white group-hover:text-emerald-400 transition-colors duration-500" size={24}/> },
+    { title: "Offline resilience", desc: "Seamless continuation during brief network interruptions with automatic sync-back", icon: <Server className="text-white group-hover:text-rose-400 transition-colors duration-500" size={24}/> },
+    { title: "Smart behavior tracking", desc: "Tracks multiple signals carefully: gaze deviation, audio spikes, and keystroke patterns", icon: <Cpu className="text-white group-hover:text-amber-400 transition-colors duration-500" size={24}/> },
+    { title: "Strict access control", desc: "Exam links are time-locked and single-use with no sharing, replay, or re-entry", icon: <Lock className="text-white group-hover:text-cyan-400 transition-colors duration-500" size={24}/> },
+    { title: "Room environment scan", desc: "Detects additional faces, mobile phones, and unauthorized materials in view", icon: <Eye className="text-white group-hover:text-fuchsia-400 transition-colors duration-500" size={24}/> }
   ];
 
   return (
-    <section className="bg-white py-32 px-8 text-black border-t border-slate-100">
+    <section className="bg-slate-50 py-16 px-8 text-slate-900 border-t border-slate-100 overflow-hidden">
       <div className="max-w-7xl mx-auto">
-        <h2 className="text-5xl md:text-7xl font-sans font-black tracking-tighter mb-20 max-w-3xl leading-[0.9]">
-          upgrade your life. <br />
-          <span className="font-serif italic font-medium">bit by bit.</span>
-        </h2>
+        <motion.h2 
+          initial={{ opacity: 0, y: 100 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+          className="text-5xl md:text-7xl font-sans font-black tracking-tighter mb-16 max-w-3xl leading-[0.9] text-slate-900"
+        >
+          Every exam detail <br />
+          <span className="font-serif italic font-medium">Protected</span>
+        </motion.h2>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {cards.map((card, i) => (
-            <div key={i} className="group relative border border-black/10 hover:border-black/30 p-10 transition-colors duration-500 bg-[#FAFAFA]">
-              <div className="mb-8 p-4 bg-black text-white inline-flex rounded-xl transform group-hover:scale-110 transition-transform duration-500">
+            <motion.div 
+              key={i} 
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.8, delay: (i % 3) * 0.1, ease: "easeOut" }}
+              className="group relative border border-slate-200 hover:border-slate-300 hover:shadow-lg hover:-translate-y-0.5 p-8 rounded-2xl transition-all duration-500 bg-white"
+            >
+              <div className="mb-6 p-3 bg-zinc-800 inline-flex rounded-xl transform group-hover:scale-105 group-hover:-rotate-2 transition-transform duration-500">
                 {card.icon}
               </div>
-              <h3 className="text-3xl font-black tracking-tight mb-4">{card.title}</h3>
-              <p className="text-black/60 font-medium leading-relaxed">{card.desc}</p>
-            </div>
+              <h3 className="text-xl font-semibold tracking-tight text-slate-900 mb-3">{card.title}</h3>
+              <p className="text-slate-500 font-normal leading-[1.7] text-sm">{card.desc}</p>
+            </motion.div>
           ))}
         </div>
       </div>
@@ -208,61 +1117,201 @@ const CredWhiteFeatures = () => {
   );
 };
 
-// ==========================================
-// 6. Giant Trust Section / Footer
-// ==========================================
 const CredTrustFooter = () => {
+  const { scrollYProgress } = useScroll();
+
   return (
-    <section className="bg-black text-white relative pt-40 pb-20 px-8 border-t border-white/10 overflow-hidden">
-      <div className="absolute top-[-10%] right-[-10%] w-[800px] h-[800px] bg-blue-600/10 rounded-full blur-[120px] pointer-events-none"></div>
+    <section id="trust" className="bg-black text-zinc-50 relative pt-16 pb-12 px-8 border-t border-zinc-800 overflow-hidden">
+      <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-indigo-600/5 rounded-full blur-[140px] pointer-events-none" style={{ transform: 'translateZ(0)', willChange: 'transform' }}></div>
       
-      <div className="max-w-5xl mx-auto text-center relative z-10 mb-32">
-        <div className="inline-flex mb-12 border border-white/20 p-6 rounded-3xl bg-white/5 backdrop-blur-md">
-          <Lock className="w-12 h-12 text-white/90" />
+      <div className="max-w-4xl mx-auto text-center relative z-10 mb-16">
+        
+        {/* Original Simple Lock Animation */}
+        <div className="relative mb-10 flex justify-center">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.5, y: 40 }}
+              whileInView={{ opacity: 1, scale: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{
+                type: "spring",
+                stiffness: 260,
+                damping: 20
+              }}
+              className="relative w-24 h-24 border border-white/20 p-6 rounded-3xl bg-indigo-500/10 backdrop-blur-md shadow-[0_0_50px_rgba(99,102,241,0.15)] flex items-center justify-center group cursor-pointer hover:border-indigo-400 transition-colors duration-500"
+            >
+                {/* Continuous Float Motion */}
+                <motion.div
+                  animate={{ y: [0, -8, 0] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                >
+                  <Lock className="w-10 h-10 text-white group-hover:text-indigo-300 transition-colors duration-500" />
+                </motion.div>
+            </motion.div>
         </div>
-        <h2 className="text-md font-bold tracking-[0.3em] uppercase mb-12 text-[#f3f4f6]">
-          YOUR DATA ISN'T OUR BUSINESS. KEEPING IT SAFE IS.
-        </h2>
-        <p className="text-3xl md:text-5xl font-sans font-medium text-white/40 leading-tight tracking-tight">
-          all your personal data and live video feeds are <strong className="text-white font-black">encrypted and secured.</strong> there's no room for mistakes <strong className="text-white font-black">because we didn't leave any.</strong>
-        </p>
+        
+        <motion.h2 
+          initial={{ opacity: 0, tracking: "0.5em" }}
+          whileInView={{ opacity: 1, tracking: "0.2em" }}
+          viewport={{ once: true }}
+          transition={{ duration: 1, ease: "easeOut" }}
+          className="text-xs font-semibold uppercase mb-8 text-slate-400 tracking-[0.2em]"
+        >
+          YOUR FOCUS, YOUR FUTURE, NOT YOUR FILES
+        </motion.h2>
+
+        <motion.p 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+          className="text-2xl md:text-4xl font-normal text-slate-500 leading-tight tracking-tight px-4 max-w-3xl mx-auto"
+        >
+          We prefer valuing your late nights over tracking your data, we <strong className="text-slate-50 font-bold">secure the test</strong>, then we <strong className="text-slate-50 font-bold">get out of your way</strong>
+        </motion.p>
       </div>
 
-      <div className="max-w-7xl mx-auto border-t border-white/10 pt-10 flex flex-col md:flex-row justify-between items-center gap-8">
+      <div className="max-w-5xl mx-auto border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-6">
         <div className="flex items-center gap-2">
-          <Shield className="w-6 h-6" />
-          <span className="font-bold tracking-[0.2em] text-xs uppercase">ProctoShield | 2026</span>
+          <VisionLogo className="w-5 h-5 text-slate-400" />
+          <span className="font-semibold tracking-[0.2em] text-[10px] uppercase text-slate-400">Vision | 2026</span>
         </div>
-        <div className="text-xs text-white/40 font-bold uppercase tracking-widest">
-          BUILT FOR STRUCTURAL INTEGRITY.
+        <div className="text-[10px] text-slate-600 font-semibold uppercase tracking-widest">
+          BUILT FOR STRUCTURAL INTEGRITY
         </div>
       </div>
     </section>
   );
 };
 
-// ==========================================
-// Assembly
-// ==========================================
-export default function LandingPage() {
-  // Ensure we are tracking fonts
+const CYCLING_STATES = [
+  {
+    label: 'LOCK',
+    gradient: 'from-blue-600 via-blue-500 to-indigo-500',
+    bg: 'bg-blue-500/15',
+    border: 'border-blue-500/30',
+    text: 'text-blue-300',
+    icon: <Lock className="w-5 h-5 text-blue-300" />,
+  },
+  {
+    label: 'SEAL',
+    gradient: 'from-emerald-600 via-emerald-400 to-teal-500',
+    bg: 'bg-emerald-500/15',
+    border: 'border-emerald-500/30',
+    text: 'text-emerald-300',
+    icon: <Shield className="w-5 h-5 text-emerald-300" />,
+  },
+  {
+    label: 'VERIFY',
+    gradient: 'from-violet-600 via-purple-500 to-fuchsia-500',
+    bg: 'bg-violet-500/15',
+    border: 'border-violet-500/30',
+    text: 'text-violet-300',
+    icon: <ScanFace className="w-5 h-5 text-violet-300" />,
+  },
+  {
+    label: 'TRUST',
+    gradient: 'from-amber-500 via-orange-400 to-rose-500',
+    bg: 'bg-amber-500/15',
+    border: 'border-amber-500/30',
+    text: 'text-amber-300',
+    icon: <Eye className="w-5 h-5 text-amber-300" />,
+  },
+];
+
+const CyclingPillHeadline = () => {
+  const [idx, setIdx] = useState(0);
+  const current = CYCLING_STATES[idx];
+
   useEffect(() => {
-    // Inject Playfair Display if needed, though system serifs work.
+    const id = setInterval(() => setIdx(i => (i + 1) % CYCLING_STATES.length), 2500);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <section className="bg-black pt-12 pb-12 px-6 relative overflow-hidden flex flex-col items-center text-center">
+      {/* Ambient glow behind pill */}
+      <div
+        className={`absolute w-[600px] h-[300px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 blur-[120px] opacity-20 rounded-full bg-gradient-to-r ${current.gradient} transition-all duration-1000`}
+      />
+
+      <h2 className="text-5xl md:text-7xl font-black tracking-tighter text-white leading-tight mb-0">
+        The exam platform
+      </h2>
+
+      <div className="flex items-center gap-4 mt-1 flex-wrap justify-center">
+        <h2 className="text-5xl md:text-7xl font-black tracking-tighter text-white leading-tight">
+          built to
+        </h2>
+
+        {/* Cycling pill */}
+        <div
+          className={`relative inline-flex items-center gap-3 px-6 py-3 rounded-full border ${current.bg} ${current.border} overflow-hidden`}
+          style={{ minWidth: '200px' }}
+        >
+          {/* Gradient highlight shimmer */}
+          <div className={`absolute inset-0 bg-gradient-to-r ${current.gradient} opacity-10 rounded-full`} />
+          
+          <AnimatePresence mode="popLayout">
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 28 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -28 }}
+              transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+              className="flex items-center gap-3 relative z-10"
+            >
+              {current.icon}
+              <span className={`text-3xl md:text-5xl font-black tracking-tighter uppercase ${current.text}`}>
+                {current.label}
+              </span>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
+
+      <p className="mt-4 text-zinc-400 text-lg md:text-xl max-w-xl leading-relaxed">
+        Vision protects the real effort: <strong className="text-zinc-200 font-medium">The Person, The Process, and The Place</strong>
+      </p>
+    </section>
+  );
+};
+
+export default function LandingPage() {
+  const { playVaultThud, playTick } = useSonification();
+
+  useEffect(() => {
     const link = document.createElement('link');
     link.href = 'https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&display=swap';
     link.rel = 'stylesheet';
     document.head.appendChild(link);
-    return () => document.head.removeChild(link);
+    return () => { if (document.head.contains(link)) document.head.removeChild(link); };
   }, []);
 
   return (
-    <div className="bg-black min-h-screen text-white overflow-x-hidden selection:bg-white selection:text-black font-sans scroll-smooth">
-      <CredNavbar />
-      <CredHero />
-      <CredStoryParallax />
-      <CredMockupSequence />
-      <CredWhiteFeatures />
-      <CredTrustFooter />
+    <div className="bg-black min-h-screen font-sans scroll-smooth selection:bg-zinc-800 relative">
+      <style>{`
+        .perspective-1000 { perspective: 1000px; }
+      `}</style>
+      <DynamicGlow />
+      <ScrollHUD />
+      <HybridNavbar />
+      <div id="hero">
+        <CredHeroParallax />
+      </div>
+      <div id="security">
+        <CyclingPillHeadline />
+        <CleanFeatureBlocks />
+      </div>
+      <div id="features">
+        <CredMockupSequence />
+        <CredWhiteFeatures />
+      </div>
+      <div id="stats">
+        <CredStatsGrid />
+      </div>
+      <div id="trust">
+        <CredTrustFooter />
+      </div>
     </div>
   );
 }
