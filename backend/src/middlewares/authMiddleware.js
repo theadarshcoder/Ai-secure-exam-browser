@@ -1,34 +1,44 @@
 const jwt = require('jsonwebtoken');
+const User = require('../models/User'); 
 
-// 1. Verify if user is logged in (Token Verify)
-const verifyToken = (req, res, next) => {
-    // Extract token from Header
+const verifyToken = async (req, res, next) => {
     const token = req.headers.authorization?.split(" ")[1]; 
-
-    if (!token) {
-        return res.status(401).json({ message: "Access Denied! No token found." });
-    }
+    if (!token) return res.status(401).json({ message: "Access Denied!" });
 
     try {
-        // Verify token with secret key
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = decoded; // Add user data (id, role) to request object
-        next(); // Proceed to next middleware/route
+        const user = await User.findById(decoded.id);
+        if (!user || user.currentSessionToken !== token) {
+            return res.status(403).json({ message: "Session invalid or logged in elsewhere" });
+        }
+        req.user = decoded;
+        next();
     } catch (error) {
         res.status(403).json({ message: "Invalid Token!" });
     }
 };
 
-// 2. RBAC: Role check function
 const checkRole = (requiredRole) => {
     return (req, res, next) => {
         if (req.user.role !== requiredRole && req.user.role !== 'admin') {
-            return res.status(403).json({ 
-                message: `You are a ${req.user.role}. Only ${requiredRole} can access this page!` 
-            });
+            return res.status(403).json({ message: `Access denied for ${req.user.role}` });
         }
         next();
     };
 };
 
-module.exports = { verifyToken, checkRole };
+const checkPermission = (requiredPermission) => {
+    return async (req, res, next) => {
+        try {
+            const user = await User.findById(req.user.id);
+            if (user.role === 'admin') return next();
+            if (user.permissions && user.permissions.includes(requiredPermission)) return next();
+            return res.status(403).json({ message: `Missing permission: ${requiredPermission}` });
+        } catch (error) {
+            res.status(500).json({ error: "Permission check failed" });
+        }
+    };
+};
+
+module.exports = { verifyToken, checkRole, checkPermission };
+

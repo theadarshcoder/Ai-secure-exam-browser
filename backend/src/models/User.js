@@ -6,9 +6,12 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true },
     role: { 
         type: String, 
-        enum: ['student', 'mentor', 'admin'], // Only these 3 roles allowed
+        enum: ['student', 'mentor', 'admin', 'super_admin', 'exam_admin', 'proctor_lead', 'proctor'],
         default: 'student' 
-    }
+    },
+    currentSessionToken: { type: String },
+    permissions: [{ type: String }]
 }, { timestamps: true });
+
 
 module.exports = mongoose.model('User', userSchema);
