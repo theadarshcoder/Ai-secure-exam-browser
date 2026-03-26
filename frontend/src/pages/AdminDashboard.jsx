@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import api from '../services/api';
 import { 
   LayoutDashboard, FileText, Users, ShieldAlert, Settings, 
   Search, Bell, Plus, MoreHorizontal, ExternalLink, 
@@ -106,10 +107,19 @@ export default function AdminDashboard() {
     document.body.style.overflow = 'hidden';
     const timer = setInterval(() => setCurrentTime(new Date().toLocaleTimeString()), 1000);
     
-    try {
-      const raw = localStorage.getItem('vision_incidents');
-      if (raw) setIncidents(JSON.parse(raw));
-    } catch (e) { console.error("History sync failure", e); }
+    const fetchLogs = async () => {
+      try {
+        const response = await api.get('/api/admin/logs');
+        setIncidents(response.data);
+      } catch (error) {
+        console.error('Audit log synchronization failure:', error);
+        // Resilient fallback to local environment
+        const raw = localStorage.getItem('vision_incidents');
+        if (raw) setIncidents(JSON.parse(raw));
+      }
+    };
+
+    fetchLogs();
 
     return () => {
       document.body.style.overflow = 'auto';
