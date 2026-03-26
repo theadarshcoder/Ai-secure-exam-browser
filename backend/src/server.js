@@ -1,4 +1,6 @@
 const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
 const connectDB = require('./config/db.js');
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
@@ -8,10 +10,15 @@ const examRoutes = require('./routes/examRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: { origin: "*", methods: ["GET", "POST"] }
+});
+
 connectDB();
 app.use(express.json());
 
-app.get('/', (req, res) => res.send('<h1>Server is working perfectly</h1>'));
+app.get('/', (req, res) => res.send('<h1>Server & Sockets working perfectly</h1>'));
 
 app.use('/api/exams', examRoutes);
 app.use('/api/admin', adminRoutes);
@@ -37,14 +44,19 @@ app.post('/api/demo-login', async (req, res) => {
     }
 });
 
-app.get('/api/mentor-dashboard', verifyToken, checkRole('mentor'), (req, res) => {
-    res.json({ message: "Welcome to Mentor Dashboard" });
+io.on('connection', (socket) => {
+    console.log(`⚡ Connected: ${socket.id}`);
+    socket.on('student_violation', (data) => {
+        console.log(`🚨 Violation:`, data);
+        io.emit('mentor_alert', data); 
+    });
+    socket.on('disconnect', () => console.log(`❌ Disconnected: ${socket.id}`));
 });
 
-app.get('/api/exam-panel', verifyToken, checkRole('student'), (req, res) => {
-    res.json({ message: "Welcome Student" });
-});
+app.get('/api/mentor-dashboard', verifyToken, checkRole('mentor'), (req, res) => res.json({ message: "Welcome Mentor" }));
+app.get('/api/exam-panel', verifyToken, checkRole('student'), (req, res) => res.json({ message: "Welcome Student" }));
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server on port ${PORT}`));
+server.listen(PORT, () => console.log(`Server on port ${PORT}`));
+
 

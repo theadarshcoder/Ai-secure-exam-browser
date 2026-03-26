@@ -1,16 +1,13 @@
 const { checkPermission } = require('../middlewares/authMiddleware');
 
-// Mock User Model
 const mockUser = {
     id: '123',
     role: 'mentor',
     permissions: ['create_exam']
 };
 
-// Mock Express Objects
 const makeMockReq = (user) => ({
     user: { id: user.id },
-    // Simulate User.findById in middleware
 });
 
 const mockRes = {
@@ -28,20 +25,18 @@ const mockNext = () => {
     console.log('Permission Granted!');
 };
 
-// Override User.findById in middleware for testing
 const User = require('../models/User');
 const originalFindById = User.findById;
 
 async function test() {
     console.log('--- Testing RBAC Middleware ---');
 
-    // Case 1: Mentor with permission
     console.log('Test 1: Mentor with "create_exam" permission access "/create"');
     User.findById = () => Promise.resolve(mockUser);
     const middleware1 = checkPermission('create_exam');
     await middleware1(makeMockReq(mockUser), mockRes, mockNext);
 
-    // Case 2: Mentor without permission
+        // Case 2: Mentor without permission
     console.log('\nTest 2: Mentor without "view_live_grid" permission access "/live-grid"');
     const middleware2 = checkPermission('view_live_grid');
     await middleware2(makeMockReq(mockUser), mockRes, () => console.log('FAIL: Should not grant permission'));
