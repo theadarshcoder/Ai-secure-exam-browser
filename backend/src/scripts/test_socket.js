@@ -1,6 +1,7 @@
 const { io } = require("socket.io-client");
 
-const socketUrl = "http://localhost:5000";
+const socketUrl = "http://localhost:5001";
+
 
 // Simulation: 1 Student and 1 Mentor
 const studentSocket = io(socketUrl);
