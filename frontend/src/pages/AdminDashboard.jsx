@@ -1,248 +1,255 @@
 import React, { useState, useEffect } from 'react';
-import { Navbar } from '../components/Navbar';
 import { 
-  Users, Settings, Database, Shield, 
-  Activity, AlertTriangle, CheckCircle2, 
-  Search, ArrowUpRight, ArrowDownRight,
-  MoreVertical, Bell, Globe, Server, 
-  Cpu, Zap, Terminal, Lock, HardDrive,
-  BarChart3, Layers
+  LayoutDashboard, FileText, Users, ShieldAlert, Settings, 
+  Search, Bell, Plus, MoreHorizontal, ExternalLink, 
+  AlertCircle, BarChart3, Monitor,
+  Clock, Download, ChevronRight, History
 } from 'lucide-react';
+import VisionLogo from '../components/VisionLogo';
+
+/* ─────────────── Config & Constants ─────────────── */
+
+const NAV_ITEMS = [
+  { id: 'Overview', label: 'Overview', icon: <LayoutDashboard size={18} /> },
+  { id: 'Assessments', label: 'Assessments', icon: <FileText size={18} /> },
+  { id: 'Candidates', label: 'Candidates', icon: <Users size={18} /> },
+  { id: 'Integrity', label: 'Integrity Log', icon: <ShieldAlert size={18} /> },
+  { id: 'Analytics', label: 'Analytics', icon: <BarChart3 size={18} /> },
+  { id: 'Settings', label: 'System Settings', icon: <Settings size={18} /> },
+];
+
+const ACTIVE_SESSIONS = [
+  { id: 'VSN-89241', name: 'Adarsh Maurya', exam: 'Data Structures', risk: 'Low', score: 98, time: '32m rem' },
+  { id: 'VSN-89242', name: 'Sarah Chen', exam: 'Advanced AI', risk: 'High', score: 42, time: '14m rem' },
+  { id: 'VSN-89243', name: 'Rahul Verma', exam: 'Network Security', risk: 'Medium', score: 71, time: '45m rem' },
+  { id: 'VSN-89244', name: 'Elena Rossi', exam: 'Operating Systems', risk: 'Low', score: 99, time: '08m rem' },
+  { id: 'VSN-89245', name: 'Chris Jordan', exam: 'Cloud Arch', risk: 'Medium', score: 85, time: '22m rem' },
+];
+
+/* ─────────────── Sub-components ─────────────── */
+
+const StatCard = ({ label, value, tag, color }) => (
+  <div className="bg-[#181a20] rounded-2xl p-5 border border-white/[0.06] hover:border-white/[0.12] transition-all group">
+    <div className="flex items-center gap-2 mb-3">
+      <div className={`w-2 h-2 rounded-full ${color.replace('text-', 'bg-')}`} />
+      <span className="text-xs font-medium text-zinc-500 uppercase tracking-wide">{label}</span>
+    </div>
+    <div className="flex items-baseline justify-between transition-transform group-hover:translate-x-1">
+      <span className="text-3xl font-bold text-white tracking-tight">{value}</span>
+      <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md bg-white/5 border border-white/10 ${color}`}>
+        {tag}
+      </span>
+    </div>
+  </div>
+);
+
+const SessionRow = ({ session }) => {
+  const riskColor = session.risk === 'High' ? 'text-red-500' : session.risk === 'Medium' ? 'text-amber-500' : 'text-emerald-500';
+  const riskBg = session.risk === 'High' ? 'bg-red-500' : session.risk === 'Medium' ? 'bg-amber-500' : 'bg-emerald-500';
+
+  return (
+    <tr className="text-zinc-300 transition-colors hover:bg-white/[0.02] group divide-x divide-white/[0.04]">
+      <td className="px-5 py-3.5">
+        <div className="flex flex-col">
+          <span className="text-[13px] font-semibold text-zinc-100">{session.name}</span>
+          <span className="mt-0.5 font-mono text-[10px] text-zinc-600">{session.id}</span>
+        </div>
+      </td>
+      <td className="px-5 py-3.5">
+        <span className="text-[12px] font-medium text-zinc-400">{session.exam}</span>
+        <div className="mt-1 flex items-center gap-1.5 font-bold uppercase tracking-tight text-[9px] text-zinc-600">
+          <Clock size={10} /> {session.time}
+        </div>
+      </td>
+      <td className="px-5 py-3.5">
+        <div className="mx-auto flex min-w-[120px] flex-col items-center gap-1.5">
+          <div className="h-1 w-full max-w-[80px] overflow-hidden rounded-full bg-zinc-800">
+            <div className={`h-full transition-all duration-1000 ${riskBg}`} style={{ width: `${session.score}%` }} />
+          </div>
+          <span className={`text-[9px] font-black uppercase tracking-widest ${riskColor}`}>
+            {session.risk} RISK
+          </span>
+        </div>
+      </td>
+      <td className="px-8 py-3.5 text-right">
+        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button className="rounded-md p-1.5 text-zinc-600 hover:bg-zinc-800 hover:text-white transition-all"><ExternalLink size={14} /></button>
+          <button className="rounded-md p-1.5 text-zinc-600 hover:bg-zinc-800 hover:text-white transition-all"><MoreHorizontal size={14} /></button>
+        </div>
+      </td>
+    </tr>
+  );
+};
+
+const IncidentItem = ({ incident }) => (
+  <div className="cursor-default p-5 transition-colors hover:bg-white/[0.02] group">
+    <div className="mb-2 flex justify-between text-[10px] font-black uppercase tracking-widest text-zinc-600">
+       <span className={incident.severity === 'high' ? 'text-red-400' : 'text-amber-400'}>{incident.type}</span>
+       <span className="font-mono text-zinc-700">{new Date(incident.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+    </div>
+    <p className="mb-3 leading-relaxed text-sm font-medium text-zinc-300 group-hover:text-white transition-colors">{incident.details}</p>
+    <div className="flex items-center justify-between">
+      <span className="font-mono text-[9px] tracking-tighter text-zinc-700 bg-white/5 px-1.5 py-0.5 rounded uppercase">ID: {incident.id.split('-').pop()}</span>
+      <button className="text-[10px] font-bold uppercase tracking-widest text-blue-500 hover:text-blue-400 transition-all active:scale-95">Resolve Issue</button>
+    </div>
+  </div>
+);
+
+/* ─────────────── Main Component ─────────────── */
 
 export default function AdminDashboard() {
-  const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
+  const [activeTab, setTab] = useState('Overview');
+  const [incidents, setIncidents] = useState([]);
+  const [currentTime, setCurrentTime] = useState('');
 
   useEffect(() => {
+    document.body.style.overflow = 'hidden';
     const timer = setInterval(() => setCurrentTime(new Date().toLocaleTimeString()), 1000);
-    return () => clearInterval(timer);
+    
+    try {
+      const raw = localStorage.getItem('vision_incidents');
+      if (raw) setIncidents(JSON.parse(raw));
+    } catch (e) { console.error("History sync failure", e); }
+
+    return () => {
+      document.body.style.overflow = 'auto';
+      clearInterval(timer);
+    };
   }, []);
 
+  const criticalIssues = incidents.filter(i => i.severity === 'high').length;
   const stats = [
-    { label: 'Global Candidates', value: '1,284', change: '+12%', icon: <Users />, trend: 'up', color: 'indigo' },
-    { label: 'Active Matrix', value: '42', change: '-5%', icon: <Zap />, trend: 'down', color: 'emerald' },
-    { label: 'Integrity Alerts', value: '03', change: 'Stable', icon: <Shield />, trend: 'neutral', color: 'rose' },
-    { label: 'Core Capacity', value: '84%', change: '+2%', icon: <HardDrive />, trend: 'up', color: 'amber' },
-  ];
-
-  const sessions = [
-    { id: 'S-2938', entity: 'John Doe', node: 'Edge-US-East', status: 'Secure', activity: 'Active' },
-    { id: 'S-2940', entity: 'Sarah Smith', node: 'Edge-EU-West', status: 'Warning', activity: 'Idle' },
-    { id: 'S-2942', entity: 'System Core', node: 'Primary-Cloud', status: 'Optimal', activity: 'Maintenance' },
-    { id: 'S-2945', entity: 'Tanay Goyal', node: 'Edge-IN-South', status: 'Secure', activity: 'Active' },
+    { label: 'Active Exams', value: '142', tag: 'SYNCED', color: 'text-blue-500' },
+    { label: 'Reported Alerts', value: String(criticalIssues), tag: 'URGENT', color: 'text-red-500' },
+    { label: 'Integrity Score', value: '98.2', tag: 'NOMINAL', color: 'text-emerald-500' },
+    { label: 'System Uptime', value: '99.9%', tag: 'STABLE', color: 'text-zinc-500' },
   ];
 
   return (
-    <div className="h-screen w-full bg-[#020617] font-['Inter'] text-slate-400 selection:bg-indigo-500/30 overflow-hidden flex flex-col antialiased">
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&family=Outfit:wght@500;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
-        
-        .hyper-glass {
-          background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
-          backdrop-filter: blur(40px);
-          border: 1px solid rgba(255,255,255,0.05);
-        }
-        .text-outfit { font-family: 'Outfit', sans-serif; }
-        .text-mono { font-family: 'JetBrains Mono', monospace; }
-        .glow-indigo { box-shadow: 0 0 40px -10px rgba(99, 102, 241, 0.3); }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.2); border-radius: 10px; }
-      `}</style>
-
-      <Navbar role="Administrator" />
-      
-      <main className="flex-1 max-w-[1800px] w-full mx-auto px-10 pt-28 pb-10 overflow-hidden flex flex-col gap-10">
-        
-        {/* HYPER-HEADER */}
-        <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-10 shrink-0">
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-               <div className="px-4 py-1.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[9px] font-black uppercase tracking-[0.4em] shadow-lg shadow-indigo-500/5">
-                 System_Overlord v10.0
-               </div>
-               <div className="h-4 w-px bg-white/5"></div>
-               <div className="flex items-center gap-2 text-slate-600 font-mono text-[9px] tracking-[0.3em] uppercase">
-                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                 Global Sync: {currentTime}
-               </div>
-            </div>
-            <h1 className="text-6xl font-black text-white text-outfit tracking-tighter leading-none uppercase italic">
-              Hyper <span className="text-indigo-500 not-italic">Command</span>
-            </h1>
-            <p className="text-slate-500 font-medium max-w-2xl text-sm leading-relaxed tracking-wide opacity-80">
-              Pinnacle oversight orchestration. Monitoring <span className="text-indigo-400">14 Edge Nodes</span> and <span className="text-indigo-400">843 concurrently encrypted</span> data streams across the global neural grid.
-            </p>
-          </div>
-          
-          <div className="flex items-center gap-4 py-2 px-2 bg-white/5 rounded-3xl border border-white/10 backdrop-blur-2xl">
-            <div className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer transition-all shadow-xl shadow-indigo-600/20 active:scale-95 group">
-              <Zap size={16} fill="currentColor" className="group-hover:rotate-12 transition-transform" />
-              <span className="text-[10px] font-black uppercase tracking-[0.2em]">Deploy Optimization</span>
-            </div>
-            <div className="h-8 w-px bg-white/10"></div>
-            <button className="p-4 rounded-2xl text-slate-400 hover:text-white hover:bg-white/5 transition-all">
-              <Layers size={20} />
-            </button>
-            <button className="p-4 rounded-2xl text-slate-400 hover:text-white hover:bg-white/5 transition-all">
-              <Settings size={20} />
-            </button>
-          </div>
+    <div className="flex h-screen w-full overflow-hidden bg-[#0f1117] font-sans text-zinc-200 select-none">
+      <aside className="z-50 flex w-64 shrink-0 flex-col border-r border-white/5 bg-[#0c0c0e] shadow-2xl">
+        <div className="flex h-14 items-center gap-2.5 border-b border-white/5 px-5">
+          <VisionLogo className="h-5 w-5 text-blue-500" />
+          <span className="text-sm font-bold uppercase tracking-wider text-zinc-100">Vision Admin</span>
         </div>
-
-        {/* METRICS HUD */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8 shrink-0">
-          {stats.map((stat, idx) => (
-            <div key={idx} className="hyper-glass p-8 rounded-[3rem] relative overflow-hidden group hover:-translate-y-2 transition-all duration-700">
-               <div className="absolute -top-10 -right-10 p-12 opacity-5 scale-150 group-hover:scale-[2.5] transition-transform duration-1000 text-white">
-                 {stat.icon}
-               </div>
-               <div className="flex items-center justify-between mb-10 relative z-10">
-                 <div className={`w-16 h-16 rounded-[1.5rem] bg-white/5 flex items-center justify-center border border-white/10 text-white group-hover:bg-indigo-600 group-hover:border-indigo-500 transition-all duration-500 shadow-2xl group-hover:shadow-indigo-500/50`}>
-                   {React.cloneElement(stat.icon, { size: 28 })}
-                 </div>
-                 <div className={`flex items-center gap-1.5 text-[9px] font-black px-3 py-1.5 rounded-full border border-white/5 bg-white/5 ${
-                   stat.trend === 'up' ? 'text-emerald-400' : 
-                   stat.trend === 'down' ? 'text-rose-400' : 'text-slate-500'
-                 }`}>
-                   {stat.trend === 'up' ? <ArrowUpRight size={12} /> : stat.trend === 'down' ? <ArrowDownRight size={12} /> : <Activity size={12} />}
-                   {stat.change}
-                 </div>
-               </div>
-               <h3 className="text-slate-600 text-[10px] font-black uppercase tracking-[0.3em] mb-2">{stat.label}</h3>
-               <p className="text-4xl font-black text-white text-outfit tracking-tighter leading-none">{stat.value}</p>
-            </div>
+        
+        <nav className="flex-1 space-y-0.5 p-4 overflow-y-auto custom-scrollbar">
+          <p className="px-3 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-2">Main Menu</p>
+          {NAV_ITEMS.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setTab(item.id)}
+              className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-[12px] font-bold transition-all ${
+                activeTab === item.id 
+                  ? 'bg-white/5 text-white border border-white/10 shadow-[0_0_20px_rgba(255,255,255,0.05)]' 
+                  : 'text-zinc-500 hover:bg-white/[0.03] hover:text-zinc-300'
+              }`}
+            >
+              <span className={activeTab === item.id ? 'text-blue-500' : 'text-zinc-700 transition-colors group-hover:text-zinc-500'}>{item.icon}</span>
+              {item.label}
+            </button>
           ))}
-        </div>
+        </nav>
 
-        {/* CORE TELEMETRY PANEL */}
-        <div className="flex-1 flex flex-col xl:flex-row gap-10 overflow-hidden min-h-0">
-          
-          {/* TACTICAL STREAM (70%) */}
-          <div className="flex-[2] hyper-glass rounded-[4rem] overflow-hidden flex flex-col shadow-2xl">
-             <div className="p-10 border-b border-white/5 flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-6">
-                  <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-                    <Terminal size={20} />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-black text-white text-outfit leading-none mb-1 uppercase italic tracking-tighter">Tactical Stream</h2>
-                    <p className="text-slate-600 text-[9px] font-bold uppercase tracking-[0.4em] font-mono">Encrypted Node Telemetry // LIVE</p>
-                  </div>
-                </div>
-                <div className="relative group">
-                  <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-indigo-400 transition-colors" size={16} />
-                  <input 
-                    type="text" 
-                    placeholder="SCAN_IDENTITIES..." 
-                    className="bg-white/5 border border-white/5 rounded-2xl pl-14 pr-8 py-4 text-[10px] font-black uppercase tracking-[0.25em] focus:bg-white/10 outline-none w-72 transition-all placeholder:opacity-30"
-                  />
-                </div>
-             </div>
-             
-             <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 custom-scrollbar">
-               <table className="w-full text-left border-separate border-spacing-y-4">
-                 <thead>
-                   <tr className="text-[9px] font-black text-slate-600 uppercase tracking-[0.4em]">
-                     <th className="px-10 py-4">Node_ID</th>
-                     <th className="px-10 py-4">Entity</th>
-                     <th className="px-10 py-4">Protocol</th>
-                     <th className="px-10 py-4 text-right">Integrity</th>
-                   </tr>
-                 </thead>
-                 <tbody>
-                   {sessions.map((sub, i) => (
-                     <tr key={i} className="group hover:bg-white/5 transition-all cursor-crosshair">
-                       <td className="px-10 py-6 font-mono text-xs text-indigo-400 font-bold bg-white/5 rounded-l-[2rem] border-y border-l border-white/5">{sub.id}</td>
-                       <td className="px-10 py-6 border-y border-white/5">
-                         <div className="flex items-center gap-4">
-                           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white text-[10px] font-black shadow-xl shadow-indigo-500/20">
-                             {sub.entity.charAt(0)}
-                           </div>
-                           <span className="text-sm font-black text-white tracking-tight uppercase italic">{sub.entity}</span>
-                         </div>
-                       </td>
-                       <td className="px-10 py-6 border-y border-white/5 text-slate-600 text-[10px] font-bold font-mono tracking-widest">{sub.node}</td>
-                       <td className="px-10 py-6 border-y border-r border-white/5 rounded-r-[2rem] text-right">
-                         <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-[0.2em] border ${
-                           sub.status === 'Secure' ? 'border-emerald-500/20 text-emerald-400 bg-emerald-500/5' :
-                           sub.status === 'Warning' ? 'border-rose-500/20 text-rose-400 bg-rose-500/5' : 'border-indigo-500/20 text-indigo-400 bg-indigo-500/5'
-                         }`}>
-                           <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${
-                             sub.status === 'Secure' ? 'bg-emerald-500' :
-                             sub.status === 'Warning' ? 'bg-rose-500' : 'bg-indigo-500'
-                           }`} />
-                           {sub.status}
-                         </span>
-                       </td>
-                     </tr>
-                   ))}
-                 </tbody>
-               </table>
-             </div>
-             
-             <button className="h-20 text-center text-[9px] font-black text-slate-600 uppercase tracking-[0.5em] border-t border-white/5 hover:bg-white/5 hover:text-white transition-all group flex items-center justify-center gap-4">
-                <BarChart3 size={14} className="group-hover:scale-150 transition-transform" />
-                <span>Execute Complete Audit Uplink</span>
-             </button>
+        <div className="border-t border-zinc-800 bg-black/40 p-4">
+          <div className="mb-1 flex items-center gap-3">
+            <div className="relative w-2 h-2">
+              <div className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-30" />
+              <div className="relative h-2 w-2 rounded-full bg-emerald-500" />
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-emerald-500">System Online</span>
           </div>
+          <p className="text-[9px] font-medium text-zinc-600 tracking-widest uppercase">Region: primary-node</p>
+        </div>
+      </aside>
 
-          {/* VITAL OVERLAY (30%) */}
-          <div className="flex-1 flex flex-col gap-10 overflow-hidden min-w-[400px]">
-            <div className="flex-1 hyper-glass rounded-[4rem] p-10 flex flex-col shadow-2xl overflow-hidden group relative">
-               <div className="absolute -top-40 -left-20 w-80 h-80 bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none group-hover:bg-indigo-600/20 transition-all duration-1000"></div>
-               
-               <div className="flex items-center justify-between mb-12 shrink-0">
-                 <h3 className="text-xl font-black text-white text-outfit italic tracking-tighter uppercase leading-none">Vitals</h3>
-                 <div className="flex h-6 items-center gap-1">
-                    {[1,2,3,4,5].map(i => <div key={i} className="w-1 bg-indigo-500/40 rounded-full animate-bounce" style={{height: `${Math.random()*100}%`, animationDelay: `${i*0.1}s`}}></div>)}
-                 </div>
-               </div>
+      <main className="flex flex-1 flex-col overflow-hidden">
+        <header className="z-40 flex h-14 shrink-0 items-center justify-between border-b border-white/5 bg-[#0f1117] px-6 shadow-md">
+          <div className="flex items-center gap-3 text-[11px] font-black uppercase tracking-widest text-zinc-600">
+            <span>Root</span>
+            <ChevronRight size={10} />
+            <span className="text-zinc-400">Dashboard</span>
+            <ChevronRight size={10} />
+            <span className="text-blue-500">{activeTab}</span>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <div className="relative group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-700 transition-all group-focus-within:text-blue-500" size={14} />
+              <input type="text" placeholder="Global Search..." className="w-64 rounded-xl border border-white/5 bg-[#181a20] py-2 pl-9 pr-3 text-[12px] text-white transition-all placeholder:text-zinc-700 focus:border-white/10 outline-none" />
+            </div>
+            <div className="h-6 w-px bg-white/5" />
+            <div className="flex items-center gap-3">
+              <button className="rounded-xl p-2 text-zinc-500 hover:bg-white/5 hover:text-white transition-all"><Bell size={18} /></button>
+              <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-[#181a20] text-[10px] font-black text-zinc-300 hover:bg-white/[0.08] hover:border-white/20 transition-all shadow-lg">AD</div>
+            </div>
+          </div>
+        </header>
 
-               <div className="flex-1 space-y-10 overflow-y-auto no-scrollbar pb-6 relative z-10">
-                 <div className="space-y-4 group/vital">
-                   <div className="flex items-center justify-between text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] group-hover/vital:text-white transition-colors">
-                     <div className="flex items-center gap-3"><Server size={14} className="text-emerald-500" /> Latency_Matrix</div>
-                     <span className="text-emerald-400 font-mono tracking-tighter">18ms_Nominal</span>
-                   </div>
-                   <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden p-[2px]">
-                     <div className="h-full bg-emerald-500 w-[24%] rounded-full shadow-[0_0_20px_rgba(16,185,129,0.5)]"></div>
-                   </div>
-                 </div>
-
-                 <div className="space-y-4 group/vital">
-                   <div className="flex items-center justify-between text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] group-hover/vital:text-white transition-colors">
-                     <div className="flex items-center gap-3"><Cpu size={14} className="text-indigo-500" /> Neural_Load</div>
-                     <span className="text-indigo-400 font-mono tracking-tighter">Core_Optimal</span>
-                   </div>
-                   <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden p-[2px]">
-                     <div className="h-full bg-indigo-500 w-[89%] rounded-full shadow-[0_0_20px_rgba(99,102,241,0.5)]"></div>
-                   </div>
-                 </div>
-
-                 <div className="space-y-4 group/vital">
-                   <div className="flex items-center justify-between text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] group-hover/vital:text-white transition-colors">
-                     <div className="flex items-center gap-3"><Globe size={14} className="text-rose-500" /> Global_Nodes</div>
-                     <span className="text-rose-400 font-mono tracking-tighter">1_Offline</span>
-                   </div>
-                   <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden p-[2px]">
-                     <div className="h-full bg-rose-500 w-[65%] rounded-full shadow-[0_0_20px_rgba(244,63,94,0.5)]"></div>
-                   </div>
-                 </div>
-               </div>
-
-               <div className="mt-8 flex items-center gap-5 p-6 bg-white/5 rounded-[2rem] border border-white/10 shrink-0 group hover:border-emerald-500/20 transition-all">
-                  <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/10 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
-                    <Lock size={20} />
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-black text-white uppercase tracking-widest leading-none mb-2 italic">ARES-DEFENSE v4.0</p>
-                    <p className="text-[9px] font-bold text-slate-600 uppercase tracking-tighter whitespace-nowrap">Active Protocols: 14 // Secure</p>
-                  </div>
-               </div>
+        <div className="flex-1 space-y-6 overflow-y-auto p-8 custom-scrollbar">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-white uppercase">Admin Dashboard</h1>
+              <p className="text-xs font-medium text-zinc-600 uppercase tracking-widest mt-1">Status: Operational // {currentTime}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"><Download size={14} /> Export</button>
+              <button className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2 text-[11px] font-black uppercase tracking-widest text-white shadow-xl hover:bg-blue-500 active:scale-95 transition-all"><Plus size={16} /> Deploy</button>
             </div>
           </div>
 
-        </div>
+          <div className="grid grid-cols-4 gap-4">
+            {stats.map((s, i) => <StatCard key={i} {...s} />)}
+          </div>
 
+          <div className="grid grid-cols-12 gap-6">
+            <section className="col-span-8 flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-600">
+                  <Monitor className="text-blue-500" size={14} /> Active Sessions
+                </h2>
+                <button className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-500 hover:underline transition-all">View All Sessions</button>
+              </div>
+              <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#0c0c0e] shadow-2xl">
+                <table className="w-full text-left">
+                  <thead className="border-b border-white/[0.04] bg-white/[0.01]">
+                    <tr>
+                      <th className="px-5 py-4 text-[9px] font-bold uppercase tracking-widest text-zinc-600">Student Name</th>
+                      <th className="px-5 py-4 text-[9px] font-bold uppercase tracking-widest text-zinc-600">Exam Title</th>
+                      <th className="px-5 py-4 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-600">Risk Level</th>
+                      <th className="px-8 py-4 text-right text-[9px] font-bold uppercase tracking-widest text-zinc-600">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.02]">
+                    {ACTIVE_SESSIONS.map((s, i) => <SessionRow key={i} session={s} />)}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <aside className="col-span-4 flex flex-col gap-4">
+              <h2 className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] text-zinc-600">
+                <History className="text-amber-500" size={14} /> Security Logs
+              </h2>
+              <div className="max-h-[460px] overflow-y-auto rounded-2xl border border-white/[0.06] bg-[#181a20]/50 divide-y divide-white/[0.04] shadow-2xl custom-scrollbar">
+                {incidents.length > 0 ? incidents.slice(0, 6).map((inc, i) => <IncidentItem key={i} incident={inc} />) : (
+                  <div className="flex h-64 flex-col items-center justify-center p-6 text-center opacity-40">
+                    <ShieldAlert className="mb-3 text-zinc-800" size={28} />
+                    <p className="text-[10px] font-black uppercase tracking-widest text-zinc-700">Threat Matrix Passive</p>
+                  </div>
+                )}
+              </div>
+              <div className="rounded-2xl border border-white/[0.06] bg-[#181a20] p-6 shadow-inner relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-red-500/10 transition-colors" />
+                <p className="mb-4 text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-600 relative z-10">Quick Actions</p>
+                <div className="grid grid-cols-2 gap-3 relative z-10">
+                  <button className="rounded-xl border border-red-500/20 bg-red-500/10 py-3 text-[10px] font-bold uppercase tracking-widest text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-lg active:scale-95">Stop Exam</button>
+                  <button className="rounded-xl border border-white/5 bg-white/[0.03] py-3 text-[10px] font-bold uppercase tracking-widest text-zinc-500 hover:text-white hover:bg-white/10 transition-all active:scale-95">Ping All</button>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </div>
       </main>
     </div>
   );

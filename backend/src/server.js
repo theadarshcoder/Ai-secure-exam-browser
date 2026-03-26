@@ -33,6 +33,35 @@ app.get('/api/exam-panel', verifyToken, checkRole('student'), (req, res) => {
     res.json({ message: "✅ Welcome Student! Your exam is about to start." });
 });
 
+// 🎯 NEW: Code Execution Route (Judge0)
+const { executeCode } = require('./services/judge0.js');
+
+const LANGUAGE_MAP = {
+  'javascript': 63,
+  'python': 71,
+  'python3': 71,
+  'java': 62,
+  'cpp': 54,
+  'c': 50
+};
+
+app.post('/api/execute-code', verifyToken, async (req, res) => {
+  try {
+    const { source_code, language, stdin = '' } = req.body;
+    
+    if (!source_code) {
+      return res.status(400).json({ error: 'Source code is required' });
+    }
+
+    const language_id = LANGUAGE_MAP[language.toLowerCase()] || 63;
+    const result = await executeCode(source_code, language_id, stdin);
+    
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: 'Code execution failed', details: err.message });
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
