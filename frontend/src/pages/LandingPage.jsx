@@ -1,53 +1,174 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, useScroll, useTransform, useSpring, AnimatePresence, useMotionValueEvent, useMotionValue, useInView } from 'framer-motion';
-import { Shield, Activity, ScanFace, Lock, MonitorCheck, Server, ChevronRight, Cpu, Eye, QrCode, Check } from 'lucide-react';
-import { useSonification } from '../hooks/useSonification';
-import DynamicGlow from '../components/DynamicGlow';
-import StaggeredTypography from '../components/StaggeredTypography';
-import RefractiveCard from '../components/RefractiveCard';
-import ScrollHUD from '../components/ScrollHUD';
-import InfiniteMarquee from '../components/InfiniteMarquee';
+import { 
+  Shield, Activity, ScanFace, Lock, MonitorCheck, 
+  Server, ChevronRight, Cpu, Eye, QrCode, Check 
+} from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 
-const HybridNavbar = () => {
-  const { playVaultThud, playTick } = useSonification();
-  return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-6 mix-blend-difference overflow-hidden text-white pointer-events-none">
-      <div className="flex items-center gap-3 pointer-events-auto cursor-pointer" onMouseEnter={playTick}>
-        <VisionLogo className="w-12 h-12 text-white" />
-        <span className="text-white font-bold tracking-[0.2em] text-sm uppercase">Vision</span>
-      </div>
-      <div className="flex gap-8 items-center pointer-events-auto">
+// --- Static Metadata & Configuration ---
 
-        <button 
-          onMouseEnter={playTick}
-          onClick={() => { playVaultThud(); window.location.href = '/login'; }}
-          className="bg-white text-black px-6 py-3 font-bold text-sm tracking-widest uppercase hover:bg-slate-200 transition-colors"
-        >
-          Login Options
-        </button>
-      </div>
-    </nav>
-  );
+const CYCLING_STATES = [
+  {
+    label: 'LOCK',
+    gradient: 'from-blue-600 via-blue-500 to-indigo-500',
+    bg: 'bg-blue-500/15',
+    border: 'border-blue-500/30',
+    text: 'text-blue-300',
+    icon: <Lock className="w-5 h-5 text-blue-300" />,
+  },
+  {
+    label: 'SEAL',
+    gradient: 'from-emerald-600 via-emerald-400 to-teal-500',
+    bg: 'bg-emerald-500/15',
+    border: 'border-emerald-500/30',
+    text: 'text-emerald-300',
+    icon: <Shield className="w-5 h-5 text-emerald-300" />,
+  },
+  {
+    label: 'VERIFY',
+    gradient: 'from-violet-600 via-purple-500 to-fuchsia-500',
+    bg: 'bg-violet-500/15',
+    border: 'border-violet-500/30',
+    text: 'text-violet-300',
+    icon: <ScanFace className="w-5 h-5 text-violet-300" />,
+  },
+  {
+    label: 'TRUST',
+    gradient: 'from-amber-500 via-orange-400 to-rose-500',
+    bg: 'bg-amber-500/15',
+    border: 'border-amber-500/30',
+    text: 'text-amber-300',
+    icon: <Eye className="w-5 h-5 text-amber-300" />,
+  },
+];
+
+const MOCKUP_STATES = [
+  {
+    id: 0,
+    icon: <ScanFace className="text-indigo-400 w-12 h-12" />,
+    color: "indigo",
+    text: "BIOMETRIC SYNC",
+    bg: "bg-indigo-500/10",
+    border: "border-indigo-500/30",
+    innerBorder: "border-indigo-500/20",
+    textColor: "text-indigo-500",
+    effect: "animate-[ping_3s_ease-out_infinite]"
+  },
+  {
+    id: 1,
+    icon: <Lock className="text-emerald-400 w-12 h-12" />,
+    color: "emerald",
+    text: "SHIELD ACTIVE",
+    bg: "bg-emerald-500/10",
+    border: "border-emerald-500/30",
+    innerBorder: "border-emerald-500/20",
+    textColor: "text-emerald-500",
+    effect: "animate-pulse"
+  },
+  {
+    id: 2,
+    icon: <Activity className="text-rose-400 w-12 h-12" />,
+    color: "rose",
+    text: "AI VIGILANCE",
+    bg: "bg-rose-500/10",
+    border: "border-rose-500/30",
+    innerBorder: "border-rose-500/20",
+    textColor: "text-rose-500",
+    effect: "animate-bounce"
+  }
+];
+
+const GRID_COLORS = {
+  indigo: "rgba(99, 102, 241, 0.4)",
+  emerald: "rgba(16, 185, 129, 0.4)",
+  rose: "rgba(244, 63, 94, 0.4)"
 };
+
+const FEATURE_STEPS = [
+  { label: 'Detecting face…', color: 'text-indigo-400' },
+  { label: 'Mapping geometry…', color: 'text-indigo-400' },
+  { label: 'Matching records…', color: 'text-amber-400' },
+  { label: '✓ Identity confirmed', color: 'text-emerald-400' },
+];
+
+const LOCKDOWN_STEPS = [
+  { label: 'Suspending processes…', color: 'text-emerald-400' },
+  { label: 'Blocking net egress…',  color: 'text-emerald-400' },
+  { label: 'Disabling clipboard…',  color: 'text-amber-400'   },
+  { label: '✓ Environment secured', color: 'text-emerald-400' },
+];
+
+const MONITOR_STEPS = [
+  { label: 'Calibrating gaze…',   color: 'text-zinc-400'  },
+  { label: 'Audio analysis on…', color: 'text-rose-400'   },
+  { label: 'Anomaly detected!',  color: 'text-amber-400'  },
+  { label: '✓ All clear',         color: 'text-emerald-400'},
+];
+
+const SYSTEM_PROCESSES = [
+  { proc: 'anydesk.exe',    pid: '4921', status: 'KILLED',      color: 'text-rose-400'    },
+  { proc: 'TeamViewer',     pid: '3810', status: 'KILLED',      color: 'text-rose-400'    },
+  { proc: 'screen-share',   pid: '5102', status: 'BLOCKED',     color: 'text-amber-400'   },
+  { proc: 'net egress',     pid: 'eth1', status: 'RESTRICTED',  color: 'text-amber-400'   },
+  { proc: 'clipboard',      pid: 'sys',  status: 'DISABLED',    color: 'text-emerald-400' },
+  { proc: 'print spooler', pid: '2048', status: 'STOPPED',     color: 'text-emerald-400' },
+];
+
+const SECURITY_EVENTS = [
+  { time: '10:42:01', event: 'Audio Spike',  conf: '98%',  color: 'text-rose-300',  badge: 'bg-rose-500/20 border-rose-500/30 text-rose-300' },
+  { time: '10:41:55', event: 'Looking Away', conf: '12%',  color: 'text-zinc-400',  badge: '' },
+  { time: '10:40:12', event: 'Tab Switch',   conf: '100%', color: 'text-amber-300', badge: 'bg-amber-500/20 border-amber-500/30 text-amber-300' },
+  { time: '10:39:40', event: 'Key Anomaly',  conf: '45%',  color: 'text-white/50',  badge: '' },
+  { time: '10:38:05', event: 'Multi-Face',   conf: '95%',  color: 'text-rose-300',  badge: 'bg-rose-500/20 border-rose-500/30 text-rose-300' },
+];
+
+// --- Sub-components ---
+
+const HybridNavbar = () => (
+  <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-6 mix-blend-difference overflow-hidden text-white pointer-events-none">
+    <div className="flex items-center gap-3 pointer-events-auto cursor-pointer">
+      <VisionLogo className="w-12 h-12 text-white" />
+      <span className="text-white font-bold tracking-[0.2em] text-sm uppercase">Vision</span>
+    </div>
+    <div className="flex gap-8 items-center pointer-events-auto">
+      <button 
+        onClick={() => { window.location.href = '/login'; }}
+        className="bg-white text-black px-6 py-3 font-bold text-sm tracking-widest uppercase hover:bg-slate-200 transition-colors"
+      >
+        Login Options
+      </button>
+    </div>
+  </nav>
+);
 
 const AnimatedStat = ({ target, suffix, label }) => {
   const [count, setCount] = useState(0);
+
   useEffect(() => {
     const steps = 60;
     const increment = target / steps;
     let current = 0;
     const timer = setInterval(() => {
       current += increment;
-      if (current >= target) { setCount(target); clearInterval(timer); }
-      else setCount(Math.floor(current));
+      if (current >= target) {
+        setCount(target);
+        clearInterval(timer);
+      } else {
+        setCount(Math.floor(current));
+      }
     }, 30);
     return () => clearInterval(timer);
   }, [target]);
+
   return (
     <div className="flex flex-col items-center">
-      <span className="text-2xl md:text-3xl font-bold text-slate-900 tabular-nums tracking-tight">{count}{suffix}</span>
-      <span className="text-[10px] font-semibold text-slate-400 tracking-widest uppercase mt-1">{label}</span>
+      <span className="text-2xl md:text-3xl font-bold text-slate-900 tabular-nums tracking-tight">
+        {count}{suffix}
+      </span>
+      <span className="text-[10px] font-semibold text-slate-400 tracking-widest uppercase mt-1">
+        {label}
+      </span>
     </div>
   );
 };
@@ -118,8 +239,6 @@ const CurvedNeonGrid = () => {
             <stop offset="0%"   stopColor="transparent" />
             <stop offset="30%"  stopColor="transparent" />
             <stop offset="50%"  stopColor="#34d399" stopOpacity="1" />
-            <stop offset="70%"  stopColor="transparent" />
-            <stop offset="100%" stopColor="transparent" />
           </linearGradient>
         </defs>
 
@@ -225,7 +344,6 @@ const KineticTextSequence = () => {
 };
 
 const CredHeroParallax = () => {
-  const { playVaultThud } = useSonification();
   
   return (
     <section id="hero" className="w-full bg-black h-screen overflow-hidden relative flex flex-col">
@@ -260,26 +378,23 @@ const CleanFeatureBlocks = () => {
         transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
       >
         {/* Identity Check Visual — Premium Redesign */}
-        {(() => {
-          const [stepIndex, setStepIndex] = React.useState(0);
-          const [clock, setClock] = React.useState('');
-          const steps = [
-            { label: 'Detecting face…', color: 'text-indigo-400' },
-            { label: 'Mapping geometry…', color: 'text-indigo-400' },
-            { label: 'Matching records…', color: 'text-amber-400' },
-            { label: '✓ Identity confirmed', color: 'text-emerald-400' },
-          ];
-          React.useEffect(() => {
-            const tick = () => setClock(new Date().toLocaleTimeString('en-US', { hour12: false }));
-            tick();
-            const t = setInterval(tick, 1000);
-            return () => clearInterval(t);
-          }, []);
-          React.useEffect(() => {
-            const t = setInterval(() => setStepIndex(i => (i + 1) % steps.length), 2200);
-            return () => clearInterval(t);
-          }, []);
-          const step = steps[stepIndex];
+          {(() => {
+            const [stepIndex, setStepIndex] = React.useState(0);
+            const [clock, setClock] = React.useState('');
+            
+            React.useEffect(() => {
+              const tick = () => setClock(new Date().toLocaleTimeString('en-US', { hour12: false }));
+              tick();
+              const t = setInterval(tick, 1000);
+              return () => clearInterval(t);
+            }, []);
+            
+            React.useEffect(() => {
+              const t = setInterval(() => setStepIndex(i => (i + 1) % FEATURE_STEPS.length), 2200);
+              return () => clearInterval(t);
+            }, []);
+            
+            const step = FEATURE_STEPS[stepIndex];
           return (
             <div className="w-full md:w-1/2 aspect-[16/10] bg-[#06060e] rounded-2xl border border-white/[0.06] shadow-[0_0_80px_rgba(0,0,0,0.9),0_0_0_1px_rgba(99,102,241,0.07)] overflow-hidden flex flex-col group relative">
               {/* ── Title bar ── */}
@@ -481,29 +596,20 @@ const CleanFeatureBlocks = () => {
         {(() => {
           const [lockStep, setLockStep] = React.useState(0);
           const [clock2, setClock2] = React.useState('');
-          const lockSteps = [
-            { label: 'Suspending processes…', color: 'text-emerald-400' },
-            { label: 'Blocking net egress…',  color: 'text-emerald-400' },
-            { label: 'Disabling clipboard…',  color: 'text-amber-400'   },
-            { label: '✓ Environment secured', color: 'text-emerald-400' },
-          ];
-          const rows = [
-            { proc: 'anydesk.exe',    pid: '4921', status: 'KILLED',      color: 'text-rose-400'    },
-            { proc: 'TeamViewer',     pid: '3810', status: 'KILLED',      color: 'text-rose-400'    },
-            { proc: 'screen-share',   pid: '5102', status: 'BLOCKED',     color: 'text-amber-400'   },
-            { proc: 'net egress',     pid: 'eth1', status: 'RESTRICTED',  color: 'text-amber-400'   },
-            { proc: 'clipboard',      pid: 'sys',  status: 'DISABLED',    color: 'text-emerald-400' },
-            { proc: 'print spooler', pid: '2048', status: 'STOPPED',     color: 'text-emerald-400' },
-          ];
+          
           React.useEffect(() => {
             const tick = () => setClock2(new Date().toLocaleTimeString('en-US', { hour12: false }));
-            tick(); const t = setInterval(tick, 1000); return () => clearInterval(t);
-          }, []);
-          React.useEffect(() => {
-            const t = setInterval(() => setLockStep(i => (i + 1) % lockSteps.length), 2000);
+            tick(); 
+            const t = setInterval(tick, 1000); 
             return () => clearInterval(t);
           }, []);
-          const ls = lockSteps[lockStep];
+          
+          React.useEffect(() => {
+            const t = setInterval(() => setLockStep(i => (i + 1) % LOCKDOWN_STEPS.length), 2000);
+            return () => clearInterval(t);
+          }, []);
+          
+          const ls = LOCKDOWN_STEPS[lockStep];
           return (
             <div className="w-full md:w-1/2 aspect-[16/10] bg-[#06060e] rounded-2xl border border-white/[0.06] shadow-[0_0_80px_rgba(0,0,0,0.9),0_0_0_1px_rgba(16,185,129,0.07)] overflow-hidden flex flex-col group relative">
               {/* Title bar */}
@@ -576,8 +682,12 @@ const CleanFeatureBlocks = () => {
                       <span className="text-white/20 text-[9px] font-mono tracking-widest uppercase w-1/3 text-right">Status</span>
                     </div>
                     <div className="overflow-hidden flex-1 relative">
-                      <motion.div animate={{ y: [0, -rows.length * 26] }} transition={{ duration: 5, repeat: Infinity, ease: 'linear', repeatType: 'loop' }} className="flex flex-col">
-                        {[...rows, ...rows].map((r, i) => (
+                      <motion.div 
+                        animate={{ y: [0, -SYSTEM_PROCESSES.length * 26] }} 
+                        transition={{ duration: 5, repeat: Infinity, ease: 'linear', repeatType: 'loop' }} 
+                        className="flex flex-col"
+                      >
+                        {[...SYSTEM_PROCESSES, ...SYSTEM_PROCESSES].map((r, i) => (
                           <div key={i} className="flex justify-between items-center px-4 py-1.5 border-b border-white/[0.03]">
                             <span className="text-white/50 text-[9px] font-mono w-1/3 truncate">{r.proc}</span>
                             <span className="text-white/30 text-[9px] font-mono w-1/4 text-center">{r.pid}</span>
@@ -626,28 +736,20 @@ const CleanFeatureBlocks = () => {
         {(() => {
           const [monStep, setMonStep] = React.useState(0);
           const [clock3, setClock3] = React.useState('');
-          const monSteps = [
-            { label: 'Calibrating gaze…',   color: 'text-zinc-400'  },
-            { label: 'Audio analysis on…', color: 'text-rose-400'   },
-            { label: 'Anomaly detected!',  color: 'text-amber-400'  },
-            { label: '✓ All clear',         color: 'text-emerald-400'},
-          ];
-          const events = [
-            { time: '10:42:01', event: 'Audio Spike',  conf: '98%',  color: 'text-rose-300',  badge: 'bg-rose-500/20 border-rose-500/30 text-rose-300' },
-            { time: '10:41:55', event: 'Looking Away', conf: '12%',  color: 'text-zinc-400',  badge: '' },
-            { time: '10:40:12', event: 'Tab Switch',   conf: '100%', color: 'text-amber-300', badge: 'bg-amber-500/20 border-amber-500/30 text-amber-300' },
-            { time: '10:39:40', event: 'Key Anomaly',  conf: '45%',  color: 'text-white/50',  badge: '' },
-            { time: '10:38:05', event: 'Multi-Face',   conf: '95%',  color: 'text-rose-300',  badge: 'bg-rose-500/20 border-rose-500/30 text-rose-300' },
-          ];
+          
           React.useEffect(() => {
             const tick = () => setClock3(new Date().toLocaleTimeString('en-US', { hour12: false }));
-            tick(); const t = setInterval(tick, 1000); return () => clearInterval(t);
-          }, []);
-          React.useEffect(() => {
-            const t = setInterval(() => setMonStep(i => (i + 1) % monSteps.length), 2000);
+            tick(); 
+            const t = setInterval(tick, 1000); 
             return () => clearInterval(t);
           }, []);
-          const ms = monSteps[monStep];
+          
+          React.useEffect(() => {
+            const t = setInterval(() => setMonStep(i => (i + 1) % MONITOR_STEPS.length), 2000);
+            return () => clearInterval(t);
+          }, []);
+          
+          const ms = MONITOR_STEPS[monStep];
           return (
             <div className="w-full md:w-1/2 aspect-[16/10] bg-[#06060e] rounded-2xl border border-white/[0.06] shadow-[0_0_80px_rgba(0,0,0,0.9),0_0_0_1px_rgba(244,63,94,0.07)] overflow-hidden flex flex-col group relative">
               {/* Title bar */}
@@ -731,8 +833,12 @@ const CleanFeatureBlocks = () => {
                       <span className="text-white/20 text-[9px] font-mono tracking-widest uppercase w-1/4 text-right">Conf</span>
                     </div>
                     <div className="overflow-hidden flex-1 relative">
-                      <motion.div animate={{ y: [0, -events.length * 26] }} transition={{ duration: 4, repeat: Infinity, ease: 'linear', repeatType: 'loop' }} className="flex flex-col">
-                        {[...events, ...events].map((ev, i) => (
+                      <motion.div 
+                        animate={{ y: [0, -SECURITY_EVENTS.length * 26] }} 
+                        transition={{ duration: 4, repeat: Infinity, ease: 'linear', repeatType: 'loop' }} 
+                        className="flex flex-col"
+                      >
+                        {[...SECURITY_EVENTS, ...SECURITY_EVENTS].map((ev, i) => (
                           <div key={i} className={`flex justify-between items-center px-4 py-1.5 border-b border-white/[0.03] ${ev.color}`}>
                             <span className="text-[9px] font-mono w-1/4">{ev.time}</span>
                             <span className="text-[9px] font-mono w-1/2">
@@ -775,7 +881,7 @@ const CleanFeatureBlocks = () => {
             Step 3 Monitor
           </span>
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 leading-[1.1] tracking-tight">
-            Smart automated proctoring
+            Smart automated Vision Monitoring
           </h2>
           <ul className="flex flex-col gap-5 text-slate-400 mb-10 text-lg">
             <li className="flex items-start gap-4">
@@ -856,48 +962,6 @@ const CredMockupSequence = () => {
     }
   });
 
-  const mockupStates = [
-    {
-      id: 0,
-      icon: <ScanFace className="text-indigo-400 w-12 h-12" />,
-      color: "indigo",
-      text: "BIOMETRIC SYNC",
-      bg: "bg-indigo-500/10",
-      border: "border-indigo-500/30",
-      innerBorder: "border-indigo-500/20",
-      textColor: "text-indigo-500",
-      effect: "animate-[ping_3s_ease-out_infinite]"
-    },
-    {
-      id: 1,
-      icon: <Lock className="text-emerald-400 w-12 h-12" />,
-      color: "emerald",
-      text: "SHIELD ACTIVE",
-      bg: "bg-emerald-500/10",
-      border: "border-emerald-500/30",
-      innerBorder: "border-emerald-500/20",
-      textColor: "text-emerald-500",
-      effect: "animate-pulse"
-    },
-    {
-      id: 2,
-      icon: <Activity className="text-rose-400 w-12 h-12" />,
-      color: "rose",
-      text: "AI VIGILANCE",
-      bg: "bg-rose-500/10",
-      border: "border-rose-500/30",
-      innerBorder: "border-rose-500/20",
-      textColor: "text-rose-500",
-      effect: "animate-bounce"
-    }
-  ];
-
-  const gridColors = {
-    indigo: "rgba(99, 102, 241, 0.4)",
-    emerald: "rgba(16, 185, 129, 0.4)",
-    rose: "rgba(244, 63, 94, 0.4)"
-  };
-
   return (
     <section id="features" ref={trackRef} className="relative bg-[#030303] w-full" style={{ height: "150vh" }}>
       {/* Dynamic Marquee Divider */}
@@ -908,7 +972,7 @@ const CredMockupSequence = () => {
           transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
           className="flex whitespace-nowrap gap-12 font-mono text-xs tracking-[0.3em] text-white/20 uppercase"
         >
-          {Array(8).fill("Continuous Verification · Zero Trust Environment · AI-Powered Proctoring · ").map((text, i) => (
+          {Array(8).fill("Continuous Verification · Zero Trust Environment · AI-Powered Vision · ").map((text, i) => (
             <span key={i}>{text}</span>
           ))}
         </motion.div>
@@ -972,7 +1036,7 @@ const CredMockupSequence = () => {
                    width: '300%', height: '300%',
                    top: '-50%', left: '-100%',
                    rotateX: 75,
-                   backgroundImage: `linear-gradient(${gridColors[mockupStates[activeStep].color]} 1px, transparent 1px), linear-gradient(90deg, ${gridColors[mockupStates[activeStep].color]} 1px, transparent 1px)`,
+                   backgroundImage: `linear-gradient(${GRID_COLORS[MOCKUP_STATES[activeStep].color]} 1px, transparent 1px), linear-gradient(90deg, ${GRID_COLORS[MOCKUP_STATES[activeStep].color]} 1px, transparent 1px)`,
                    backgroundSize: '80px 80px',
                    backgroundPositionY: useTransform(springProgress, [0, 1], ['0px', '4000px']),
                    transition: 'background-image 0.5s ease-in-out'
@@ -997,20 +1061,20 @@ const CredMockupSequence = () => {
                             cx="70" cy="70" r="68" 
                             stroke="currentColor" 
                             strokeWidth="2" fill="none" 
-                            className={mockupStates[activeStep].textColor} 
+                            className={MOCKUP_STATES[activeStep].textColor} 
                             strokeDasharray="427" 
                             style={{ strokeDashoffset: useTransform(springProgress, [0, 1], [427, 0]) }} 
                          />
                        </svg>
 
-                       <div className={`relative w-28 h-28 rounded-full border ${mockupStates[activeStep].border} flex items-center justify-center ${mockupStates[activeStep].bg} backdrop-blur-md z-10`}>
-                           <div className={`absolute w-full h-full border ${mockupStates[activeStep].innerBorder} rounded-full ${mockupStates[activeStep].effect}`}></div>
-                           {React.cloneElement(mockupStates[activeStep].icon, { className: mockupStates[activeStep].icon.props.className.replace('w-12 h-12', 'w-10 h-10') })}
+                       <div className={`relative w-28 h-28 rounded-full border ${MOCKUP_STATES[activeStep].border} flex items-center justify-center ${MOCKUP_STATES[activeStep].bg} backdrop-blur-md z-10`}>
+                           <div className={`absolute w-full h-full border ${MOCKUP_STATES[activeStep].innerBorder} rounded-full ${MOCKUP_STATES[activeStep].effect}`}></div>
+                           {React.cloneElement(MOCKUP_STATES[activeStep].icon, { className: MOCKUP_STATES[activeStep].icon.props.className.replace('w-12 h-12', 'w-10 h-10') })}
                        </div>
                     </div>
 
-                    <span className={"mt-6 tracking-[0.4em] font-mono text-[10px] md:text-xs font-bold " + mockupStates[activeStep].textColor + " z-10"}>
-                      {mockupStates[activeStep].text}
+                    <span className={"mt-6 tracking-[0.4em] font-mono text-[10px] md:text-xs font-bold " + MOCKUP_STATES[activeStep].textColor + " z-10"}>
+                      {MOCKUP_STATES[activeStep].text}
                     </span>
                  </motion.div>
                </AnimatePresence>
@@ -1049,7 +1113,7 @@ const CredStatsGrid = () => {
              { stat: "1.2B+", label: "Telemetry Points", icon: <Server className="w-4 h-4 text-rose-400" /> },
              { stat: "100%", label: "Uptime SLA", icon: <Shield className="w-4 h-4 text-amber-400" /> }
            ].map((item, i) => (
-             <RefractiveCard key={i} className="p-0 shadow-none border-none">
+             <div key={i} className="p-0 shadow-none border-none">
                <div className="flex items-center gap-3 mb-10">
                  <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center border border-zinc-700 group-hover:border-zinc-600 transition-colors duration-300">
                    {item.icon}
@@ -1062,7 +1126,7 @@ const CredStatsGrid = () => {
                <div className="text-4xl md:text-5xl font-bold tracking-tight text-slate-50">
                  {item.stat}
                </div>
-             </RefractiveCard>
+             </div>
            ))}
         </div>
       </div>
@@ -1072,7 +1136,7 @@ const CredStatsGrid = () => {
 
 const CredWhiteFeatures = () => {
   const cards = [
-    { title: "Live video proctoring", desc: "Real-time webcam monitoring with automated anomaly detection on every frame", icon: <Activity className="text-white group-hover:text-indigo-400 transition-colors duration-500" size={24}/> },
+    { title: "Live Vision monitoring", desc: "Real-time webcam monitoring with automated anomaly detection on every frame", icon: <Activity className="text-white group-hover:text-indigo-400 transition-colors duration-500" size={24}/> },
     { title: "Screen-share blocking", desc: "Detects and prevents virtual machines, RDP sessions, and screen mirroring instantly", icon: <MonitorCheck className="text-white group-hover:text-emerald-400 transition-colors duration-500" size={24}/> },
     { title: "Offline resilience", desc: "Seamless continuation during brief network interruptions with automatic sync-back", icon: <Server className="text-white group-hover:text-rose-400 transition-colors duration-500" size={24}/> },
     { title: "Smart behavior tracking", desc: "Tracks multiple signals carefully: gaze deviation, audio spikes, and keystroke patterns", icon: <Cpu className="text-white group-hover:text-amber-400 transition-colors duration-500" size={24}/> },
@@ -1182,42 +1246,6 @@ const CredTrustFooter = () => {
     </section>
   );
 };
-
-const CYCLING_STATES = [
-  {
-    label: 'LOCK',
-    gradient: 'from-blue-600 via-blue-500 to-indigo-500',
-    bg: 'bg-blue-500/15',
-    border: 'border-blue-500/30',
-    text: 'text-blue-300',
-    icon: <Lock className="w-5 h-5 text-blue-300" />,
-  },
-  {
-    label: 'SEAL',
-    gradient: 'from-emerald-600 via-emerald-400 to-teal-500',
-    bg: 'bg-emerald-500/15',
-    border: 'border-emerald-500/30',
-    text: 'text-emerald-300',
-    icon: <Shield className="w-5 h-5 text-emerald-300" />,
-  },
-  {
-    label: 'VERIFY',
-    gradient: 'from-violet-600 via-purple-500 to-fuchsia-500',
-    bg: 'bg-violet-500/15',
-    border: 'border-violet-500/30',
-    text: 'text-violet-300',
-    icon: <ScanFace className="w-5 h-5 text-violet-300" />,
-  },
-  {
-    label: 'TRUST',
-    gradient: 'from-amber-500 via-orange-400 to-rose-500',
-    bg: 'bg-amber-500/15',
-    border: 'border-amber-500/30',
-    text: 'text-amber-300',
-    icon: <Eye className="w-5 h-5 text-amber-300" />,
-  },
-];
-
 const CyclingPillHeadline = () => {
   const [idx, setIdx] = useState(0);
   const current = CYCLING_STATES[idx];
@@ -1229,28 +1257,21 @@ const CyclingPillHeadline = () => {
 
   return (
     <section className="bg-black pt-12 pb-12 px-6 relative overflow-hidden flex flex-col items-center text-center">
-      {/* Ambient glow behind pill */}
       <div
         className={`absolute w-[600px] h-[300px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 blur-[120px] opacity-20 rounded-full bg-gradient-to-r ${current.gradient} transition-all duration-1000`}
       />
-
       <h2 className="text-5xl md:text-7xl font-black tracking-tighter text-white leading-tight mb-0">
         The exam platform
       </h2>
-
       <div className="flex items-center gap-4 mt-1 flex-wrap justify-center">
         <h2 className="text-5xl md:text-7xl font-black tracking-tighter text-white leading-tight">
           built to
         </h2>
-
-        {/* Cycling pill */}
         <div
           className={`relative inline-flex items-center gap-3 px-6 py-3 rounded-full border ${current.bg} ${current.border} overflow-hidden`}
           style={{ minWidth: '200px' }}
         >
-          {/* Gradient highlight shimmer */}
           <div className={`absolute inset-0 bg-gradient-to-r ${current.gradient} opacity-10 rounded-full`} />
-          
           <AnimatePresence mode="popLayout">
             <motion.div
               key={idx}
@@ -1268,7 +1289,6 @@ const CyclingPillHeadline = () => {
           </AnimatePresence>
         </div>
       </div>
-
       <p className="mt-4 text-zinc-400 text-lg md:text-xl max-w-xl leading-relaxed">
         Vision protects the real effort: <strong className="text-zinc-200 font-medium">The Person, The Process, and The Place</strong>
       </p>
@@ -1277,7 +1297,6 @@ const CyclingPillHeadline = () => {
 };
 
 export default function LandingPage() {
-  const { playVaultThud, playTick } = useSonification();
 
   useEffect(() => {
     const link = document.createElement('link');
@@ -1292,8 +1311,6 @@ export default function LandingPage() {
       <style>{`
         .perspective-1000 { perspective: 1000px; }
       `}</style>
-      <DynamicGlow />
-      <ScrollHUD />
       <HybridNavbar />
       <div id="hero">
         <CredHeroParallax />
