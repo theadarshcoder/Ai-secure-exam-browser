@@ -11,17 +11,15 @@ router.put('/update-mentor-permissions/:mentorId', verifyToken, checkRole('admin
         if (!oldMentor) return res.status(404).json({ message: "Mentor not found" });
 
         const mentor = await User.findByIdAndUpdate(req.params.mentorId, { permissions: newPermissions }, { new: true });
-
         await AuditLog.create({
             adminId: req.user.id,
             action: 'UPDATE_PERMISSIONS',
             targetUserId: req.params.mentorId,
             details: { oldPermissions: oldMentor.permissions, newPermissions: mentor.permissions }
         });
-
         res.json({ message: "Permissions updated!", mentor });
-    } catch (error) {
-        res.status(500).json({ error: "Update failed" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 
@@ -29,10 +27,11 @@ router.get('/logs', verifyToken, checkRole('admin'), async (req, res) => {
     try {
         const logs = await AuditLog.find().populate('adminId', 'name email').populate('targetUserId', 'name email').sort({ createdAt: -1 });
         res.json(logs);
-    } catch (error) {
-        res.status(500).json({ error: "Fetch failed" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 
 module.exports = router;
+
 
