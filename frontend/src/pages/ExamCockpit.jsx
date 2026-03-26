@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import socketService from '../services/socket';
 import {
   Camera, CameraOff, Clock, Shield, CheckCircle,
   ChevronRight, ChevronLeft, Send, XCircle,
@@ -311,6 +312,13 @@ export default function ExamCockpit() {
     }
   }, [tabToast, submitted]);
 
+  // Real-time Socket Connection
+  useEffect(() => {
+    const studentId = localStorage.getItem('vision_email') || 'VSN-89241';
+    socketService.connect(studentId);
+    return () => socketService.disconnect();
+  }, []);
+
   const logIncident = (type, severity, details) => {
     const incident = {
       id: `INC-${Date.now()}`,
@@ -321,6 +329,10 @@ export default function ExamCockpit() {
       details,
       timestamp: new Date().toISOString(),
     };
+
+    // Emit to backend for real-time mentor alerts
+    socketService.emitViolation(incident);
+
     const existing = JSON.parse(localStorage.getItem('vision_incidents') || '[]');
     localStorage.setItem('vision_incidents', JSON.stringify([incident, ...existing]));
   };

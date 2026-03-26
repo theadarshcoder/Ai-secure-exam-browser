@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import api from '../services/api';
 import { Navbar } from '../components/Navbar';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -270,31 +271,47 @@ export default function CreateExam() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [publishedExamId, setPublishedExamId] = useState('');
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     if (questions.length === 0) return;
     setIsPublishing(true);
-    setTimeout(() => {
-      setIsPublishing(false);
-      
-      const newExam = {
-        id: 'EX-' + Math.random().toString(36).substr(2, 6).toUpperCase(),
+    
+    try {
+      const payload = {
         title: exam.title || 'Untitled Exam',
         category: exam.category,
         duration: exam.duration,
         totalMarks: exam.totalMarks,
         passingMarks: exam.passingMarks,
-        questionsCount: questions.length,
-        scheduledDate: exam.scheduledDate || 'Flexible Schedule',
-        startTime: exam.scheduledDate ? new Date(exam.scheduledDate).toISOString() : new Date().toISOString(),
-        publishedAt: new Date().toISOString()
+        questions: questions.map(q => ({
+          type: q.type,
+          text: q.question,
+          marks: q.marks,
+          options: q.options,
+          correctIndex: q.correctIndex,
+          expectedAnswer: q.expectedAnswer,
+          language: q.language,
+          starterCode: q.starterCode,
+          testCases: q.testCases
+        })),
+        scheduledDate: exam.scheduledDate || new Date().toISOString()
       };
+
+      // Connect to real backend
+      const response = await api.post('/api/exams/create', payload);
+      const serverExam = response.data;
       
+      // Update local state and persistence for frontend components
       const existing = JSON.parse(localStorage.getItem('published_exams') || '[]');
-      localStorage.setItem('published_exams', JSON.stringify([newExam, ...existing]));
+      localStorage.setItem('published_exams', JSON.stringify([serverExam, ...existing]));
       
-      setPublishedExamId(newExam.id);
+      setPublishedExamId(serverExam.id || 'EX-' + Math.random().toString(36).substr(2, 6).toUpperCase());
       setShowSuccessModal(true);
-    }, 1500);
+    } catch (error) {
+      console.error('Publish sequence failure:', error);
+      alert('CRITICAL ERROR: High-concurrency node rejected assessment payload.');
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   const handleSaveDraft = () => {

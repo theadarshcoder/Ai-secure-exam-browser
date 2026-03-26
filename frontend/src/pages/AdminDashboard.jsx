@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import api from '../services/api';
 import { 
   LayoutDashboard, FileText, Users, ShieldAlert, Settings, 
   Search, Bell, Plus, MoreHorizontal, ExternalLink, 
@@ -90,7 +91,7 @@ const IncidentItem = ({ incident }) => (
     <p className="mb-3 leading-relaxed text-sm font-medium text-zinc-300 group-hover:text-white transition-colors">{incident.details}</p>
     <div className="flex items-center justify-between">
       <span className="font-mono text-[9px] tracking-tighter text-zinc-700 bg-white/5 px-1.5 py-0.5 rounded uppercase">ID: {incident.id.split('-').pop()}</span>
-      <button className="text-[10px] font-bold uppercase tracking-widest text-blue-500 hover:text-blue-400 transition-all active:scale-95">Resolve Issue</button>
+      <button className="text-[10px] font-bold uppercase tracking-widest text-indigo-500 hover:text-indigo-400 transition-all active:scale-95">Resolve Issue</button>
     </div>
   </div>
 );
@@ -106,10 +107,19 @@ export default function AdminDashboard() {
     document.body.style.overflow = 'hidden';
     const timer = setInterval(() => setCurrentTime(new Date().toLocaleTimeString()), 1000);
     
-    try {
-      const raw = localStorage.getItem('vision_incidents');
-      if (raw) setIncidents(JSON.parse(raw));
-    } catch (e) { console.error("History sync failure", e); }
+    const fetchLogs = async () => {
+      try {
+        const response = await api.get('/api/admin/logs');
+        setIncidents(response.data);
+      } catch (error) {
+        console.error('Audit log synchronization failure:', error);
+        // Resilient fallback to local environment
+        const raw = localStorage.getItem('vision_incidents');
+        if (raw) setIncidents(JSON.parse(raw));
+      }
+    };
+
+    fetchLogs();
 
     return () => {
       document.body.style.overflow = 'auto';
@@ -119,7 +129,7 @@ export default function AdminDashboard() {
 
   const criticalIssues = incidents.filter(i => i.severity === 'high').length;
   const stats = [
-    { label: 'Active Exams', value: '142', tag: 'SYNCED', color: 'text-blue-500' },
+    { label: 'Active Exams', value: '142', tag: 'SYNCED', color: 'text-indigo-500' },
     { label: 'Reported Alerts', value: String(criticalIssues), tag: 'URGENT', color: 'text-red-500' },
     { label: 'Integrity Score', value: '98.2', tag: 'NOMINAL', color: 'text-emerald-500' },
     { label: 'System Uptime', value: '99.9%', tag: 'STABLE', color: 'text-zinc-500' },
@@ -129,7 +139,7 @@ export default function AdminDashboard() {
     <div className="flex h-screen w-full overflow-hidden bg-[#0f1117] font-sans text-zinc-200 select-none">
       <aside className="z-50 flex w-64 shrink-0 flex-col border-r border-white/5 bg-[#0c0c0e] shadow-2xl">
         <div className="flex h-14 items-center gap-2.5 border-b border-white/5 px-5">
-          <VisionLogo className="h-5 w-5 text-blue-500" />
+          <VisionLogo className="h-5 w-5 text-white" />
           <span className="text-sm font-bold uppercase tracking-wider text-zinc-100">Vision Admin</span>
         </div>
         
@@ -139,13 +149,9 @@ export default function AdminDashboard() {
             <button
               key={item.id}
               onClick={() => setTab(item.id)}
-              className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-[12px] font-bold transition-all ${
-                activeTab === item.id 
-                  ? 'bg-white/5 text-white border border-white/10 shadow-[0_0_20px_rgba(255,255,255,0.05)]' 
-                  : 'text-zinc-500 hover:bg-white/[0.03] hover:text-zinc-300'
-              }`}
+              className={`group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium transition-all ${activeTab === item.id ? 'bg-white/5 text-white shadow-sm' : 'text-zinc-500 hover:bg-white/[0.02] hover:text-zinc-300'}`}
             >
-              <span className={activeTab === item.id ? 'text-blue-500' : 'text-zinc-700 transition-colors group-hover:text-zinc-500'}>{item.icon}</span>
+              <span className={activeTab === item.id ? 'text-indigo-500' : 'text-zinc-700 transition-colors group-hover:text-zinc-500'}>{item.icon}</span>
               {item.label}
             </button>
           ))}
@@ -164,13 +170,13 @@ export default function AdminDashboard() {
       </aside>
 
       <main className="flex flex-1 flex-col overflow-hidden">
-        <header className="z-40 flex h-14 shrink-0 items-center justify-between border-b border-white/5 bg-[#0f1117] px-6 shadow-md">
-          <div className="flex items-center gap-3 text-[11px] font-black uppercase tracking-widest text-zinc-600">
+        <header className="flex h-14 items-center justify-between border-b border-white/5 bg-[#0f1117]/80 px-8 backdrop-blur-md sticky top-0 z-40">
+          <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-600">
             <span>Root</span>
             <ChevronRight size={10} />
-            <span className="text-zinc-400">Dashboard</span>
+            <span>Dashboard</span>
             <ChevronRight size={10} />
-            <span className="text-blue-500">{activeTab}</span>
+            <span className="text-indigo-500">Overview</span>
           </div>
           
           <div className="flex items-center gap-4">
@@ -193,8 +199,8 @@ export default function AdminDashboard() {
               <p className="text-xs font-medium text-zinc-600 uppercase tracking-widest mt-1">Status: Operational // {currentTime}</p>
             </div>
             <div className="flex items-center gap-2">
-              <button className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"><Download size={14} /> Export</button>
-              <button className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2 text-[11px] font-black uppercase tracking-widest text-white shadow-xl hover:bg-blue-500 active:scale-95 transition-all"><Plus size={16} /> Deploy</button>
+              <button className="flex items-center gap-2 rounded-xl border border-white/[0.07] bg-[#1a1d26] px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-zinc-300 hover:text-white hover:bg-white/[0.08] hover:border-white/[0.12] transition-all"><Download size={14} /> Export</button>
+              <button className="flex items-center gap-2 rounded-xl bg-white px-6 py-2 text-[11px] font-bold uppercase tracking-widest text-[#0f1117] shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_28px_rgba(255,255,255,0.2)] hover:bg-zinc-100 hover:scale-[1.02] active:scale-[0.98] transition-all"><Plus size={16} /> Deploy</button>
             </div>
           </div>
 
@@ -206,9 +212,9 @@ export default function AdminDashboard() {
             <section className="col-span-8 flex flex-col gap-4">
               <div className="flex items-center justify-between">
                 <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-600">
-                  <Monitor className="text-blue-500" size={14} /> Active Sessions
+                  <Monitor className="text-indigo-500" size={14} /> Active Sessions
                 </h2>
-                <button className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-500 hover:underline transition-all">View All Sessions</button>
+                <button className="text-[10px] font-bold uppercase tracking-[0.2em] text-indigo-500 hover:underline transition-all">View All Sessions</button>
               </div>
               <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#0c0c0e] shadow-2xl">
                 <table className="w-full text-left">

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../services/api';
 import { 
   Shield, User, Lock, ShieldCheck, Webcam, MonitorCheck, Activity,
   TerminalSquare, Video, BrainCircuit, Database,
@@ -196,13 +197,28 @@ const LoginPage = () => {
     return () => clearInterval(interval);
   }, [role]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsAuthenticating(true);
-    setTimeout(() => {
-      setIsAuthenticating(false);
+    
+    try {
+      // Connect to real backend endpoint
+      const response = await api.post('/api/demo-login', { email, role });
+      const { token } = response.data;
+
+      // Persist session
+      localStorage.setItem('vision_token', token);
+      localStorage.setItem('vision_role', role);
+      localStorage.setItem('vision_email', email);
+
       navigate(role === 'student' ? '/student' : role === 'mentor' ? '/mentor' : '/admin');
-    }, 1500);
+    } catch (error) {
+      console.error('Auth sequence failure:', error);
+      // Optional: Add a more sophisticated toast notification here
+      alert('AUTHENTICATION FAILED: System could not verify identity protocols.');
+    } finally {
+      setIsAuthenticating(false);
+    }
   };
 
   return (

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import api from '../services/api';
+import socketService from '../services/socket';
 import { Navbar } from '../components/Navbar';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -421,6 +423,47 @@ export default function MentorDashboard() {
     };
   }, []);
 
+  const [liveExams, setLiveExams] = useState([]);
+  const [recentActivity, setRecentActivity] = useState(ACTIVITY);
+  const [socketAlerts, setSocketAlerts] = useState([]);
+
+  useEffect(() => {
+    const userEmail = localStorage.getItem('vision_email') || 'mentor@vision.auth';
+    socketService.connect(userEmail);
+
+    // Listen for real-time proctoring violations
+    socketService.onMentorAlert((data) => {
+      console.log("CRITICAL VIOLATION:", data);
+      setSocketAlerts(prev => [data, ...prev]);
+      
+      // Inject into live activity feed
+      const newActivity = {
+        name: data.studentId.split('-').pop(), // Simple ID display
+        action: 'triggered alert',
+        exam: data.reason,
+        time: 'Just now',
+        type: 'flag'
+      };
+      setRecentActivity(prev => [newActivity, ...prev.slice(0, 5)]);
+    });
+
+    const fetchLiveGrid = async () => {
+      try {
+        const response = await api.get('/api/exams/live-grid');
+        setLiveExams(response.data);
+      } catch (error) {
+        console.error('Grid sync failure:', error);
+        setLiveExams(EXAMS); // Graceful fallback to static data
+      }
+    };
+
+    fetchLiveGrid();
+
+    return () => {
+      socketService.disconnect();
+    };
+  }, []);
+
   useEffect(() => {
     const update = () => {
       const now = new Date();
@@ -498,7 +541,9 @@ export default function MentorDashboard() {
               </div>
 
               <div className="space-y-2">
-                {EXAMS.map((exam, i) => (
+                {liveExams.length > 0 ? liveExams.map((exam, i) => (
+                  <ActiveSessionItem key={i} exam={exam} />
+                )) : EXAMS.map((exam, i) => (
                   <ActiveSessionItem key={i} exam={exam} />
                 ))}
               </div>
@@ -524,7 +569,7 @@ export default function MentorDashboard() {
               </div>
 
               <div className="bg-[#181a20] rounded-2xl border border-white/[0.06] divide-y divide-white/[0.04]">
-                {ACTIVITY.map((item, i) => (
+                {recentActivity.map((item, i) => (
                   <ActivityItem key={i} item={item} />
                 ))}
               </div>
