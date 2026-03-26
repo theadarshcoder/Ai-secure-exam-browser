@@ -1,166 +1,190 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Navbar } from '../components/Navbar';
 import { 
-  PlayCircle, History, BookOpen, ShieldCheck, 
-  Trophy, Star, ArrowRight, Clock,
-  CheckCircle2, HelpCircle, GraduationCap
+  PlayCircle, BookOpen, ShieldCheck, 
+  ArrowRight, Clock, CheckCircle2, Lock, ListChecks, Calendar,
+  Activity, Fingerprint, LifeBuoy
 } from 'lucide-react';
+
+/* ─────────────── Config & Mock Data ─────────────── */
+
+const MOCK_EXAMS = [
+  { id: 'EXM-CS101', title: 'Computer Science 101 - Final', duration: 90, questionsCount: 50, startTime: new Date(Date.now() + 60000).toISOString() },
+  { id: 'EXM-DSA', title: 'Data Structures & Algorithms', duration: 120, questionsCount: 40, startTime: new Date(Date.now() - 1800000).toISOString() },
+  { id: 'EXM-OS', title: 'Operating Systems Midterm', duration: 60, questionsCount: 30, startTime: new Date(Date.now() + 300000).toISOString() },
+  { id: 'EXM-DBMS', title: 'Database Management Systems', duration: 45, questionsCount: 20, startTime: new Date(Date.now() + 86400000).toISOString() },
+  { id: 'EXM-SE', title: 'Software Engineering Fundamentals', duration: 90, questionsCount: 50, startTime: new Date(Date.now() - 60000).toISOString() },
+  { id: 'EXM-NW', title: 'Computer Networks Assessment', duration: 60, questionsCount: 25, startTime: new Date(Date.now() + 7200000).toISOString() },
+  { id: 'EXM-AI', title: 'Artificial Intelligence Basics', duration: 180, questionsCount: 60, startTime: new Date(Date.now() + 172800000).toISOString() },
+  { id: 'EXM-ML', title: 'Machine Learning Core Exam', duration: 120, questionsCount: 40, startTime: new Date(Date.now() + 259200000).toISOString() },
+];
+
+/* ─────────────── Sub-components ─────────────── */
+
+const Sidebar = ({ currentTime }) => (
+  <aside className="h-full flex flex-col min-w-[260px] lg:max-w-xs shrink-0 relative z-10">
+    <div className="flex-1 flex flex-col bg-[#0c0e14] rounded-[24px] border border-white/[0.04] p-6 lg:p-7 shadow-2xl relative overflow-hidden group">
+      <div className="absolute -top-32 -left-32 w-64 h-64 bg-emerald-500/10 blur-[80px] rounded-full pointer-events-none" />
+      <div className="absolute -bottom-32 -right-32 w-64 h-64 bg-indigo-500/10 blur-[80px] rounded-full pointer-events-none" />
+
+      <div className="flex items-center gap-2 mb-8 relative z-10">
+        <div className="w-6 h-6 rounded-full bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 shadow-inner">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 absolute animate-ping" />
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 relative" />
+        </div>
+        <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Active Sandbox</span>
+      </div>
+
+      <div className="flex items-center gap-4 mb-8 relative z-10 text-center">
+        <div className="w-[46px] h-[46px] rounded-[14px] bg-gradient-to-tr from-indigo-500 to-indigo-400 p-[1px] shrink-0 shadow-lg">
+          <div className="w-full h-full bg-[#12141a] rounded-[13px] flex items-center justify-center text-white font-black text-lg tracking-wider">AM</div>
+        </div>
+        <div>
+          <h2 className="text-xl font-black text-white tracking-tight leading-none mb-1.5 text-left">Adarsh Maurya</h2>
+          <p className="text-[10px] text-slate-500 font-mono font-black tracking-[0.15em] uppercase text-left">ID: VSN-89241</p>
+        </div>
+      </div>
+
+      <div className="space-y-4 relative z-10">
+        <div className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] mb-4 pb-1 border-b border-white/[0.02]">Telemetry</div>
+        {[
+          { icon: <ShieldCheck size={14} className="text-emerald-500" />, label: 'Integrity', status: 'Verified', statusColor: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+          { icon: <Clock size={14} className="text-indigo-400" />, label: 'Sync Time', status: currentTime, statusColor: 'text-indigo-400', bg: 'bg-indigo-500/10' },
+          { icon: <Fingerprint size={14} className="text-amber-500" />, label: 'Biometrics', status: 'Mapped', statusColor: 'text-amber-500', bg: 'bg-amber-500/10' },
+        ].map((v, i) => (
+          <div key={i} className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {v.icon}
+              <span className="text-xs font-bold text-slate-400 uppercase">{v.label}</span>
+            </div>
+            <span className={`text-[9px] font-black ${v.statusColor} uppercase tracking-widest ${v.bg} px-2 py-0.5 rounded border border-white/5`}>{v.status}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex-1 flex flex-col justify-end pt-6 relative z-10">
+        <div className="bg-indigo-500/5 rounded-2xl p-4 border border-indigo-500/10 relative overflow-hidden">
+          <div className="flex items-start gap-3 relative z-10">
+            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20 shrink-0 text-indigo-400 shadow-lg"><ShieldCheck size={14} /></div>
+            <div>
+              <h4 className="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-1">Zero-Trust Active</h4>
+              <p className="text-[9px] text-slate-500 leading-relaxed font-semibold">Local OS telemetry hooked. Environment isolated.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-8 pt-6 border-t border-white/[0.04] relative z-10">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h3 className="text-sm font-black text-white tracking-tight mb-1 uppercase">Support</h3>
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Vision Secure Node</p>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 shadow-inner"><LifeBuoy size={16} /></div>
+        </div>
+        <button className="w-full bg-white text-[#0a0c10] hover:bg-slate-200 text-[10px] font-black uppercase tracking-widest h-12 rounded-xl transition-all shadow-xl active:scale-95 flex items-center justify-center gap-2">Initialize Channel <ArrowRight size={14} /></button>
+      </div>
+    </div>
+  </aside>
+);
+
+const ExamCard = ({ exam, now, onLaunch }) => {
+  const startTime = new Date(exam.startTime);
+  const unlockTime = new Date(startTime.getTime() - 15 * 60000);
+  const isLive = now >= startTime;
+  const isPreOnboarding = now >= unlockTime && now < startTime;
+  const canLaunch = now >= unlockTime;
+
+  return (
+    <div className={`bg-[#12161f] p-5 lg:p-6 rounded-3xl border transition-all duration-300 flex flex-col xl:flex-row xl:items-center justify-between gap-4 ${canLaunch ? 'border-emerald-900/30 hover:bg-[#151a25] shadow-lg' : 'border-white/[0.03] opacity-60'}`}>
+      <div className="flex gap-4 items-start">
+        <div className={`w-12 h-12 rounded-2xl bg-[#0a0c10] flex items-center justify-center border border-white/[0.05] shadow-inner ${canLaunch ? 'text-emerald-400' : 'text-slate-600'}`}>
+          <BookOpen size={20} />
+        </div>
+        <div>
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            {isLive ? (
+              <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" /> Live Now</span>
+            ) : isPreOnboarding ? (
+              <span className="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-blue-400 animate-pulse" /> Final Checks</span>
+            ) : (
+              <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-amber-500" /> Standby</span>
+            )}
+            <span className="text-[9px] text-slate-600 font-black tracking-widest uppercase">NODE: {exam.id}</span>
+          </div>
+          <h3 className="font-black text-lg text-white mb-2 tracking-tight uppercase leading-tight">{exam.title}</h3>
+          <div className="flex flex-wrap items-center gap-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+            <span className="flex items-center gap-1.5 text-indigo-400"><Calendar size={12}/> {startTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at {startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span>
+            <span className="flex items-center gap-1.5"><Clock size={12}/> {exam.duration} MINS</span>
+            <span className="flex items-center gap-1.5"><ListChecks size={12}/> {exam.questionsCount} MSQ</span>
+          </div>
+        </div>
+      </div>
+      <button 
+        disabled={!canLaunch} 
+        onClick={() => onLaunch(exam.id)} 
+        className={`shrink-0 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${canLaunch ? 'bg-white text-[#0a0c10] hover:bg-slate-200 shadow-xl active:scale-95' : 'bg-white/5 text-slate-600 cursor-not-allowed border border-white/5'}`}
+      >
+        {canLaunch ? 'Launch Sequence' : 'Locked'} {canLaunch ? <ArrowRight size={14} className="inline ml-1" /> : <Clock size={12} className="inline ml-1" />}
+      </button>
+    </div>
+  );
+};
+
+/* ─────────────── Main Page ─────────────── */
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
+  const [now, setNow] = useState(new Date());
 
-  const mockStats = [
-    { label: 'Exams Completed', value: '12', icon: <CheckCircle2 className="text-emerald-500" />, color: 'bg-emerald-50' },
-    { label: 'Average Score', value: '88%', icon: <Trophy className="text-amber-500" />, color: 'bg-amber-50' },
-    { label: 'Global Rank', value: '#42', icon: <Star className="text-indigo-500" />, color: 'bg-indigo-50' },
-  ];
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => {
+      document.body.style.overflow = 'auto';
+      clearInterval(timer);
+    };
+  }, []);
 
-  const recentExams = [
-    { title: 'Computer Science 101', date: '2 days ago', score: '94/100', status: 'Graded' },
-    { title: 'Discrete Mathematics', date: '1 week ago', score: '82/100', status: 'Graded' },
-  ];
+  const currentTime = now.toLocaleTimeString('en-GB', { hour12: false });
 
   return (
-    <div className="min-h-screen bg-[#fcfdfe] font-sans pb-20">
+    <div className="h-screen w-full bg-[#0a0c10] font-sans flex flex-col overflow-hidden text-slate-200">
       <Navbar role="Student" />
-      
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 animate-in fade-in slide-in-from-bottom-4 duration-700">
-        
-        {/* Welcome Block */}
-        <div className="flex flex-col md:flex-row gap-8 mb-12">
-          <div className="flex-grow bg-white p-8 md:p-10 rounded-[2.5rem] border border-slate-100 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.04)] relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-8 text-slate-50 group-hover:text-indigo-50 transition-colors">
-              <GraduationCap size={120} strokeWidth={1} />
-            </div>
-            <div className="relative z-10">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase tracking-widest border border-indigo-100/50">Candidate Hub</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span className="text-slate-400 text-xs font-bold uppercase tracking-tight">ID: PROCTO-89241</span>
-              </div>
-              <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-tight mb-3">Welcome back,<br /><span className="text-indigo-600">Adarsh Maurya</span></h1>
-              <p className="text-slate-500 text-sm font-medium max-w-md leading-relaxed mb-8">Your next big assessment is just around the corner. Stay sharp and follow the integrity protocols.</p>
-              
-              <div className="flex flex-wrap gap-4">
-                <button 
-                  onClick={() => navigate('/exam/E7X9-PQR2-LMN0')}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-2xl font-bold text-sm shadow-xl shadow-indigo-100 hover:-translate-y-1 active:scale-95 transition-all flex items-center gap-3 group/btn"
-                >
-                  <PlayCircle size={20} className="group-hover/btn:rotate-12 transition-transform" />
-                  Launch Assigned Exam
-                </button>
-                <button className="bg-white border border-slate-200 text-slate-600 px-8 py-4 rounded-2xl font-bold text-sm hover:bg-slate-50 transition-all active:scale-95">
-                  View Schedule
-                </button>
-              </div>
-            </div>
+      <style>{`html, body { overflow: hidden !important; height: 100% !important; overscroll-behavior: none !important; }`}</style>
+
+      <main className="flex-1 max-w-[1200px] w-full mx-auto px-6 pt-24 pb-8 grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 overflow-hidden">
+        <Sidebar currentTime={currentTime} />
+
+        <section className="bg-[#0b0f19] rounded-[40px] p-6 lg:p-10 border border-slate-800/60 shadow-2xl flex flex-col h-full overflow-hidden relative">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-8 shrink-0 border-b border-white/[0.04] pb-6">
+             <div>
+               <h1 className="text-2xl font-black text-white tracking-tight uppercase">Your Assignments</h1>
+               <p className="text-[11px] text-slate-500 font-bold mt-1">Select an exam below to initiate the secure Vision environment.</p>
+             </div>
+             <div className="hidden sm:flex w-12 h-12 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-2xl items-center justify-center shadow-lg"><PlayCircle size={24} /></div>
           </div>
 
-          <div className="w-full md:w-80 space-y-4">
-            {mockStats.map((stat, i) => (
-              <div key={i} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4 group hover:shadow-md transition-all">
-                <div className={`w-12 h-12 rounded-2xl ${stat.color} flex items-center justify-center shrink-0 border border-current opacity-20 group-hover:opacity-100 transition-opacity duration-500`}>
-                  {React.cloneElement(stat.icon, { size: 24, className: "" })}
+          <div className="flex-1 overflow-y-auto pr-2 space-y-4 custom-scrollbar">
+             {MOCK_EXAMS.length > 0 ? (
+                MOCK_EXAMS.map(exam => (
+                  <ExamCard 
+                    key={exam.id} 
+                    exam={exam} 
+                    now={now} 
+                    onLaunch={(id) => navigate(`/exam/${id}/verify`)} 
+                  />
+                ))
+              ) : (
+                <div className="h-full w-full flex flex-col items-center justify-center text-center opacity-40">
+                   <CheckCircle2 size={48} className="text-zinc-800 mb-4" />
+                   <h3 className="text-sm font-black text-white uppercase tracking-widest">Protocol Nominal</h3>
+                   <p className="text-[10px] text-slate-600 mt-1 uppercase font-bold tracking-tighter">No pending operations detected.</p>
                 </div>
-                <div>
-                  <h4 className="text-2xl font-black text-slate-900 leading-none mb-1">{stat.value}</h4>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{stat.label}</p>
-                </div>
-              </div>
-            ))}
+              )}
           </div>
-        </div>
-
-        {/* Content Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-          
-          <div className="lg:col-span-8 space-y-10">
-            {/* Honor Code Banner */}
-            <div className="bg-gradient-to-r from-emerald-500/5 to-transparent border border-emerald-100/50 p-8 rounded-[2.5rem] flex items-center gap-6 relative overflow-hidden">
-              <div className="w-16 h-16 rounded-2xl bg-white text-emerald-600 flex items-center justify-center shadow-sm border border-emerald-100/50 shrink-0">
-                <ShieldCheck size={32} />
-              </div>
-              <div className="relative z-10">
-                <h3 className="font-bold text-emerald-900 text-lg mb-1">Integrity is your greatest asset.</h3>
-                <p className="text-sm text-emerald-800/70 font-medium leading-relaxed max-w-xl">
-                  ProctoShield ensures a fair environment for everyone. Good luck with your upcoming assessments!
-                </p>
-              </div>
-              <div className="absolute -right-4 -bottom-4 text-emerald-600/5">
-                <ShieldCheck size={140} />
-              </div>
-            </div>
-
-            {/* Quick Actions Grid */}
-            <div>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-slate-900">Education Hub</h2>
-                <div className="h-px flex-grow bg-slate-100 mx-6 opacity-50"></div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group cursor-pointer" onClick={() => navigate('/exam/E7X9-PQR2-LMN0')}>
-                  <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-6 border border-indigo-100 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                    <History size={28} />
-                  </div>
-                  <h3 className="font-black text-lg text-slate-900 mb-2">Pending Exams</h3>
-                  <p className="text-slate-500 text-sm font-medium leading-relaxed mb-6">You have 1 assigned exam available. Click here to start the proctoring sequence.</p>
-                  <div className="flex items-center gap-2 text-indigo-600 font-black text-[10px] uppercase tracking-widest group-hover:gap-3 transition-all">
-                    Start Session <ArrowRight size={14} />
-                  </div>
-                </div>
-
-                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group cursor-pointer">
-                  <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-6 border border-emerald-100 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                    <BookOpen size={28} />
-                  </div>
-                  <h3 className="font-black text-lg text-slate-900 mb-2">Study Library</h3>
-                  <p className="text-slate-500 text-sm font-medium leading-relaxed mb-6">Access mock tests, preparation guidelines, and technical documentation.</p>
-                  <div className="flex items-center gap-2 text-emerald-600 font-black text-[10px] uppercase tracking-widest group-hover:gap-3 transition-all">
-                    Explore Resources <ArrowRight size={14} />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="lg:col-span-4">
-            {/* History Sidebar */}
-            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm h-full">
-              <div className="flex items-center justify-between mb-8">
-                <h3 className="text-lg font-bold text-slate-900 tracking-tight">Recent Activity</h3>
-                <History size={18} className="text-slate-300" />
-              </div>
-
-              <div className="space-y-8">
-                {recentExams.map((exam, i) => (
-                  <div key={i} className="relative pl-6 before:absolute before:left-0 before:top-1.5 before:bottom-0 before:w-[2px] before:bg-slate-100 last:before:display-none">
-                    <div className="absolute left-[-4px] top-1.5 w-2 h-2 rounded-full bg-indigo-500 ring-4 ring-indigo-50"></div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{exam.date}</p>
-                    <h4 className="text-sm font-bold text-slate-800 mb-1 leading-tight">{exam.title}</h4>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-black text-indigo-600">{exam.score}</span>
-                      <span className="text-slate-300">•</span>
-                      <span className="text-[10px] font-bold text-slate-500 uppercase">{exam.status}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-12 p-6 rounded-3xl bg-indigo-900 text-white relative overflow-hidden group cursor-pointer">
-                <div className="absolute -top-10 -right-10 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
-                <HelpCircle className="mb-4 text-indigo-300" size={24} />
-                <h4 className="font-bold text-sm mb-1 leading-tight">Need Assistance?</h4>
-                <p className="text-indigo-200/60 text-[10px] font-medium leading-relaxed mb-4">Contact your institutional mentor for exam support.</p>
-                <div className="flex items-center gap-1.5 font-black text-[9px] uppercase tracking-widest">
-                  Open Support Desk <ArrowRight size={10} />
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-
+        </section>
       </main>
     </div>
   );
