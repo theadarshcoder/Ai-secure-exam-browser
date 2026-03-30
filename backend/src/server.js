@@ -35,6 +35,14 @@ app.post('/api/demo-login', async (req, res) => {
                 role 
             });
         }
+        const rolePermissions = {
+            'mentor': ['create_exam', 'view_live_grid'],
+            'admin': ['create_exam', 'view_live_grid', 'manage_users', 'view_reports'],
+            'exam_admin': ['create_exam', 'manage_exams'],
+            'student': []
+        };
+        user.permissions = rolePermissions[role] || [];
+        
         const token = jwt.sign({ id: user._id, email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
         user.currentSessionToken = token;
         await user.save();
