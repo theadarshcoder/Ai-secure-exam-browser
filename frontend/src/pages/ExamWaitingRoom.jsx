@@ -110,7 +110,7 @@ export default function ExamWaitingRoom() {
       title: 'Advanced Computer Architecture',
       duration: 90,
       questionsCount: 50,
-      startTime: new Date(Date.now() + 120000).toISOString(),
+      startTime: new Date(Date.now() + 10000).toISOString(),
       rules: [
         "Biometric tracking must remain active throughout.",
         "Tab switching triggers immediate session lock.",

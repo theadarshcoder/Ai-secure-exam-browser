@@ -21,6 +21,7 @@ export default function AppRouter() {
           <Route path="/mentor" element={<MentorDashboard />} />
           <Route path="/mentor/create-exam" element={<CreateExam />} />
           <Route path="/student" element={<StudentDashboard />} />
+          <Route path="/candidate" element={<StudentDashboard />} />
           <Route path="/exam/:examId" element={<ExamCockpit />} />
           <Route path="/exam/:examId/verify" element={<IDVerification />} />
           <Route path="/exam/:examId/waiting" element={<ExamWaitingRoom />} />

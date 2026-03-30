@@ -57,7 +57,7 @@ const QuestionPalette = ({ questions, currentQ, answers, visited, markedForRevie
   };
 
   return (
-    <aside className="w-[220px] shrink-0 bg-white border-r border-gray-200 flex flex-col">
+    <div className="flex-1 flex flex-col overflow-hidden">
       <div className="px-4 pt-3 pb-2 border-b border-gray-100">
         <div className="flex items-center justify-between mb-2">
           <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Question Palette</span>
@@ -99,24 +99,30 @@ const QuestionPalette = ({ questions, currentQ, answers, visited, markedForRevie
           ))}
         </div>
       </div>
-    </aside>
+    </div>
   );
 };
 
 const ProctoringSidebar = ({ cameraActive, videoRef, faceActive }) => (
-  <div className="px-3 py-3 border-t border-gray-100 bg-white">
-    <div className="relative w-full aspect-[4/3] rounded-lg bg-gray-100 border border-gray-200 overflow-hidden">
+  <div className="px-3 py-4 border-t border-gray-100 bg-white flex flex-col items-center">
+    <div className="relative w-28 h-28 rounded-2xl bg-gray-900 border-2 border-slate-100 shadow-inner overflow-hidden mb-3 group transition-all hover:border-sky-200">
       {cameraActive ? (
         <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover scale-x-[-1]" />
       ) : (
-        <div className="w-full h-full flex items-center justify-center"><CameraOff size={20} className="text-gray-300" /></div>
+        <div className="w-full h-full flex flex-col items-center justify-center gap-1.5 bg-slate-50">
+          <CameraOff size={16} className="text-slate-300" />
+          <span className="text-[8px] font-bold text-slate-300 uppercase tracking-tighter">No Feed</span>
+        </div>
       )}
-      <div className="absolute top-1.5 left-1.5 flex items-center gap-1 px-1.5 py-0.5 bg-black/60 rounded text-[8px] font-bold text-white uppercase tracking-wider">
-        <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" /> Live
+      <div className="absolute top-1.5 right-1.5 flex items-center gap-1 px-1.5 py-0.5 bg-black/60 backdrop-blur-md rounded-md text-[7px] font-black text-white uppercase tracking-[0.15em] z-10">
+        <div className="w-1 h-1 rounded-full bg-red-500 animate-pulse" /> Live
       </div>
+      {!faceActive && cameraActive && (
+        <div className="absolute inset-0 border-2 border-red-500/50 bg-red-500/5 animate-pulse z-20 pointer-events-none" />
+      )}
     </div>
     
-    <div className="mt-3">
+    <div className="w-full">
       <div className="flex items-center gap-1.5 mb-1.5">
         <Shield size={10} className="text-[#1e3a5f]" />
         <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Integrity Signals</span>
@@ -422,7 +428,7 @@ export default function ExamCockpit() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
-        <div className="flex flex-col border-r border-gray-200">
+        <aside className="w-[220px] shrink-0 bg-white border-r border-gray-200 flex flex-col">
           <QuestionPalette 
             questions={questions} 
             currentQ={currentQ} 
@@ -432,7 +438,24 @@ export default function ExamCockpit() {
             navigateTo={(i) => { setCurrentQ(i); setVisited(v => ({ ...v, [i]: true })); }}
           />
           <ProctoringSidebar cameraActive={cameraActive} videoRef={videoRef} faceActive={faceBoxes.length > 0} />
-        </div>
+          
+          <div className="mt-auto p-3 border-t border-gray-100 bg-slate-50/50 flex items-center justify-between group">
+            <div className="flex flex-col">
+              <span className="text-[7px] font-black text-slate-400 uppercase tracking-[0.2em] mb-0.5">Secure Protocol</span>
+              <div className="flex items-center gap-1">
+                <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[8px] font-black text-emerald-600 tracking-wider font-mono">ENCRYPTED</span>
+              </div>
+            </div>
+            <button 
+              onClick={() => setShowExitPrompt(true)} 
+              className="w-8 h-8 rounded-lg bg-red-500/10 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all shadow-sm border border-red-200/20 active:scale-95"
+              title="Secure Exit"
+            >
+              <Power size={14} />
+            </button>
+          </div>
+        </aside>
 
         {/* Main Area */}
         <main className="flex-1 flex flex-col bg-[#f0f2f5]">
@@ -542,8 +565,6 @@ export default function ExamCockpit() {
           </div>
         </main>
       </div>
-
-      <button onClick={() => setShowExitPrompt(true)} className="fixed bottom-4 right-4 w-10 h-10 rounded-full bg-red-600 text-white flex items-center justify-center shadow-xl hover:bg-red-700 hover:scale-110 active:scale-90 transition-all z-[100]"><Power size={18} /></button>
 
       <SubmitModal 
         isOpen={showConfirm} 
