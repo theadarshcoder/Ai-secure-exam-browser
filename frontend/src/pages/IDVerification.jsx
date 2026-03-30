@@ -240,24 +240,62 @@ export default function IDVerification() {
         <section className="h-full bg-[#12141a] rounded-3xl p-3 border border-slate-800/60 shadow-2xl flex flex-col overflow-hidden relative">
           {error ? <ErrorState error={error} onRetry={startCamera} isConnecting={isConnecting} /> :
            step < 3 ? (
-            <div className="flex-1 relative rounded-2xl overflow-hidden bg-black/90 flex flex-col">
-              <div className="flex-1 relative overflow-hidden flex items-center justify-center">
-                {stream && <video ref={videoRef} autoPlay playsInline muted className={`absolute inset-0 w-full h-full object-cover transition-all ${isProcessing ? 'opacity-30 blur-md' : 'opacity-100'} ${step === 1 ? 'scale-x-[-1]' : ''}`} />}
-                <div className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center">
-                  {step === 1 ? (faceBox ? <motion.div className="absolute border-2 border-emerald-500/80 rounded-[100px] border-dashed shadow-[0_0_80px_rgba(16,185,129,0.2)_inset]" animate={faceBox} transition={{ type: "spring", stiffness: 120, damping: 20, mass: 0.5 }} /> : <div className="w-[40vh] h-[55vh] border-2 border-emerald-500/30 rounded-[100px] border-dashed animate-[spin_30s_linear_infinite]" />) : <div className="w-[60vh] h-[38vh] border-2 border-amber-500/60 rounded-2xl border-dashed shadow-[0_0_50px_rgba(245,158,11,0.1)_inset]" />}
-                </div>
-                <AnimatePresence>
-                  {isProcessing && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-[#0a0c10]/80 z-20 flex flex-col items-center justify-center backdrop-blur-sm">
-                      <div className="w-16 h-16 border-4 border-t-emerald-500 rounded-full animate-spin mb-4" />
-                      <span className="text-[10px] font-bold text-emerald-400 tracking-[0.2em] uppercase">Encrypting Bio-Data</span>
-                    </motion.div>
+            <div className="flex-1 relative rounded-3xl overflow-hidden bg-[#050608] flex flex-col border border-white/[0.02]">
+              <div className="flex-1 relative overflow-hidden flex items-center justify-center p-8">
+                <div className="relative w-full max-w-[800px] aspect-video rounded-3xl overflow-hidden border-2 border-slate-800/50 shadow-[0_0_100px_rgba(0,0,0,0.5)] bg-black group">
+                  {stream && (
+                    <video 
+                      ref={videoRef} 
+                      autoPlay 
+                      playsInline 
+                      muted 
+                      className={`absolute inset-0 w-full h-full object-cover transition-all duration-700 ${isProcessing ? 'opacity-30 blur-xl' : 'opacity-100'} ${step === 1 ? 'scale-x-[-1]' : ''}`} 
+                    />
                   )}
-                </AnimatePresence>
+                  
+                  {/* Vision Frame Overlays */}
+                  <div className="absolute inset-0 pointer-events-none z-10">
+                    <div className="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-emerald-500/40 rounded-tl-3xl m-6" />
+                    <div className="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-emerald-500/40 rounded-tr-3xl m-6" />
+                    <div className="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-emerald-500/40 rounded-bl-3xl m-6" />
+                    <div className="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-emerald-500/40 rounded-br-3xl m-6" />
+                    
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      {step === 1 ? (
+                        faceBox ? (
+                          <motion.div 
+                            className="absolute border-2 border-emerald-500 rounded-full shadow-[0_0_40px_rgba(16,185,129,0.3)] bg-emerald-500/5"
+                            animate={faceBox} 
+                            transition={{ type: "spring", stiffness: 150, damping: 25 }} 
+                          />
+                        ) : (
+                          <div className="w-[30vh] h-[40vh] border-2 border-emerald-500/20 rounded-full border-dashed animate-pulse" />
+                        )
+                      ) : (
+                        <div className="w-[50vh] h-[32vh] border-2 border-amber-500/40 rounded-2xl border-dashed shadow-[0_0_30px_rgba(245,158,11,0.1)_inset]" />
+                      )}
+                    </div>
+                  </div>
+
+                  <AnimatePresence>
+                    {isProcessing && (
+                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-[#0a0c10]/95 z-30 flex flex-col items-center justify-center">
+                        <div className="w-12 h-12 border-2 border-t-emerald-500 border-white/5 rounded-full animate-spin mb-4" />
+                        <span className="text-[9px] font-black text-emerald-400 tracking-[0.3em] uppercase">Processing Identity</span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                  
+                  <div className="absolute top-4 left-4 flex items-center gap-2 px-2 py-1 bg-black/60 backdrop-blur-md rounded-lg border border-white/5 z-20">
+                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                    <span className="text-[8px] font-black text-white uppercase tracking-widest">Secure Feed</span>
+                  </div>
+                </div>
+                
                 <canvas ref={canvasRef} className="hidden" />
               </div>
 
-              <div className="h-20 bg-[#0a0c10]/90 backdrop-blur-md border-t border-white/5 flex items-center justify-between px-6 z-30">
+              <div className="h-24 bg-[#0a0c10]/80 backdrop-blur-xl border-t border-white/[0.04] flex items-center justify-between px-8 z-40">
                 <div className="flex items-center gap-3 text-slate-400">
                   <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">{step === 1 ? <UserCircle2 size={16} /> : <CreditCard size={16} />}</div>
                   <span className="text-[11px] font-medium tracking-wide">{step === 1 ? 'Center your alignment relative to focus points.' : 'Align document edges with the security perimeter.'}</span>
