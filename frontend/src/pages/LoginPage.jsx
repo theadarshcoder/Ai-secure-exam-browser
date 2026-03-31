@@ -4,7 +4,7 @@ import api from '../services/api';
 import { 
   Shield, User, Lock, ShieldCheck, Webcam, MonitorCheck, Activity,
   TerminalSquare, Video, BrainCircuit, Database,
-  Globe, ScrollText, MapPin, AppWindow
+  Globe, ScrollText, MapPin, AppWindow, AlertTriangle
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import { ThemeToggle } from '../contexts/ThemeContext';
@@ -166,6 +166,7 @@ const LoginPage = () => {
   const [scanProgress, setScanProgress] = useState(0);
   const [activeDiagnostics, setActiveDiagnostics] = useState(0);
   const [currentTime, setCurrentTime] = useState('');
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -201,6 +202,7 @@ const LoginPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsAuthenticating(true);
+    setError(null);
     
     try {
       // Step 1: Pehle real login API try karo (bcrypt wala secure login)
@@ -232,7 +234,7 @@ const LoginPage = () => {
         navigate(role === 'student' ? '/student' : role === 'mentor' ? '/mentor' : '/admin');
       } catch (fallbackError) {
         console.error('Both login methods failed:', fallbackError.message);
-        alert('Login failed! Server down ya galat credentials. Check karo.');
+        setError('Access Denied: Invalid credentials or offline nodes.');
       }
     } finally {
       setIsAuthenticating(false);
@@ -261,8 +263,20 @@ const LoginPage = () => {
               <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Please authenticate to continue.</p>
             </div>
 
-            <RoleSwitcher currentRole={role} setRole={setRole} />
+            <RoleSwitcher currentRole={role} setRole={(r) => { setRole(r); setError(null); }} />
             {role === 'student' && <BiometricScanner progress={scanProgress} />}
+
+            {error && (
+              <div className="mb-6 flex items-start gap-3 p-3.5 bg-red-950/40 border border-red-900/50 rounded-xl relative overflow-hidden group">
+                <div className="w-8 h-8 rounded-lg bg-red-900/30 flex items-center justify-center shrink-0 border border-red-500/20 shadow-inner">
+                  <AlertTriangle size={14} className="text-red-400 group-hover:scale-110 transition-transform" />
+                </div>
+                <div>
+                  <h3 className="text-[10px] uppercase font-black tracking-widest text-red-400 mb-0.5">Authorization Failed</h3>
+                  <p className="text-xs font-bold text-red-200/70">{error}</p>
+                </div>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
