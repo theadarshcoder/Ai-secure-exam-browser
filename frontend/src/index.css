@@ -40,3 +40,270 @@
     @apply leading-relaxed;
   }
 }
+
+/* ─── Scrollbar ─── */
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+.custom-scrollbar::-webkit-scrollbar-button { display: none !important; width: 0 !important; height: 0 !important; }
+
+/* ============================================================
+   LIGHT THEME — applied when [data-theme="light"] is on <html>
+   ============================================================ */
+
+*, *::before, *::after {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 0.2s;
+  transition-timing-function: ease;
+}
+[class*="animate-"] { transition: none !important; }
+
+[data-theme="light"] {
+  color-scheme: light;
+}
+
+/* ── Page & Card Backgrounds (Wildcard Catch-all) ── */
+[data-theme="light"] body,
+[data-theme="light"] [class*="bg-black"],
+[data-theme="light"] [class*="bg-zinc-950"],
+[data-theme="light"] [class*="bg-zinc-900"],
+[data-theme="light"] [class*="bg-slate-950"],
+[data-theme="light"] [class*="bg-slate-900"] {
+  background-color: #f1f5f9 !important;
+  color: #1e293b !important;
+}
+
+/* Small inset containers (icons, badges, inner cards) mapped to soft-slate to retain depth against white cards */
+[data-theme="light"] [class*="bg-\[\#0a0c10\]"],
+[data-theme="light"] [class*="bg-\[\#0f1117\]"],
+[data-theme="light"] [class*="bg-\[\#0c0c0e\]"],
+[data-theme="light"] [class*="bg-\[\#080808\]"],
+[data-theme="light"] [class*="bg-\[\#08020a\]"],
+[data-theme="light"] [class*="bg-\[\#030303\]"],
+[data-theme="light"] [class*="bg-\[\#080508\]"],
+[data-theme="light"] [class*="bg-\[\#12141a\]"] {
+  background-color: #f8fafc !important; 
+}
+
+/* Larger Container cards to white */
+[data-theme="light"] [class*="bg-\[\#0b0f19\]"],
+[data-theme="light"] [class*="bg-\[\#050608\]"],
+[data-theme="light"] [class*="bg-\[\#0c0c0c\]"],
+[data-theme="light"] [class*="bg-\[\#141414\]"],
+[data-theme="light"] [class*="bg-\[\#11050a\]"],
+[data-theme="light"] [class*="bg-\[\#060810\]"],
+[data-theme="light"] [class*="bg-\[\#05080f\]"],
+[data-theme="light"] [class*="bg-\[\#181a20\]"],
+[data-theme="light"] [class*="bg-\[\#1a1d26\]"],
+[data-theme="light"] [class*="bg-\[\#0c0e14\]"],
+[data-theme="light"] [class*="bg-\[\#12161f\]"],
+[data-theme="light"] [class*="bg-\[\#13151b\]"],
+[data-theme="light"] [class*="bg-\[\#12141a\]"],
+[data-theme="light"] [class*="bg-\[\#0a0f0d\]"],
+[data-theme="light"] [class*="bg-\[\#0d0d18\]"],
+[data-theme="light"] [class*="bg-\[\#04080a\]"],
+[data-theme="light"] [class*="bg-\[\#050510\]"],
+[data-theme="light"] [class*="bg-\[\#06060e\]"],
+[data-theme="light"] [class*="bg-\[\#0e0a0a\]"],
+[data-theme="light"] [class*="bg-\[\#151a25\]"],
+[data-theme="light"] [class*="bg-\[\#11131a\]"],
+[data-theme="light"] [class*="bg-slate-800"],
+[data-theme="light"] [class*="bg-zinc-800"] {
+  background-color: #ffffff !important;
+}
+
+/* Translucent Colored Dark Overlays to Light versions */
+[data-theme="light"] [class*="bg-emerald-900"] { background-color: #d1fae5 !important; } /* emerald-100 */
+[data-theme="light"] [class*="bg-red-900"] { background-color: #fee2e2 !important; } /* red-100 */
+[data-theme="light"] [class*="bg-amber-900"] { background-color: #fef3c7 !important; } /* amber-100 */
+[data-theme="light"] [class*="bg-indigo-900"],
+[data-theme="light"] [class*="bg-blue-900"] { background-color: #e0e7ff !important; } /* indigo-100 */
+
+/* ── Overlays ── */
+[data-theme="light"] .bg-white\/5,
+[data-theme="light"] .bg-white\/\[0\.01\],
+[data-theme="light"] .bg-white\/\[0\.02\],
+[data-theme="light"] .bg-white\/\[0\.03\],
+[data-theme="light"] .bg-white\/\[0\.04\],
+[data-theme="light"] .bg-white\/\[0\.05\],
+[data-theme="light"] .bg-white\/\[0\.06\],
+[data-theme="light"] .bg-white\/\[0\.07\],
+[data-theme="light"] .bg-white\/\[0\.08\] {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+[data-theme="light"] .bg-white\/10,
+[data-theme="light"] .bg-white\/\[0\.10\],
+[data-theme="light"] .bg-white\/\[0\.12\] {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+}
+[data-theme="light"] .bg-black\/40,
+[data-theme="light"] .bg-black\/30,
+[data-theme="light"] .bg-black\/60,
+[data-theme="light"] .bg-black\/70 {
+  background-color: rgba(0, 0, 0, 0.03) !important;
+}
+
+[data-theme="light"] .hover\:bg-white\/5:hover,
+[data-theme="light"] .hover\:bg-white\/\[0\.02\]:hover,
+[data-theme="light"] .hover\:bg-white\/\[0\.05\]:hover,
+[data-theme="light"] .hover\:bg-white\/\[0\.06\]:hover,
+[data-theme="light"] .hover\:bg-white\/\[0\.08\]:hover,
+[data-theme="light"] .hover\:bg-white\/\[0\.10\]:hover,
+[data-theme="light"] .hover\:bg-white\/\[0\.12\]:hover {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* ── Typography (Wildcard Catch-all for Light/Neon text) ── */
+
+/* Catch pure white or near whites */
+[data-theme="light"] [class*="text-white"],
+[data-theme="light"] [class*="text-gray-100"],
+[data-theme="light"] [class*="text-zinc-100"],
+[data-theme="light"] [class*="text-slate-100"] { color: #0f172a !important; }
+
+/* 🔴 CRITICAL FIX: Protect text-white on primary colored backgrounds (buttons, badges) from being inverted to black */
+[data-theme="light"] [class*="bg-"]:not([class*="bg-white"]):not([class*="bg-transparent"]):not([class*="bg-black"])[class*="text-white"] {
+  color: #ffffff !important;
+}
+
+/* Catch light grays (200, 300, 400) */
+[data-theme="light"] [class*="text-gray-200"],
+[data-theme="light"] [class*="text-gray-300"],
+[data-theme="light"] [class*="text-gray-400"],
+[data-theme="light"] [class*="text-zinc-200"],
+[data-theme="light"] [class*="text-zinc-300"],
+[data-theme="light"] [class*="text-zinc-400"],
+[data-theme="light"] [class*="text-slate-200"],
+[data-theme="light"] [class*="text-slate-300"],
+[data-theme="light"] [class*="text-slate-400"],
+[data-theme="light"] .text-\[\#0f1117\] { color: #334155 !important; }
+
+/* Catch medium grays (500) */
+[data-theme="light"] [class*="text-gray-500"],
+[data-theme="light"] [class*="text-zinc-500"],
+[data-theme="light"] [class*="text-slate-500"] { color: #475569 !important; }
+
+/* Catch medium-dark grays (600, 700) */
+[data-theme="light"] [class*="text-gray-600"],
+[data-theme="light"] [class*="text-gray-700"],
+[data-theme="light"] [class*="text-zinc-600"],
+[data-theme="light"] [class*="text-zinc-700"],
+[data-theme="light"] [class*="text-slate-600"],
+[data-theme="light"] [class*="text-slate-700"] { color: #64748b !important; }
+
+/* Catch Neon Brand Colors (300, 400, 500) and map them to readable dark equivalents (600/700) */
+[data-theme="light"] [class*="text-emerald-300"],
+[data-theme="light"] [class*="text-emerald-400"],
+[data-theme="light"] [class*="text-emerald-500"] { color: #047857 !important; } /* emerald-700 */
+
+[data-theme="light"] [class*="text-amber-300"],
+[data-theme="light"] [class*="text-amber-400"],
+[data-theme="light"] [class*="text-amber-500"] { color: #b45309 !important; } /* amber-700 */
+
+[data-theme="light"] [class*="text-red-300"],
+[data-theme="light"] [class*="text-red-400"],
+[data-theme="light"] [class*="text-red-500"],
+[data-theme="light"] [class*="text-rose-300"],
+[data-theme="light"] [class*="text-rose-400"],
+[data-theme="light"] [class*="text-rose-500"] { color: #b91c1c !important; } /* red-700 */
+
+[data-theme="light"] [class*="text-indigo-300"],
+[data-theme="light"] [class*="text-indigo-400"],
+[data-theme="light"] [class*="text-indigo-500"] { color: #4338ca !important; } /* indigo-700 */
+
+[data-theme="light"] [class*="text-violet-300"],
+[data-theme="light"] [class*="text-violet-400"],
+[data-theme="light"] [class*="text-violet-500"] { color: #6d28d9 !important; } /* violet-700 */
+
+[data-theme="light"] [class*="text-blue-300"],
+[data-theme="light"] [class*="text-blue-400"],
+[data-theme="light"] [class*="text-blue-500"] { color: #1d4ed8 !important; } /* blue-700 */
+
+/* ── Dark Buttons inside light BG ── */
+[data-theme="light"] .bg-white.text-\[\#0a0c10\] {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+}
+[data-theme="light"] .bg-white.text-\[\#0a0c10\]:hover {
+  background-color: #1e293b !important;
+}
+
+/* ── Borders & Dividers ── */
+[data-theme="light"] [class*="border-white"],
+[data-theme="light"] [class*="border-zinc-800"],
+[data-theme="light"] [class*="border-slate-800"] { border-color: rgba(0, 0, 0, 0.10) !important; }
+
+[data-theme="light"] [class*="divide-white"] > * + *,
+[data-theme="light"] [class*="divide-zinc-800"],
+[data-theme="light"] [class*="divide-slate-800"] > * + * { border-color: rgba(0, 0, 0, 0.08) !important; }
+
+/* Structural Colored Borders need to be very subtle in light mode */
+[data-theme="light"] [class*="border-emerald-500"],
+[data-theme="light"] [class*="border-emerald-900"] { border-color: rgba(16, 185, 129, 0.2) !important; }
+
+[data-theme="light"] [class*="border-red-500"],
+[data-theme="light"] [class*="border-red-900"] { border-color: rgba(239, 68, 68, 0.2) !important; }
+
+[data-theme="light"] [class*="border-indigo-500"],
+[data-theme="light"] [class*="border-indigo-900"] { border-color: rgba(99, 102, 241, 0.2) !important; }
+
+/* ── Hover Effects ── */
+[data-theme="light"] .hover\:bg-\[\#151a25\]:hover,
+[data-theme="light"] .hover\:bg-slate-800:hover {
+  background-color: #f8fafc !important;
+}
+
+/* ── Gradients & Glow Effects ── */
+[data-theme="light"] .pointer-events-none[class*="blur-"] {
+  display: none !important; /* Hide dark mode background glow flares */
+}
+
+[data-theme="light"] [class*="from-\[\#12141a\]"],
+[data-theme="light"] [class*="from-\[\#0b0f19\]"],
+[data-theme="light"] [class*="from-\[\#141226\]"],
+[data-theme="light"] [class*="from-\[\#030303\]"] {
+  --tw-gradient-from: #f8fafc var(--tw-gradient-from-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+[data-theme="light"] [class*="via-\[\#0f172a\]"] {
+  --tw-gradient-stops: var(--tw-gradient-from), #f1f5f9 var(--tw-gradient-via-position), var(--tw-gradient-to) !important;
+}
+
+[data-theme="light"] [class*="to-\[\#030303\]"],
+[data-theme="light"] [class*="to-\[\#0a0f1c\]"],
+[data-theme="light"] [class*="to-\[\#0f1117\]"],
+[data-theme="light"] [class*="to-\[\#0a0c10\]"] {
+  --tw-gradient-to: #e2e8f0 var(--tw-gradient-to-position) !important;
+}
+
+/* ── Navbar ── */
+[data-theme="light"] nav.backdrop-blur-md,
+[data-theme="light"] header.backdrop-blur-md,
+[data-theme="light"] .bg-\[\#080808\]\/80 {
+  background-color: rgba(255, 255, 255, 0.97) !important;
+  border-bottom-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 1px 12px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* ── Forms ── */
+[data-theme="light"] input,
+[data-theme="light"] textarea,
+[data-theme="light"] select {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: rgba(0, 0, 0, 0.15) !important;
+}
+[data-theme="light"] input::placeholder,
+[data-theme="light"] textarea::placeholder { color: #94a3b8 !important; }
+
+/* ── Shadows ── */
+[data-theme="light"] .shadow-2xl { box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04) !important; }
+[data-theme="light"] .shadow-xl { box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06) !important; }
+[data-theme="light"] .shadow-lg { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06) !important; }
+[data-theme="light"] .shadow-inner { box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.04) !important; }
+
+/* ── Scrollbar inside Light ── */
+[data-theme="light"] .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+[data-theme="light"] .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; }

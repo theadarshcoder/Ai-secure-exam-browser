@@ -221,16 +221,58 @@ export default function ExamCockpit() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [showExitPrompt, setShowExitPrompt] = useState(false);
   const [exitPassword, setExitPassword] = useState('');
+  const [terminated, setTerminated] = useState(null); // { reason, terminatedBy }
+  const [terminateCountdown, setTerminateCountdown] = useState(8);
 
-  // Cinematic Command Center lock
+  // Cinematic Command Center lock & Theme Isolation
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     document.documentElement.style.overflow = 'hidden';
+    
+    // Isolate Cockpit from global wildcard theme overrides 
+    // (ExamCockpit is natively styled as a pristine light UI, so global inversion breaks it)
+    const storedTheme = document.documentElement.getAttribute('data-theme');
+    document.documentElement.removeAttribute('data-theme');
+
     return () => {
       document.body.style.overflow = 'auto';
       document.documentElement.style.overflow = 'auto';
+      if (storedTheme) document.documentElement.setAttribute('data-theme', storedTheme);
     };
   }, []);
+
+  // Termination Detection — poll localStorage every 3 seconds
+  useEffect(() => {
+    if (submitted || terminated) return;
+    const studentId = localStorage.getItem('vision_email') || 'VSN-89241';
+    const check = () => {
+      try {
+        const list = JSON.parse(localStorage.getItem('vision_terminated_sessions') || '[]');
+        const hit = list.find(t =>
+          t.studentId === studentId ||
+          t.studentId === 'VSN-89241' ||
+          t.examId === examId
+        );
+        if (hit) setTerminated(hit);
+      } catch {}
+    };
+    check();
+    const poll = setInterval(check, 3000);
+    return () => clearInterval(poll);
+  }, [submitted, terminated, examId]);
+
+  // Countdown redirect after termination
+  useEffect(() => {
+    if (!terminated) return;
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    const tick = setInterval(() => {
+      setTerminateCountdown(c => {
+        if (c <= 1) { clearInterval(tick); navigate('/student'); return 0; }
+        return c - 1;
+      });
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [terminated]);
 
   // Timer logic
   useEffect(() => {
@@ -269,10 +311,43 @@ export default function ExamCockpit() {
         }
       } catch (err) {
         console.warn('Backend unavailable, using mock data:', err.message);
-        // Fallback: try localStorage
         const published = JSON.parse(localStorage.getItem('published_exams') || '[]');
-        const foundExam = published.find(e => e.id === examId);
-        if (foundExam) setExam(foundExam);
+        let fallbackExam = published.find(e => e.id === examId);
+        
+        // If not in localStorage, generate a smart dummy exam based on the ID
+        if (!fallbackExam) {
+          fallbackExam = {
+            id: examId,
+            title: examId === 'EXM-CS101' ? 'Computer Science 101 - Final' : 'Demonstration Exam',
+            duration: 90,
+            questions: [
+              {
+                id: 1, type: 'mcq', text: 'Which of the following data structures operates on a Last-In-First-Out (LIFO) principle?', 
+                options: ['Queue', 'Stack', 'Linked List', 'Binary Tree'], marks: 4
+              },
+              {
+                id: 2, type: 'mcq', text: 'In object-oriented programming, what is the concept of wrapping data and methods that work on data within one unit?', 
+                options: ['Polymorphism', 'Inheritance', 'Encapsulation', 'Abstraction'], marks: 4
+              },
+              {
+                id: 3, type: 'coding', text: 'Write a JavaScript function that takes an array of numbers and returns the sum of all positive numbers.', 
+                language: 'javascript', starterCode: 'function sumPositive(arr) {\n  // Your code here\n}', marks: 10
+              },
+              ...Array.from({ length: 17 }).map((_, i) => ({
+                id: i + 4,
+                type: 'mcq',
+                text: `Diagnostic Question ${i + 4}: Evaluate the following system parameter and select the optimal configuration state for maximum efficiency.`,
+                options: ['State Nominal', 'State Critical', 'State Dormant', 'State Elevated'],
+                marks: 4
+              }))
+            ]
+          };
+        }
+        
+        setExam(fallbackExam);
+        if (fallbackExam.questions && fallbackExam.questions.length > 0) {
+          setQuestions(fallbackExam.questions);
+        }
       }
     };
     fetchExam();
@@ -397,6 +472,55 @@ export default function ExamCockpit() {
   const answeredCount = Object.keys(answers).length;
   const isTimeCritical = secondsLeft < 300;
 
+  if (terminated) {
+    return (
+      <div className="h-screen bg-[#08020a] flex items-center justify-center font-sans relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(220,38,38,0.15)_0%,transparent_70%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#1a0000_1px,transparent_1px),linear-gradient(to_bottom,#1a0000_1px,transparent_1px)] bg-[size:40px_40px] opacity-30" />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.85, y: 30 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="text-center relative z-10 max-w-lg mx-auto px-6"
+        >
+          <motion.div
+            animate={{ scale: [1, 1.05, 1] }}
+            transition={{ duration: 2, repeat: Infinity }}
+            className="w-24 h-24 rounded-2xl bg-red-500/10 border-2 border-red-500/30 flex items-center justify-center mx-auto mb-8 shadow-[0_0_60px_rgba(220,38,38,0.3)]"
+          >
+            <XCircle size={48} className="text-red-500" />
+          </motion.div>
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-widest mb-6">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+            Session Force-Terminated
+          </div>
+          <h2 className="text-4xl font-black text-white mb-3 tracking-tight">Exam Terminated</h2>
+          <p className="text-zinc-400 text-sm mb-2 leading-relaxed">
+            {terminated.reason || 'Your exam session has been terminated by a supervisor.'}
+          </p>
+          <p className="text-zinc-600 text-xs font-mono mb-8">
+            Terminated by: <span className="text-red-400/70">{terminated.terminatedBy || 'Admin'}</span>
+            {' '}&middot;{' '}
+            {new Date(terminated.timestamp).toLocaleTimeString()}
+          </p>
+          <div className="bg-[#11050a] border border-red-500/10 rounded-2xl p-6 mb-8">
+            <p className="text-[10px] text-zinc-600 uppercase tracking-widest mb-2">Your work was not saved.</p>
+            <p className="text-xs text-zinc-400">Contact your supervisor or institution for more information about this termination.</p>
+          </div>
+          <div className="flex items-center justify-center gap-3 text-sm">
+            <div className="w-10 h-10 rounded-full border-2 border-red-500/30 flex items-center justify-center text-red-400 font-black text-lg tabular-nums">
+              {terminateCountdown}
+            </div>
+            <p className="text-zinc-500 text-xs">Redirecting to dashboard in {terminateCountdown}s</p>
+          </div>
+          <button onClick={() => navigate('/student')} className="mt-6 px-6 py-2.5 rounded-xl bg-white/5 border border-white/10 text-zinc-300 hover:text-white text-xs font-semibold transition-all">
+            Return to Dashboard Now
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
+
   if (submitted) {
     return (
       <div className="h-screen bg-white flex items-center justify-center font-sans">
@@ -419,39 +543,40 @@ export default function ExamCockpit() {
         .scroll-thin::-webkit-scrollbar { width: 4px; }
         .scroll-thin::-webkit-scrollbar-track { background: transparent; }
         .scroll-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .scroll-thin::-webkit-scrollbar-button { display: none !important; width: 0 !important; height: 0 !important; }
       `}</style>
 
       {/* Header */}
       <header className="shrink-0 z-30">
-        <div className="h-[52px] bg-[#1e3a5f] text-white flex items-center justify-between px-5">
+        <div className="h-[52px] bg-zinc-950 border-b border-zinc-800 flex items-center justify-between px-5 relative z-10">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <VisionLogo className="w-4 h-4 text-sky-300" />
-              <span className="text-[11px] font-bold tracking-wider uppercase">VISION</span>
+              <VisionLogo className="w-4 h-4 text-white" />
+              <span className="text-[11px] font-medium tracking-widest uppercase text-white">VISION</span>
             </div>
-            <div className="h-4 w-px bg-white/20" />
-            <span className="text-[12px] font-medium text-sky-200 truncate max-w-[200px]">{exam?.title || 'Technical Assessment'}</span>
+            <div className="h-4 w-px bg-zinc-800" />
+            <span className="text-[12px] font-medium text-zinc-400 truncate max-w-[200px]">{exam?.title || 'Technical Assessment'}</span>
           </div>
 
           <div className="flex items-center gap-4">
-            <div className={`flex items-center gap-3 px-5 py-1.5 rounded-lg ${isTimeCritical ? 'bg-red-600/90' : 'bg-white/10'} transition-all`}>
-              <Clock size={15} className={isTimeCritical ? 'text-white animate-pulse' : 'text-sky-300'} />
-              <span className="text-2xl font-bold tabular-nums tracking-tight text-white">{fmtTime(secondsLeft)}</span>
+            <div className={`flex items-center gap-3 px-5 py-1.5 rounded-full ${isTimeCritical ? 'bg-red-500/10 border border-red-500/20' : 'bg-white/5 border border-white/10'} transition-all`}>
+              <Clock size={14} className={isTimeCritical ? 'text-red-400 animate-pulse' : 'text-zinc-400'} />
+              <span className={`text-lg font-semibold tabular-nums tracking-tight ${isTimeCritical ? 'text-red-400' : 'text-zinc-200'}`}>{fmtTime(secondsLeft)}</span>
             </div>
-            <div className="text-[10px] text-sky-300/50 font-mono tabular-nums uppercase">
+            <div className="text-[10px] text-zinc-600 font-mono tabular-nums uppercase">
               {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <p className="text-[11px] font-semibold text-white leading-none">Adarsh Maurya</p>
-              <p className="text-[9px] text-sky-300/70 font-mono mt-0.5">VSN-89241</p>
+              <p className="text-[11px] font-medium text-zinc-200 leading-none">Adarsh Maurya</p>
+              <p className="text-[9px] text-zinc-500 font-mono mt-0.5">VSN-89241</p>
             </div>
           </div>
         </div>
-        <div className="h-[3px] bg-[#15294a] relative">
-          <div className="h-full bg-sky-400 transition-all duration-700 ease-out" style={{ width: `${(answeredCount / questions.length) * 100}%` }} />
+        <div className="h-[1px] bg-zinc-900 relative">
+          <div className="h-full bg-white transition-all duration-700 ease-out shadow-[0_0_8px_rgba(255,255,255,0.4)]" style={{ width: `${(answeredCount / questions.length) * 100}%` }} />
         </div>
       </header>
 

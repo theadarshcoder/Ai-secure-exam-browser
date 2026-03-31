@@ -122,6 +122,7 @@ export default function IDVerification() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [faceBox, setFaceBox] = useState(null);
+  const [capturedPhoto, setCapturedPhoto] = useState(null);
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -164,12 +165,22 @@ export default function IDVerification() {
   }, []);
 
   useEffect(() => {
-    if (videoRef.current && stream) videoRef.current.srcObject = stream;
-  }, [stream, step, error]);
+    if (videoRef.current && stream) {
+      // Ensure the srcObject is synced
+      if (videoRef.current.srcObject !== stream) {
+        videoRef.current.srcObject = stream;
+      }
+      // Explicitly force play to bypass browser autoplay blocks when remounting
+      const playPromise = videoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => console.warn("Auto-play was prevented by the browser.", err));
+      }
+    }
+  }, [stream, step, error, capturedPhoto]);
 
   // Detector Loop
   useEffect(() => {
-    if (!stream || !modelsLoaded || step !== 1) return;
+    if (!stream || !modelsLoaded || step !== 1 || capturedPhoto) return;
     let frameId;
     const loop = async () => {
       if (videoRef.current?.readyState === 4) {
@@ -203,11 +214,26 @@ export default function IDVerification() {
       c.width = v.videoWidth;
       c.height = v.videoHeight;
       c.getContext('2d').drawImage(v, 0, 0);
-      localStorage.setItem(step === 1 ? 'vision_reference_face' : 'vision_reference_id', 'VERIFIED_HASH');
-      if (step === 1) setStep(2);
-      else { setStep(3); if (stream) stream.getTracks().forEach(t => t.stop()); }
+      
+      const photoDataUrl = c.toDataURL('image/jpeg', 0.9);
+      setCapturedPhoto(photoDataUrl);
       setIsProcessing(false);
     }, 800);
+  };
+
+  const confirmPhoto = () => {
+    localStorage.setItem(step === 1 ? 'vision_reference_face' : 'vision_reference_id', 'VERIFIED_HASH');
+    setCapturedPhoto(null);
+    if (step === 1) {
+      setStep(2);
+    } else {
+      setStep(3);
+      if (stream) stream.getTracks().forEach(t => t.stop());
+    }
+  };
+
+  const retakePhoto = () => {
+    setCapturedPhoto(null);
   };
 
   return (
@@ -242,16 +268,20 @@ export default function IDVerification() {
            step < 3 ? (
             <div className="flex-1 relative rounded-3xl overflow-hidden bg-[#050608] flex flex-col border border-white/[0.02]">
               <div className="flex-1 relative overflow-hidden flex items-center justify-center p-8">
-                <div className="relative w-full max-w-[800px] aspect-video rounded-3xl overflow-hidden border-2 border-slate-800/50 shadow-[0_0_100px_rgba(0,0,0,0.5)] bg-black group">
-                  {stream && (
+                <div className="relative w-full max-w-[800px] aspect-video rounded-3xl overflow-hidden border-2 border-slate-800/50 shadow-[0_0_100px_rgba(0,0,0,0.5)] bg-[#000000] group">
+                  {capturedPhoto ? (
+                    <img src={capturedPhoto} alt="Captured preview" className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 ${step === 1 ? 'scale-x-[-1]' : ''}`} />
+                  ) : stream ? (
                     <video 
                       ref={videoRef} 
                       autoPlay 
                       playsInline 
                       muted 
+                      disablePictureInPicture
+                      disableRemotePlayback
                       className={`absolute inset-0 w-full h-full object-cover transition-all duration-700 ${isProcessing ? 'opacity-30 blur-xl' : 'opacity-100'} ${step === 1 ? 'scale-x-[-1]' : ''}`} 
                     />
-                  )}
+                  ) : null}
                   
                   {/* Vision Frame Overlays */}
                   <div className="absolute inset-0 pointer-events-none z-10">
@@ -261,18 +291,20 @@ export default function IDVerification() {
                     <div className="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-emerald-500/40 rounded-br-3xl m-6" />
                     
                     <div className="absolute inset-0 flex items-center justify-center">
-                      {step === 1 ? (
-                        faceBox ? (
-                          <motion.div 
-                            className="absolute border-2 border-emerald-500 rounded-full shadow-[0_0_40px_rgba(16,185,129,0.3)] bg-emerald-500/5"
-                            animate={faceBox} 
-                            transition={{ type: "spring", stiffness: 150, damping: 25 }} 
-                          />
+                      {!capturedPhoto && (
+                        step === 1 ? (
+                          faceBox ? (
+                            <motion.div 
+                              className="absolute border-2 border-emerald-500 rounded-full shadow-[0_0_40px_rgba(16,185,129,0.3)] bg-emerald-500/5"
+                              animate={faceBox} 
+                              transition={{ type: "spring", stiffness: 150, damping: 25 }} 
+                            />
+                          ) : (
+                            <div className="w-[30vh] h-[40vh] border-2 border-emerald-500/20 rounded-full border-dashed animate-pulse" />
+                          )
                         ) : (
-                          <div className="w-[30vh] h-[40vh] border-2 border-emerald-500/20 rounded-full border-dashed animate-pulse" />
+                          <div className="w-[50vh] h-[32vh] border-2 border-amber-500/40 rounded-2xl border-dashed shadow-[0_0_30px_rgba(245,158,11,0.1)_inset]" />
                         )
-                      ) : (
-                        <div className="w-[50vh] h-[32vh] border-2 border-amber-500/40 rounded-2xl border-dashed shadow-[0_0_30px_rgba(245,158,11,0.1)_inset]" />
                       )}
                     </div>
                   </div>
@@ -301,10 +333,19 @@ export default function IDVerification() {
                   <span className="text-[11px] font-medium tracking-wide">{step === 1 ? 'Center your alignment relative to focus points.' : 'Align document edges with the security perimeter.'}</span>
                 </div>
                 <div className="flex gap-3">
-                  {step === 2 && <button onClick={() => setStep(1)} className="px-5 py-2.5 rounded-xl border border-white/10 text-slate-300 hover:bg-white/5 text-[11px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"><RotateCcw size={14} /> Back</button>}
-                  <button onClick={capture} disabled={!stream || isProcessing} className={`px-8 py-2.5 rounded-xl text-[#0a0c10] transition-all text-[11px] font-black uppercase tracking-widest flex items-center gap-2 ${step === 1 ? 'bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/20 shadow-lg' : 'bg-amber-500 hover:bg-amber-400 shadow-amber-500/20 shadow-lg'} disabled:opacity-50`}>
-                    <Camera size={14} /> Initialize {step === 1 ? 'Face' : 'ID'} Scan
-                  </button>
+                  {capturedPhoto ? (
+                    <>
+                      <button onClick={retakePhoto} disabled={isProcessing} className="px-6 py-2.5 rounded-xl border border-white/10 text-slate-300 hover:bg-white/5 text-[11px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"><RotateCcw size={14} /> Retake</button>
+                      <button onClick={confirmPhoto} disabled={isProcessing} className="px-8 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white shadow-indigo-500/20 shadow-lg text-[11px] font-black uppercase tracking-widest flex items-center gap-2 transition-all">Proceed <ArrowRight size={14} /></button>
+                    </>
+                  ) : (
+                    <>
+                      {step === 2 && <button onClick={() => setStep(1)} disabled={isProcessing} className="px-5 py-2.5 rounded-xl border border-white/10 text-slate-300 hover:bg-white/5 text-[11px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"><RotateCcw size={14} /> Back</button>}
+                      <button onClick={capture} disabled={!stream || isProcessing} className={`px-8 py-2.5 rounded-xl text-[#0a0c10] transition-all text-[11px] font-black uppercase tracking-widest flex items-center gap-2 ${step === 1 ? 'bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/20 shadow-lg' : 'bg-amber-500 hover:bg-amber-400 shadow-amber-500/20 shadow-lg'} disabled:opacity-50`}>
+                        <Camera size={14} /> Initialize {step === 1 ? 'Face' : 'ID'} Scan
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

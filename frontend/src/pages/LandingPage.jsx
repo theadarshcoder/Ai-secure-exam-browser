@@ -5,6 +5,7 @@ import {
   Server, ChevronRight, Cpu, Eye, QrCode, Check 
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
+import { ThemeToggle } from '../contexts/ThemeContext';
 
 // --- Static Metadata & Configuration ---
 
@@ -131,7 +132,7 @@ const HybridNavbar = () => (
       <VisionLogo className="w-12 h-12 text-white" />
       <span className="text-white font-bold tracking-[0.2em] text-sm uppercase">Vision</span>
     </div>
-    <div className="flex gap-8 items-center pointer-events-auto">
+    <div className="flex gap-4 items-center pointer-events-auto">
       <button 
         onClick={() => { window.location.href = '/login'; }}
         className="bg-white text-black px-6 py-3 font-bold text-sm tracking-widest uppercase hover:bg-slate-200 transition-colors"
