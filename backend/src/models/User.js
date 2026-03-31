@@ -19,14 +19,13 @@ const userSchema = new mongoose.Schema({
 // ye middleware automatically password ko hash kar dega
 // Taaki database mein kabhi bhi plain text password save na ho
 
-userSchema.pre('save', async function (next) {
+userSchema.pre('save', async function () {
     // Agar password change nahi hua toh skip karo (jaise name update karte waqt)
-    if (!this.isModified('password')) return next();
+    if (!this.isModified('password')) return;
 
     // Password ko hash karo (10 rounds of salt = strong security)
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
-    next();
 });
 
 // ─── Password Compare Helper ────────────────────────────
