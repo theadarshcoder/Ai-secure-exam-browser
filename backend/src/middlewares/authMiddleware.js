@@ -18,9 +18,10 @@ const verifyToken = async (req, res, next) => {
     }
 };
 
-const checkRole = (requiredRole) => {
+const checkRole = (requiredRoles) => {
     return (req, res, next) => {
-        if (req.user.role !== requiredRole && req.user.role !== 'admin') {
+        const roles = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
+        if (!roles.includes(req.user.role) && req.user.role !== 'admin') {
             return res.status(403).json({ message: `Access denied for ${req.user.role}` });
         }
         next();

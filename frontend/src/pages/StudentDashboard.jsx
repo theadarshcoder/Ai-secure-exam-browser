@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Navbar } from '../components/Navbar';
+import api from '../services/api';
 import { 
   PlayCircle, BookOpen, ShieldCheck, 
   ArrowRight, Clock, CheckCircle2, Lock, ListChecks, Calendar,
-  Activity, Fingerprint, LifeBuoy
+  Activity, Fingerprint, LifeBuoy, AlertTriangle
 } from 'lucide-react';
 
-/* ─────────────── Config & Mock Data ─────────────── */
+/* ─────────────── Mock Data (Fallback jab backend down ho) ─────────────── */
 
 const MOCK_EXAMS = [
   { id: 'EXM-CS101', title: 'Computer Science 101 - Final', duration: 90, questionsCount: 50, startTime: new Date(Date.now() + 60000).toISOString() },
@@ -22,7 +23,7 @@ const MOCK_EXAMS = [
 
 /* ─────────────── Sub-components ─────────────── */
 
-const Sidebar = ({ currentTime, onSupport }) => (
+const Sidebar = ({ currentTime, userName, userEmail, onSupport }) => (
   <aside className="h-full flex flex-col min-w-[260px] lg:max-w-xs shrink-0 relative z-10">
     <div className="flex-1 flex flex-col bg-[#0c0e14] rounded-[24px] border border-white/[0.04] p-6 lg:p-7 shadow-2xl relative overflow-hidden group">
       <div className="absolute -top-32 -left-32 w-64 h-64 bg-emerald-500/10 blur-[80px] rounded-full pointer-events-none" />
@@ -38,11 +39,13 @@ const Sidebar = ({ currentTime, onSupport }) => (
 
       <div className="flex items-center gap-4 mb-8 relative z-10 text-center">
         <div className="w-[46px] h-[46px] rounded-[14px] bg-gradient-to-tr from-indigo-500 to-indigo-400 p-[1px] shrink-0 shadow-lg">
-          <div className="w-full h-full bg-[#12141a] rounded-[13px] flex items-center justify-center text-white font-black text-lg tracking-wider">AM</div>
+          <div className="w-full h-full bg-[#12141a] rounded-[13px] flex items-center justify-center text-white font-black text-lg tracking-wider">
+            {userName ? userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'VS'}
+          </div>
         </div>
         <div>
-          <h2 className="text-xl font-black text-white tracking-tight leading-none mb-1.5 text-left">Adarsh Maurya</h2>
-          <p className="text-[10px] text-slate-500 font-mono font-black tracking-[0.15em] uppercase text-left">ID: VSN-89241</p>
+          <h2 className="text-xl font-black text-white tracking-tight leading-none mb-1.5 text-left">{userName || 'Vision Student'}</h2>
+          <p className="text-[10px] text-slate-500 font-mono font-black tracking-[0.15em] uppercase text-left">{userEmail || 'ID: VSN-00000'}</p>
         </div>
       </div>
 
@@ -95,16 +98,19 @@ const ExamCard = ({ exam, now, onLaunch }) => {
   const isLive = now >= startTime;
   const isPreOnboarding = now >= unlockTime && now < startTime;
   const canLaunch = now >= unlockTime;
+  const isSubmitted = exam.alreadySubmitted;
 
   return (
-    <div className={`bg-[#12161f] p-5 lg:p-6 rounded-3xl border transition-all duration-300 flex flex-col xl:flex-row xl:items-center justify-between gap-4 ${canLaunch ? 'border-emerald-900/30 hover:bg-[#151a25] shadow-lg' : 'border-white/[0.03] opacity-60'}`}>
+    <div className={`bg-[#12161f] p-5 lg:p-6 rounded-3xl border transition-all duration-300 flex flex-col xl:flex-row xl:items-center justify-between gap-4 ${isSubmitted ? 'border-slate-800/30 opacity-50' : canLaunch ? 'border-emerald-900/30 hover:bg-[#151a25] shadow-lg' : 'border-white/[0.03] opacity-60'}`}>
       <div className="flex gap-4 items-start">
-        <div className={`w-12 h-12 rounded-2xl bg-[#0a0c10] flex items-center justify-center border border-white/[0.05] shadow-inner ${canLaunch ? 'text-emerald-400' : 'text-slate-600'}`}>
+        <div className={`w-12 h-12 rounded-2xl bg-[#0a0c10] flex items-center justify-center border border-white/[0.05] shadow-inner ${isSubmitted ? 'text-slate-600' : canLaunch ? 'text-emerald-400' : 'text-slate-600'}`}>
           <BookOpen size={20} />
         </div>
         <div>
           <div className="flex flex-wrap items-center gap-2 mb-2">
-            {isLive ? (
+            {isSubmitted ? (
+              <span className="bg-slate-500/10 text-slate-400 border border-slate-500/20 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5"><CheckCircle2 size={8} /> Submitted</span>
+            ) : isLive ? (
               <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" /> Live Now</span>
             ) : isPreOnboarding ? (
               <span className="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-blue-400 animate-pulse" /> Final Checks</span>
@@ -122,11 +128,11 @@ const ExamCard = ({ exam, now, onLaunch }) => {
         </div>
       </div>
       <button 
-        disabled={!canLaunch} 
+        disabled={!canLaunch || isSubmitted} 
         onClick={() => onLaunch(exam.id)} 
-        className={`shrink-0 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${canLaunch ? 'bg-white text-[#0a0c10] hover:bg-slate-200 shadow-xl active:scale-95' : 'bg-white/5 text-slate-600 cursor-not-allowed border border-white/5'}`}
+        className={`shrink-0 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${isSubmitted ? 'bg-slate-800/50 text-slate-600 cursor-not-allowed border border-white/5' : canLaunch ? 'bg-white text-[#0a0c10] hover:bg-slate-200 shadow-xl active:scale-95' : 'bg-white/5 text-slate-600 cursor-not-allowed border border-white/5'}`}
       >
-        {canLaunch ? 'Launch Sequence' : 'Locked'} {canLaunch ? <ArrowRight size={14} className="inline ml-1" /> : <Clock size={12} className="inline ml-1" />}
+        {isSubmitted ? 'Completed' : canLaunch ? 'Launch Sequence' : 'Locked'} {!isSubmitted && (canLaunch ? <ArrowRight size={14} className="inline ml-1" /> : <Clock size={12} className="inline ml-1" />)}
       </button>
     </div>
   );
@@ -141,11 +147,54 @@ export default function StudentDashboard() {
   const [supportMsg, setSupportMsg] = useState('');
   const [supportSent, setSupportSent] = useState(false);
 
+  // Exam data from API
+  const [exams, setExams] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isLiveData, setIsLiveData] = useState(false);
+
+  // User info from localStorage (login ke baad save hota hai)
+  const userName = localStorage.getItem('vision_name') || localStorage.getItem('vision_email')?.split('@')[0] || 'Vision Student';
+  const userEmail = localStorage.getItem('vision_email') || '';
+
+  // ─── Fetch Active Exams from Backend API ───────────
+  useEffect(() => {
+    const fetchExams = async () => {
+      try {
+        // Real API call — GET /api/exams/active
+        const response = await api.get('/api/exams/active');
+        
+        // Backend ka data ExamCard ke format mein map karo
+        const liveExams = response.data.map(exam => ({
+          id: exam.id,
+          title: exam.title,
+          duration: exam.duration,
+          questionsCount: exam.questionsCount,
+          startTime: exam.startTime,
+          category: exam.category,
+          creator: exam.creator,
+          alreadySubmitted: exam.alreadySubmitted || false
+        }));
+
+        setExams(liveExams);
+        setIsLiveData(true);
+        console.log(`✅ Loaded ${liveExams.length} exams from backend`);
+      } catch (error) {
+        // Backend down? Mock data use karo (demo/offline ke liye)
+        console.warn('⚠️ Backend unreachable, using mock exams:', error.message);
+        setExams(MOCK_EXAMS);
+        setIsLiveData(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchExams();
+  }, []);
+
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     const timer = setInterval(() => setNow(new Date()), 1000);
     
-    // Clear any stale termination flags on dashboard load
     localStorage.removeItem('vision_terminated_sessions');
     
     return () => {
@@ -168,20 +217,37 @@ export default function StudentDashboard() {
       <style>{`html, body { overflow: hidden !important; height: 100% !important; overscroll-behavior: none !important; }`}</style>
 
       <main className="flex-1 max-w-[1200px] w-full mx-auto px-6 pt-24 pb-8 grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 overflow-hidden">
-        <Sidebar currentTime={currentTime} onSupport={() => setShowSupport(true)} />
+        <Sidebar currentTime={currentTime} userName={userName} userEmail={userEmail} onSupport={() => setShowSupport(true)} />
 
         <section className="bg-[#0b0f19] rounded-[40px] p-6 lg:p-10 border border-slate-800/60 shadow-2xl flex flex-col h-full overflow-hidden relative">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-8 shrink-0 border-b border-white/[0.04] pb-6">
              <div>
                <h1 className="text-2xl font-black text-white tracking-tight uppercase">Your Assignments</h1>
-               <p className="text-[11px] text-slate-500 font-bold mt-1">Select an exam below to initiate the secure Vision environment.</p>
+               <p className="text-[11px] text-slate-500 font-bold mt-1">
+                 {isLiveData 
+                   ? `${exams.length} exam(s) loaded from server.`
+                   : 'Offline mode — showing demo exams.'}
+               </p>
              </div>
-             <div className="hidden sm:flex w-12 h-12 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-2xl items-center justify-center shadow-lg"><PlayCircle size={24} /></div>
+             <div className="hidden sm:flex items-center gap-3">
+               {!isLiveData && !loading && (
+                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                   <AlertTriangle size={12} className="text-amber-400" />
+                   <span className="text-[9px] font-black text-amber-400 uppercase tracking-widest">Demo Mode</span>
+                 </div>
+               )}
+               <div className="w-12 h-12 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-2xl flex items-center justify-center shadow-lg"><PlayCircle size={24} /></div>
+             </div>
           </div>
 
           <div className="flex-1 overflow-y-auto pr-2 space-y-4 custom-scrollbar">
-             {MOCK_EXAMS.length > 0 ? (
-                MOCK_EXAMS.map(exam => (
+             {loading ? (
+               <div className="h-full w-full flex flex-col items-center justify-center text-center">
+                 <div className="w-8 h-8 border-2 border-slate-700 border-t-emerald-400 rounded-full animate-spin mb-4" />
+                 <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Loading exams...</p>
+               </div>
+             ) : exams.length > 0 ? (
+                exams.map(exam => (
                   <ExamCard 
                     key={exam.id} 
                     exam={exam} 

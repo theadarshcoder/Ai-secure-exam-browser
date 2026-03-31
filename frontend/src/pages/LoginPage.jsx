@@ -203,25 +203,37 @@ const LoginPage = () => {
     setIsAuthenticating(true);
     
     try {
-      // Connect to real backend endpoint
-      const response = await api.post('/api/demo-login', { email, role });
-      const { token } = response.data;
+      // Step 1: Pehle real login API try karo (bcrypt wala secure login)
+      const response = await api.post('/api/auth/login', { email, password });
+      const { token, user } = response.data;
 
-      // Persist session
+      // Step 2: Token aur user info localStorage mein save karo
       localStorage.setItem('vision_token', token);
-      localStorage.setItem('vision_role', role);
-      localStorage.setItem('vision_email', email);
+      localStorage.setItem('vision_role', user.role);
+      localStorage.setItem('vision_email', user.email);
+      localStorage.setItem('vision_name', user.name);
 
-      navigate(role === 'student' ? '/student' : role === 'mentor' ? '/mentor' : '/admin');
-    } catch (error) {
-      console.warn('Backend node offline. Initializing edge-cache simulation for demo mode.');
-      // Resilient fallback for offline environments or missing backend node
-      localStorage.setItem('vision_token', 'demo-protocol-' + Math.random().toString(36).substr(2, 9));
-      localStorage.setItem('vision_role', role);
-      localStorage.setItem('vision_email', email || 'demo@vision.auth');
-      
-      const target = role === 'student' ? '/student' : role === 'mentor' ? '/mentor' : '/admin';
+      // Step 3: Role ke hisaab se redirect karo
+      const target = user.role === 'student' ? '/student' : user.role === 'mentor' ? '/mentor' : '/admin';
       navigate(target);
+
+    } catch (error) {
+      // Agar real login fail ho (user registered nahi hai ya backend down) toh demo-login try karo
+      console.warn('Real auth failed, trying demo-login fallback...', error.response?.data?.error || error.message);
+      
+      try {
+        const fallback = await api.post('/api/demo-login', { email, role });
+        const { token } = fallback.data;
+
+        localStorage.setItem('vision_token', token);
+        localStorage.setItem('vision_role', role);
+        localStorage.setItem('vision_email', email);
+
+        navigate(role === 'student' ? '/student' : role === 'mentor' ? '/mentor' : '/admin');
+      } catch (fallbackError) {
+        console.error('Both login methods failed:', fallbackError.message);
+        alert('Login failed! Server down ya galat credentials. Check karo.');
+      }
     } finally {
       setIsAuthenticating(false);
     }

@@ -157,36 +157,72 @@ exports.getExamById = async (req, res) => {
 };
 
 // ─────────────── POST /api/exams/start ───────────────
-// Start an exam session (creates ExamSession record)
+// Student exam shuru karta hai — session create hota hai
+// Agar session pehle se hai (internet gaya tha) toh wahi resume hota hai
 exports.startExam = async (req, res) => {
     try {
         const { examId } = req.body;
         const studentId = req.user.id;
 
-        // Check if session already exists
+        // Step 1: Check karo ki session pehle se exist karta hai ya nahi
         let session = await ExamSession.findOne({ exam: examId, student: studentId });
         
-        if (session && session.status === 'submitted') {
-            return res.status(400).json({ error: 'You have already submitted this exam.' });
+        // Agar already submitted hai toh dubara nahi de sakte
+        if (session && (session.status === 'submitted' || session.status === 'auto_submitted')) {
+            return res.status(400).json({ error: 'Tumne ye exam pehle hi submit kar diya hai.' });
         }
 
-        if (!session) {
-            const exam = await Exam.findById(examId);
-            if (!exam) return res.status(404).json({ error: 'Exam not found' });
-
-            session = new ExamSession({
-                exam: examId,
-                student: studentId,
-                totalMarks: exam.totalMarks,
-                startedAt: new Date()
-            });
+        // Agar session exist karta hai (resume case — internet/light wapas aayi)
+        if (session) {
+            session.resumeCount += 1;      // Resume count badhao
+            session.lastSavedAt = new Date();
             await session.save();
+
+            return res.json({ 
+                message: 'Exam session resumed! Pehle ka data safe hai.',
+                sessionId: session._id,
+                startedAt: session.startedAt,
+                isResumed: true,                              // Frontend ko pata chalega ki ye resume hai
+                resumeCount: session.resumeCount,
+                currentQuestionIndex: session.currentQuestionIndex,
+                answers: session.answers,                      // Pehle ke answers wapas bhejo
+                questionStates: session.questionStates,        // Kaunsa question answered/skipped tha
+                remainingTimeSeconds: session.remainingTimeSeconds  // Kitna time bacha tha
+            });
         }
+
+        // Step 2: Naya session create karo (pehli baar exam shuru)
+        const exam = await Exam.findById(examId);
+        if (!exam) return res.status(404).json({ error: 'Exam not found' });
+
+        // Initial question states banao — sab "not_visited"
+        const initialStates = {};
+        exam.questions.forEach((_, idx) => {
+            initialStates[String(idx)] = 'not_visited';
+        });
+
+        session = new ExamSession({
+            exam: examId,
+            student: studentId,
+            totalMarks: exam.totalMarks,
+            startedAt: new Date(),
+            currentQuestionIndex: 0,
+            questionStates: initialStates,
+            remainingTimeSeconds: exam.duration * 60,   // Minutes to seconds
+            answers: {},
+            resumeCount: 0
+        });
+        await session.save();
 
         res.json({ 
-            message: 'Exam session started', 
+            message: 'Exam session started! Best of luck!', 
             sessionId: session._id,
-            startedAt: session.startedAt 
+            startedAt: session.startedAt,
+            isResumed: false,
+            remainingTimeSeconds: session.remainingTimeSeconds,
+            currentQuestionIndex: 0,
+            answers: {},
+            questionStates: initialStates
         });
     } catch (error) {
         console.error('Failed to start exam:', error);
@@ -194,8 +230,153 @@ exports.startExam = async (req, res) => {
     }
 };
 
+
+// ─────────────── POST /api/exams/save-progress ───────────────
+// ⭐ YE SABSE IMPORTANT FUNCTION HAI — Auto-Save
+// Frontend har 30 second mein ye API call karega
+// Isse agar internet/light jaye, toh sab data safe rahega
+// Student ko pata bhi nahi chalega — background mein silently save hota hai
+
+exports.saveProgress = async (req, res) => {
+    try {
+        const { examId, answers, currentQuestionIndex, questionStates, remainingTimeSeconds } = req.body;
+        const studentId = req.user.id;
+
+        // Validation
+        if (!examId) {
+            return res.status(400).json({ error: 'examId required hai!' });
+        }
+
+        // Session dhundo
+        const session = await ExamSession.findOne({ 
+            exam: examId, 
+            student: studentId,
+            status: 'in_progress'     // Sirf active sessions ka progress save karo
+        });
+
+        if (!session) {
+            return res.status(404).json({ error: 'Active session nahi mili. Pehle exam start karo.' });
+        }
+
+        // Progress update karo — jo fields client ne bheje hain sirf wohi update hoon
+        if (answers !== undefined)              session.answers = answers;
+        if (currentQuestionIndex !== undefined) session.currentQuestionIndex = currentQuestionIndex;
+        if (questionStates !== undefined)       session.questionStates = questionStates;
+        if (remainingTimeSeconds !== undefined) session.remainingTimeSeconds = remainingTimeSeconds;
+        
+        session.lastSavedAt = new Date();
+
+        await session.save();
+
+        res.json({ 
+            message: 'Progress saved!',
+            lastSavedAt: session.lastSavedAt,
+            answeredCount: Object.keys(session.answers || {}).length
+        });
+    } catch (error) {
+        console.error('Progress save failed:', error);
+        res.status(500).json({ error: 'Failed to save progress' });
+    }
+};
+
+
+// ─────────────── GET /api/exams/resume/:examId ───────────────
+// Student wapas aaya (internet/light wapas aayi) — poora state restore karo
+// Ye startExam se alag hai kyunki ye SIRF existing session ka data deta hai
+// Naya session NAHI banata
+
+exports.resumeExam = async (req, res) => {
+    try {
+        const examId = req.params.examId;
+        const studentId = req.user.id;
+
+        // Session dhundo
+        const session = await ExamSession.findOne({ 
+            exam: examId, 
+            student: studentId 
+        });
+
+        if (!session) {
+            return res.status(404).json({ error: 'Koi session nahi mili. Pehle exam start karo.' });
+        }
+
+        // Agar already submit ho chuka hai
+        if (session.status === 'submitted' || session.status === 'auto_submitted') {
+            return res.json({
+                message: 'Ye exam pehle hi submit ho chuka hai.',
+                status: session.status,
+                score: session.score,
+                totalMarks: session.totalMarks,
+                percentage: session.percentage,
+                passed: session.passed,
+                isCompleted: true
+            });
+        }
+
+        // Exam details bhi bhejo (questions without answers)
+        const exam = await Exam.findById(examId).populate('creator', 'name');
+        if (!exam) return res.status(404).json({ error: 'Exam not found' });
+
+        // Strip correct answers (security — network tab se cheat na kar sake)
+        const safeQuestions = exam.questions.map((q, index) => {
+            const safe = {
+                id: q._id,
+                index,
+                type: q.type,
+                text: q.text,
+                marks: q.marks,
+            };
+            if (q.type === 'mcq') safe.options = q.options;
+            if (q.type === 'short') safe.maxWords = q.maxWords;
+            if (q.type === 'coding') {
+                safe.language = q.language;
+                safe.starterCode = q.starterCode;
+            }
+            return safe;
+        });
+
+        // Resume count badhao
+        session.resumeCount += 1;
+        session.lastSavedAt = new Date();
+        await session.save();
+
+        res.json({
+            message: 'Session restored! Jahan chode the wahi se shuru karo.',
+            isCompleted: false,
+            sessionId: session._id,
+            
+            // Exam info
+            exam: {
+                id: exam._id,
+                title: exam.title,
+                category: exam.category,
+                duration: exam.duration,
+                totalMarks: exam.totalMarks,
+                creator: exam.creator?.name,
+                questions: safeQuestions
+            },
+
+            // Saved progress (ye sab wapas client ko milega)
+            answers: session.answers,
+            currentQuestionIndex: session.currentQuestionIndex,
+            questionStates: session.questionStates,
+            remainingTimeSeconds: session.remainingTimeSeconds,
+            
+            // Meta info
+            startedAt: session.startedAt,
+            resumeCount: session.resumeCount,
+            lastSavedAt: session.lastSavedAt,
+            violationCount: session.violations.length
+        });
+    } catch (error) {
+        console.error('Resume failed:', error);
+        res.status(500).json({ error: 'Failed to resume exam' });
+    }
+};
+
+
 // ─────────────── POST /api/exams/submit ───────────────
-// Submit exam — auto-score MCQs, save answers, calculate results
+// Exam submit karo — MCQs auto-score, answers save, results calculate
 exports.submitExam = async (req, res) => {
     try {
         const { examId, answers } = req.body;
@@ -204,26 +385,43 @@ exports.submitExam = async (req, res) => {
         const exam = await Exam.findById(examId);
         if (!exam) return res.status(404).json({ error: 'Exam not found' });
 
-        // Auto-score MCQ questions
+        // ─── Auto-Score MCQ Questions ────────────────
         let score = 0;
+        const questionResults = {};   // Har question ka individual result
+
         exam.questions.forEach((q, index) => {
             const studentAnswer = answers[String(index)];
+            const result = { type: q.type, marks: q.marks || 1, scored: 0, correct: false };
+
             if (q.type === 'mcq' && studentAnswer !== undefined) {
                 if (Number(studentAnswer) === q.correctIndex) {
-                    score += q.marks || 1;
+                    result.scored = q.marks || 1;
+                    result.correct = true;
+                    score += result.scored;
                 }
             }
-            // Short answer and coding would need manual grading in full version
-            // For MVP: give partial marks if answered
+
+            // Short answer — manual grading hoga baad mein
+            // Abhi ke liye: answer diya toh 50% marks (attempt ke liye)
             if (q.type === 'short' && studentAnswer && String(studentAnswer).trim().length > 0) {
-                score += Math.ceil((q.marks || 1) * 0.5); // 50% for attempt
+                result.scored = Math.ceil((q.marks || 1) * 0.5);
+                score += result.scored;
             }
+
+            // Coding — manual/test-case grading baad mein
+            // Abhi ke liye: code likha toh 50% marks
+            if (q.type === 'coding' && studentAnswer && String(studentAnswer).trim().length > 0) {
+                result.scored = Math.ceil((q.marks || 1) * 0.5);
+                score += result.scored;
+            }
+
+            questionResults[String(index)] = result;
         });
 
         const percentage = Math.round((score / exam.totalMarks) * 100);
         const passed = percentage >= ((exam.passingMarks / exam.totalMarks) * 100);
 
-        // Update or create session
+        // ─── Session Update ──────────────────────────
         const session = await ExamSession.findOneAndUpdate(
             { exam: examId, student: studentId },
             {
@@ -233,18 +431,21 @@ exports.submitExam = async (req, res) => {
                 percentage,
                 passed,
                 status: 'submitted',
-                submittedAt: new Date()
+                submittedAt: new Date(),
+                remainingTimeSeconds: 0,        // Time khatam
+                lastSavedAt: new Date()
             },
             { upsert: true, new: true }
         );
 
         res.json({
-            message: 'Exam submitted successfully',
+            message: 'Exam successfully submit ho gaya!',
             sessionId: session._id,
             score,
             totalMarks: exam.totalMarks,
             percentage,
-            passed
+            passed,
+            questionResults    // Har question ka breakdown (frontend pe dikhane ke liye)
         });
     } catch (error) {
         console.error('Exam submission failed:', error);
