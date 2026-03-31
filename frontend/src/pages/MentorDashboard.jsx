@@ -10,7 +10,7 @@ import {
   BarChart3, Bell, FileText, TrendingUp,
   ArrowDownRight, ExternalLink, Filter,
   AlertCircle, ShieldCheck, BookOpen, CreditCard,
-  Activity, ScanFace
+  Activity, ScanFace, OctagonX, CheckCircle2
 } from 'lucide-react';
 
 // --- Default Empty State ---
@@ -43,7 +43,7 @@ const getStudentDetail = (student) => {
   } catch (e) {
     console.error("Local incidents parse failure", e);
   }
-  
+
   const faceImage = localStorage.getItem('vision_reference_face');
   const idImage = localStorage.getItem('vision_reference_id');
 
@@ -67,10 +67,10 @@ const getStudentDetail = (student) => {
       ],
       flags: (student?.name === 'Adarsh Maurya' && realIncidents.length > 0)
         ? realIncidents.map(inc => ({
-            type: inc?.type || 'Flag',
-            time: inc?.timestamp ? new Date(inc.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '00:00',
-            severity: inc?.severity || 'medium'
-          }))
+          type: inc?.type || 'Flag',
+          time: inc?.timestamp ? new Date(inc.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '00:00',
+          severity: inc?.severity || 'medium'
+        }))
         : student?.status === 'Flagged'
           ? [{ type: 'Tab Switch', time: '12:04', severity: 'high' }, { type: 'Face Not Detected', time: '18:22', severity: 'high' }]
           : (student?.score || 0) < 80
@@ -157,11 +157,10 @@ const StudentDetailModal = ({ student, onClose }) => {
                 <h4 className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest mb-3">Question Map</h4>
                 <div className="grid grid-cols-6 gap-1.5">
                   {student.questions.map((q, i) => (
-                    <div key={i} className={`aspect-square rounded-md flex items-center justify-center text-[10px] font-bold border ${
-                      q.result === 'correct' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
-                      q.result === 'wrong' ? 'bg-red-500/10 border-red-500/20 text-red-400' :
-                      'bg-zinc-800/50 border-zinc-700/50 text-zinc-500'
-                    }`}>
+                    <div key={i} className={`aspect-square rounded-md flex items-center justify-center text-[10px] font-bold border ${q.result === 'correct' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
+                        q.result === 'wrong' ? 'bg-red-500/10 border-red-500/20 text-red-400' :
+                          'bg-zinc-800/50 border-zinc-700/50 text-zinc-500'
+                      }`}>
                       {q.q}
                     </div>
                   ))}
@@ -176,25 +175,25 @@ const StudentDetailModal = ({ student, onClose }) => {
               <div className="bg-[#181a20] rounded-xl p-4 border border-white/[0.06] flex flex-col min-h-[220px]">
                 <h4 className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-1.5"><Video size={12} className="text-emerald-500" /> Integrated Live Feed</h4>
                 <div className="flex-1 relative rounded-xl overflow-hidden bg-black/40 border border-white/5 mb-4 group">
-                   <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="absolute top-2 right-2 flex items-center gap-1.5 px-2 py-0.5 bg-red-500/10 border border-red-500/20 rounded-full z-10">
-                        <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
-                        <span className="text-[8px] font-black text-red-500 uppercase tracking-widest">Live Feed</span>
-                      </div>
-                      <div className="absolute inset-0 opacity-10 bg-[linear-gradient(to_right,#ffffff10_1px,transparent_1px),linear-gradient(to_bottom,#ffffff10_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none" />
-                      <div className="text-center w-full h-full flex flex-col items-center justify-center">
-                        <div className="w-full h-full flex flex-col items-center justify-center bg-emerald-500/5 relative">
-                           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.1)_0%,transparent_70%)] animate-pulse" />
-                           <ScanFace size={56} className="text-emerald-400 opacity-40 relative z-10" />
-                           <div className="mt-3 flex flex-col items-center gap-1 relative z-10">
-                             <span className="text-[9px] font-black text-emerald-500 uppercase tracking-[0.2em]">Neural Mesh Active</span>
-                             <span className="text-[8px] text-emerald-500/40 uppercase font-bold tracking-widest">Privacy Shield Restricted</span>
-                           </div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="absolute top-2 right-2 flex items-center gap-1.5 px-2 py-0.5 bg-red-500/10 border border-red-500/20 rounded-full z-10">
+                      <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
+                      <span className="text-[8px] font-black text-red-500 uppercase tracking-widest">Live Feed</span>
+                    </div>
+                    <div className="absolute inset-0 opacity-10 bg-[linear-gradient(to_right,#ffffff10_1px,transparent_1px),linear-gradient(to_bottom,#ffffff10_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none" />
+                    <div className="text-center w-full h-full flex flex-col items-center justify-center">
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-emerald-500/5 relative">
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.1)_0%,transparent_70%)] animate-pulse" />
+                        <ScanFace size={56} className="text-emerald-400 opacity-40 relative z-10" />
+                        <div className="mt-3 flex flex-col items-center gap-1 relative z-10">
+                          <span className="text-[9px] font-black text-emerald-500 uppercase tracking-[0.2em]">Neural Mesh Active</span>
+                          <span className="text-[8px] text-emerald-500/40 uppercase font-bold tracking-widest">Privacy Shield Restricted</span>
                         </div>
-                        <p className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[8px] text-zinc-500 font-mono bg-black/40 px-2 py-0.5 rounded backdrop-blur-sm">LATENCY: 24MS</p>
                       </div>
-                   </div>
-                   <div className="absolute inset-0 border-[20px] border-transparent border-t-emerald-500/5 border-l-emerald-500/5 pointer-events-none" />
+                      <p className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[8px] text-zinc-500 font-mono bg-black/40 px-2 py-0.5 rounded backdrop-blur-sm">LATENCY: 24MS</p>
+                    </div>
+                  </div>
+                  <div className="absolute inset-0 border-[20px] border-transparent border-t-emerald-500/5 border-l-emerald-500/5 pointer-events-none" />
                 </div>
 
                 <div className="mb-4">
@@ -319,8 +318,8 @@ const ActivityItem = ({ item }) => {
   );
 };
 
-const PerformanceRow = ({ student, onClick }) => (
-  <div onClick={onClick} className="grid grid-cols-12 gap-4 px-5 py-3.5 items-center hover:bg-white/[0.02] transition-colors cursor-pointer group">
+const PerformanceRow = ({ student, onClick, onTerminate, isTerminated }) => (
+  <div onClick={onClick} className={`grid grid-cols-12 gap-4 px-5 py-3.5 items-center hover:bg-white/[0.02] transition-colors cursor-pointer group ${isTerminated ? 'opacity-40' : ''}`}>
     <div className="col-span-3 flex items-center gap-3">
       <div className="w-7 h-7 rounded-lg bg-[#0f1117] border border-white/[0.06] flex items-center justify-center text-[10px] font-bold text-zinc-400">
         {student.name.charAt(0)}
@@ -337,8 +336,19 @@ const PerformanceRow = ({ student, onClick }) => (
       </div>
     </div>
     <div className="col-span-2 text-center text-xs text-zinc-500 font-mono">{student.time}</div>
-    <div className="col-span-2 flex justify-end">
-      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold ${getStatusStyle(student.status)}`}>{student.status}</span>
+    <div className="col-span-2 flex justify-end items-center gap-2">
+      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold ${isTerminated ? 'bg-red-500/10 text-red-400' : getStatusStyle(student.status)}`}>
+        {isTerminated ? 'Terminated' : student.status}
+      </span>
+      {!isTerminated && (
+        <button
+          onClick={e => { e.stopPropagation(); onTerminate(student); }}
+          className="opacity-0 group-hover:opacity-100 p-1 rounded-lg text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-all"
+          title="Terminate exam"
+        >
+          <OctagonX size={13} />
+        </button>
+      )}
     </div>
   </div>
 );
@@ -372,7 +382,30 @@ export default function MentorDashboard() {
   const [showAllResults, setShowAllResults] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [terminatedStudents, setTerminatedStudents] = useState({});
+  const [toasts, setToasts] = useState([]);
+  const [showAllActivity, setShowAllActivity] = useState(false);
   const navigate = useNavigate();
+
+  const addToast = (msg, type = 'success') => {
+    const id = Date.now();
+    setToasts(p => [...p, { id, msg, type }]);
+    setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 4000);
+  };
+
+  const terminateStudent = (student) => {
+    const entry = {
+      studentId: student.id || 'VSN-89241',
+      examId: student.exam,
+      reason: `Terminated by Mentor — ${student.exam}`,
+      terminatedBy: 'mentor',
+      timestamp: new Date().toISOString(),
+    };
+    const existing = JSON.parse(localStorage.getItem('vision_terminated_sessions') || '[]');
+    localStorage.setItem('vision_terminated_sessions', JSON.stringify([entry, ...existing]));
+    setTerminatedStudents(prev => ({ ...prev, [student.name]: true }));
+    addToast(`Exam terminated for ${student.name}`, 'error');
+  };
 
   // Lock all scrolling for cinematic Command Center feel
   useEffect(() => {
@@ -399,7 +432,7 @@ export default function MentorDashboard() {
     socketService.onMentorAlert((data) => {
       console.log("CRITICAL VIOLATION:", data);
       setSocketAlerts(prev => [data, ...prev]);
-      
+
       // Inject into live activity feed
       const newActivity = {
         name: data.studentId?.split?.('-')?.pop?.() || 'Student',
@@ -470,7 +503,7 @@ export default function MentorDashboard() {
   return (
     <div className="h-screen w-full bg-[#0f1117] font-sans text-zinc-200 overflow-hidden flex flex-col">
       <Navbar role="Mentor" />
-      
+
       <style>{`
         html, body { 
           overflow: hidden !important; 
@@ -482,7 +515,7 @@ export default function MentorDashboard() {
         .modal-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.05); border-radius: 10px; }
         .modal-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.1); }
       `}</style>
-      
+
       <main className="flex-1 max-w-6xl w-full mx-auto px-6 pt-24 pb-10 overflow-hidden flex flex-col">
         <div className="flex-1 overflow-y-auto modal-scroll pr-2 pr-0">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
@@ -501,7 +534,7 @@ export default function MentorDashboard() {
                 <Plus size={16} /> Create New Exam
               </button>
               <button
-                onClick={() => navigate('/mentor/exams')}
+                onClick={() => navigate('/mentor')}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1a1d26] border border-white/[0.07] text-sm font-semibold text-zinc-300 hover:text-white hover:bg-white/[0.08] hover:border-white/[0.12] transition-all"
               >
                 <BookOpen size={16} /> View Old Exams
@@ -539,11 +572,11 @@ export default function MentorDashboard() {
 
               <div className="mt-5 grid grid-cols-3 gap-2">
                 {[
-                  { icon: <Eye size={15} />, label: 'View Roster' },
-                  { icon: <Video size={15} />, label: 'Live Feed' },
-                  { icon: <BarChart3 size={15} />, label: 'Analytics' },
+                  { icon: <Eye size={15} />, label: 'View Roster', action: () => addToast('Roster: 73 students across 5 active exams', 'info') },
+                  { icon: <Video size={15} />, label: 'Live Feed', action: () => addToast('Live feed: All proctoring cameras active', 'success') },
+                  { icon: <BarChart3 size={15} />, label: 'Analytics', action: () => addToast('Analytics: Avg score 78% · Pass rate 82%', 'success') },
                 ].map((action, i) => (
-                  <button key={i} className="bg-[#181a20] border border-white/[0.06] rounded-xl px-4 py-3 flex items-center justify-center gap-2.5 text-xs font-medium text-zinc-400 hover:text-white hover:border-white/[0.12] hover:bg-white/[0.02] transition-all">
+                  <button key={i} onClick={action.action} className="bg-[#181a20] border border-white/[0.06] rounded-xl px-4 py-3 flex items-center justify-center gap-2.5 text-xs font-medium text-zinc-400 hover:text-white hover:border-white/[0.12] hover:bg-white/[0.02] transition-all active:scale-95">
                     {action.icon}
                     {action.label}
                   </button>
@@ -554,11 +587,13 @@ export default function MentorDashboard() {
             <div className="lg:col-span-2">
               <div className="flex items-center justify-between mb-4 h-8">
                 <h2 className="text-sm font-semibold text-white">Activity</h2>
-                <button className="text-xs text-zinc-600 hover:text-zinc-300 transition-colors font-medium">View all</button>
+                <button onClick={() => setShowAllActivity(!showAllActivity)} className="text-xs text-zinc-600 hover:text-zinc-300 transition-colors font-medium">
+                  {showAllActivity ? 'Show less' : 'View all'}
+                </button>
               </div>
 
               <div className="bg-[#181a20] rounded-2xl border border-white/[0.06] divide-y divide-white/[0.04]">
-                {recentActivity.length > 0 ? recentActivity.map((item, i) => (
+                {recentActivity.length > 0 ? (showAllActivity ? recentActivity : recentActivity.slice(0, 4)).map((item, i) => (
                   <ActivityItem key={i} item={item} />
                 )) : (
                   <div className="text-center py-8 text-zinc-600 text-xs font-medium">No recent activity yet.</div>
@@ -605,10 +640,12 @@ export default function MentorDashboard() {
                 {studentPerformance.length > 0 ? studentPerformance
                   .filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase()))
                   .map((s, i) => (
-                    <PerformanceRow 
-                      key={i} 
-                      student={s} 
-                      onClick={() => setSelectedStudent(getStudentDetail(s))} 
+                    <PerformanceRow
+                      key={i}
+                      student={s}
+                      isTerminated={!!terminatedStudents[s.name]}
+                      onClick={() => setSelectedStudent(getStudentDetail(s))}
+                      onTerminate={terminateStudent}
                     />
                   )) : (
                   <div className="text-center py-8 text-zinc-600 text-xs font-medium">No student submissions yet.</div>
@@ -642,10 +679,24 @@ export default function MentorDashboard() {
         </div>
       </main>
 
-      <StudentDetailModal 
-        student={selectedStudent} 
-        onClose={() => setSelectedStudent(null)} 
+      <StudentDetailModal
+        student={selectedStudent}
+        onClose={() => setSelectedStudent(null)}
       />
+
+      {/* Toast Notifications */}
+      <div className="fixed bottom-6 right-6 z-[200] flex flex-col gap-2 pointer-events-none">
+        {toasts.map(t => (
+          <div key={t.id} className={`flex items-center gap-3 px-4 py-3 rounded-xl border shadow-2xl backdrop-blur-md pointer-events-auto transition-all ${t.type === 'error' ? 'bg-red-950/90 border-red-500/30 text-red-300' :
+              t.type === 'info' ? 'bg-[#181a20] border-indigo-500/30 text-indigo-300' :
+                'bg-zinc-900/90 border-emerald-500/30 text-emerald-300'
+            }`}>
+            {t.type === 'error' ? <OctagonX size={14} /> : <CheckCircle2 size={14} />}
+            <span className="text-xs font-semibold">{t.msg}</span>
+            <button onClick={() => setToasts(p => p.filter(x => x.id !== t.id))} className="ml-1 opacity-50 hover:opacity-100"><X size={12} /></button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

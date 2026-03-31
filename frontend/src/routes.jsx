@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import MainLayout from './components/MainLayout';
+import { ThemeProvider } from './contexts/ThemeContext';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import AdminDashboard from './pages/AdminDashboard';
@@ -12,6 +13,7 @@ import ExamWaitingRoom from './pages/ExamWaitingRoom';
 
 export default function AppRouter() {
   return (
+    <ThemeProvider>
     <BrowserRouter>
       <Routes>
         <Route element={<MainLayout />}>
@@ -28,5 +30,6 @@ export default function AppRouter() {
         </Route>
       </Routes>
     </BrowserRouter>
+    </ThemeProvider>
   );
 }
