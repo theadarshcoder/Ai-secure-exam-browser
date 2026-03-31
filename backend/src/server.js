@@ -88,7 +88,7 @@ const globalLimiter = rateLimit({
 // 10 attempts per 15 minutes per IP — brute force attack ruk jayega
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,    // 15 minute ka window
-    max: 10,                      // Sirf 10 login attempts!
+    max: 1000,                   // Development ke liye 1000 kar diya taaki testing na ruke
     message: {
         error: 'Bahut zyada login attempts! 15 minute baad try karo.',
         retryAfter: '15 minutes'
