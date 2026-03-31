@@ -170,35 +170,7 @@ app.use('/api/exams', examRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/session', sessionRoutes);  // 🚨 Violation logging & history
 
-// Demo login (development only — production mein hata dena!)
-app.post('/api/demo-login', authLimiter, async (req, res) => {
-    try {
-        const { email, role } = req.body;
-        let user = await User.findOne({ email });
-        if (!user) {
-            user = new User({ 
-                name: email.split('@')[0], 
-                email, 
-                password: 'password123', 
-                role 
-            });
-        }
-        const rolePermissions = {
-            'mentor': ['create_exam', 'view_live_grid'],
-            'admin': ['create_exam', 'view_live_grid', 'manage_users', 'view_reports'],
-            'exam_admin': ['create_exam', 'manage_exams'],
-            'student': []
-        };
-        user.permissions = rolePermissions[role] || [];
-        
-        const token = jwt.sign({ id: user._id, email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
-        user.currentSessionToken = token;
-        await user.save();
-        res.json({ message: "Login Successful", token, role: user.role });
-    } catch (error) {
-        res.status(500).json({ error: "Login failed" });
-    }
-});
+
 
 
 // ═══════════════════════════════════════════════════════════

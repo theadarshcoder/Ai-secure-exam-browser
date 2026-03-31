@@ -220,22 +220,8 @@ const LoginPage = () => {
       navigate(target);
 
     } catch (error) {
-      // Agar real login fail ho (user registered nahi hai ya backend down) toh demo-login try karo
-      console.warn('Real auth failed, trying demo-login fallback...', error.response?.data?.error || error.message);
-      
-      try {
-        const fallback = await api.post('/api/demo-login', { email, role });
-        const { token } = fallback.data;
-
-        localStorage.setItem('vision_token', token);
-        localStorage.setItem('vision_role', role);
-        localStorage.setItem('vision_email', email);
-
-        navigate(role === 'student' ? '/student' : role === 'mentor' ? '/mentor' : '/admin');
-      } catch (fallbackError) {
-        console.error('Both login methods failed:', fallbackError.message);
-        setError('Access Denied: Invalid credentials or offline nodes.');
-      }
+      console.error('Login failed:', error.response?.data?.error || error.message);
+      setError(error.response?.data?.error || 'Access Denied: Invalid credentials or offline nodes.');
     } finally {
       setIsAuthenticating(false);
     }
