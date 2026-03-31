@@ -367,15 +367,6 @@ export default function CreateExam() {
   };
 
 
-  // Simulated PDF-extracted question bank
-  const MOCK_PDF_QUESTIONS = [
-    { type: 'mcq', question: 'Which sorting algorithm has the best average-case time complexity?', options: ['Bubble Sort', 'Merge Sort', 'Insertion Sort', 'Selection Sort'], correctIndex: 1, marks: 2 },
-    { type: 'mcq', question: 'What is the space complexity of a recursive Fibonacci implementation?', options: ['O(1)', 'O(log n)', 'O(n)', 'O(n²)'], correctIndex: 2, marks: 2 },
-    { type: 'short', question: 'Explain the difference between BFS and DFS traversal algorithms.', expectedAnswer: 'BFS uses queue (level-order), DFS uses stack (depth-first)', maxWords: 200, marks: 3 },
-    { type: 'short', question: 'What are the key properties of a balanced binary search tree?', expectedAnswer: 'Height O(log n), left subtree < root < right subtree', maxWords: 150, marks: 3 },
-    { type: 'coding', question: 'Write a function to check if a given string is a palindrome.', language: 'javascript', starterCode: 'function isPalindrome(s) {\n  // your code here\n}', testCases: [{ input: '"racecar"', output: 'true' }, { input: '"hello"', output: 'false' }], marks: 5 },
-  ];
-
   const handleFile = (file) => {
     if (!file) return;
     const ext = file.name.split('.').pop().toLowerCase();
@@ -388,7 +379,6 @@ export default function CreateExam() {
         const reader = new FileReader();
         reader.onload = (e) => {
           const lines = e.target.result.split('\n').filter(l => l.trim() && !l.startsWith('#'));
-          // skip header row if it starts with 'type'
           const dataLines = lines[0]?.toLowerCase().startsWith('type') ? lines.slice(1) : lines;
           const extracted = dataLines.map(l => csvRowToQuestion(parseCSVRow(l))).filter(Boolean);
           if (extracted.length > 0) {
@@ -399,13 +389,11 @@ export default function CreateExam() {
         };
         reader.readAsText(file);
       } else {
-        // PDF: simulate extraction with mock question bank
+        // PDF: real parsing not implemented yet
         setTimeout(() => {
-          const qs = MOCK_PDF_QUESTIONS.map((q, i) => ({ ...q, id: `pdf-${Date.now()}-${i}`, accepted: false }));
-          setAiSuggestions(prev => [...prev, ...qs]);
-          setShowAI(true);
+          alert('PDF question extraction is coming soon. Please use CSV import for now.');
           setFileParseLoading(false);
-        }, 2000);
+        }, 1000);
       }
     } else {
       // Syllabus extraction mode
@@ -1005,7 +993,9 @@ export default function CreateExam() {
             <div className="flex flex-col gap-3">
               <button 
                 onClick={() => {
-                  navigator.clipboard.writeText(`http://localhost:5173/exam/${publishedExamId}`);
+                  const link = `${window.location.origin}/login`;
+                  navigator.clipboard.writeText(link);
+                  alert('Link copied! Students will login and see this exam on their dashboard.');
                 }}
                 className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-[#0a0c10] text-sm font-bold transition-colors flex items-center justify-center gap-2"
               >

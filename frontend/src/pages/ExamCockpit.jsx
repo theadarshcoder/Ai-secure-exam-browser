@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import socketService from '../services/socket';
+import api from '../services/api';
 import {
   Camera, CameraOff, Clock, Shield, CheckCircle,
   ChevronRight, ChevronLeft, Send, XCircle,
@@ -16,18 +17,7 @@ import VisionLogo from '../components/VisionLogo';
 
 const TOTAL_SECONDS = 45 * 60;
 
-const MOCK_QUESTIONS = [
-  { id: 1, type: 'mcq', text: 'Analyze the Priority Scheduling algorithm. In what scenario does "Priority Inversion" lead to a total system deadlock?', options: ['Normal Execution', 'Resource Contention', 'Bounded Waiting', 'Preemption Violation'], correct: 1 },
-  { id: 2, type: 'coding', text: 'Implement a high-performance memory-efficient algorithm to detect the longest unique subsequence within a stream.', language: 'javascript', starterCode: '/**\n * @param {string} s\n * @return {number}\n */\nfunction lengthOfLongestSubstring(s) {\n  // Your code here\n}' },
-  { id: 3, type: 'short', text: 'Explain the ACID properties in database transactions and how they ensure data integrity.' },
-  ...Array(17).fill(null).map((_, i) => ({
-    id: i + 4,
-    type: 'mcq',
-    text: 'Identify the most critical optimization flaw in the provided high-concurrency architecture that would lead to systematic degradation.',
-    options: ['Scalability limit', 'Single point of failure', 'Latency overhead', 'Memory leak'],
-    correct: 1
-  }))
-];
+
 
 /* ─────────────── Sub-components ─────────────── */
 
@@ -214,7 +204,7 @@ export default function ExamCockpit() {
   const tabToast = useTabVisibility();
 
   const [exam, setExam] = useState(null);
-  const [questions, setQuestions] = useState(MOCK_QUESTIONS);
+  const [questions, setQuestions] = useState([]);
   const [secondsLeft, setSecondsLeft] = useState(TOTAL_SECONDS);
   const [cameraActive, setCameraActive] = useState(true);
   const [stream, setStream] = useState(null);
@@ -251,11 +241,41 @@ export default function ExamCockpit() {
     return () => clearInterval(interval);
   }, [submitted]);
 
-  // Load Exam
+  // Load Exam from Backend
   useEffect(() => {
-    const published = JSON.parse(localStorage.getItem('published_exams') || '[]');
-    const foundExam = published.find(e => e.id === examId);
-    if (foundExam) setExam(foundExam);
+    const fetchExam = async () => {
+      try {
+        const response = await api.get(`/api/exams/${examId}`);
+        const data = response.data;
+        setExam(data);
+        if (data.questions && data.questions.length > 0) {
+          setQuestions(data.questions.map((q, i) => ({
+            id: q.id || i + 1,
+            type: q.type,
+            text: q.text,
+            options: q.options,
+            marks: q.marks,
+            language: q.language,
+            starterCode: q.starterCode,
+            maxWords: q.maxWords
+          })));
+          if (data.duration) setSecondsLeft(data.duration * 60);
+        }
+        // Start session in backend
+        try {
+          await api.post('/api/exams/start', { examId });
+        } catch (startErr) {
+          console.warn('Session start note:', startErr.response?.data?.error || startErr.message);
+        }
+      } catch (err) {
+        console.warn('Backend unavailable, using mock data:', err.message);
+        // Fallback: try localStorage
+        const published = JSON.parse(localStorage.getItem('published_exams') || '[]');
+        const foundExam = published.find(e => e.id === examId);
+        if (foundExam) setExam(foundExam);
+      }
+    };
+    fetchExam();
   }, [examId]);
 
   // Camera & Face Detection
@@ -325,20 +345,29 @@ export default function ExamCockpit() {
     return () => socketService.disconnect();
   }, []);
 
-  const logIncident = (type, severity, details) => {
+  const logIncident = async (type, severity, details) => {
+    const studentId = localStorage.getItem('vision_email') || 'VSN-89241';
     const incident = {
       id: `INC-${Date.now()}`,
       examId,
-      studentId: 'VSN-89241',
+      studentId,
       type,
       severity,
       details,
       timestamp: new Date().toISOString(),
     };
 
-    // Emit to backend for real-time mentor alerts
+    // Emit to backend for real-time mentor alerts via socket
     socketService.emitViolation(incident);
 
+    // Also persist to backend API for audit trail
+    try {
+      await api.post('/api/exams/incident', { examId, type, severity, details });
+    } catch (err) {
+      console.warn('Incident API save failed:', err.message);
+    }
+
+    // Local backup
     const existing = JSON.parse(localStorage.getItem('vision_incidents') || '[]');
     localStorage.setItem('vision_incidents', JSON.stringify([incident, ...existing]));
   };
@@ -569,7 +598,16 @@ export default function ExamCockpit() {
       <SubmitModal 
         isOpen={showConfirm} 
         onClose={() => setShowConfirm(false)} 
-        onConfirm={() => { setSubmitted(true); setTimeout(() => navigate('/student'), 2500); }} 
+        onConfirm={async () => {
+          try {
+            const result = await api.post('/api/exams/submit', { examId, answers });
+            console.log('Submission result:', result.data);
+          } catch (err) {
+            console.warn('Backend submit failed, answers saved locally:', err.message);
+          }
+          setSubmitted(true);
+          setTimeout(() => navigate('/student'), 2500);
+        }} 
         stats={{ answered: answeredCount, unanswered: questions.length - answeredCount, marked: Object.values(markedForReview).filter(Boolean).length }} 
       />
       

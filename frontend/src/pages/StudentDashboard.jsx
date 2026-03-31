@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../services/api';
 import { Navbar } from '../components/Navbar';
 import { 
   PlayCircle, BookOpen, ShieldCheck, 
@@ -7,18 +8,7 @@ import {
   Activity, Fingerprint, LifeBuoy
 } from 'lucide-react';
 
-/* ─────────────── Config & Mock Data ─────────────── */
-
-const MOCK_EXAMS = [
-  { id: 'EXM-CS101', title: 'Computer Science 101 - Final', duration: 90, questionsCount: 50, startTime: new Date(Date.now() + 60000).toISOString() },
-  { id: 'EXM-DSA', title: 'Data Structures & Algorithms', duration: 120, questionsCount: 40, startTime: new Date(Date.now() - 1800000).toISOString() },
-  { id: 'EXM-OS', title: 'Operating Systems Midterm', duration: 60, questionsCount: 30, startTime: new Date(Date.now() + 300000).toISOString() },
-  { id: 'EXM-DBMS', title: 'Database Management Systems', duration: 45, questionsCount: 20, startTime: new Date(Date.now() + 86400000).toISOString() },
-  { id: 'EXM-SE', title: 'Software Engineering Fundamentals', duration: 90, questionsCount: 50, startTime: new Date(Date.now() - 60000).toISOString() },
-  { id: 'EXM-NW', title: 'Computer Networks Assessment', duration: 60, questionsCount: 25, startTime: new Date(Date.now() + 7200000).toISOString() },
-  { id: 'EXM-AI', title: 'Artificial Intelligence Basics', duration: 180, questionsCount: 60, startTime: new Date(Date.now() + 172800000).toISOString() },
-  { id: 'EXM-ML', title: 'Machine Learning Core Exam', duration: 120, questionsCount: 40, startTime: new Date(Date.now() + 259200000).toISOString() },
-];
+/* ─────────────── Config ─────────────── */
 
 /* ─────────────── Sub-components ─────────────── */
 
@@ -137,10 +127,36 @@ const ExamCard = ({ exam, now, onLaunch }) => {
 export default function StudentDashboard() {
   const navigate = useNavigate();
   const [now, setNow] = useState(new Date());
+  const [exams, setExams] = useState([]);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     const timer = setInterval(() => setNow(new Date()), 1000);
+
+    // Fetch real exams from backend
+    const fetchExams = async () => {
+      try {
+        const response = await api.get('/api/exams/active');
+        const data = response.data;
+        if (Array.isArray(data) && data.length > 0) {
+          setExams(data.map(e => ({
+            id: e.id,
+            title: e.title,
+            duration: e.duration,
+            questionsCount: e.questionsCount,
+            startTime: e.startTime || new Date().toISOString(),
+            category: e.category
+          })));
+        } else {
+          setExams([]);
+        }
+      } catch (err) {
+        console.warn('Backend unavailable, using fallback exams:', err.message);
+        setExams([]);
+      }
+    };
+    fetchExams();
+
     return () => {
       document.body.style.overflow = 'auto';
       clearInterval(timer);
@@ -167,8 +183,8 @@ export default function StudentDashboard() {
           </div>
 
           <div className="flex-1 overflow-y-auto pr-2 space-y-4 custom-scrollbar">
-             {MOCK_EXAMS.length > 0 ? (
-                MOCK_EXAMS.map(exam => (
+             {exams.length > 0 ? (
+                exams.map(exam => (
                   <ExamCard 
                     key={exam.id} 
                     exam={exam} 

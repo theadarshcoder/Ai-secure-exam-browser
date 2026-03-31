@@ -13,51 +13,12 @@ import {
   Activity, ScanFace
 } from 'lucide-react';
 
-// --- Static Mock Data ---
-const STATS = [
-  { label: 'Live Students', value: '73', delta: '+12', deltaLabel: 'this hour', color: 'bg-blue-500' },
-  { label: 'Flags', value: '2', delta: null, deltaLabel: 'need review', color: 'bg-amber-500' },
-  { label: 'Uptime', value: '100%', delta: null, deltaLabel: 'all nodes', color: 'bg-emerald-500' },
-  { label: 'Latency', value: '24ms', delta: null, deltaLabel: 'optimal', color: 'bg-violet-500' },
-];
-
-const EXAMS = [
-  { id: 'EX-901', name: 'Data Structures & Algorithms', students: 42, status: 'live', flags: 0, time: '01:42' },
-  { id: 'EX-902', name: 'Advanced Frontend Development', students: 28, status: 'live', flags: 2, time: '00:55' },
-  { id: 'EX-903', name: 'Database Management Systems', students: 35, status: 'live', flags: 0, time: '02:10' },
-  { id: 'EX-904', name: 'Cloud Computing & DevOps', students: 22, status: 'upcoming', flags: 0, time: '14:00' },
-  { id: 'EX-905', name: 'Cyber Security Fundamentals', students: 19, status: 'upcoming', flags: 0, time: '16:30' },
-];
-
-const ACTIVITY = [
-  { name: 'Alex Rivera', action: 'submitted', exam: 'Advanced Frontend', time: '2m ago', type: 'review' },
-  { name: 'Mila Kunis', action: 'completed', exam: 'DSA', time: '14m ago', type: 'pass' },
-  { name: 'Tanay Goyal', action: 'completed', exam: 'DBMS', time: '1h ago', type: 'pass' },
-  { name: 'Sarah Smith', action: 'flagged', exam: 'DSA', time: '2h ago', type: 'flag' },
-  { name: 'Raj Patel', action: 'submitted', exam: 'Cloud Computing', time: '2h ago', type: 'review' },
-  { name: 'Emma Wilson', action: 'completed', exam: 'Cyber Security', time: '3h ago', type: 'pass' },
-];
-
-const STUDENT_PERFORMANCE = [
-  { name: 'Alex Rivera', exam: 'Advanced Frontend', score: 87, time: '38:22', status: 'Reviewing' },
-  { name: 'Mila Kunis', exam: 'DSA', score: 92, time: '41:05', status: 'Passed' },
-  { name: 'Tanay Goyal', exam: 'DBMS', score: 78, time: '44:50', status: 'Passed' },
-  { name: 'Sarah Smith', exam: 'DSA', score: 45, time: '22:10', status: 'Flagged' },
-  { name: 'Raj Patel', exam: 'Cloud Computing', score: 81, time: '39:15', status: 'Reviewing' },
-  { name: 'Emma Wilson', exam: 'Cyber Security', score: 95, time: '35:40', status: 'Passed' },
-  { name: 'James Lee', exam: 'Advanced Frontend', score: 88, time: '42:30', status: 'Passed' },
-  { name: 'Priya Sharma', exam: 'DBMS', score: 73, time: '40:00', status: 'Passed' },
-];
-
-const RESULTS_SUMMARY = [
-  { exam: 'Data Structures & Algorithms', avg: 72, high: 100, low: 28, submissions: 42, pass: 82 },
-  { exam: 'Advanced Frontend Development', avg: 76, high: 95, low: 42, submissions: 28, pass: 88 },
-  { exam: 'Database Management Systems', avg: 81, high: 98, low: 55, submissions: 35, pass: 94 },
-  { exam: 'Cloud Computing & DevOps', avg: 69, high: 91, low: 38, submissions: 22, pass: 74 },
-  { exam: 'Cyber Security Fundamentals', avg: 78, high: 96, low: 44, submissions: 19, pass: 86 },
-  { exam: 'Operating Systems', avg: 65, high: 89, low: 31, submissions: 38, pass: 71 },
-  { exam: 'Computer Networks', avg: 74, high: 94, low: 40, submissions: 30, pass: 80 },
-  { exam: 'Software Engineering', avg: 83, high: 99, low: 52, submissions: 26, pass: 92 },
+// --- Default Empty State ---
+const DEFAULT_STATS = [
+  { label: 'Live Students', value: '0', delta: null, deltaLabel: 'in sessions', color: 'bg-blue-500' },
+  { label: 'Submissions', value: '0', delta: null, deltaLabel: 'completed', color: 'bg-emerald-500' },
+  { label: 'Flags', value: '0', delta: null, deltaLabel: 'need review', color: 'bg-amber-500' },
+  { label: 'Total Exams', value: '0', delta: null, deltaLabel: 'created', color: 'bg-violet-500' },
 ];
 
 // --- Helpers ---
@@ -424,8 +385,11 @@ export default function MentorDashboard() {
   }, []);
 
   const [liveExams, setLiveExams] = useState([]);
-  const [recentActivity, setRecentActivity] = useState(ACTIVITY);
-  const [socketAlerts, setSocketAlerts] = useState([]);
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [_socketAlerts, setSocketAlerts] = useState([]);
+  const [dashStats, setDashStats] = useState(DEFAULT_STATS);
+  const [studentPerformance, setStudentPerformance] = useState([]);
+  const [resultsSummary, setResultsSummary] = useState([]);
 
   useEffect(() => {
     const userEmail = localStorage.getItem('vision_email') || 'mentor@vision.auth';
@@ -438,26 +402,51 @@ export default function MentorDashboard() {
       
       // Inject into live activity feed
       const newActivity = {
-        name: data.studentId.split('-').pop(), // Simple ID display
+        name: data.studentId?.split?.('-')?.pop?.() || 'Student',
         action: 'triggered alert',
-        exam: data.reason,
+        exam: data.reason || data.type || 'Violation',
         time: 'Just now',
         type: 'flag'
       };
       setRecentActivity(prev => [newActivity, ...prev.slice(0, 5)]);
     });
 
+    // Fetch live exam grid from backend
     const fetchLiveGrid = async () => {
       try {
-        const response = await api.get('/api/exams/live-grid');
-        setLiveExams(response.data);
+        const response = await api.get('/api/exams/mentor-list');
+        const data = response.data;
+        if (Array.isArray(data)) {
+          setLiveExams(data);
+        }
       } catch (error) {
         console.error('Grid sync failure:', error);
-        setLiveExams(EXAMS); // Graceful fallback to static data
+      }
+    };
+
+    // Fetch mentor dashboard stats from backend
+    const fetchStats = async () => {
+      try {
+        const response = await api.get('/api/exams/mentor-stats');
+        const data = response.data;
+        if (data.stats) {
+          setDashStats([
+            { label: 'Live Students', value: String(data.stats.liveStudents || 0), delta: null, deltaLabel: 'in sessions', color: 'bg-blue-500' },
+            { label: 'Submissions', value: String(data.stats.totalSubmissions || 0), delta: null, deltaLabel: 'completed', color: 'bg-emerald-500' },
+            { label: 'Flags', value: String(data.stats.flags || 0), delta: null, deltaLabel: 'need review', color: 'bg-amber-500' },
+            { label: 'Total Exams', value: String(data.stats.totalExams || 0), delta: null, deltaLabel: 'created', color: 'bg-violet-500' },
+          ]);
+        }
+        if (data.activity && data.activity.length > 0) {
+          setRecentActivity(data.activity);
+        }
+      } catch (error) {
+        console.error('Stats sync failure:', error);
       }
     };
 
     fetchLiveGrid();
+    fetchStats();
 
     return () => {
       socketService.disconnect();
@@ -476,7 +465,7 @@ export default function MentorDashboard() {
     return () => clearInterval(t);
   }, []);
 
-  const displayedResults = showAllResults ? RESULTS_SUMMARY : RESULTS_SUMMARY.slice(0, 4);
+  const displayedResults = showAllResults ? resultsSummary : resultsSummary.slice(0, 4);
 
   return (
     <div className="h-screen w-full bg-[#0f1117] font-sans text-zinc-200 overflow-hidden flex flex-col">
@@ -521,7 +510,7 @@ export default function MentorDashboard() {
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
-            {STATS.map((s, i) => (
+            {dashStats.map((s, i) => (
               <StatCard key={i} {...s} />
             ))}
           </div>
@@ -543,9 +532,9 @@ export default function MentorDashboard() {
               <div className="space-y-2">
                 {liveExams.length > 0 ? liveExams.map((exam, i) => (
                   <ActiveSessionItem key={i} exam={exam} />
-                )) : EXAMS.map((exam, i) => (
-                  <ActiveSessionItem key={i} exam={exam} />
-                ))}
+                )) : (
+                  <div className="text-center py-10 text-zinc-600 text-xs font-medium">No active sessions. Create an exam to get started.</div>
+                )}
               </div>
 
               <div className="mt-5 grid grid-cols-3 gap-2">
@@ -569,21 +558,11 @@ export default function MentorDashboard() {
               </div>
 
               <div className="bg-[#181a20] rounded-2xl border border-white/[0.06] divide-y divide-white/[0.04]">
-                {recentActivity.map((item, i) => (
+                {recentActivity.length > 0 ? recentActivity.map((item, i) => (
                   <ActivityItem key={i} item={item} />
-                ))}
-              </div>
-
-              <div className="mt-3 bg-amber-500/[0.06] border border-amber-500/[0.1] rounded-2xl p-5">
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
-                    <Bell size={14} className="text-amber-400" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-amber-300 mb-0.5">2 items need attention</p>
-                    <p className="text-xs text-amber-400/60 leading-relaxed">Neural Cryptography exam has flagged activity from 2 students. Review recommended before session ends.</p>
-                  </div>
-                </div>
+                )) : (
+                  <div className="text-center py-8 text-zinc-600 text-xs font-medium">No recent activity yet.</div>
+                )}
               </div>
             </div>
           </div>
@@ -623,7 +602,7 @@ export default function MentorDashboard() {
               </div>
 
               <div className="divide-y divide-white/[0.03]">
-                {STUDENT_PERFORMANCE
+                {studentPerformance.length > 0 ? studentPerformance
                   .filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase()))
                   .map((s, i) => (
                     <PerformanceRow 
@@ -631,7 +610,9 @@ export default function MentorDashboard() {
                       student={s} 
                       onClick={() => setSelectedStudent(getStudentDetail(s))} 
                     />
-                  ))}
+                  )) : (
+                  <div className="text-center py-8 text-zinc-600 text-xs font-medium">No student submissions yet.</div>
+                )}
               </div>
             </div>
           </div>
@@ -643,16 +624,20 @@ export default function MentorDashboard() {
               </h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {displayedResults.map((r, i) => (
+              {displayedResults.length > 0 ? displayedResults.map((r, i) => (
                 <ResultSummaryCard key={i} r={r} />
-              ))}
+              )) : (
+                <div className="col-span-2 text-center py-8 text-zinc-600 text-xs font-medium">No exam results to display yet.</div>
+              )}
             </div>
-            <button
-              onClick={() => setShowAllResults(!showAllResults)}
-              className="mt-4 w-full bg-[#181a20] border border-white/[0.06] rounded-xl py-3 flex items-center justify-center gap-2 text-xs font-medium text-zinc-400 hover:text-white hover:border-white/[0.12] transition-all"
-            >
-              {showAllResults ? <><ChevronUp size={14} /> Show Less</> : <><ChevronDown size={14} /> View More Exams (4 more)</>}
-            </button>
+            {resultsSummary.length > 4 && (
+              <button
+                onClick={() => setShowAllResults(!showAllResults)}
+                className="mt-4 w-full bg-[#181a20] border border-white/[0.06] rounded-xl py-3 flex items-center justify-center gap-2 text-xs font-medium text-zinc-400 hover:text-white hover:border-white/[0.12] transition-all"
+              >
+                {showAllResults ? <><ChevronUp size={14} /> Show Less</> : <><ChevronDown size={14} /> View More Exams ({resultsSummary.length - 4} more)</>}
+              </button>
+            )}
           </div>
         </div>
       </main>

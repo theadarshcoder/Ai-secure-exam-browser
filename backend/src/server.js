@@ -54,12 +54,43 @@ app.post('/api/demo-login', async (req, res) => {
     }
 });
 
+const ExamSession = require('./models/ExamSession');
+
 io.on('connection', (socket) => {
     console.log(`⚡ Connected: ${socket.id}`);
-    socket.on('student_violation', (data) => {
+    
+    socket.on('student_violation', async (data) => {
         console.log(`🚨 Violation:`, data);
-        io.emit('mentor_alert', data); 
+        
+        // Broadcast to all connected mentors in real-time
+        io.emit('mentor_alert', data);
+        
+        // Also persist to database for audit trail
+        try {
+            if (data.examId && data.studentId) {
+                const User = require('./models/User');
+                const student = await User.findOne({ email: data.studentId });
+                if (student) {
+                    await ExamSession.findOneAndUpdate(
+                        { exam: data.examId, student: student._id },
+                        {
+                            $push: { violations: {
+                                type: data.type || data.reason || 'Unknown',
+                                severity: data.severity || 'medium',
+                                details: data.details || '',
+                                timestamp: new Date()
+                            }},
+                            $inc: data.type === 'Tab Switch' ? { tabSwitchCount: 1 } : {}
+                        },
+                        { upsert: false } // Only update if session exists
+                    );
+                }
+            }
+        } catch (err) {
+            console.error('Socket violation DB save failed:', err.message);
+        }
     });
+    
     socket.on('disconnect', () => console.log(`❌ Disconnected: ${socket.id}`));
 });
 

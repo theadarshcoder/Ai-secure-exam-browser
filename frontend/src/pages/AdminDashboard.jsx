@@ -19,13 +19,7 @@ const NAV_ITEMS = [
   { id: 'Settings', label: 'System Settings', icon: <Settings size={18} /> },
 ];
 
-const ACTIVE_SESSIONS = [
-  { id: 'VSN-89241', name: 'Adarsh Maurya', exam: 'Data Structures', risk: 'Low', score: 98, time: '32m rem' },
-  { id: 'VSN-89242', name: 'Sarah Chen', exam: 'Advanced AI', risk: 'High', score: 42, time: '14m rem' },
-  { id: 'VSN-89243', name: 'Rahul Verma', exam: 'Network Security', risk: 'Medium', score: 71, time: '45m rem' },
-  { id: 'VSN-89244', name: 'Elena Rossi', exam: 'Operating Systems', risk: 'Low', score: 99, time: '08m rem' },
-  { id: 'VSN-89245', name: 'Chris Jordan', exam: 'Cloud Arch', risk: 'Medium', score: 85, time: '22m rem' },
-];
+
 
 /* ─────────────── Sub-components ─────────────── */
 
@@ -102,24 +96,37 @@ export default function AdminDashboard() {
   const [activeTab, setTab] = useState('Overview');
   const [incidents, setIncidents] = useState([]);
   const [currentTime, setCurrentTime] = useState('');
+  const [activeSessions, setActiveSessions] = useState([]);
+  const [examCount, setExamCount] = useState(0);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     const timer = setInterval(() => setCurrentTime(new Date().toLocaleTimeString()), 1000);
     
-    const fetchLogs = async () => {
+    // Fetch everything from admin-stats endpoint
+    const fetchAdminData = async () => {
       try {
-        const response = await api.get('/api/admin/logs');
-        setIncidents(response.data);
+        const response = await api.get('/api/exams/admin-stats');
+        const data = response.data;
+        
+        if (data.stats) {
+          setExamCount(data.stats.totalExams || 0);
+        }
+        if (data.sessions && Array.isArray(data.sessions)) {
+          setActiveSessions(data.sessions);
+        }
+        if (data.incidents && Array.isArray(data.incidents)) {
+          setIncidents(data.incidents);
+        }
       } catch (error) {
-        console.error('Audit log synchronization failure:', error);
-        // Resilient fallback to local environment
+        console.error('Admin data fetch failure:', error);
+        // Fallback: try local incidents
         const raw = localStorage.getItem('vision_incidents');
         if (raw) setIncidents(JSON.parse(raw));
       }
     };
 
-    fetchLogs();
+    fetchAdminData();
 
     return () => {
       document.body.style.overflow = 'auto';
@@ -129,9 +136,9 @@ export default function AdminDashboard() {
 
   const criticalIssues = incidents.filter(i => i.severity === 'high').length;
   const stats = [
-    { label: 'Active Exams', value: '142', tag: 'SYNCED', color: 'text-indigo-500' },
-    { label: 'Reported Alerts', value: String(criticalIssues), tag: 'URGENT', color: 'text-red-500' },
-    { label: 'Integrity Score', value: '98.2', tag: 'NOMINAL', color: 'text-emerald-500' },
+    { label: 'Active Exams', value: String(examCount), tag: examCount > 0 ? 'SYNCED' : 'NONE', color: 'text-indigo-500' },
+    { label: 'Reported Alerts', value: String(criticalIssues), tag: criticalIssues > 0 ? 'URGENT' : 'CLEAR', color: 'text-red-500' },
+    { label: 'Integrity Score', value: incidents.length > 0 ? (100 - criticalIssues * 5).toFixed(1) : '100.0', tag: 'NOMINAL', color: 'text-emerald-500' },
     { label: 'System Uptime', value: '99.9%', tag: 'STABLE', color: 'text-zinc-500' },
   ];
 
@@ -227,7 +234,9 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/[0.02]">
-                    {ACTIVE_SESSIONS.map((s, i) => <SessionRow key={i} session={s} />)}
+                    {activeSessions.length > 0 ? activeSessions.map((s, i) => <SessionRow key={i} session={s} />) : (
+                      <tr><td colSpan="4" className="text-center py-10 text-zinc-600 text-xs font-medium">No active sessions. Create and publish an exam to see live data.</td></tr>
+                    )}
                   </tbody>
                 </table>
               </div>
