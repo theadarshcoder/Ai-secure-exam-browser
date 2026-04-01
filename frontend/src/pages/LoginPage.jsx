@@ -205,8 +205,9 @@ const LoginPage = () => {
     setError(null);
     
     try {
-      // Step 1: Pehle real login API try karo (bcrypt wala secure login)
-      const response = await api.post('/api/auth/login', { email, password });
+      // Step 1: Send email, password, AND selected UI role to API
+      // Backend ab is 'role' ko use karega to allow Admins to impersonate students/mentors!
+      const response = await api.post('/api/auth/login', { email, password, role });
       const { token, user } = response.data;
 
       // Step 2: Token aur user info localStorage mein save karo

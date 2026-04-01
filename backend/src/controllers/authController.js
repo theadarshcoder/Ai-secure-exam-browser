@@ -75,45 +75,44 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email, password, role: requestedRole } = req.body;
 
-        // Step 1: Check karo ki email aur password dono aaye hain
         if (!email || !password) {
-            return res.status(400).json({ 
-                error: 'Email aur password dono required hain!' 
-            });
+            return res.status(400).json({ error: 'Email aur password dono required hain!' });
         }
 
-        // Step 2: Database mein user dhundo email se
         const user = await User.findOne({ email });
         if (!user) {
-            return res.status(401).json({ 
-                error: 'Galat email ya password!' 
-            });
+            return res.status(401).json({ error: 'Galat email ya password!' });
         }
 
-        // Step 3: Password match karo (bcrypt compare — hashed vs plain)
         const isPasswordCorrect = await user.comparePassword(password);
         if (!isPasswordCorrect) {
-            return res.status(401).json({ 
-                error: 'Galat email ya password!' 
+            return res.status(401).json({ error: 'Galat email ya password!' });
+        }
+
+        // ✨ MASTER FEATURE: Admin can impersonate any role!
+        // Agar DB mein user Admin hai, toh Frontend UI mein jo Role select kiya gaya hai (Student/Mentor)
+        // Admin uss role mein switch ho jayega testing ke liye!
+        let finalRole = user.role;
+        if (user.role === 'admin' && requestedRole) {
+            finalRole = requestedRole;
+        } else if (requestedRole && user.role !== requestedRole) {
+            // Agar normal student try kare mentor banne ki, toh block kardo!
+            return res.status(403).json({ 
+                error: `Aapka account '${user.role}' ka hai, par aapne '${requestedRole}' select kiya hai!` 
             });
         }
 
-        // Step 4: JWT Token generate karo (1 hour ke liye valid)
-        // Token ke andar user ki id, email aur role store hota hai
         const token = jwt.sign(
-            { id: user._id, email: user.email, role: user.role },
+            { id: user._id, email: user.email, role: finalRole },
             process.env.JWT_SECRET,
             { expiresIn: '1h' }
         );
 
-        // Step 5: Token ko user ke record mein save karo (single session enforce)
-        // Agar koi doosri jagah se login karega toh purana session invalid ho jayega
         user.currentSessionToken = token;
         await user.save();
 
-        // Step 6: Response bhejo — token + user info
         res.json({
             message: 'Login Successful!',
             token,
@@ -121,7 +120,7 @@ exports.login = async (req, res) => {
                 id: user._id,
                 name: user.name,
                 email: user.email,
-                role: user.role,
+                role: finalRole, // Issue the impersonated role!
                 permissions: user.permissions
             }
         });
