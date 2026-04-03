@@ -11,6 +11,7 @@ const userSchema = new mongoose.Schema({
         default: 'student' 
     },
     currentSessionToken: { type: String },
+    currentDeviceId: { type: String },
     permissions: [{ type: String }]
 }, { timestamps: true });
 

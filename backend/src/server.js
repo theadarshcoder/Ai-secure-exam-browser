@@ -12,6 +12,7 @@ require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const { verifyToken, checkRole } = require('./middlewares/authMiddleware');
 const User = require('./models/User');
+const { connectRedis } = require('./config/redis');
 
 // ─── Route Imports ───────────────────────────────────────
 const authRoutes = require('./routes/authRoutes');
@@ -115,6 +116,9 @@ const io = new Server(server, {
     }
 });
 
+// Expose Socket.IO instance to routes/controllers globally
+app.set('io', io);
+
 // Socket.IO Authentication Middleware
 // Har connection se pehle JWT token verify hoga
 io.use(async (socket, next) => {
@@ -159,6 +163,7 @@ io.use(async (socket, next) => {
 // ═══════════════════════════════════════════════════════════
 
 connectDB();
+connectRedis();
 
 app.get('/', (req, res) => res.send('<h1>Server & Sockets working perfectly 🔒</h1>'));
 

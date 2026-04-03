@@ -75,7 +75,7 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
     try {
-        const { email, password, role: requestedRole } = req.body;
+        const { email, password, role: requestedRole, deviceId } = req.body;
 
         if (!email || !password) {
             return res.status(400).json({ error: 'Email and password are both required!' });
@@ -83,12 +83,28 @@ exports.login = async (req, res) => {
 
         const user = await User.findOne({ email });
         if (!user) {
-            return res.status(401).json({ error: 'Invalid email or password!' });
+            return res.status(401).json({ error: 'Invalid Access Identity or Secure Key!' });
         }
 
         const isPasswordCorrect = await user.comparePassword(password);
         if (!isPasswordCorrect) {
-            return res.status(401).json({ error: 'Invalid email or password!' });
+            return res.status(401).json({ error: 'Invalid Access Identity or Secure Key!' });
+        }
+
+        // ✨ DEVICE FINGERPRINTING: Anti-Login Sharing
+        if (deviceId) {
+            if (user.currentDeviceId && user.currentDeviceId !== deviceId) {
+                // Secondary login detected on a different device!
+                // Emit force_logout to the older connected socket session
+                const io = req.app.get('io');
+                if (io) {
+                    console.log(`🔒 Anti-Cheating: Disconnecting previous session for ${user.email} (New device detected)`);
+                    io.to(`user_${user._id}`).emit('force_logout', {
+                        message: 'Security Alert: Account accessed from another device. Your session has been terminated.'
+                    });
+                }
+            }
+            user.currentDeviceId = deviceId;
         }
 
         // ✨ MASTER FEATURE: Admin can impersonate any role!

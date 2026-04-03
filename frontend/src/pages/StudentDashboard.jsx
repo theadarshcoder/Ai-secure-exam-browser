@@ -164,20 +164,26 @@ export default function StudentDashboard() {
         const response = await api.get('/api/exams/active');
         
         // Backend ka data ExamCard ke format mein map karo
-        const liveExams = response.data.map(exam => ({
-          id: exam.id,
-          title: exam.title,
-          duration: exam.duration,
-          questionsCount: exam.questionsCount,
-          startTime: exam.startTime,
-          category: exam.category,
-          creator: exam.creator,
-          alreadySubmitted: exam.alreadySubmitted || false
-        }));
+        if (Array.isArray(response.data)) {
+          const liveExams = response.data.map(exam => ({
+            id: exam?.id || 'EXM-UNKNOWN',
+            title: exam?.title || 'Untitled Assessment',
+            duration: exam?.duration || 60,
+            questionsCount: exam?.questionsCount || 0,
+            startTime: exam?.startTime || new Date().toISOString(),
+            category: exam?.category || 'General',
+            creator: exam?.creator || 'System',
+            alreadySubmitted: exam?.alreadySubmitted || false
+          }));
 
-        setExams(liveExams);
-        setIsLiveData(true);
-        console.log(`✅ Loaded ${liveExams.length} exams from backend`);
+          setExams(liveExams);
+          setIsLiveData(true);
+          console.log(`✅ Loaded ${liveExams.length} exams from backend`);
+        } else {
+          setExams(MOCK_EXAMS);
+          setIsLiveData(false);
+          console.warn('⚠️ Unexpected API response for active exams');
+        }
       } catch (error) {
         // Backend down? Mock data use karo (demo/offline ke liye)
         console.warn('⚠️ Backend unreachable, using mock exams:', error.message);

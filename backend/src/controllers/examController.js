@@ -1,5 +1,6 @@
 const Exam = require('../models/Exam');
 const ExamSession = require('../models/ExamSession');
+const { getRedisClient } = require('../config/redis');
 
 // ─────────────── POST /api/exams/create ───────────────
 // Mentor/Admin creates a new exam and saves it to MongoDB
@@ -178,16 +179,42 @@ exports.startExam = async (req, res) => {
             session.lastSavedAt = new Date();
             await session.save();
 
+            // Fetch from Redis if exists, else hydrate
+            const redisClient = getRedisClient();
+            let liveAnswers = session.answers;
+            let liveQuestionStates = session.questionStates;
+            let liveRemainingTime = session.remainingTimeSeconds;
+            let liveIndex = session.currentQuestionIndex;
+
+            if (redisClient) {
+                const cacheKey = `exam_session:${examId}:${studentId}`;
+                const cacheStr = await redisClient.get(cacheKey);
+                if (cacheStr) {
+                    const parsed = JSON.parse(cacheStr);
+                    liveAnswers = parsed.answers;
+                    liveQuestionStates = parsed.questionStates;
+                    liveRemainingTime = parsed.remainingTimeSeconds;
+                    liveIndex = parsed.currentQuestionIndex;
+                } else {
+                    await redisClient.setEx(cacheKey, 86400, JSON.stringify({
+                        answers: liveAnswers,
+                        currentQuestionIndex: liveIndex,
+                        questionStates: liveQuestionStates,
+                        remainingTimeSeconds: liveRemainingTime
+                    }));
+                }
+            }
+
             return res.json({ 
                 message: 'Exam session resumed! Your previous progress is safe.',
                 sessionId: session._id,
                 startedAt: session.startedAt,
-                isResumed: true,                              // Tells Frontend this is a resume
+                isResumed: true,                              
                 resumeCount: session.resumeCount,
-                currentQuestionIndex: session.currentQuestionIndex,
-                answers: session.answers,                      // Return previous answers
-                questionStates: session.questionStates,        // Answered/skipped question states
-                remainingTimeSeconds: session.remainingTimeSeconds  // Remaining time
+                currentQuestionIndex: liveIndex,
+                answers: liveAnswers,                      
+                questionStates: liveQuestionStates,        
+                remainingTimeSeconds: liveRemainingTime  
             });
         }
 
@@ -213,6 +240,18 @@ exports.startExam = async (req, res) => {
             resumeCount: 0
         });
         await session.save();
+
+        // --- Cache Initialization ---
+        const redisClient = getRedisClient();
+        if (redisClient) {
+            const cacheKey = `exam_session:${examId}:${studentId}`;
+            await redisClient.setEx(cacheKey, 86400, JSON.stringify({
+                answers: {},
+                currentQuestionIndex: 0,
+                questionStates: initialStates,
+                remainingTimeSeconds: exam.duration * 60
+            }));
+        }
 
         res.json({ 
             message: 'Exam session started! Best of luck!', 
@@ -246,6 +285,30 @@ exports.saveProgress = async (req, res) => {
             return res.status(400).json({ error: 'examId is required!' });
         }
 
+        // 🚀 Redis Implementation Request
+        const redisClient = getRedisClient();
+        
+        if (redisClient) {
+            const cacheKey = `exam_session:${examId}:${studentId}`;
+            // Try fetch existing cache
+            const cacheStr = await redisClient.get(cacheKey);
+            let sessionData = cacheStr ? JSON.parse(cacheStr) : {};
+            
+            if (answers !== undefined)              sessionData.answers = answers;
+            if (currentQuestionIndex !== undefined) sessionData.currentQuestionIndex = currentQuestionIndex;
+            if (questionStates !== undefined)       sessionData.questionStates = questionStates;
+            if (remainingTimeSeconds !== undefined) sessionData.remainingTimeSeconds = remainingTimeSeconds;
+            
+            await redisClient.setEx(cacheKey, 86400, JSON.stringify(sessionData));
+            
+            return res.json({ 
+                message: 'Progress cached instantly!',
+                lastSavedAt: new Date(),
+                answeredCount: Object.keys(sessionData.answers || {}).length
+            });
+        }
+
+        // Fallback to MongoDB if Redis is dead
         // Retrieve active session
         const session = await ExamSession.findOne({ 
             exam: examId, 
@@ -337,6 +400,32 @@ exports.resumeExam = async (req, res) => {
         session.lastSavedAt = new Date();
         await session.save();
 
+        // 🚀 Redis Pull
+        const redisClient = getRedisClient();
+        let liveAnswers = session.answers;
+        let liveQuestionStates = session.questionStates;
+        let liveRemainingTime = session.remainingTimeSeconds;
+        let liveIndex = session.currentQuestionIndex;
+
+        if (redisClient) {
+            const cacheKey = `exam_session:${examId}:${studentId}`;
+            const cacheStr = await redisClient.get(cacheKey);
+            if (cacheStr) {
+                const parsed = JSON.parse(cacheStr);
+                liveAnswers = parsed.answers;
+                liveQuestionStates = parsed.questionStates;
+                liveRemainingTime = parsed.remainingTimeSeconds;
+                liveIndex = parsed.currentQuestionIndex;
+            } else {
+                await redisClient.setEx(cacheKey, 86400, JSON.stringify({
+                    answers: liveAnswers,
+                    currentQuestionIndex: liveIndex,
+                    questionStates: liveQuestionStates,
+                    remainingTimeSeconds: liveRemainingTime
+                }));
+            }
+        }
+
         res.json({
             message: 'Session restored! Resume from where you left off.',
             isCompleted: false,
@@ -354,10 +443,10 @@ exports.resumeExam = async (req, res) => {
             },
 
             // Saved progress data
-            answers: session.answers,
-            currentQuestionIndex: session.currentQuestionIndex,
-            questionStates: session.questionStates,
-            remainingTimeSeconds: session.remainingTimeSeconds,
+            answers: liveAnswers,
+            currentQuestionIndex: liveIndex,
+            questionStates: liveQuestionStates,
+            remainingTimeSeconds: liveRemainingTime,
             
             // Meta information
             startedAt: session.startedAt,
@@ -382,12 +471,26 @@ exports.submitExam = async (req, res) => {
         const exam = await Exam.findById(examId);
         if (!exam) return res.status(404).json({ error: 'Exam not found' });
 
+        // 🚀 Redis Final Dump merge
+        const redisClient = getRedisClient();
+        let finalAnswers = answers;
+        if (redisClient) {
+            const cacheKey = `exam_session:${examId}:${studentId}`;
+            const cacheStr = await redisClient.get(cacheKey);
+            if (cacheStr) {
+                const parsed = JSON.parse(cacheStr);
+                finalAnswers = { ...parsed.answers, ...answers }; // Merge payload from client on top of cache
+            }
+            // Clear cache after merging
+            await redisClient.del(cacheKey);
+        }
+
         // ─── Auto-Score MCQ Questions ────────────────
         let score = 0;
         const questionResults = {};   // Individual question breakdown
 
         exam.questions.forEach((q, index) => {
-            const studentAnswer = answers[String(index)];
+            const studentAnswer = finalAnswers[String(index)];
             const result = { type: q.type, marks: q.marks || 1, scored: 0, correct: false };
 
             if (q.type === 'mcq' && studentAnswer !== undefined) {
@@ -422,7 +525,7 @@ exports.submitExam = async (req, res) => {
         const session = await ExamSession.findOneAndUpdate(
             { exam: examId, student: studentId },
             {
-                answers,
+                answers: finalAnswers,
                 score,
                 totalMarks: exam.totalMarks,
                 percentage,
