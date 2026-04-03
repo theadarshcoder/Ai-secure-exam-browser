@@ -133,12 +133,13 @@ const SessionRow = ({ session, onTerminate, onView }) => {
         </div>
       </td>
       <td className="px-5 py-3.5 text-right">
-        <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex justify-end gap-1.5 transition-opacity">
           {!isTerminated && (
             <>
               <button
                 onClick={() => onView(session)}
-                className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white transition-all text-[10px] font-bold uppercase tracking-wider"
+                style={{ backgroundColor: 'rgba(0,0,0,0.05)', color: '#475569' }}
+                className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 hover:bg-zinc-800 hover:text-white border border-transparent hover:border-zinc-700 transition-all text-[10px] font-bold uppercase tracking-wider"
                 title="View session"
               >
                 <Eye size={12} /> View
@@ -458,7 +459,15 @@ export default function AdminDashboard() {
   };
 
   const handleViewSession = (session) => {
-    addToast(`Viewing ${session.name}'s session — ${session.exam}`, 'success');
+    const params = new URLSearchParams({
+      id: session.id,
+      name: session.name,
+      exam: session.exam,
+      risk: session.risk,
+      score: String(session.score),
+      time: session.time,
+    });
+    navigate(`/admin/session?${params.toString()}`);
   };
 
   const activeSessions = sessions.filter(s => s.status === 'active');
@@ -616,25 +625,29 @@ export default function AdminDashboard() {
                   <div className="grid grid-cols-2 gap-3 relative z-10">
                     <button
                       onClick={() => setTerminateTarget('ALL')}
-                      className="rounded-xl border border-red-500/20 bg-red-500/10 py-3 text-[10px] font-bold uppercase tracking-widest text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-lg active:scale-95"
+                      style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', color: '#dc2626' }}
+                      className="rounded-xl border border-red-500/40 py-3 text-[10px] font-extrabold uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all shadow-sm active:scale-95"
                     >
                       Stop All
                     </button>
                     <button
                       onClick={handlePingAll}
-                      className="rounded-xl border border-white/5 bg-white/[0.03] py-3 text-[10px] font-bold uppercase tracking-widest text-zinc-500 hover:text-white hover:bg-white/10 transition-all active:scale-95"
+                      style={{ backgroundColor: 'rgba(113, 113, 122, 0.1)', color: '#475569' }}
+                      className="rounded-xl border border-zinc-500/30 py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-zinc-700 hover:text-white transition-all active:scale-95"
                     >
                       Ping All
                     </button>
                     <button
                       onClick={handleExport}
-                      className="rounded-xl border border-indigo-500/20 bg-indigo-500/10 py-3 text-[10px] font-bold uppercase tracking-widest text-indigo-400 hover:bg-indigo-500 hover:text-white transition-all active:scale-95"
+                      style={{ backgroundColor: 'rgba(99, 102, 241, 0.15)', color: '#4f46e5' }}
+                      className="rounded-xl border border-indigo-500/40 py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-indigo-500 hover:text-white transition-all active:scale-95"
                     >
                       Export
                     </button>
                     <button
                       onClick={() => { setTab('Analytics'); }}
-                      className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 py-3 text-[10px] font-bold uppercase tracking-widest text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all active:scale-95"
+                      style={{ backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#047857' }}
+                      className="rounded-xl border border-emerald-500/40 py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all active:scale-95"
                     >
                       Analytics
                     </button>

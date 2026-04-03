@@ -216,6 +216,18 @@ const LoginPage = () => {
       localStorage.setItem('vision_email', user.email);
       localStorage.setItem('vision_name', user.name);
 
+      // Trigger full screen for candidate (student) before redirecting
+      if (user.role === 'student') {
+        const docElm = document.documentElement;
+        if (docElm.requestFullscreen) {
+          try {
+            await docElm.requestFullscreen();
+          } catch (err) {
+            console.warn('Failed to enter full screen:', err);
+          }
+        }
+      }
+
       // Step 3: Role ke hisaab se redirect karo
       const target = user.role === 'student' ? '/student' : user.role === 'mentor' ? '/mentor' : '/admin';
       navigate(target);

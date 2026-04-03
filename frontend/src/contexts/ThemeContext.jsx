@@ -12,7 +12,14 @@ export const ThemeProvider = ({ children }) => {
   });
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
+    // If we are currently on the Landing Page, rigidly force dark mode
+    if (window.location.pathname === '/') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      document.documentElement.setAttribute('data-theme', theme);
+    }
+    
+    // Always persist user preference regardless of current page enforcement
     localStorage.setItem('vision_theme', theme);
   }, [theme]);
 
