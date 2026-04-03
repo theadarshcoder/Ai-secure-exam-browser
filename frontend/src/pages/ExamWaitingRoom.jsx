@@ -156,7 +156,22 @@ export default function ExamWaitingRoom() {
         </motion.div>
 
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.8 }} className="flex flex-col items-center ml-auto w-full max-w-[500px]">
-          <CountdownTimer hours={h} minutes={m} seconds={s} isStarted={isStarted} onStart={() => navigate(`/exam/${exam.id}`)} />
+          <CountdownTimer 
+            hours={h} 
+            minutes={m} 
+            seconds={s} 
+            isStarted={isStarted} 
+            onStart={async () => {
+              try {
+                if (document.documentElement.requestFullscreen) {
+                  await document.documentElement.requestFullscreen();
+                }
+              } catch (err) {
+                console.warn('Fullscreen request failed:', err);
+              }
+              navigate(`/exam/${exam.id}`);
+            }} 
+          />
         </motion.div>
       </main>
 

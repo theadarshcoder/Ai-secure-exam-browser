@@ -26,9 +26,17 @@ export const useTabVisibility = () => {
       }
     };
 
+    const handleBlur = () => {
+      setToast({ id: Date.now(), msg: 'Window focus lost. This event has been recorded.' });
+      setTimeout(() => setToast(null), 4500);
+    };
+
     document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('blur', handleBlur);
+    
     return () => {
       document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('blur', handleBlur);
       document.title = originalTitle;
     };
   }, []);

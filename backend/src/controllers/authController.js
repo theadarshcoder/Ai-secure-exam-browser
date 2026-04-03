@@ -6,30 +6,30 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 
 // ─── POST /api/auth/register ─────────────────────────────
-// Naya user create karta hai (Admin hi kar sakta hai)
-// Body mein chahiye: { name, email, password, role }
-// Password automatically hash ho jayega (User model ka pre-save hook)
+// Creates a new user (Restricted to Admin)
+// Body requirements: { name, email, password, role }
+// Password is automatically hashed by User model's pre-save hook
 
 exports.register = async (req, res) => {
     try {
         const { name, email, password, role } = req.body;
 
-        // Step 1: Check karo ki saare required fields aaye hain
+        // Step 1: Validate required fields
         if (!name || !email || !password) {
             return res.status(400).json({ 
-                error: 'Name, email aur password — teeno required hain!' 
+                error: 'Name, email, and password are all required!' 
             });
         }
 
-        // Step 2: Check karo ki is email se pehle se koi registered toh nahi
+        // Step 2: Check for existing account with this email
         const existingUser = await User.findOne({ email });
         if (existingUser) {
             return res.status(409).json({ 
-                error: 'Is email se pehle se ek account exist karta hai.' 
+                error: 'An account with this email already exists.' 
             });
         }
 
-        // Step 3: Role ke hisaab se default permissions set karo
+        // Step 3: Set default permissions based on role
         const rolePermissions = {
             'mentor':     ['create_exam', 'view_live_grid'],
             'admin':      ['create_exam', 'view_live_grid', 'manage_users', 'view_reports'],
@@ -37,20 +37,20 @@ exports.register = async (req, res) => {
             'student':    []
         };
 
-        // Step 4: Naya user create karo
-        // NOTE: Password yahan plain text lag raha hai, lekin User.js ka
-        // pre-save hook isko automatically hash kar dega before saving!
+        // Step 4: Create new user
+        // NOTE: Password provided here is plain text, but User.js 
+        // pre-save hook hashes it automatically before saving!
         const user = new User({
             name,
             email,
-            password,                                    // <-- ye hash hoke jayega DB mein
+            password,                                    // <-- hashed in DB
             role: role || 'student',                     // default role = student
-            permissions: rolePermissions[role] || []     // role ke hisaab se permissions
+            permissions: rolePermissions[role] || []     // role-based permissions
         });
 
         await user.save();
 
-        // Step 5: Success response (password wapas nahi bhejte — security!)
+        // Step 5: Success response (omit password for security)
         res.status(201).json({
             message: 'User registered successfully!',
             user: {
@@ -70,37 +70,37 @@ exports.register = async (req, res) => {
 
 
 // ─── POST /api/auth/login ────────────────────────────────
-// User login karta hai email + password se
-// Sahi hone par JWT token milta hai (1 hour valid)
+// User login using email + password
+// Returns a JWT token (valid for 1 hour) on success
 
 exports.login = async (req, res) => {
     try {
         const { email, password, role: requestedRole } = req.body;
 
         if (!email || !password) {
-            return res.status(400).json({ error: 'Email aur password dono required hain!' });
+            return res.status(400).json({ error: 'Email and password are both required!' });
         }
 
         const user = await User.findOne({ email });
         if (!user) {
-            return res.status(401).json({ error: 'Galat email ya password!' });
+            return res.status(401).json({ error: 'Invalid email or password!' });
         }
 
         const isPasswordCorrect = await user.comparePassword(password);
         if (!isPasswordCorrect) {
-            return res.status(401).json({ error: 'Galat email ya password!' });
+            return res.status(401).json({ error: 'Invalid email or password!' });
         }
 
         // ✨ MASTER FEATURE: Admin can impersonate any role!
-        // Agar DB mein user Admin hai, toh Frontend UI mein jo Role select kiya gaya hai (Student/Mentor)
-        // Admin uss role mein switch ho jayega testing ke liye!
+        // If the DB user is an Admin, they can switch to the role 
+        // selected in the Frontend UI (Student/Mentor) for testing purposes.
         let finalRole = user.role;
         if (user.role === 'admin' && requestedRole) {
             finalRole = requestedRole;
         } else if (requestedRole && user.role !== requestedRole) {
-            // Agar normal student try kare mentor banne ki, toh block kardo!
+            // Block unauthorized role switching (e.g., student trying to be a mentor)
             return res.status(403).json({ 
-                error: `Aapka account '${user.role}' ka hai, par aapne '${requestedRole}' select kiya hai!` 
+                error: `Your account is registered as '${user.role}', but you selected '${requestedRole}'!` 
             });
         }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import socketService from '../services/socket';
 import api from '../services/api';
@@ -213,7 +213,6 @@ export default function ExamCockpit() {
   const [markedForReview, setMarkedForReview] = useState({});
   const [visited, setVisited] = useState({ 0: true });
   const [submitted, setSubmitted] = useState(false);
-  const [confidence, setConfidence] = useState(98);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [faceBoxes, setFaceBoxes] = useState([]);
   const [isExecuting, setIsExecuting] = useState(false);
@@ -223,6 +222,7 @@ export default function ExamCockpit() {
   const [exitPassword, setExitPassword] = useState('');
   const [terminated, setTerminated] = useState(null); // { reason, terminatedBy }
   const [terminateCountdown, setTerminateCountdown] = useState(8);
+  const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
 
   // Cinematic Command Center lock & Theme Isolation
   useEffect(() => {
@@ -241,6 +241,65 @@ export default function ExamCockpit() {
     };
   }, []);
 
+  // Fullscreen & Security Listeners
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    const handleContextMenu = (e) => {
+      e.preventDefault();
+      logIncident('Right-Click Attempt', 'low', 'Context menu suppressed');
+    };
+
+    const handleKeyDown = (e) => {
+      // Block F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C, Ctrl+U, Ctrl+S, Ctrl+R, F5
+      const isDevTools = (e.ctrlKey && e.shiftKey && ['I', 'J', 'C'].includes(e.key.toUpperCase())) || e.key === 'F12';
+      const isRefresh = (e.ctrlKey && e.key.toUpperCase() === 'R') || e.key === 'F5';
+      const isCopyPaste = e.ctrlKey && ['C', 'V', 'X'].includes(e.key.toUpperCase());
+      const isSave = e.ctrlKey && e.key.toUpperCase() === 'S';
+      const isPrint = e.ctrlKey && e.key.toUpperCase() === 'P';
+      const isSource = e.ctrlKey && e.key.toUpperCase() === 'U';
+      const isAltSpace = e.altKey && e.code === 'Space';
+      const isMeta = e.metaKey;
+
+      if (isDevTools || isRefresh || isCopyPaste || isSave || isPrint || isSource || isAltSpace || isMeta) {
+        e.preventDefault();
+        logIncident('Shortcut Blocked', 'medium', `Key combination: ${e.key} ${e.ctrlKey ? '(Ctrl)' : ''} ${e.shiftKey ? '(Shift)' : ''} ${e.altKey ? '(Alt)' : ''}`);
+        return false;
+      }
+    };
+
+    const handleBeforeUnload = (e) => {
+      if (!submitted) {
+        e.preventDefault();
+        e.returnValue = ''; // Standard browser prompt
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('contextmenu', handleContextMenu);
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('contextmenu', handleContextMenu);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [submitted, logIncident]);
+
+  const requestFullscreen = async () => {
+    try {
+      if (document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch (err) {
+      console.warn('Fullscreen entry failed:', err);
+    }
+  };
+
   // Termination Detection — poll localStorage every 3 seconds
   useEffect(() => {
     if (submitted || terminated) return;
@@ -254,7 +313,9 @@ export default function ExamCockpit() {
           t.examId === examId
         );
         if (hit) setTerminated(hit);
-      } catch {}
+      } catch (err) {
+        console.warn('Termination poll failed:', err);
+      }
     };
     check();
     const poll = setInterval(check, 3000);
@@ -420,7 +481,7 @@ export default function ExamCockpit() {
     return () => socketService.disconnect();
   }, []);
 
-  const logIncident = async (type, severity, details) => {
+  const logIncident = useCallback(async (type, severity, details) => {
     const studentId = localStorage.getItem('vision_email') || 'VSN-89241';
     const incident = {
       id: `INC-${Date.now()}`,
@@ -438,14 +499,14 @@ export default function ExamCockpit() {
     // Also persist to backend API for audit trail
     try {
       await api.post('/api/exams/incident', { examId, type, severity, details });
-    } catch (err) {
-      console.warn('Incident API save failed:', err.message);
+    } catch (apiErr) {
+      console.warn('Incident API save failed:', apiErr.message);
     }
 
     // Local backup
     const existing = JSON.parse(localStorage.getItem('vision_incidents') || '[]');
     localStorage.setItem('vision_incidents', JSON.stringify([incident, ...existing]));
-  };
+  }, [examId]);
 
   const handleRunCode = async () => {
     const code = answers[currentQ] || questions[currentQ].starterCode;
@@ -538,6 +599,30 @@ export default function ExamCockpit() {
 
   return (
     <div className="h-screen w-full bg-[#f0f2f5] flex flex-col overflow-hidden select-none font-sans">
+      <AnimatePresence>
+        {!isFullscreen && !submitted && !terminated && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-6 text-center"
+          >
+            <div className="max-w-md w-full">
+              <div className="w-20 h-20 rounded-3xl bg-red-500/10 border border-red-500/20 text-red-500 flex items-center justify-center mx-auto mb-8 shadow-[0_0_50px_rgba(239,68,68,0.2)]">
+                <Shield size={40} />
+              </div>
+              <h2 className="text-3xl font-black text-white mb-4 tracking-tight uppercase">Security Alert</h2>
+              <p className="text-slate-400 text-sm mb-10 leading-relaxed font-semibold">Fullscreen mode is required to maintain the integrity of this assessment. All activity has been suspended.</p>
+              <button
+                onClick={requestFullscreen}
+                className="w-full py-4 rounded-2xl bg-white text-slate-950 font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all shadow-xl active:scale-95"
+              >
+                Restore Secure Environment
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <style>{`
         html, body { overflow: hidden !important; height: 100% !important; overscroll-behavior: none !important; }
         .scroll-thin::-webkit-scrollbar { width: 4px; }

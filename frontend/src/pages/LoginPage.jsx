@@ -206,17 +206,17 @@ const LoginPage = () => {
     
     try {
       // Step 1: Send email, password, AND selected UI role to API
-      // Backend ab is 'role' ko use karega to allow Admins to impersonate students/mentors!
+      // The backend now uses this 'role' to allow Admins to impersonate students/mentors!
       const response = await api.post('/api/auth/login', { email, password, role });
       const { token, user } = response.data;
 
-      // Step 2: Token aur user info localStorage mein save karo
+      // Step 2: Save token and user information to localStorage
       localStorage.setItem('vision_token', token);
       localStorage.setItem('vision_role', user.role);
       localStorage.setItem('vision_email', user.email);
       localStorage.setItem('vision_name', user.name);
 
-      // Step 3: Role ke hisaab se redirect karo
+      // Step 3: Redirect based on the user's role
       const target = user.role === 'student' ? '/student' : user.role === 'mentor' ? '/mentor' : '/admin';
       navigate(target);
 

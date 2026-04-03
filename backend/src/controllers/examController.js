@@ -157,45 +157,45 @@ exports.getExamById = async (req, res) => {
 };
 
 // ─────────────── POST /api/exams/start ───────────────
-// Student exam shuru karta hai — session create hota hai
-// Agar session pehle se hai (internet gaya tha) toh wahi resume hota hai
+// Student starts the exam — an exam session is created
+// If a session already exists (e.g., disconnection), resume the session
 exports.startExam = async (req, res) => {
     try {
         const { examId } = req.body;
         const studentId = req.user.id;
 
-        // Step 1: Check karo ki session pehle se exist karta hai ya nahi
+        // Step 1: Check if a session already exists
         let session = await ExamSession.findOne({ exam: examId, student: studentId });
         
-        // Agar already submitted hai toh dubara nahi de sakte
+        // Block re-attempts if already submitted
         if (session && (session.status === 'submitted' || session.status === 'auto_submitted')) {
-            return res.status(400).json({ error: 'Tumne ye exam pehle hi submit kar diya hai.' });
+            return res.status(400).json({ error: 'You have already submitted this exam.' });
         }
 
-        // Agar session exist karta hai (resume case — internet/light wapas aayi)
+        // Handle re-entry (resume case — e.g., internet restored)
         if (session) {
-            session.resumeCount += 1;      // Resume count badhao
+            session.resumeCount += 1;      // Increment resume count
             session.lastSavedAt = new Date();
             await session.save();
 
             return res.json({ 
-                message: 'Exam session resumed! Pehle ka data safe hai.',
+                message: 'Exam session resumed! Your previous progress is safe.',
                 sessionId: session._id,
                 startedAt: session.startedAt,
-                isResumed: true,                              // Frontend ko pata chalega ki ye resume hai
+                isResumed: true,                              // Tells Frontend this is a resume
                 resumeCount: session.resumeCount,
                 currentQuestionIndex: session.currentQuestionIndex,
-                answers: session.answers,                      // Pehle ke answers wapas bhejo
-                questionStates: session.questionStates,        // Kaunsa question answered/skipped tha
-                remainingTimeSeconds: session.remainingTimeSeconds  // Kitna time bacha tha
+                answers: session.answers,                      // Return previous answers
+                questionStates: session.questionStates,        // Answered/skipped question states
+                remainingTimeSeconds: session.remainingTimeSeconds  // Remaining time
             });
         }
 
-        // Step 2: Naya session create karo (pehli baar exam shuru)
+        // Step 2: Create a new session (first attempt)
         const exam = await Exam.findById(examId);
         if (!exam) return res.status(404).json({ error: 'Exam not found' });
 
-        // Initial question states banao — sab "not_visited"
+        // Initialize question states — all "not_visited"
         const initialStates = {};
         exam.questions.forEach((_, idx) => {
             initialStates[String(idx)] = 'not_visited';
@@ -208,7 +208,7 @@ exports.startExam = async (req, res) => {
             startedAt: new Date(),
             currentQuestionIndex: 0,
             questionStates: initialStates,
-            remainingTimeSeconds: exam.duration * 60,   // Minutes to seconds
+            remainingTimeSeconds: exam.duration * 60,   // Convert minutes to seconds
             answers: {},
             resumeCount: 0
         });
@@ -232,10 +232,9 @@ exports.startExam = async (req, res) => {
 
 
 // ─────────────── POST /api/exams/save-progress ───────────────
-// ⭐ YE SABSE IMPORTANT FUNCTION HAI — Auto-Save
-// Frontend har 30 second mein ye API call karega
-// Isse agar internet/light jaye, toh sab data safe rahega
-// Student ko pata bhi nahi chalega — background mein silently save hota hai
+// ⭐ CRITICAL FUNCTION — Auto-Save Progress
+// Frontend calls this API every 30 seconds to ensure data persistency
+// even in case of power failure or accidental closure.
 
 exports.saveProgress = async (req, res) => {
     try {
@@ -244,21 +243,21 @@ exports.saveProgress = async (req, res) => {
 
         // Validation
         if (!examId) {
-            return res.status(400).json({ error: 'examId required hai!' });
+            return res.status(400).json({ error: 'examId is required!' });
         }
 
-        // Session dhundo
+        // Retrieve active session
         const session = await ExamSession.findOne({ 
             exam: examId, 
             student: studentId,
-            status: 'in_progress'     // Sirf active sessions ka progress save karo
+            status: 'in_progress'     // Only update in-progress sessions
         });
 
         if (!session) {
-            return res.status(404).json({ error: 'Active session nahi mili. Pehle exam start karo.' });
+            return res.status(404).json({ error: 'Active session not found. Please start the exam first.' });
         }
 
-        // Progress update karo — jo fields client ne bheje hain sirf wohi update hoon
+        // Update progress for provided fields
         if (answers !== undefined)              session.answers = answers;
         if (currentQuestionIndex !== undefined) session.currentQuestionIndex = currentQuestionIndex;
         if (questionStates !== undefined)       session.questionStates = questionStates;
@@ -281,29 +280,28 @@ exports.saveProgress = async (req, res) => {
 
 
 // ─────────────── GET /api/exams/resume/:examId ───────────────
-// Student wapas aaya (internet/light wapas aayi) — poora state restore karo
-// Ye startExam se alag hai kyunki ye SIRF existing session ka data deta hai
-// Naya session NAHI banata
+// Restores the full state for a student returning to an exam session.
+// Unlike startExam, this ONLY retrieves existing session data without modification.
 
 exports.resumeExam = async (req, res) => {
     try {
         const examId = req.params.examId;
         const studentId = req.user.id;
 
-        // Session dhundo
+        // Find session
         const session = await ExamSession.findOne({ 
             exam: examId, 
             student: studentId 
         });
 
         if (!session) {
-            return res.status(404).json({ error: 'Koi session nahi mili. Pehle exam start karo.' });
+            return res.status(404).json({ error: 'No session found. Please start the exam first.' });
         }
 
-        // Agar already submit ho chuka hai
+        // Check if already submitted
         if (session.status === 'submitted' || session.status === 'auto_submitted') {
             return res.json({
-                message: 'Ye exam pehle hi submit ho chuka hai.',
+                message: 'This exam has already been submitted.',
                 status: session.status,
                 score: session.score,
                 totalMarks: session.totalMarks,
@@ -313,11 +311,10 @@ exports.resumeExam = async (req, res) => {
             });
         }
 
-        // Exam details bhi bhejo (questions without answers)
+        // Fetch exam details (stripped of answers for security)
         const exam = await Exam.findById(examId).populate('creator', 'name');
         if (!exam) return res.status(404).json({ error: 'Exam not found' });
 
-        // Strip correct answers (security — network tab se cheat na kar sake)
         const safeQuestions = exam.questions.map((q, index) => {
             const safe = {
                 id: q._id,
@@ -335,17 +332,17 @@ exports.resumeExam = async (req, res) => {
             return safe;
         });
 
-        // Resume count badhao
+        // Update resume count
         session.resumeCount += 1;
         session.lastSavedAt = new Date();
         await session.save();
 
         res.json({
-            message: 'Session restored! Jahan chode the wahi se shuru karo.',
+            message: 'Session restored! Resume from where you left off.',
             isCompleted: false,
             sessionId: session._id,
             
-            // Exam info
+            // Exam information
             exam: {
                 id: exam._id,
                 title: exam.title,
@@ -356,13 +353,13 @@ exports.resumeExam = async (req, res) => {
                 questions: safeQuestions
             },
 
-            // Saved progress (ye sab wapas client ko milega)
+            // Saved progress data
             answers: session.answers,
             currentQuestionIndex: session.currentQuestionIndex,
             questionStates: session.questionStates,
             remainingTimeSeconds: session.remainingTimeSeconds,
             
-            // Meta info
+            // Meta information
             startedAt: session.startedAt,
             resumeCount: session.resumeCount,
             lastSavedAt: session.lastSavedAt,
@@ -376,7 +373,7 @@ exports.resumeExam = async (req, res) => {
 
 
 // ─────────────── POST /api/exams/submit ───────────────
-// Exam submit karo — MCQs auto-score, answers save, results calculate
+// Submits the exam — calculates MCQ scores, saves answers, and finalizes results.
 exports.submitExam = async (req, res) => {
     try {
         const { examId, answers } = req.body;
@@ -387,7 +384,7 @@ exports.submitExam = async (req, res) => {
 
         // ─── Auto-Score MCQ Questions ────────────────
         let score = 0;
-        const questionResults = {};   // Har question ka individual result
+        const questionResults = {};   // Individual question breakdown
 
         exam.questions.forEach((q, index) => {
             const studentAnswer = answers[String(index)];
@@ -401,15 +398,15 @@ exports.submitExam = async (req, res) => {
                 }
             }
 
-            // Short answer — manual grading hoga baad mein
-            // Abhi ke liye: answer diya toh 50% marks (attempt ke liye)
+            // Short answer — manual grading scheduled for later
+            // Current logic: Reward 50% marks for any attempt
             if (q.type === 'short' && studentAnswer && String(studentAnswer).trim().length > 0) {
                 result.scored = Math.ceil((q.marks || 1) * 0.5);
                 score += result.scored;
             }
 
-            // Coding — manual/test-case grading baad mein
-            // Abhi ke liye: code likha toh 50% marks
+            // Coding — manual/automated test-case grading scheduled for later
+            // Current logic: Reward 50% marks for any code attempt
             if (q.type === 'coding' && studentAnswer && String(studentAnswer).trim().length > 0) {
                 result.scored = Math.ceil((q.marks || 1) * 0.5);
                 score += result.scored;
@@ -432,20 +429,20 @@ exports.submitExam = async (req, res) => {
                 passed,
                 status: 'submitted',
                 submittedAt: new Date(),
-                remainingTimeSeconds: 0,        // Time khatam
+                remainingTimeSeconds: 0,        // Time expired upon submission
                 lastSavedAt: new Date()
             },
             { upsert: true, new: true }
         );
 
         res.json({
-            message: 'Exam successfully submit ho gaya!',
+            message: 'Exam submitted successfully!',
             sessionId: session._id,
             score,
             totalMarks: exam.totalMarks,
             percentage,
             passed,
-            questionResults    // Har question ka breakdown (frontend pe dikhane ke liye)
+            questionResults    // Full results breakdown for frontend display
         });
     } catch (error) {
         console.error('Exam submission failed:', error);
@@ -454,7 +451,7 @@ exports.submitExam = async (req, res) => {
 };
 
 // ─────────────── POST /api/exams/incident ───────────────
-// Log a proctoring violation to the session
+// Logs a proctoring violation to the session
 exports.logIncident = async (req, res) => {
     try {
         const { examId, type, severity, details } = req.body;
@@ -494,7 +491,7 @@ exports.logIncident = async (req, res) => {
 };
 
 // ─────────────── GET /api/exams/submissions/:examId ───────────────
-// Mentor views all submissions for a specific exam
+// Mentors view all submissions for a specific exam
 exports.getExamSubmissions = async (req, res) => {
     try {
         const sessions = await ExamSession.find({ exam: req.params.examId })
@@ -527,7 +524,7 @@ exports.getExamSubmissions = async (req, res) => {
 };
 
 // ─────────────── GET /api/exams/mentor-stats ───────────────
-// Dashboard stats for mentor
+// Dashboard statistics for the mentor
 exports.getMentorStats = async (req, res) => {
     try {
         const mentorExams = await Exam.find({ creator: req.user.id }).select('_id');
@@ -540,7 +537,7 @@ exports.getMentorStats = async (req, res) => {
             'violations.0': { $exists: true }
         });
 
-        // Recent activity
+        // Recent activity feed
         const recentSessions = await ExamSession.find({ exam: { $in: examIds } })
             .populate('student', 'name')
             .populate('exam', 'title')
@@ -580,7 +577,7 @@ function getTimeAgo(date) {
 }
 
 // ─────────────── GET /api/exams/admin-stats ───────────────
-// Admin sees ALL exams system-wide (not filtered by creator)
+// System-wide statistics for Administrators (unfiltered by creator)
 exports.getAdminStats = async (req, res) => {
     try {
         const allExams = await Exam.find({})
@@ -594,7 +591,7 @@ exports.getAdminStats = async (req, res) => {
             'violations.0': { $exists: true }
         });
 
-        // Active sessions (in_progress)
+        // Active exam sessions (in progress)
         const activeSessions = await ExamSession.find({ status: 'in_progress' })
             .populate('student', 'name email')
             .populate('exam', 'title')
@@ -610,7 +607,7 @@ exports.getAdminStats = async (req, res) => {
             time: s.startedAt ? `${Math.round((Date.now() - new Date(s.startedAt)) / 60000)}m` : 'N/A'
         }));
 
-        // Exam list with stats
+        // Exam inventory with statistics
         const examList = await Promise.all(allExams.map(async (exam) => {
             const sessionCount = await ExamSession.countDocuments({ exam: exam._id });
             const submitted = await ExamSession.countDocuments({ exam: exam._id, status: 'submitted' });
@@ -633,7 +630,7 @@ exports.getAdminStats = async (req, res) => {
             };
         }));
 
-        // Recent incidents from all sessions
+        // Recent incident log across all sessions
         const recentViolations = await ExamSession.find({ 'violations.0': { $exists: true } })
             .populate('student', 'name')
             .populate('exam', 'title')

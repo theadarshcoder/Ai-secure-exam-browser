@@ -15,22 +15,23 @@ const userSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // ─── Password Hashing ───────────────────────────────────
-// Jab bhi koi naya user banega ya password change hoga,
-// ye middleware automatically password ko hash kar dega
-// Taaki database mein kabhi bhi plain text password save na ho
+// This middleware automatically hashes the password whenever 
+// a new user is created or the password is changed.
+// Ensuring that plain-text passwords are never stored in the database.
 
 userSchema.pre('save', async function () {
-    // Agar password change nahi hua toh skip karo (jaise name update karte waqt)
+    // Skip if the password has not been modified (e.g., updating only the name)
     if (!this.isModified('password')) return;
 
-    // Password ko hash karo (10 rounds of salt = strong security)
+    // Hash the password with 10 rounds of salt for strong security
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
 });
 
 // ─── Password Compare Helper ────────────────────────────
-// Login ke time use hoga — user ka diya password vs database ka hashed password
-// Returns: true (match) ya false (galat password)
+// Used during login to compare the provided password against 
+// the hashed password stored in the database.
+// Returns: true (match) or false (incorrect password)
 
 userSchema.methods.comparePassword = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
