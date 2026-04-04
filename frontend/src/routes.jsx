@@ -1,6 +1,7 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 import MainLayout from './components/MainLayout';
-import { ThemeProvider } from './contexts/ThemeContext';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import AdminDashboard from './pages/AdminDashboard';
@@ -10,25 +11,36 @@ import ExamCockpit from './pages/ExamCockpit';
 import CreateExam from './pages/CreateExam';
 import IDVerification from './pages/IDVerification';
 import ExamWaitingRoom from './pages/ExamWaitingRoom';
-import NotFound from './pages/NotFound';
+import SessionMonitor from './pages/SessionMonitor';
 
-/* ─── Role-Based Dashboard Redirect ─── */
-const DashboardRedirect = () => {
-  const role = localStorage.getItem('vision_role') || 'student';
-  if (role === 'admin') return <Navigate to="/admin" replace />;
-  if (role === 'mentor') return <Navigate to="/mentor" replace />;
-  return <Navigate to="/student" replace />;
+const ThemeEnforcer = () => {
+  const { pathname } = useLocation();
+  const { theme, toggleTheme } = useTheme();
+
+  useEffect(() => {
+    // Force the app into dark mode when visiting the Landing Page
+    if (pathname === '/') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      // Re-apply the global theme based on contextual state when navigating away
+      document.documentElement.setAttribute('data-theme', theme);
+    }
+  }, [pathname, theme]);
+
+  return null;
 };
 
 export default function AppRouter() {
   return (
     <ThemeProvider>
     <BrowserRouter>
+      <ThemeEnforcer />
       <Routes>
         <Route element={<MainLayout />}>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/session" element={<SessionMonitor />} />
           <Route path="/mentor" element={<MentorDashboard />} />
           <Route path="/mentor/create-exam" element={<CreateExam />} />
           <Route path="/student" element={<StudentDashboard />} />

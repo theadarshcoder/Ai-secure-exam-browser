@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import socketService from '../services/socket';
 import { Navbar } from '../components/Navbar';
@@ -104,7 +104,7 @@ const StudentDetailModal = ({ student, onClose }) => {
               </div>
               <div>
                 <h3 className="text-base font-semibold text-white">{student.name}</h3>
-                <p className="text-[11px] text-zinc-500">{student.email} · {student.exam}</p>
+                <p className="text-[11px] text-zinc-500">{student.email} Â· {student.exam}</p>
               </div>
             </div>
             <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/10 transition-colors">
@@ -202,7 +202,7 @@ const StudentDetailModal = ({ student, onClose }) => {
                     <ShieldCheck size={42} className="text-amber-500/20 mb-3" />
                     <div className="text-center px-4">
                       <p className="text-[9px] font-black text-amber-500/60 uppercase tracking-[0.2em] mb-1">Identity Confirmed</p>
-                      <p className="text-[8px] text-amber-500/30 uppercase font-bold tracking-widest leading-none">Document hash: verified · {student.id}</p>
+                      <p className="text-[8px] text-amber-500/30 uppercase font-bold tracking-widest leading-none">Document hash: verified Â· {student.id}</p>
                     </div>
                   </div>
                 </div>
@@ -232,7 +232,7 @@ const StudentDetailModal = ({ student, onClose }) => {
             </div>
 
             <div className="bg-[#181a20] rounded-xl px-4 py-3 border border-white/[0.06] flex items-center gap-6">
-              <span className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest shrink-0 flex items-center gap-1.5"><Activity size={12} className="text-indigo-500" /> Session Telemetry</span>
+              <span className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest shrink-0 flex items-center gap-1.5"><Activity size={12} className="text-teal-600" /> Session Telemetry</span>
               <div className="flex items-center gap-1 flex-1">
                 {student.timeline.map((t, i) => (
                   <React.Fragment key={i}>
@@ -281,7 +281,7 @@ const ActiveSessionItem = ({ exam }) => (
       </div>
       <div className="min-w-0">
         <p className="text-sm font-medium text-zinc-200 truncate group-hover:text-white transition-colors">{exam.name}</p>
-        <p className="text-xs text-zinc-600 mt-0.5">{exam.id} · {exam.status === 'live' ? `${exam.time} elapsed` : `Starts at ${exam.time}`}</p>
+        <p className="text-xs text-zinc-600 mt-0.5">{exam.id} Â· {exam.status === 'live' ? `${exam.time} elapsed` : `Starts at ${exam.time}`}</p>
       </div>
     </div>
     <div className="flex items-center gap-3 shrink-0">
@@ -292,7 +292,7 @@ const ActiveSessionItem = ({ exam }) => (
         </div>
       )}
       <div className={`px-3 py-1 rounded-lg text-[11px] font-semibold ${exam.status === 'live' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-zinc-800 text-zinc-500'}`}>
-        {exam.status === 'live' ? '● Live' : 'Upcoming'}
+        {exam.status === 'live' ? 'â— Live' : 'Upcoming'}
       </div>
       <ChevronRight size={16} className="text-zinc-700 group-hover:text-zinc-400 transition-colors" />
     </div>
@@ -397,7 +397,7 @@ export default function MentorDashboard() {
     const entry = {
       studentId: student.id || 'VSN-89241',
       examId: student.exam,
-      reason: `Terminated by Mentor — ${student.exam}`,
+      reason: `Terminated by Mentor â€” ${student.exam}`,
       terminatedBy: 'mentor',
       timestamp: new Date().toISOString(),
     };
@@ -529,7 +529,7 @@ export default function MentorDashboard() {
         <div className="flex-1 overflow-y-auto modal-scroll pr-2 pr-0">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <div>
-              <p className="text-zinc-500 text-sm font-medium mb-1">{greeting}, Mentor Alex — {timeStr}</p>
+              <p className="text-zinc-500 text-sm font-medium mb-1">{greeting}, Mentor Alex â€” {timeStr}</p>
               <h1 className="text-2xl font-semibold text-white uppercase italic tracking-tighter">Command Center</h1>
               <p className="text-zinc-400 text-sm mt-1.5 font-medium flex items-center gap-1.5">
                 <ShieldCheck size={14} className="text-violet-400" /> Building a career you actually like waking up for.
@@ -583,7 +583,7 @@ export default function MentorDashboard() {
                 {[
                   { icon: <Eye size={15} />, label: 'View Roster', action: () => addToast('Roster: 73 students across 5 active exams', 'info') },
                   { icon: <Video size={15} />, label: 'Live Feed', action: () => addToast('Live feed: All proctoring cameras active', 'success') },
-                  { icon: <BarChart3 size={15} />, label: 'Analytics', action: () => addToast('Analytics: Avg score 78% · Pass rate 82%', 'success') },
+                  { icon: <BarChart3 size={15} />, label: 'Analytics', action: () => addToast('Analytics: Avg score 78% Â· Pass rate 82%', 'success') },
                 ].map((action, i) => (
                   <button key={i} onClick={action.action} className="bg-[#181a20] border border-white/[0.06] rounded-xl px-4 py-3 flex items-center justify-center gap-2.5 text-xs font-medium text-zinc-400 hover:text-white hover:border-white/[0.12] hover:bg-white/[0.02] transition-all active:scale-95">
                     {action.icon}
@@ -697,7 +697,7 @@ export default function MentorDashboard() {
       <div className="fixed bottom-6 right-6 z-[200] flex flex-col gap-2 pointer-events-none">
         {toasts.map(t => (
           <div key={t.id} className={`flex items-center gap-3 px-4 py-3 rounded-xl border shadow-2xl backdrop-blur-md pointer-events-auto transition-all ${t.type === 'error' ? 'bg-red-950/90 border-red-500/30 text-red-300' :
-              t.type === 'info' ? 'bg-[#181a20] border-indigo-500/30 text-indigo-300' :
+              t.type === 'info' ? 'bg-[#181a20] border-teal-600/30 text-teal-400' :
                 'bg-zinc-900/90 border-emerald-500/30 text-emerald-300'
             }`}>
             {t.type === 'error' ? <OctagonX size={14} /> : <CheckCircle2 size={14} />}
@@ -709,3 +709,4 @@ export default function MentorDashboard() {
     </div>
   );
 }
+

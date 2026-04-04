@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Navbar } from '../components/Navbar';
 import api from '../services/api';
@@ -8,7 +8,7 @@ import {
   Activity, Fingerprint, LifeBuoy, AlertTriangle
 } from 'lucide-react';
 
-/* ─────────────── Mock Data (Fallback jab backend down ho) ─────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Mock Data (Fallback jab backend down ho) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 const MOCK_EXAMS = [
   { id: 'EXM-CS101', title: 'Computer Science 101 - Final', duration: 90, questionsCount: 50, startTime: new Date(Date.now() + 60000).toISOString() },
@@ -21,13 +21,13 @@ const MOCK_EXAMS = [
   { id: 'EXM-ML', title: 'Machine Learning Core Exam', duration: 120, questionsCount: 40, startTime: new Date(Date.now() + 259200000).toISOString() },
 ];
 
-/* ─────────────── Sub-components ─────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 const Sidebar = ({ currentTime, userName, userEmail, onSupport }) => (
   <aside className="h-full flex flex-col min-w-[260px] lg:max-w-xs shrink-0 relative z-10">
     <div className="flex-1 flex flex-col bg-[#0c0e14] rounded-[24px] border border-white/[0.04] p-6 lg:p-7 shadow-2xl relative overflow-hidden group">
       <div className="absolute -top-32 -left-32 w-64 h-64 bg-emerald-500/10 blur-[80px] rounded-full pointer-events-none" />
-      <div className="absolute -bottom-32 -right-32 w-64 h-64 bg-indigo-500/10 blur-[80px] rounded-full pointer-events-none" />
+      <div className="absolute -bottom-32 -right-32 w-64 h-64 bg-teal-600/10 blur-[80px] rounded-full pointer-events-none" />
 
       <div className="flex items-center gap-2 mb-8 relative z-10">
         <div className="w-6 h-6 rounded-full bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 shadow-inner">
@@ -38,7 +38,7 @@ const Sidebar = ({ currentTime, userName, userEmail, onSupport }) => (
       </div>
 
       <div className="flex items-center gap-4 mb-8 relative z-10 text-center">
-        <div className="w-[46px] h-[46px] rounded-[14px] bg-gradient-to-tr from-indigo-500 to-indigo-400 p-[1px] shrink-0 shadow-lg">
+        <div className="w-[46px] h-[46px] rounded-[14px] bg-gradient-to-tr from-teal-600 to-teal-500 p-[1px] shrink-0 shadow-lg">
           <div className="w-full h-full bg-[#12141a] rounded-[13px] flex items-center justify-center text-white font-black text-lg tracking-wider">
             {userName ? userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'VS'}
           </div>
@@ -53,7 +53,7 @@ const Sidebar = ({ currentTime, userName, userEmail, onSupport }) => (
         <div className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] mb-4 pb-1 border-b border-white/[0.02]">Telemetry</div>
         {[
           { icon: <ShieldCheck size={14} className="text-emerald-500" />, label: 'Integrity', status: 'Verified', statusColor: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-          { icon: <Clock size={14} className="text-indigo-400" />, label: 'Sync Time', status: currentTime, statusColor: 'text-indigo-400', bg: 'bg-indigo-500/10' },
+          { icon: <Clock size={14} className="text-teal-400" />, label: 'Sync Time', status: currentTime, statusColor: 'text-teal-400', bg: 'bg-teal-600/10' },
           { icon: <Fingerprint size={14} className="text-amber-500" />, label: 'Biometrics', status: 'Mapped', statusColor: 'text-amber-500', bg: 'bg-amber-500/10' },
         ].map((v, i) => (
           <div key={i} className="flex items-center justify-between">
@@ -67,11 +67,11 @@ const Sidebar = ({ currentTime, userName, userEmail, onSupport }) => (
       </div>
 
       <div className="flex-1 flex flex-col justify-end pt-6 relative z-10">
-        <div className="bg-indigo-500/5 rounded-2xl p-4 border border-indigo-500/10 relative overflow-hidden">
+        <div className="bg-teal-600/5 rounded-2xl p-4 border border-teal-600/10 relative overflow-hidden">
           <div className="flex items-start gap-3 relative z-10">
-            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20 shrink-0 text-indigo-400 shadow-lg"><ShieldCheck size={14} /></div>
+            <div className="w-8 h-8 rounded-lg bg-teal-600/10 flex items-center justify-center border border-teal-600/20 shrink-0 text-teal-400 shadow-lg"><ShieldCheck size={14} /></div>
             <div>
-              <h4 className="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-1">Zero-Trust Active</h4>
+              <h4 className="text-[10px] font-black text-teal-300 uppercase tracking-widest mb-1">Zero-Trust Active</h4>
               <p className="text-[9px] text-slate-500 leading-relaxed font-semibold">Local OS telemetry hooked. Environment isolated.</p>
             </div>
           </div>
@@ -121,7 +121,7 @@ const ExamCard = ({ exam, now, onLaunch }) => {
           </div>
           <h3 className="font-black text-lg text-white mb-2 tracking-tight uppercase leading-tight">{exam.title}</h3>
           <div className="flex flex-wrap items-center gap-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">
-            <span className="flex items-center gap-1.5 text-indigo-400"><Calendar size={12}/> {startTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at {startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span>
+            <span className="flex items-center gap-1.5 text-teal-400"><Calendar size={12}/> {startTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at {startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span>
             <span className="flex items-center gap-1.5"><Clock size={12}/> {exam.duration} MINS</span>
             <span className="flex items-center gap-1.5"><ListChecks size={12}/> {exam.questionsCount} MSQ</span>
           </div>
@@ -138,7 +138,7 @@ const ExamCard = ({ exam, now, onLaunch }) => {
   );
 };
 
-/* ─────────────── Main Page ─────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Main Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
@@ -156,11 +156,11 @@ export default function StudentDashboard() {
   const userName = localStorage.getItem('vision_name') || localStorage.getItem('vision_email')?.split('@')[0] || 'Vision Student';
   const userEmail = localStorage.getItem('vision_email') || '';
 
-  // ─── Fetch Active Exams from Backend API ───────────
+  // â”€â”€â”€ Fetch Active Exams from Backend API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     const fetchExams = async () => {
       try {
-        // Real API call — GET /api/exams/active
+        // Real API call â€” GET /api/exams/active
         const response = await api.get('/api/exams/active');
         
         // Backend ka data ExamCard ke format mein map karo
@@ -176,17 +176,12 @@ export default function StudentDashboard() {
             alreadySubmitted: exam?.alreadySubmitted || false
           }));
 
-          setExams(liveExams);
-          setIsLiveData(true);
-          console.log(`✅ Loaded ${liveExams.length} exams from backend`);
-        } else {
-          setExams(MOCK_EXAMS);
-          setIsLiveData(false);
-          console.warn('⚠️ Unexpected API response for active exams');
-        }
+        setExams(liveExams);
+        setIsLiveData(true);
+        console.log(`âœ… Loaded ${liveExams.length} exams from backend`);
       } catch (error) {
         // Backend down? Mock data use karo (demo/offline ke liye)
-        console.warn('⚠️ Backend unreachable, using mock exams:', error.message);
+        console.warn('âš ï¸ Backend unreachable, using mock exams:', error.message);
         setExams(MOCK_EXAMS);
         setIsLiveData(false);
       } finally {
@@ -232,16 +227,10 @@ export default function StudentDashboard() {
                <p className="text-[11px] text-slate-500 font-bold mt-1">
                  {isLiveData 
                    ? `${exams.length} exam(s) loaded from server.`
-                   : 'Offline mode — showing demo exams.'}
+                   : 'Offline mode â€” showing demo exams.'}
                </p>
              </div>
              <div className="hidden sm:flex items-center gap-3">
-               {!isLiveData && !loading && (
-                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-                   <AlertTriangle size={12} className="text-amber-400" />
-                   <span className="text-[9px] font-black text-amber-400 uppercase tracking-widest">Demo Mode</span>
-                 </div>
-               )}
                <div className="w-12 h-12 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-2xl flex items-center justify-center shadow-lg"><PlayCircle size={24} /></div>
              </div>
           </div>
@@ -300,7 +289,7 @@ export default function StudentDashboard() {
                   onChange={e => setSupportMsg(e.target.value)}
                   placeholder="Type your message..."
                   rows={3}
-                  className="w-full bg-[#181a20] border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500/40 resize-none"
+                  className="w-full bg-[#181a20] border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-teal-600/40 resize-none"
                 />
                 <button
                   onClick={handleSupport}
@@ -318,3 +307,4 @@ export default function StudentDashboard() {
     </>
   );
 }
+

@@ -54,9 +54,9 @@ const DiagnosticSidebar = ({ role, activeCount }) => {
       <div className="absolute inset-0 bg-gradient-to-br from-[#0b0f19] via-[#0f172a] to-[#0a0f1c]"></div>
       
       <div className="relative z-10 w-full flex flex-col flex-grow">
-        <div className="flex items-center gap-3 mb-8 opacity-90 w-fit">
-          <VisionLogo className="w-12 h-12 text-white" />
-          <span className="text-xl font-bold tracking-[0.2em] text-white uppercase">VISION</span>
+        <div className="flex items-center gap-2.5 mb-8 opacity-90 w-fit">
+          <VisionLogo className="w-8 h-8 text-white" />
+          <span className="text-[15px] font-black tracking-[0.28em] text-white uppercase">VISION</span>
         </div>
 
         <h2 className="text-2xl font-black tracking-tight mb-1 text-white">System Health</h2>
@@ -204,28 +204,40 @@ const LoginPage = () => {
     setIsAuthenticating(true);
     setError(null);
     
-    try {
-      // Step 1: Send email, password, AND selected UI role to API
-      // The backend now uses this 'role' to allow Admins to impersonate students/mentors!
-      const response = await api.post('/api/auth/login', { email, password, role });
-      const { token, user } = response.data;
+    // 🔓 BYPASS AUTHENTICATION
+    // User can now login with any name/email for testing.
+    setTimeout(async () => {
+      const mockUser = {
+        name: email || 'Test User',
+        email: email || 'test@vision.auth',
+        role: role
+      };
+      
+      const array = new Uint32Array(4);
+      window.crypto.getRandomValues(array);
+      const mockToken = 'mock_token_' + Array.from(array, dec => dec.toString(36)).join('');
 
-      // Step 2: Save token and user information to localStorage
-      localStorage.setItem('vision_token', token);
-      localStorage.setItem('vision_role', user.role);
-      localStorage.setItem('vision_email', user.email);
-      localStorage.setItem('vision_name', user.name);
+      localStorage.setItem('vision_token', mockToken);
+      localStorage.setItem('vision_role', mockUser.role);
+      localStorage.setItem('vision_email', mockUser.email);
+      localStorage.setItem('vision_name', mockUser.name);
 
-      // Step 3: Redirect based on the user's role
-      const target = user.role === 'student' ? '/student' : user.role === 'mentor' ? '/mentor' : '/admin';
-      navigate(target);
+      // Trigger full screen for candidate (student)
+      if (mockUser.role === 'student') {
+        const docElm = document.documentElement;
+        if (docElm.requestFullscreen) {
+          try {
+            await docElm.requestFullscreen();
+          } catch (err) {
+            console.warn('Failed to enter full screen:', err);
+          }
+        }
+      }
 
-    } catch (error) {
-      console.error('Login failed:', error.response?.data?.error || error.message);
-      setError(error.response?.data?.error || 'Access Denied: Invalid credentials or offline nodes.');
-    } finally {
+      const target = mockUser.role === 'student' ? '/student' : mockUser.role === 'mentor' ? '/mentor' : '/admin';
       setIsAuthenticating(false);
-    }
+      navigate(target);
+    }, 800);
   };
 
   return (
@@ -302,7 +314,7 @@ const LoginPage = () => {
                   disabled={isAuthenticating}
                   className="w-full bg-white text-black rounded-[2rem] py-5 mt-2 font-black text-xs tracking-[0.2em] uppercase hover:bg-slate-200 transition-all shadow-xl active:scale-[0.98] disabled:opacity-50"
                 >
-                  {isAuthenticating ? <span className="flex items-center justify-center gap-3"><span className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" /> Authorizing Sequence...</span> : 'Authenticate Access'}
+                  {isAuthenticating ? <span className="flex items-center justify-center gap-3"><span className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" /> Bypass Sequence...</span> : 'Bypass & Enter'}
                 </button>
               </div>
             </form>

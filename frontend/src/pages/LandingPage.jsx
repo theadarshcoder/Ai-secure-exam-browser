@@ -347,7 +347,7 @@ const KineticTextSequence = () => {
 const CredHeroParallax = () => {
   
   return (
-    <section id="hero" className="w-full bg-black h-screen overflow-hidden relative flex flex-col">
+    <section id="hero" style={{ backgroundColor: '#000000' }} className="w-full h-screen overflow-hidden relative flex flex-col">
       <style>
         {`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,800;0,900;1,700&display=swap');
           .font-playfair { font-family: 'Playfair Display', serif; }`}
@@ -1109,23 +1109,23 @@ const CredStatsGrid = () => {
 
         <div className="lg:w-3/5 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
            {[ 
-             { stat: "0.2ms", label: "Latency Injection", icon: <Activity className="w-4 h-4 text-indigo-400" /> },
+             { stat: "0.2ms", label: "Detection Latency", icon: <Activity className="w-4 h-4 text-indigo-400" /> },
              { stat: "99.9%", label: "Biometric Accuracy", icon: <ScanFace className="w-4 h-4 text-emerald-400" /> },
              { stat: "1.2B+", label: "Telemetry Points", icon: <Server className="w-4 h-4 text-rose-400" /> },
              { stat: "100%", label: "Uptime SLA", icon: <Shield className="w-4 h-4 text-amber-400" /> }
            ].map((item, i) => (
-             <div key={i} className="p-0 shadow-none border-none">
-               <div className="flex items-center gap-3 mb-10">
+             <div key={i} className="p-0 shadow-none border-none flex flex-col justify-center">
+               <div className="text-4xl md:text-5xl font-bold tracking-tight text-slate-50 mb-4 block">
+                 {item.stat}
+               </div>
+
+               <div className="flex items-center gap-3 mt-1">
                  <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center border border-zinc-700 group-hover:border-zinc-600 transition-colors duration-300">
                    {item.icon}
                  </div>
                  <div className="text-slate-400 text-xs font-semibold uppercase tracking-widest group-hover:text-slate-300 transition-colors duration-300">
                    {item.label}
                  </div>
-               </div>
-               
-               <div className="text-4xl md:text-5xl font-bold tracking-tight text-slate-50">
-                 {item.stat}
                </div>
              </div>
            ))}
@@ -1257,7 +1257,7 @@ const CyclingPillHeadline = () => {
   }, []);
 
   return (
-    <section className="bg-black pt-12 pb-12 px-6 relative overflow-hidden flex flex-col items-center text-center">
+    <section style={{ backgroundColor: '#000000' }} className="pt-12 pb-12 px-6 relative overflow-hidden flex flex-col items-center text-center">
       <div
         className={`absolute w-[600px] h-[300px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 blur-[120px] opacity-20 rounded-full bg-gradient-to-r ${current.gradient} transition-all duration-1000`}
       />
@@ -1304,13 +1304,19 @@ export default function LandingPage() {
     link.href = 'https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&display=swap';
     link.rel = 'stylesheet';
     document.head.appendChild(link);
-    return () => { if (document.head.contains(link)) document.head.removeChild(link); };
+
+    return () => { 
+      if (document.head.contains(link)) document.head.removeChild(link); 
+    };
   }, []);
 
   return (
-    <div className="bg-black min-h-screen font-sans scroll-smooth selection:bg-zinc-800 relative">
+    <div style={{ backgroundColor: '#000000' }} className="min-h-screen font-sans scroll-smooth selection:bg-zinc-800 relative landing-page-root">
       <style>{`
         .perspective-1000 { perspective: 1000px; }
+        .landing-page-root, #hero, #security, #features, #stats, #trust {
+          background-color: #000000 !important;
+        }
       `}</style>
       <HybridNavbar />
       <div id="hero">

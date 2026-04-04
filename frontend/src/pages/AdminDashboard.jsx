@@ -13,7 +13,7 @@ import {
 import VisionLogo from '../components/VisionLogo';
 import { ThemeToggle } from '../contexts/ThemeContext';
 
-/* ─────────────── Config & Constants ─────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Config & Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 const NAV_ITEMS = [
   { id: 'Overview', label: 'Overview', icon: <LayoutDashboard size={18} /> },
@@ -25,14 +25,14 @@ const NAV_ITEMS = [
 ];
 
 const INITIAL_SESSIONS = [
-  { id: 'VSN-89241', name: 'Adarsh Maurya', exam: 'Data Structures', risk: 'Low', score: 98, time: '32m rem', status: 'active' },
-  { id: 'VSN-89242', name: 'Sarah Chen', exam: 'Advanced AI', risk: 'High', score: 42, time: '14m rem', status: 'active' },
-  { id: 'VSN-89243', name: 'Rahul Verma', exam: 'Network Security', risk: 'Medium', score: 71, time: '45m rem', status: 'active' },
-  { id: 'VSN-89244', name: 'Elena Rossi', exam: 'Operating Systems', risk: 'Low', score: 99, time: '08m rem', status: 'active' },
-  { id: 'VSN-89245', name: 'Chris Jordan', exam: 'Cloud Arch', risk: 'Medium', score: 85, time: '22m rem', status: 'active' },
+  { id: 'VSN-89241', name: 'Adarsh Maurya', exam: 'Data Structures & Algorithms', risk: 'Low', score: 98, time: '32m rem', status: 'active' },
+  { id: 'VSN-89242', name: 'Priya Sharma', exam: 'Database Management Systems', risk: 'High', score: 42, time: '14m rem', status: 'active' },
+  { id: 'VSN-89243', name: 'Rohan Patel', exam: 'Operating Systems', risk: 'Medium', score: 71, time: '45m rem', status: 'active' },
+  { id: 'VSN-89244', name: 'Sneha Iyer', exam: 'Computer Networks', risk: 'Low', score: 99, time: '8m rem', status: 'active' },
+  { id: 'VSN-89245', name: 'Karan Mehta', exam: 'Software Engineering', risk: 'Medium', score: 85, time: '22m rem', status: 'active' },
 ];
 
-/* ─────────────── Toast ─────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Toast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 const Toast = ({ toasts, removeToast }) => (
   <div className="fixed bottom-6 right-6 z-[200] flex flex-col gap-2 pointer-events-none">
@@ -50,7 +50,7 @@ const Toast = ({ toasts, removeToast }) => (
   </div>
 );
 
-/* ─────────────── Terminate Confirm Modal ─────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Terminate Confirm Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 const TerminateModal = ({ target, onConfirm, onClose }) => {
   if (!target) return null;
@@ -74,7 +74,7 @@ const TerminateModal = ({ target, onConfirm, onClose }) => {
           {!isAll && (
             <div className="bg-[#0f1117] rounded-xl p-4 border border-white/[0.06] mb-6 text-center">
               <p className="text-white font-bold">{target.name}</p>
-              <p className="text-zinc-500 text-xs font-mono mt-1">{target.id} · {target.exam}</p>
+              <p className="text-zinc-500 text-xs font-mono mt-1">{target.id} Â· {target.exam}</p>
             </div>
           )}
           {isAll && <div className="mb-6" />}
@@ -91,7 +91,7 @@ const TerminateModal = ({ target, onConfirm, onClose }) => {
   );
 };
 
-/* ─────────────── Session Row ─────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Session Row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 const SessionRow = ({ session, onTerminate, onView }) => {
   const riskColor = session.risk === 'High' ? 'text-red-500' : session.risk === 'Medium' ? 'text-amber-500' : 'text-emerald-500';
@@ -133,12 +133,13 @@ const SessionRow = ({ session, onTerminate, onView }) => {
         </div>
       </td>
       <td className="px-5 py-3.5 text-right">
-        <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex justify-end gap-1.5 transition-opacity">
           {!isTerminated && (
             <>
               <button
                 onClick={() => onView(session)}
-                className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white transition-all text-[10px] font-bold uppercase tracking-wider"
+                style={{ backgroundColor: 'rgba(0,0,0,0.05)', color: '#475569' }}
+                className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 hover:bg-zinc-800 hover:text-white border border-transparent hover:border-zinc-700 transition-all text-[10px] font-bold uppercase tracking-wider"
                 title="View session"
               >
                 <Eye size={12} /> View
@@ -163,7 +164,7 @@ const SessionRow = ({ session, onTerminate, onView }) => {
   );
 };
 
-/* ─────────────── Incident Item ─────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Incident Item â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 const IncidentItem = ({ incident, onResolve }) => (
   <div className={`cursor-default p-5 transition-colors hover:bg-white/[0.02] group ${incident.resolved ? 'opacity-40' : ''}`}>
@@ -185,7 +186,7 @@ const IncidentItem = ({ incident, onResolve }) => (
       ) : (
         <button
           onClick={() => onResolve(incident.id)}
-          className="text-[10px] font-bold uppercase tracking-widest text-indigo-500 hover:text-indigo-400 transition-all active:scale-95"
+          className="text-[10px] font-bold uppercase tracking-widest text-teal-600 hover:text-teal-500 transition-all active:scale-95"
         >
           Resolve Issue
         </button>
@@ -194,7 +195,7 @@ const IncidentItem = ({ incident, onResolve }) => (
   </div>
 );
 
-/* ─────────────── Tab Pages ─────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Tab Pages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 const AssessmentsTab = ({ addToast }) => {
   const exams = JSON.parse(localStorage.getItem('published_exams') || '[]');
@@ -216,7 +217,7 @@ const AssessmentsTab = ({ addToast }) => {
             <div key={i} className="p-5 border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02] transition-colors flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold text-white">{exam.title || 'Untitled'}</p>
-                <p className="text-xs text-zinc-500 font-mono mt-0.5">{exam.id} · {exam.duration}min · {exam.questions?.length || 0}Q</p>
+                <p className="text-xs text-zinc-500 font-mono mt-0.5">{exam.id} Â· {exam.duration}min Â· {exam.questions?.length || 0}Q</p>
               </div>
               <div className="flex gap-2">
                 <button
@@ -265,7 +266,7 @@ const CandidatesTab = () => (
 
 const AnalyticsTab = () => {
   const metrics = [
-    { label: 'Total Exams Run', value: '1,847', trend: '+12%', color: 'text-indigo-400' },
+    { label: 'Total Exams Run', value: '1,847', trend: '+12%', color: 'text-teal-500' },
     { label: 'Pass Rate', value: '78.4%', trend: '+3.2%', color: 'text-emerald-400' },
     { label: 'Avg Completion', value: '42min', trend: '-5min', color: 'text-amber-400' },
     { label: 'Violations Caught', value: '234', trend: '+8', color: 'text-red-400' },
@@ -300,7 +301,7 @@ const AnalyticsTab = () => {
                 {[{ l: 'Data Structures', v: 35 }, { l: 'Frontend Dev', v: 22 }, { l: 'Cloud & DevOps', v: 18 }, { l: 'Security', v: 25 }].map((r, j) => (
                   <div key={j}>
                     <div className="flex justify-between text-xs mb-1"><span className="text-zinc-400">{r.l}</span><span className="text-zinc-300 font-bold">{r.v}%</span></div>
-                    <div className="h-1.5 bg-zinc-800 rounded-full"><div className="h-full rounded-full bg-indigo-500" style={{ width: `${r.v}%` }} /></div>
+                    <div className="h-1.5 bg-zinc-800 rounded-full"><div className="h-full rounded-full bg-teal-600" style={{ width: `${r.v}%` }} /></div>
                   </div>
                 ))}
               </div>
@@ -330,7 +331,7 @@ const SettingsTab = ({ addToast }) => (
           </div>
           <button
             onClick={() => { setEnabled(!enabled); addToast(`${setting.label} ${!enabled ? 'enabled' : 'disabled'}`, 'success'); }}
-            className={`relative w-12 h-6 rounded-full transition-colors ${enabled ? 'bg-indigo-500' : 'bg-zinc-700'}`}
+            className={`relative w-12 h-6 rounded-full transition-colors ${enabled ? 'bg-teal-600' : 'bg-zinc-700'}`}
           >
             <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${enabled ? 'translate-x-7' : 'translate-x-1'}`} />
           </button>
@@ -347,7 +348,7 @@ const SettingsTab = ({ addToast }) => (
   </div>
 );
 
-/* ─────────────── Main Component ─────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -389,7 +390,7 @@ export default function AdminDashboard() {
     return () => { document.body.style.overflow = 'auto'; clearInterval(timer); };
   }, []);
 
-  /* ── Termination Logic ── */
+  /* â”€â”€ Termination Logic â”€â”€ */
   const terminateSession = (session) => {
     // Persist termination flag so ExamCockpit can detect it
     const existing = JSON.parse(localStorage.getItem('vision_terminated_sessions') || '[]');
@@ -439,7 +440,7 @@ export default function AdminDashboard() {
     addToast('Incident marked as resolved', 'success');
   };
 
-  /* ── Export ── */
+  /* â”€â”€ Export â”€â”€ */
   const handleExport = () => {
     const data = sessions.map(s => `${s.id},${s.name},${s.exam},${s.risk},${s.score},${s.status}`);
     const csv = ['ID,Name,Exam,Risk,Score,Status', ...data].join('\n');
@@ -458,13 +459,21 @@ export default function AdminDashboard() {
   };
 
   const handleViewSession = (session) => {
-    addToast(`Viewing ${session.name}'s session — ${session.exam}`, 'success');
+    const params = new URLSearchParams({
+      id: session.id,
+      name: session.name,
+      exam: session.exam,
+      risk: session.risk,
+      score: String(session.score),
+      time: session.time,
+    });
+    navigate(`/admin/session?${params.toString()}`);
   };
 
   const activeSessions = sessions.filter(s => s.status === 'active');
   const criticalIssues = incidents.filter(i => i.severity === 'high' && !i.resolved).length;
   const stats = [
-    { label: 'Active Exams', value: String(activeSessions.length), tag: 'SYNCED', color: 'text-indigo-500' },
+    { label: 'Active Exams', value: String(activeSessions.length), tag: 'SYNCED', color: 'text-teal-600' },
     { label: 'Reported Alerts', value: String(criticalIssues), tag: 'URGENT', color: 'text-red-500' },
     { label: 'Integrity Score', value: '98.2', tag: 'NOMINAL', color: 'text-emerald-500' },
     { label: 'System Uptime', value: '99.9%', tag: 'STABLE', color: 'text-zinc-500' },
@@ -546,8 +555,8 @@ export default function AdminDashboard() {
               <section className="col-span-8 flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                   <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-600">
-                    <Monitor className="text-indigo-500" size={14} /> Active Sessions
-                    <span className="ml-2 px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[9px]">{activeSessions.length} live</span>
+                    <Monitor className="text-teal-600" size={14} /> Active Sessions
+                    <span className="ml-2 px-2 py-0.5 rounded-full bg-teal-600/10 border border-teal-600/20 text-teal-500 text-[9px]">{activeSessions.length} live</span>
                   </h2>
                   {activeSessions.length > 0 && (
                     <button
@@ -616,25 +625,29 @@ export default function AdminDashboard() {
                   <div className="grid grid-cols-2 gap-3 relative z-10">
                     <button
                       onClick={() => setTerminateTarget('ALL')}
-                      className="rounded-xl border border-red-500/20 bg-red-500/10 py-3 text-[10px] font-bold uppercase tracking-widest text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-lg active:scale-95"
+                      style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', color: '#dc2626' }}
+                      className="rounded-xl border border-red-500/40 py-3 text-[10px] font-extrabold uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all shadow-sm active:scale-95"
                     >
                       Stop All
                     </button>
                     <button
                       onClick={handlePingAll}
-                      className="rounded-xl border border-white/5 bg-white/[0.03] py-3 text-[10px] font-bold uppercase tracking-widest text-zinc-500 hover:text-white hover:bg-white/10 transition-all active:scale-95"
+                      style={{ backgroundColor: 'rgba(113, 113, 122, 0.1)', color: '#475569' }}
+                      className="rounded-xl border border-zinc-500/30 py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-zinc-700 hover:text-white transition-all active:scale-95"
                     >
                       Ping All
                     </button>
                     <button
                       onClick={handleExport}
-                      className="rounded-xl border border-indigo-500/20 bg-indigo-500/10 py-3 text-[10px] font-bold uppercase tracking-widest text-indigo-400 hover:bg-indigo-500 hover:text-white transition-all active:scale-95"
+                      style={{ backgroundColor: 'rgba(99, 102, 241, 0.15)', color: '#4f46e5' }}
+                      className="rounded-xl border border-teal-600/40 py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-teal-600 hover:text-white transition-all active:scale-95"
                     >
                       Export
                     </button>
                     <button
                       onClick={() => { setTab('Analytics'); }}
-                      className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 py-3 text-[10px] font-bold uppercase tracking-widest text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all active:scale-95"
+                      style={{ backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#047857' }}
+                      className="rounded-xl border border-emerald-500/40 py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all active:scale-95"
                     >
                       Analytics
                     </button>
@@ -651,9 +664,9 @@ export default function AdminDashboard() {
     <div className="flex h-screen w-full overflow-hidden bg-[#0f1117] font-sans text-zinc-200 select-none">
       {/* Sidebar */}
       <aside className="z-50 flex w-64 shrink-0 flex-col border-r border-white/5 bg-[#0c0c0e] shadow-2xl">
-        <div className="flex h-14 items-center gap-2.5 border-b border-white/5 px-5">
-          <VisionLogo className="h-5 w-5 text-white" />
-          <span className="text-sm font-bold uppercase tracking-wider text-zinc-100">Vision Admin</span>
+        <div className="flex h-14 items-center gap-2 border-b border-white/5 px-5">
+          <VisionLogo className="h-[18px] w-[18px] text-white" />
+          <span className="text-[11px] font-black uppercase tracking-[0.22em] text-zinc-100">VISION <span className="text-zinc-500">ADMIN</span></span>
         </div>
 
         <nav className="flex-1 space-y-0.5 p-4 overflow-y-auto">
@@ -664,7 +677,7 @@ export default function AdminDashboard() {
               onClick={() => setTab(item.id)}
               className={`group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium transition-all ${activeTab === item.id ? 'bg-white/5 text-white shadow-sm' : 'text-zinc-500 hover:bg-white/[0.02] hover:text-zinc-300'}`}
             >
-              <span className={activeTab === item.id ? 'text-indigo-500' : 'text-zinc-700 transition-colors group-hover:text-zinc-500'}>{item.icon}</span>
+              <span className={activeTab === item.id ? 'text-teal-600' : 'text-zinc-700 transition-colors group-hover:text-zinc-500'}>{item.icon}</span>
               {item.label}
               {item.id === 'Integrity' && criticalIssues > 0 && (
                 <span className="ml-auto px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[9px] font-black">{criticalIssues}</span>
@@ -700,7 +713,7 @@ export default function AdminDashboard() {
             <ChevronRight size={10} />
             <span>Dashboard</span>
             <ChevronRight size={10} />
-            <span className="text-indigo-500">{activeTab}</span>
+            <span className="text-teal-600">{activeTab}</span>
           </div>
 
           <div className="flex items-center gap-4">
@@ -734,9 +747,9 @@ export default function AdminDashboard() {
                       <button onClick={() => setShowNotifs(false)}><X size={14} className="text-zinc-500" /></button>
                     </div>
                     {[
-                      { msg: 'Sarah Chen flagged for suspicious activity', t: '2m ago', color: 'text-red-400' },
-                      { msg: 'Chris Jordan completed Cloud Arch exam', t: '14m ago', color: 'text-emerald-400' },
-                      { msg: 'New exam session started: Operating Systems', t: '1h ago', color: 'text-indigo-400' },
+                      { msg: 'Priya Sharma flagged: tab switch detected during exam', t: '2m ago', color: 'text-red-400' },
+                      { msg: 'Karan Mehta submitted Software Engineering exam early', t: '11m ago', color: 'text-emerald-400' },
+                      { msg: 'New session started: Computer Networks â€” Sneha Iyer', t: '58m ago', color: 'text-teal-500' },
                     ].map((n, i) => (
                       <div key={i} className="px-4 py-3 border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors cursor-pointer">
                         <p className={`text-xs font-medium ${n.color}`}>{n.msg}</p>
@@ -770,3 +783,4 @@ export default function AdminDashboard() {
     </div>
   );
 }
+

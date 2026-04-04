@@ -9,5 +9,14 @@ export default defineConfig({
   optimizeDeps: {
     include: ['@vladmandic/face-api'],
     force: true // Force esbuild to clear cache and restart
+  },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'https://vision-o16g.onrender.com',
+        changeOrigin: true,
+        secure: false,
+      }
+    }
   }
 })
