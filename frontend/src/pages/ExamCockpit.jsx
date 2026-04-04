@@ -6,7 +6,7 @@ import {
   Camera, CameraOff, Clock, Shield, CheckCircle,
   ChevronRight, ChevronLeft, Send, XCircle,
   Bookmark, Terminal, Eye, Fingerprint, AlertCircle, Power,
-  Loader2, RotateCcw, Play, Monitor, ScanFace
+  Loader2, RotateCcw, Play, Monitor, ScanFace, ShieldAlert
 } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { useTabVisibility, TabToast } from '../components/TabVisibility';
@@ -204,6 +204,55 @@ export default function ExamCockpit() {
   const [terminated, setTerminated] = useState(null);
   const [terminateCountdown, setTerminateCountdown] = useState(8);
   const [isFullscreen, setIsFullscreen] = useState(true);
+  const isTimeCritical = secondsLeft < 300 && secondsLeft > 0;
+
+  // 1. Fullscreen Enforcement & Shortcut Blocking
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    const blockShortcuts = (e) => {
+      // Block Ctrl+C, Ctrl+V, Ctrl+X, Ctrl+F, Ctrl+P, F12, PrintScreen, etc.
+      if (
+        e.ctrlKey || e.metaKey || 
+        ['F12', 'PrintScreen'].includes(e.key) ||
+        (e.altKey && e.key === 'Tab')
+      ) {
+        e.preventDefault();
+        logIncident('Shortcut Blocked', 'medium', `Attempted to use shortcut: ${e.key}`);
+        return false;
+      }
+    };
+
+    const blockContextMenu = (e) => {
+      e.preventDefault();
+      logIncident('Right Click Blocked', 'low', 'Attempted to open context menu.');
+      return false;
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('keydown', blockShortcuts);
+    document.addEventListener('contextmenu', blockContextMenu);
+    
+    // Auto-trigger fullscreen on mount
+    const triggerFullscreen = async () => {
+      try {
+        if (!document.fullscreenElement) {
+          await document.documentElement.requestFullscreen();
+        }
+      } catch {
+        console.warn('Fullscreen request failed — requires user interaction first.');
+      }
+    };
+    triggerFullscreen();
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('keydown', blockShortcuts);
+      document.removeEventListener('contextmenu', blockContextMenu);
+    };
+  }, [logIncident]);
 
   // We define logIncident first so it's available for effects
   const logIncident = useCallback(async (type, severity, details) => {
@@ -359,7 +408,7 @@ export default function ExamCockpit() {
     initCamera();
     loadModels();
     return () => { if (stream) stream.getTracks().forEach(t => t.stop()); };
-  }, []);
+  }, [stream]);
 
   useEffect(() => {
     if (videoRef.current && stream && cameraActive) {
@@ -368,7 +417,7 @@ export default function ExamCockpit() {
       }
       videoRef.current.play().catch(e => console.warn("Auto-play blocked", e));
     }
-  }, [stream, cameraActive, currentQ]);
+  }, [stream, cameraActive]);
 
   useEffect(() => {
     if (!modelsLoaded || !cameraActive || submitted) return;
@@ -385,26 +434,16 @@ export default function ExamCockpit() {
     };
     runDetection();
     return () => cancelAnimationFrame(frameId);
-  }, [modelsLoaded, cameraActive, submitted]);
+  }, [modelsLoaded, cameraActive, submitted, stream]);
 
   useEffect(() => {
     if (tabToast && !submitted) logIncident('Tab Switch', 'high', tabToast.msg);
-  }, [tabToast, submitted]);
+  }, [tabToast, submitted, logIncident]);
 
   useEffect(() => {
-    const studentId = localStorage.getItem('vision_email') || 'VSN-89241';
-    socketService.connect(studentId);
+    socketService.connect();
     return () => socketService.disconnect();
   }, []);
-
-  const logIncident = async (type, severity, details) => {
-    const studentId = localStorage.getItem('vision_email') || 'VSN-89241';
-    const incident = { id: `INC-${Date.now()}`, examId, studentId, type, severity, details, timestamp: new Date().toISOString() };
-    socketService.emitViolation(incident);
-    try { await api.post('/api/exams/incident', { examId, type, severity, details }); } catch (err) {}
-    const existing = JSON.parse(localStorage.getItem('vision_incidents') || '[]');
-    localStorage.setItem('vision_incidents', JSON.stringify([incident, ...existing]));
-  };
 
   const handleRunCode = async () => {
     setIsExecuting(true);
@@ -595,6 +634,28 @@ export default function ExamCockpit() {
       <SubmitModal isOpen={showConfirm} onClose={() => setShowConfirm(false)} stats={{ answered: answeredCount, unanswered: questions.length - answeredCount, marked: Object.values(markedForReview).filter(Boolean).length }} onConfirm={() => { setSubmitted(true); setTimeout(() => navigate('/student'), 2000); }} />
       <ExitModal isOpen={showExitPrompt} onClose={() => setShowExitPrompt(false)} password={exitPassword} setPassword={setExitPassword} onExit={() => { if (exitPassword === '12345') { setSubmitted(true); setTimeout(() => navigate('/student'), 1000); } else { alert('Incorrect Pass'); setExitPassword(''); } }} />
       <TabToast toast={tabToast} />
+
+      {/* Fullscreen Overlay */}
+      {!isFullscreen && !submitted && !terminated && (
+        <div className="fixed inset-0 z-[200] bg-zinc-950/90 backdrop-blur-md flex items-center justify-center p-8">
+          <div className="max-w-md w-full bg-zinc-900 border border-red-500/30 p-8 rounded-3xl text-center shadow-2xl">
+            <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <ShieldAlert size={32} className="text-red-500" />
+            </div>
+            <h2 className="text-2xl font-black text-white mb-2">Fullscreen Required</h2>
+            <p className="text-zinc-400 text-sm mb-8 leading-relaxed">
+              Exiting fullscreen is a violation. Please return to fullscreen immediately to continue the exam. 
+              Multiple violations will result in automatic termination.
+            </p>
+            <button 
+              onClick={() => document.documentElement.requestFullscreen()}
+              className="w-full py-4 bg-red-600 hover:bg-red-500 text-white rounded-2xl font-bold transition-all shadow-lg shadow-red-900/20 active:scale-95"
+            >
+              Back to Fullscreen
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

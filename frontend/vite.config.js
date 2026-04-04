@@ -16,6 +16,12 @@ export default defineConfig({
         target: 'https://vision-o16g.onrender.com',
         changeOrigin: true,
         secure: false,
+      },
+      '/socket.io': {
+        target: 'https://vision-o16g.onrender.com',
+        changeOrigin: true,
+        secure: false,
+        ws: true,
       }
     }
   }

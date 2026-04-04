@@ -31,15 +31,15 @@ app.use(helmet());
 // ═══════════════════════════════════════════════════════════
 //  🔒 SECURITY 1: Strict CORS Setup
 // ═══════════════════════════════════════════════════════════
-// Pehle: app.use(cors())  → koi bhi domain se API hit kar sakta tha (KHATARNAK!)
-// Ab:    Sirf allowed frontends se requests accept hongi
+// Previous: app.use(cors()) allowed any domain (Insecure!)
+// Now: Only authorized frontend origins are permitted.
 //
-// .env mein FRONTEND_URL set karo:
+// Configure FRONTEND_URL in .env:
 //   Development: http://localhost:5173
-//   Production:  https://tumhari-app.vercel.app
+//   Production:  https://your-app-domain.com
 //
-// Multiple URLs chahiye? Comma se alag karo:
-//   FRONTEND_URL=http://localhost:5173,https://tumhari-app.vercel.app
+// Multiple URLs can be comma-separated:
+//   FRONTEND_URL=http://localhost:5173,https://app.proctoshield.com
 
 const allowedOrigins = process.env.FRONTEND_URL
     ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
@@ -70,7 +70,7 @@ app.use(express.json());
 // ═══════════════════════════════════════════════════════════
 //  🛡️ SECURITY 2: Rate Limiting (Brute-Force Protection)
 // ═══════════════════════════════════════════════════════════
-// Koi baar-baar password guess kare toh usse rok do!
+// Mitigate brute-force and DDoS attacks by limiting request rates.
 
 // Global Rate Limiter — Saari APIs ke liye
 // 100 requests per 15 minutes per IP (normal usage ke liye kaafi hai)
@@ -78,20 +78,20 @@ const globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,    // 15 minute ka window
     max: 100,                     // Max 100 requests per window
     message: {
-        error: 'Bahut zyada requests! 15 minute baad try karo.',
+        error: 'Too many requests! Please try again in 15 minutes.',
         retryAfter: '15 minutes'
     },
     standardHeaders: true,        // Rate limit info headers mein bhi bhejo
     legacyHeaders: false
 });
 
-// Auth Rate Limiter — Sirf Login/Register ke liye (STRICT!)
-// 10 attempts per 15 minutes per IP — brute force attack ruk jayega
+// Auth Rate Limiter — Strict limits for Login/Register endpoints
+// Limits attempts to prevent brute-force attacks.
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,    // 15 minute ka window
     max: 1000,                   // Development ke liye 1000 kar diya taaki testing na ruke
     message: {
-        error: 'Bahut zyada login attempts! 15 minute baad try karo.',
+        error: 'Too many login attempts! Please try again in 15 minutes.',
         retryAfter: '15 minutes'
     },
     standardHeaders: true,
@@ -105,8 +105,8 @@ app.use(globalLimiter);
 // ═══════════════════════════════════════════════════════════
 //  🔌 SECURITY 3: Socket.IO with JWT Authentication
 // ═══════════════════════════════════════════════════════════
-// Pehle: koi bhi socket connect kar ke cheating alerts sun sakta tha (KHATARNAK!)
-// Ab:    Sirf valid JWT token wale users hi connect ho payenge
+// Previous: Anyone could connect to the socket and listen to alerts (Critical Vulnerability!)
+// Now: Only users with a valid JWT can establish a connection.
 
 const io = new Server(server, {
     cors: {
@@ -128,7 +128,7 @@ io.use(async (socket, next) => {
             || socket.handshake.headers?.authorization?.split(' ')[1];
 
         if (!token) {
-            return next(new Error('🚫 Authentication required! Token bhejo.'));
+            return next(new Error('🚫 Authentication required! Token missing.'));
         }
 
         // JWT verify karo
@@ -138,7 +138,7 @@ io.use(async (socket, next) => {
         // (agar user ne doosri jagah login kiya toh purana token invalid hoga)
         const user = await User.findById(decoded.id);
         if (!user || user.currentSessionToken !== token) {
-            return next(new Error('🚫 Session expired! Dobara login karo.'));
+            return next(new Error('🚫 Session expired! Please login again.'));
         }
 
         // User info socket object mein attach karo — baad mein use hoga
@@ -153,7 +153,7 @@ io.use(async (socket, next) => {
 
     } catch (error) {
         console.warn(`🚫 Socket auth failed: ${error.message}`);
-        next(new Error('🚫 Invalid token! Login dobara karo.'));
+        next(new Error('🚫 Invalid token! Please login again.'));
     }
 });
 
@@ -188,20 +188,19 @@ const ExamSession = require('./models/ExamSession');
 io.on('connection', (socket) => {
     console.log(`⚡ Connected: ${socket.id} | User: ${socket.user.email} (${socket.user.role})`);
     
-    // Student ko apne role-specific room mein join karao
-    // Isse mentors ko sirf unka data milega, broadcast nahi
+    // Join role-specific and user-specific rooms for targeted broadcasting
     socket.join(`role_${socket.user.role}`);
     socket.join(`user_${socket.user.id}`);
 
     socket.on('student_violation', async (data) => {
-        // Extra check: Sirf students hi violation bhej sakte hain
+        // Validation: Only students should report violations
         if (socket.user.role !== 'student') {
-            return socket.emit('error', { message: 'Sirf students violation report kar sakte hain!' });
+            return socket.emit('error', { message: 'Only students can report violations.' });
         }
 
         console.log(`🚨 Violation from ${socket.user.email}:`, data);
         
-        // Broadcast sirf mentors aur admins ko (students ko nahi!)
+        // Broadcast only to mentors and admins
         io.to('role_mentor').to('role_admin').emit('mentor_alert', {
             ...data,
             studentEmail: socket.user.email,
