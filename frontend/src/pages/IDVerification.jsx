@@ -292,17 +292,7 @@ export default function IDVerification() {
                     
                     <div className="absolute inset-0 flex items-center justify-center">
                       {!capturedPhoto && (
-                        step === 1 ? (
-                          faceBox ? (
-                            <motion.div 
-                              className="absolute border-2 border-emerald-500 rounded-full shadow-[0_0_40px_rgba(16,185,129,0.3)] bg-emerald-500/5"
-                              animate={faceBox} 
-                              transition={{ type: "spring", stiffness: 150, damping: 25 }} 
-                            />
-                          ) : (
-                            <div className="w-[30vh] h-[40vh] border-2 border-emerald-500/20 rounded-full border-dashed animate-pulse" />
-                          )
-                        ) : (
+                        step === 2 && (
                           <div className="w-[50vh] h-[32vh] border-2 border-amber-500/40 rounded-2xl border-dashed shadow-[0_0_30px_rgba(245,158,11,0.1)_inset]" />
                         )
                       )}
