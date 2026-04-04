@@ -1,9 +1,9 @@
 // ─────────────────────────────────────────────────────────
 // sessionController.js — Exam Session & Violation Management
 // ─────────────────────────────────────────────────────────
-// Ye controller 2 kaam karta hai:
-//   1. Violations (cheating attempts) ko MongoDB mein save karna
-//   2. Admin/Mentor ko kisi bhi student ka violation history dikhana
+// This controller handles two main tasks:
+//   1. Saving violations (cheating attempts) to MongoDB
+//   2. Displaying violation history of students to Admins/Mentors
 
 const ExamSession = require('../models/ExamSession');
 const User = require('../models/User');
@@ -12,23 +12,23 @@ const User = require('../models/User');
 // ═══════════════════════════════════════════════════════════
 //  🚨 POST /api/session/violation
 // ═══════════════════════════════════════════════════════════
-// Jab bhi student koi cheating kare (tab switch, copy-paste, face not detected, etc.)
-// Frontend ye API call karega aur violation MongoDB mein save ho jayega
+// Triggered when a student performs a restricted action (tab switch, copy-paste, face not detected, etc.)
+// The frontend calls this API to log the violation in MongoDB.
 //
 // 📦 Request Body:
 // {
-//   "examId": "665abc123...",           ← kis exam mein hua
-//   "type": "Tab Switch",               ← violation ka type
+//   "examId": "665abc123...",           ← target exam
+//   "type": "Tab Switch",               ← violation type
 //   "severity": "medium",               ← low / medium / high / critical
-//   "details": "Student switched to Chrome"  ← extra info (optional)
+//   "details": "Student switched to Chrome"  ← additional information (optional)
 // }
 //
 // 📤 Response:
 // {
 //   "message": "Violation logged!",
-//   "violationCount": 5,                ← ab tak total kitne violations hue
-//   "tabSwitches": 3,                   ← tab switch count
-//   "warningLevel": "moderate"          ← overall warning level
+//   "violationCount": 5,                ← total violations for this session
+//   "tabSwitches": 3,                   ← specifically tab switch count
+//   "warningLevel": "moderate"          ← calculated overall warning level
 // }
 
 exports.logViolation = async (req, res) => {
@@ -36,56 +36,55 @@ exports.logViolation = async (req, res) => {
         const { examId, type, severity, details } = req.body;
         const studentId = req.user.id;
 
-        // Step 1: Validate — examId aur type toh chahiye hi
+        // Step 1: Validate required fields
         if (!examId || !type) {
             return res.status(400).json({ 
-                error: 'examId aur violation type dono required hain!' 
+                error: 'Both examId and violation type are required!' 
             });
         }
 
-        // Step 2: Violation object banao
+        // Step 2: Construct violation object
         const violation = {
-            type: type,                          // "Tab Switch", "Copy Paste", "Face Not Detected", etc.
-            severity: severity || 'medium',      // Default severity = medium
-            details: details || '',              // Extra info (optional)
-            timestamp: new Date()                // Kab hua
+            type: type,                          // e.g., "Tab Switch", "Copy Paste", "Face Not Detected"
+            severity: severity || 'medium',      // Defaults to medium
+            details: details || '',              
+            timestamp: new Date()                
         };
 
-        // Step 3: Update object banao
+        // Step 3: Define update operations
         const update = {
-            $push: { violations: violation },    // Violations array mein add karo
-            $set: { lastSavedAt: new Date() }    // Last activity timestamp
+            $push: { violations: violation },    // Append to violations array
+            $set: { lastSavedAt: new Date() }    // Update activity timestamp
         };
 
-        // Step 4: Agar Tab Switch hai toh counter bhi badhao
-        // Ye alag counter isliye rakhte hain taaki mentor dashboard mein
-        // quickly "10 tab switches" dikha sake bina violations array count kiye
+        // Step 4: Increment tab switch counter if applicable
+        // This allows quick monitoring in the mentor dashboard without processing the full array.
         if (type === 'Tab Switch') {
             update.$inc = { tabSwitchCount: 1 };
         }
 
-        // Step 5: Session dhundo aur update karo
+        // Step 5: Find and update the corresponding session
         const session = await ExamSession.findOneAndUpdate(
             { exam: examId, student: studentId },
             update,
-            { new: true }   // Updated document return karo
+            { new: true }   // Return the modified document
         );
 
         if (!session) {
             return res.status(404).json({ 
-                error: 'Exam session nahi mili. Kya exam start hua tha?' 
+                error: 'Exam session not found. Was the exam started?' 
             });
         }
 
-        // Step 6: Warning level calculate karo (violations ki count ke basis pe)
+        // Step 6: Calculate current warning level based on violation count
         const totalViolations = session.violations.length;
         let warningLevel = 'clean';          // 0 violations
         if (totalViolations >= 1)  warningLevel = 'minor';      // 1-2 violations
         if (totalViolations >= 3)  warningLevel = 'moderate';    // 3-5 violations  
         if (totalViolations >= 6)  warningLevel = 'serious';     // 6-9 violations
-        if (totalViolations >= 10) warningLevel = 'critical';    // 10+ = almost auto-terminate
+        if (totalViolations >= 10) warningLevel = 'critical';    // 10+ leads to near-termination
 
-        // Step 7: Response bhejo
+        // Step 7: Send response
         res.json({ 
             message: 'Violation logged!',
             violationCount: totalViolations,
@@ -108,8 +107,8 @@ exports.logViolation = async (req, res) => {
 // ═══════════════════════════════════════════════════════════
 //  📋 GET /api/session/violations/:examId/:studentId
 // ═══════════════════════════════════════════════════════════
-// Admin/Mentor kisi specific student ka violation history dekh sakta hai
-// Example: "Is bacche ne 10 baar tab switch ki, 3 baar copy paste kiya"
+// Allows Admins/Mentors to review the violation history of a specific student.
+// Provides a detailed breakdown of cheating attempts during an exam.
 //
 // 📤 Response:
 // {
@@ -126,30 +125,28 @@ exports.getViolationHistory = async (req, res) => {
     try {
         const { examId, studentId } = req.params;
 
-        // Session dhundo with populated references
+        // Retrieve session with associated metadata
         const session = await ExamSession.findOne({ exam: examId, student: studentId })
             .populate('student', 'name email')
             .populate('exam', 'title category duration');
 
         if (!session) {
-            return res.status(404).json({ error: 'Is student ki koi session nahi mili.' });
+            return res.status(404).json({ error: 'No session found for this student.' });
         }
 
-        // ─── Violation Summary Banao ─────────────────
-        // { "Tab Switch": 5, "Copy Paste": 3, "Face Not Detected": 2 }
+        // ─── Generate Violation Type Summary ─────────
         const summary = {};
         session.violations.forEach(v => {
             summary[v.type] = (summary[v.type] || 0) + 1;
         });
 
-        // ─── Severity Breakdown ──────────────────────
-        // { "low": 2, "medium": 5, "high": 2, "critical": 1 }
+        // ─── Generate Severity Breakdown ────────────
         const severityBreakdown = {};
         session.violations.forEach(v => {
             severityBreakdown[v.severity] = (severityBreakdown[v.severity] || 0) + 1;
         });
 
-        // ─── Warning Level ───────────────────────────
+        // ─── Calculate Warning Level ─────────────────
         const totalViolations = session.violations.length;
         let warningLevel = 'clean';
         if (totalViolations >= 1)  warningLevel = 'minor';
@@ -163,17 +160,17 @@ exports.getViolationHistory = async (req, res) => {
             examTitle: session.exam?.title || 'Unknown Exam',
             examCategory: session.exam?.category || '',
             
-            // Counts
+            // Numerical Counts
             totalViolations,
             tabSwitches: session.tabSwitchCount,
             warningLevel,
 
-            // Detailed data
-            violations: session.violations.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)),  // Latest pehle
-            summary,               // Type-wise count
-            severityBreakdown,     // Severity-wise count
+            // Detailed Datasets
+            violations: session.violations.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)),  // Newest first
+            summary,               // Count grouped by type
+            severityBreakdown,     // Count grouped by severity
 
-            // Session info
+            // Session Metadata
             sessionStatus: session.status,
             startedAt: session.startedAt,
             submittedAt: session.submittedAt,
@@ -190,20 +187,20 @@ exports.getViolationHistory = async (req, res) => {
 // ═══════════════════════════════════════════════════════════
 //  📊 GET /api/session/flagged/:examId
 // ═══════════════════════════════════════════════════════════
-// Mentor/Admin ko ek exam ke saare flagged (suspicious) students dikhao
-// Dashboard pe red flags ke saath
+// Retrieves a list of all flagged (suspicious) students for a specific exam.
+// Used in the dashboard to highlight students with critical risks.
 
 exports.getFlaggedStudents = async (req, res) => {
     try {
         const { examId } = req.params;
 
-        // Sirf wo sessions dhundo jinme violations hain
+        // Filter sessions that have at least one recorded violation
         const sessions = await ExamSession.find({ 
             exam: examId,
-            'violations.0': { $exists: true }   // At least 1 violation ho
+            'violations.0': { $exists: true }   
         })
             .populate('student', 'name email')
-            .sort({ tabSwitchCount: -1 });       // Sabse zyada violations wale pehle
+            .sort({ tabSwitchCount: -1 });       // Prioritize higher violation counts
 
         const flaggedStudents = sessions.map(s => {
             const totalViolations = s.violations.length;
@@ -212,7 +209,7 @@ exports.getFlaggedStudents = async (req, res) => {
             if (totalViolations >= 6)  riskLevel = 'High';
             if (totalViolations >= 10) riskLevel = 'Critical';
 
-            // Type-wise summary
+            // Group violations by type
             const types = {};
             s.violations.forEach(v => { types[v.type] = (types[v.type] || 0) + 1; });
 
@@ -223,7 +220,7 @@ exports.getFlaggedStudents = async (req, res) => {
                 totalViolations,
                 tabSwitches: s.tabSwitchCount,
                 riskLevel,
-                riskScore: Math.max(0, 100 - (totalViolations * 10)),  // 100 se shuru, har violation pe -10
+                riskScore: Math.max(0, 100 - (totalViolations * 10)),  // Base 100, -10 per violation
                 violationTypes: types,
                 lastViolation: s.violations[s.violations.length - 1]?.timestamp,
                 sessionStatus: s.status

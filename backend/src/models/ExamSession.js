@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 // ─── Violation Schema ────────────────────────────────────
-// Har ek cheating/proctoring violation ka record
+// Record of each individual proctoring/cheating violation
 const violationSchema = new mongoose.Schema({
     type: { type: String, required: true },       // 'Tab Switch', 'Face Not Detected', etc.
     severity: { 
@@ -14,8 +14,8 @@ const violationSchema = new mongoose.Schema({
 }, { _id: true });
 
 // ─── Exam Session Schema ─────────────────────────────────
-// Ye har student ka exam attempt track karta hai
-// Isme answers, score, violations, aur LIVE PROGRESS sab save hota hai
+// Tracks every individual exam attempt by a student.
+// Includes answers, scoring, violation logs, and LIVE PROGRESS snapshots.
 const examSessionSchema = new mongoose.Schema({
     // ─── Core References ─────────────────────────────
     exam: { 
@@ -30,35 +30,35 @@ const examSessionSchema = new mongoose.Schema({
     },
     
     // ─── Student's Answers ───────────────────────────
-    // Key = question index (string), Value = answer
-    // MCQ:    { "0": 2, "1": 0 }           ← selected option index
-    // Short:  { "2": "Ye mera answer hai" } ← text response
-    // Coding: { "3": "console.log('hi')" }  ← code string
+    // Key: Question index (string); Value: Student's response
+    // MCQ:    { "0": 2, "1": 0 }           ← Index of the selected option
+    // Short:  { "2": "This is my answer" } ← Plain text response
+    // Coding: { "3": "console.log('hi')" }  ← Submitted code string
     answers: { type: mongoose.Schema.Types.Mixed, default: {} },
     
     // ─── 🆕 LIVE PROGRESS TRACKING ──────────────────
-    // Ye fields tab kaam aati hain jab:
-    //   - Student ka internet chala jaye → wapas aaye toh yehi se resume
-    //   - Light chali jaye → laptop restart pe sab data wahi se mile
-    //   - Browser crash ho jaye → sab kuch safe rahega
+    // These fields are crucial for session persistence in case of:
+    //   - Internet disconnection (Resume from where you left off)
+    //   - System restart or power failure
+    //   - Browser or application crashes
     
-    currentQuestionIndex: { type: Number, default: 0 },  // Abhi kaunsa question chal raha hai
+    currentQuestionIndex: { type: Number, default: 0 },  // Index of the current question being viewed
     
-    // Har question ka individual status (answered/skipped/flagged for review)
+    // Track individual state of each question (answered/skipped/flagged for review)
     questionStates: {
         type: mongoose.Schema.Types.Mixed,
         default: {}
         // Example: { "0": "answered", "1": "skipped", "2": "flagged", "3": "not_visited" }
     },
 
-    // Remaining time in seconds — client har 30 sec mein update karega
-    // Isse agar student reconnect kare toh exact remaining time mil jayega
+    // Remaining time in seconds — synchronized with the client every 30 seconds.
+    // This allows exact time restoration upon reconnection.
     remainingTimeSeconds: { type: Number, default: null },
 
-    // Kitni baar student ne reconnect kiya (resume count)
+    // Counter for how many times the student has reconnected (resume count)
     resumeCount: { type: Number, default: 0 },
 
-    // Last save timestamp — client ke liye pata chale ki last sync kab hua
+    // Timestamp for the last successful synchronization with the client.
     lastSavedAt: { type: Date, default: Date.now },
 
     // ─── Score & Results ─────────────────────────────
@@ -76,11 +76,11 @@ const examSessionSchema = new mongoose.Schema({
     tabSwitchCount: { type: Number, default: 0 },
     
     // ─── Session Status ──────────────────────────────
-    // in_progress: exam chal raha hai
-    // submitted:   student ne submit kar diya
-    // flagged:     proctoring system ne flag kiya (suspicious activity)
-    // reviewed:    mentor ne manually review kar liya
-    // auto_submitted: time khatam hone pe auto-submit hua
+    // in_progress: Exam currently being taken
+    // submitted:   Exam successfully completed by the student
+    // flagged:     System-flagged due to suspicious activity (multiple violations)
+    // reviewed:    Manually reviewed and approved by a mentor
+    // auto_submitted: Submitted automatically upon timer expiration
     status: { 
         type: String, 
         enum: ['in_progress', 'submitted', 'flagged', 'reviewed', 'auto_submitted'],
@@ -88,7 +88,7 @@ const examSessionSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
-// Ek student ka ek exam mein sirf EK session ho sakta hai
+// Ensure only one exam session exists per student per exam
 examSessionSchema.index({ exam: 1, student: 1 }, { unique: true });
 
 module.exports = mongoose.model('ExamSession', examSessionSchema);

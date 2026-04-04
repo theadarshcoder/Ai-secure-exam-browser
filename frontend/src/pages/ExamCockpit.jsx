@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import socketService from '../services/socket';
 import api from '../services/api';
@@ -8,7 +8,7 @@ import {
   Bookmark, Terminal, Eye, Fingerprint, AlertCircle, Power,
   Loader2, RotateCcw, Play, Monitor, ScanFace
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { useTabVisibility, TabToast } from '../components/TabVisibility';
 import * as faceapi from '@vladmandic/face-api';
 import VisionLogo from '../components/VisionLogo';
@@ -118,8 +118,8 @@ const ProctoringSidebar = ({ cameraActive, videoRef, faceActive }) => (
 const SubmitModal = ({ isOpen, onClose, onConfirm, stats }) => (
   <AnimatePresence>
     {isOpen && (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[110] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6">
-        <motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl border border-gray-200">
+      <Motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[110] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6">
+        <Motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl border border-gray-200">
           <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 text-amber-600 mb-6 flex items-center justify-center">
             <AlertCircle size={24} />
           </div>
@@ -143,8 +143,8 @@ const SubmitModal = ({ isOpen, onClose, onConfirm, stats }) => (
             <button onClick={onClose} className="flex-1 py-3 px-4 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all text-sm font-semibold">Go Back</button>
             <button onClick={onConfirm} className="flex-1 py-3 px-4 rounded-xl bg-green-600 hover:bg-green-700 text-white transition-all text-sm font-semibold shadow-lg">Confirm Submit</button>
           </div>
-        </motion.div>
-      </motion.div>
+        </Motion.div>
+      </Motion.div>
     )}
   </AnimatePresence>
 );
@@ -152,8 +152,8 @@ const SubmitModal = ({ isOpen, onClose, onConfirm, stats }) => (
 const ExitModal = ({ isOpen, onClose, onExit, password, setPassword }) => (
   <AnimatePresence>
     {isOpen && (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[120] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6">
-        <motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl border border-gray-200 text-center">
+      <Motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[120] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6">
+        <Motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl border border-gray-200 text-center">
           <div className="w-12 h-12 rounded-xl bg-red-50 border border-red-200 text-red-600 mb-5 mx-auto flex items-center justify-center">
             <Power size={24} />
           </div>
@@ -170,8 +170,8 @@ const ExitModal = ({ isOpen, onClose, onExit, password, setPassword }) => (
             <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all text-sm font-semibold">Cancel</button>
             <button onClick={onExit} className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white transition-all text-sm font-semibold shadow-lg">Exit</button>
           </div>
-        </motion.div>
-      </motion.div>
+        </Motion.div>
+      </Motion.div>
     )}
   </AnimatePresence>
 );
@@ -194,7 +194,6 @@ export default function ExamCockpit() {
   const [markedForReview, setMarkedForReview] = useState({});
   const [visited, setVisited] = useState({ 0: true });
   const [submitted, setSubmitted] = useState(false);
-  const [confidence, setConfidence] = useState(98);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [faceBoxes, setFaceBoxes] = useState([]);
   const [isExecuting, setIsExecuting] = useState(false);
@@ -204,6 +203,32 @@ export default function ExamCockpit() {
   const [exitPassword, setExitPassword] = useState('');
   const [terminated, setTerminated] = useState(null);
   const [terminateCountdown, setTerminateCountdown] = useState(8);
+  const [isFullscreen, setIsFullscreen] = useState(true);
+
+  // We define logIncident first so it's available for effects
+  const logIncident = useCallback(async (type, severity, details) => {
+    const studentId = localStorage.getItem('vision_email') || 'VSN-89241';
+    const incident = {
+      id: `INC-${Date.now()}`,
+      examId,
+      studentId,
+      type,
+      severity,
+      details,
+      timestamp: new Date().toISOString(),
+    };
+
+    socketService.emitViolation(incident);
+
+    try {
+      await api.post('/api/exams/incident', { examId, type, severity, details });
+    } catch (apiErr) {
+      console.warn('Incident API save failed:', apiErr.message);
+    }
+
+    const existing = JSON.parse(localStorage.getItem('vision_incidents') || '[]');
+    localStorage.setItem('vision_incidents', JSON.stringify([incident, ...existing]));
+  }, [examId]);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -214,6 +239,7 @@ export default function ExamCockpit() {
       document.body.style.overflow = 'auto';
       document.documentElement.style.overflow = 'auto';
       if (storedTheme) document.documentElement.setAttribute('data-theme', storedTheme);
+      else document.documentElement.removeAttribute('data-theme');
     };
   }, []);
 
@@ -223,22 +249,20 @@ export default function ExamCockpit() {
     const check = () => {
       try {
         const list = JSON.parse(localStorage.getItem('vision_terminated_sessions') || '[]');
-        const hit = list.find(t =>
-          t.studentId === studentId ||
-          t.studentId === 'VSN-89241' ||
-          t.examId === examId
-        );
+        const hit = list.find(t => t.studentId === studentId || t.examId === examId);
         if (hit) setTerminated(hit);
-      } catch {}
+      } catch (err) {
+        console.warn('Termination poll failed:', err);
+      }
     };
-    check();
     const poll = setInterval(check, 3000);
     return () => clearInterval(poll);
   }, [submitted, terminated, examId]);
 
   useEffect(() => {
     if (!terminated) return;
-    if (stream) stream.getTracks().forEach(t => t.stop());
+    if (stream) { stream.getTracks().forEach(t => t.stop()); setStream(null); }
+    localStorage.removeItem(`vision_offline_exam_${examId}`);
     const tick = setInterval(() => {
       setTerminateCountdown(c => {
         if (c <= 1) { clearInterval(tick); navigate('/student'); return 0; }
@@ -246,7 +270,7 @@ export default function ExamCockpit() {
       });
     }, 1000);
     return () => clearInterval(tick);
-  }, [terminated]);
+  }, [terminated, examId, navigate, stream]);
 
   useEffect(() => {
     if (submitted) return;
@@ -263,16 +287,7 @@ export default function ExamCockpit() {
         const data = response.data;
         setExam(data);
         if (data.questions && data.questions.length > 0) {
-          setQuestions(data.questions.map((q, i) => ({
-            id: q.id || i + 1,
-            type: q.type,
-            text: q.text,
-            options: q.options,
-            marks: q.marks,
-            language: q.language,
-            starterCode: q.starterCode,
-            maxWords: q.maxWords
-          })));
+          setQuestions(data.questions);
           if (data.duration) setSecondsLeft(data.duration * 60);
         }
       } catch (err) {
@@ -324,8 +339,7 @@ export default function ExamCockpit() {
     const initCamera = async () => {
       try {
         const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'user', width: 640, height: 480 },
-          audio: false 
+          video: { facingMode: 'user', width: 640, height: 480 }
         });
         setStream(mediaStream);
         setCameraActive(true);
@@ -408,7 +422,6 @@ export default function ExamCockpit() {
 
   const q = questions[currentQ];
   const answeredCount = Object.keys(answers).length;
-  const isTimeCritical = secondsLeft < 300;
 
   if (terminated) {
     return (

@@ -48,6 +48,12 @@ export default function AppRouter() {
           <Route path="/exam/:examId" element={<ExamCockpit />} />
           <Route path="/exam/:examId/verify" element={<IDVerification />} />
           <Route path="/exam/:examId/waiting" element={<ExamWaitingRoom />} />
+          
+          {/* Dashboard Redirect */}
+          <Route path="/dashboard" element={<DashboardRedirect />} />
+
+          {/* Catch-all 404 */}
+          <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
     </BrowserRouter>

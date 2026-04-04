@@ -448,9 +448,12 @@ export default function MentorDashboard() {
     const fetchLiveGrid = async () => {
       try {
         const response = await api.get('/api/exams/mentor-list');
-        const data = response.data;
-        if (Array.isArray(data)) {
-          setLiveExams(data);
+        if (Array.isArray(response.data)) {
+          setLiveExams(response.data);
+          console.log(`✅ Loaded ${response.data.length} live sessions`);
+        } else {
+          console.warn('⚠️ Mentor list response is not an array');
+          setLiveExams([]);
         }
       } catch (error) {
         console.error('Grid sync failure:', error);
@@ -472,6 +475,12 @@ export default function MentorDashboard() {
         }
         if (data.activity && data.activity.length > 0) {
           setRecentActivity(data.activity);
+        }
+        if (data.performance) {
+          setStudentPerformance(data.performance);
+        }
+        if (data.summary) {
+          setResultsSummary(data.summary);
         }
       } catch (error) {
         console.error('Stats sync failure:', error);
