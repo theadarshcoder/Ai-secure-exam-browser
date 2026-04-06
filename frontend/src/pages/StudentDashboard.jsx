@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Navbar } from '../components/Navbar';
 import api from '../services/api';
@@ -176,12 +176,13 @@ export default function StudentDashboard() {
             alreadySubmitted: exam?.alreadySubmitted || false
           }));
 
-        setExams(liveExams);
-        setIsLiveData(true);
-        console.log(`âœ… Loaded ${liveExams.length} exams from backend`);
+          setExams(liveExams);
+          setIsLiveData(true);
+          console.log(`âœ… Loaded ${liveExams.length} exams from backend`);
+        }
       } catch (error) {
         // Backend down? Mock data use karo (demo/offline ke liye)
-        console.warn('âš ï¸ Backend unreachable, using mock exams:', error.message);
+        console.warn('âš ï¸  Backend unreachable, using mock exams:', error.message);
         setExams(MOCK_EXAMS);
         setIsLiveData(false);
       } finally {
