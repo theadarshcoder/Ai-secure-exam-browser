@@ -532,6 +532,7 @@ export default function AdminDashboard() {
         setIncidents(incidents || []);
       } catch (error) {
         console.error('Failed to fetch admin stats:', error);
+        addToast('System Telemetry Sync Failed: Unauthorized session', 'error');
       }
     };
 
@@ -541,6 +542,7 @@ export default function AdminDashboard() {
         setAllStudents(data || []);
       } catch (err) {
         console.error('Failed to fetch students:', err);
+        addToast('Candidate Registry Unreachable: Unauthorized', 'error');
       }
     };
     

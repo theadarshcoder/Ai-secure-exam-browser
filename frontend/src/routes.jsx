@@ -15,7 +15,7 @@ import SessionMonitor from './pages/SessionMonitor';
 
 const ThemeEnforcer = () => {
   const { pathname } = useLocation();
-  const { theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
 
   useEffect(() => {
     // Force the app into dark mode when visiting the Landing Page
@@ -34,9 +34,9 @@ const ThemeEnforcer = () => {
 const DashboardRedirect = () => {
   const navigate = useNavigate();
   useEffect(() => {
-    const role = localStorage.getItem('vision_role');
-    if (role === 'Admin') navigate('/admin');
-    else if (role === 'Mentor') navigate('/mentor');
+    const role = localStorage.getItem('vision_role')?.toLowerCase();
+    if (role === 'admin') navigate('/admin');
+    else if (role === 'mentor') navigate('/mentor');
     else navigate('/student');
   }, [navigate]);
   return null;

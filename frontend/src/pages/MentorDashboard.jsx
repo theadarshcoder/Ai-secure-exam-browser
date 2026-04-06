@@ -33,16 +33,6 @@ const getStatusStyle = (status) => {
 };
 
 const getStudentDetail = (student) => {
-  let realIncidents = [];
-  try {
-    const stored = localStorage.getItem('vision_incidents');
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed)) realIncidents = parsed;
-    }
-  } catch (e) {
-    console.error("Local incidents parse failure", e);
-  }
 
   const faceImage = localStorage.getItem('vision_reference_face');
   const idImage = localStorage.getItem('vision_reference_id');
@@ -50,8 +40,8 @@ const getStudentDetail = (student) => {
   try {
     return {
       ...student,
-      email: `${(student?.name || 'student').toLowerCase().replace(/\s+/g, '.')}@university.edu`,
-      id: student?.name === 'Adarsh Maurya' ? 'VSN-89241' : `STU-${Math.floor(1000 + Math.random() * 9000)}`,
+      email: student?.email || `${(student?.name || 'student').toLowerCase().replace(/\s+/g, '.')}@university.edu`,
+      id: student?.id || student?._id || `STU-${Math.floor(1000 + Math.random() * 9000)}`,
       faceImage,
       idImage,
       sections: [
@@ -65,17 +55,11 @@ const getStudentDetail = (student) => {
         { q: 'Q7', result: (student?.score || 0) < 50 ? 'wrong' : 'correct' }, { q: 'Q8', result: 'correct' }, { q: 'Q9', result: 'skipped' },
         { q: 'Q10', result: 'correct' }, { q: 'Q11', result: (student?.score || 0) < 70 ? 'wrong' : 'correct' }, { q: 'Q12', result: 'correct' },
       ],
-      flags: (student?.name === 'Adarsh Maurya' && realIncidents.length > 0)
-        ? realIncidents.map(inc => ({
-          type: inc?.type || 'Flag',
-          time: inc?.timestamp ? new Date(inc.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '00:00',
-          severity: inc?.severity || 'medium'
-        }))
-        : student?.status === 'Flagged'
+      flags: student?.flags || (student?.status === 'Flagged'
           ? [{ type: 'Tab Switch', time: '12:04', severity: 'high' }, { type: 'Face Not Detected', time: '18:22', severity: 'high' }]
           : (student?.score || 0) < 80
             ? [{ type: 'Long Inactivity', time: '22:10', severity: 'low' }]
-            : [],
+            : []),
       timeline: [
         { time: '00:00', event: 'Exam started' },
         { time: '05:12', event: 'Identity verified' },

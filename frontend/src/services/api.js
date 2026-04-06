@@ -27,9 +27,8 @@ api.interceptors.response.use(
   (error) => {
     // Agar 401 aata hai, aur request login ki NAHI thi, tabhi logout karo (token expire hua hai)
     // Warna login fail hone par interceptor page reload kar dega error dikhane ki bajaye!
-    if (error.response?.status === 401 && !error.config?.url?.includes('/login')) {
-      localStorage.removeItem('vision_token');
-      localStorage.removeItem('vision_role');
+    if ((error.response?.status === 401 || error.response?.status === 403) && !error.config?.url?.includes('/login')) {
+      localStorage.clear(); // Clear everything for security
       window.location.href = '/login';
     }
     return Promise.reject(error);

@@ -204,26 +204,24 @@ const LoginPage = () => {
     setIsAuthenticating(true);
     setError(null);
     
-    // 🔓 BYPASS AUTHENTICATION
-    // User can now login with any name/email for testing.
-    setTimeout(async () => {
-      const mockUser = {
-        name: email || 'Test User',
-        email: email || 'test@vision.auth',
-        role: role
-      };
-      
-      const array = new Uint32Array(4);
-      window.crypto.getRandomValues(array);
-      const mockToken = 'mock_token_' + Array.from(array, dec => dec.toString(36)).join('');
+    try {
+      // 🚀 Real API Authentication
+      const response = await api.post('/api/auth/login', {
+        email,
+        password,
+        role: role // Backend needs to know the requested role for admin impersonation
+      });
 
-      localStorage.setItem('vision_token', mockToken);
-      localStorage.setItem('vision_role', mockUser.role);
-      localStorage.setItem('vision_email', mockUser.email);
-      localStorage.setItem('vision_name', mockUser.name);
+      const { token, user: userData } = response.data;
 
-      // Trigger full screen for candidate (student)
-      if (mockUser.role === 'student') {
+      // Store real session data
+      localStorage.setItem('vision_token', token);
+      localStorage.setItem('vision_role', userData.role);
+      localStorage.setItem('vision_email', userData.email);
+      localStorage.setItem('vision_name', userData.name);
+
+      // Trigger full screen for candidate (student) if needed
+      if (userData.role === 'student') {
         const docElm = document.documentElement;
         if (docElm.requestFullscreen) {
           try {
@@ -234,10 +232,14 @@ const LoginPage = () => {
         }
       }
 
-      const target = mockUser.role === 'student' ? '/student' : mockUser.role === 'mentor' ? '/mentor' : '/admin';
-      setIsAuthenticating(false);
+      const target = userData.role === 'student' ? '/student' : userData.role === 'mentor' ? '/mentor' : '/admin';
       navigate(target);
-    }, 800);
+    } catch (err) {
+      console.error('Login Error:', err);
+      setError(err.response?.data?.error || 'Authorization Failed: Check Identity or Secure Key.');
+    } finally {
+      setIsAuthenticating(false);
+    }
   };
 
   return (
@@ -314,7 +316,7 @@ const LoginPage = () => {
                   disabled={isAuthenticating}
                   className="w-full bg-white text-black rounded-[2rem] py-5 mt-2 font-black text-xs tracking-[0.2em] uppercase hover:bg-slate-200 transition-all shadow-xl active:scale-[0.98] disabled:opacity-50"
                 >
-                  {isAuthenticating ? <span className="flex items-center justify-center gap-3"><span className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" /> Bypass Sequence...</span> : 'Bypass & Enter'}
+                  {isAuthenticating ? <span className="flex items-center justify-center gap-3"><span className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" /> Authenticating...</span> : 'Authorize & Enter'}
                 </button>
               </div>
             </form>
