@@ -22,7 +22,9 @@ exports.createExam = async (req, res) => {
             questions,
             creator: req.user.id,
             status: 'published',
-            scheduledDate: scheduledDate ? new Date(scheduledDate) : new Date()
+            scheduledDate: (scheduledDate && !isNaN(new Date(scheduledDate).getTime())) 
+                ? new Date(scheduledDate) 
+                : new Date()
         });
 
         await exam.save();
@@ -641,19 +643,48 @@ exports.getMentorStats = async (req, res) => {
             'violations.0': { $exists: true }
         });
 
-        // Recent activity feed
-        const recentSessions = await ExamSession.find({ exam: { $in: examIds } })
+        // Student Performance (List of recent submissions)
+        const performanceSessions = await ExamSession.find({ exam: { $in: examIds }, status: 'submitted' })
             .populate('student', 'name')
             .populate('exam', 'title')
-            .sort({ updatedAt: -1 })
+            .sort({ submittedAt: -1 })
             .limit(10);
 
-        const activity = recentSessions.map(s => ({
-            name: s.student?.name || 'Student',
-            action: s.status === 'submitted' ? 'submitted' : s.violations.length > 0 ? 'flagged' : 'started',
+        const performance = performanceSessions.map(s => ({
+            name: s.student?.name || 'Unknown',
             exam: s.exam?.title || 'Exam',
-            time: getTimeAgo(s.updatedAt),
-            type: s.violations.length > 0 ? 'flag' : s.status === 'submitted' ? 'pass' : 'review'
+            score: s.score || 0,
+            time: s.submittedAt ? new Date(s.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A',
+            status: s.violations.length > 0 ? 'Flagged' : 'Passed'
+        }));
+
+        // Results Summary (Aggregated stats for mentor's exams)
+        const summaryStats = await ExamSession.aggregate([
+            { $match: { exam: { $in: examIds }, status: 'submitted' } },
+            { $group: {
+                _id: '$exam',
+                avgScore: { $avg: '$score' },
+                highScore: { $max: '$score' },
+                lowScore: { $min: '$score' },
+                submissions: { $count: {} },
+                passedCount: { $sum: { $cond: [{ $gte: ['$score', 33] }, 1, 0] } } // Assuming 33 is pass
+            }},
+            { $lookup: {
+                from: 'exams',
+                localField: '_id',
+                foreignField: '_id',
+                as: 'examInfo'
+            }},
+            { $unwind: '$examInfo' }
+        ]);
+
+        const summary = summaryStats.map(s => ({
+            exam: s.examInfo.title,
+            submissions: s.submissions,
+            avg: Math.round(s.avgScore),
+            high: s.highScore,
+            low: s.lowScore,
+            pass: Math.round((s.passedCount / s.submissions) * 100)
         }));
 
         res.json({
@@ -663,7 +694,9 @@ exports.getMentorStats = async (req, res) => {
                 flags: flaggedCount,
                 totalExams: mentorExams.length
             },
-            activity
+            activity,
+            performance,
+            summary
         });
     } catch (error) {
         console.error('Failed to fetch mentor stats:', error);

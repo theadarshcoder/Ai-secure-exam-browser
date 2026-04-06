@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -8,8 +8,9 @@ import {
   Clock, Download, ChevronRight, History,
   X, CheckCircle2, OctagonX, Wifi, Zap,
   UserCheck, TrendingUp, Activity, Shield,
-  Eye, RotateCcw, LogOut
+  Eye, RotateCcw, LogOut, UserPlus, Trash2, Loader2
 } from 'lucide-react';
+import { getStudents, removeStudent, addStudent } from '../services/api';
 import VisionLogo from '../components/VisionLogo';
 import { ThemeToggle } from '../contexts/ThemeContext';
 
@@ -24,13 +25,7 @@ const NAV_ITEMS = [
   { id: 'Settings', label: 'System Settings', icon: <Settings size={18} /> },
 ];
 
-const INITIAL_SESSIONS = [
-  { id: 'VSN-89241', name: 'Adarsh Maurya', exam: 'Data Structures & Algorithms', risk: 'Low', score: 98, time: '32m rem', status: 'active' },
-  { id: 'VSN-89242', name: 'Priya Sharma', exam: 'Database Management Systems', risk: 'High', score: 42, time: '14m rem', status: 'active' },
-  { id: 'VSN-89243', name: 'Rohan Patel', exam: 'Operating Systems', risk: 'Medium', score: 71, time: '45m rem', status: 'active' },
-  { id: 'VSN-89244', name: 'Sneha Iyer', exam: 'Computer Networks', risk: 'Low', score: 99, time: '8m rem', status: 'active' },
-  { id: 'VSN-89245', name: 'Karan Mehta', exam: 'Software Engineering', risk: 'Medium', score: 85, time: '22m rem', status: 'active' },
-];
+const INITIAL_SESSIONS = [];
 
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Toast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
@@ -164,7 +159,88 @@ const SessionRow = ({ session, onTerminate, onView }) => {
   );
 };
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Incident Item â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ───────────────────────────────────────────────────────── Add Student Modal ───────────────────────────────────────────────────────── */
+
+const AddStudentModal = ({ isOpen, onClose, onSuccess, addToast }) => {
+  const [formData, setFormData] = useState({ name: '', email: '', password: '' });
+  const [loading, setLoading] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await addStudent(formData);
+      addToast('Student added successfully!', 'success');
+      onSuccess();
+      onClose();
+      setFormData({ name: '', email: '', password: '' });
+    } catch (err) {
+      addToast(err.message || 'Failed to add student', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[150]" onClick={onClose} />
+      <div className="fixed inset-0 z-[151] flex items-center justify-center p-8 pointer-events-none">
+        <div className="bg-[#13151b] border border-white/10 rounded-2xl w-full max-w-md p-8 shadow-2xl pointer-events-auto">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-bold text-white uppercase tracking-tight">Add New Student</h3>
+            <button onClick={onClose} className="p-2 text-zinc-500 hover:text-white transition-colors"><X size={20} /></button>
+          </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-[10px] font-black tracking-widest text-zinc-500 uppercase mb-1.5 ml-1">Full Name</label>
+              <input
+                required
+                type="text"
+                value={formData.name}
+                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-teal-500/50 transition-colors"
+                placeholder="Student Name"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-black tracking-widest text-zinc-500 uppercase mb-1.5 ml-1">Email Address</label>
+              <input
+                required
+                type="email"
+                value={formData.email}
+                onChange={e => setFormData({ ...formData, email: e.target.value })}
+                className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-teal-500/50 transition-colors"
+                placeholder="email@university.edu"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-black tracking-widest text-zinc-500 uppercase mb-1.5 ml-1">Temporary Password</label>
+              <input
+                required
+                type="password"
+                value={formData.password}
+                onChange={e => setFormData({ ...formData, password: e.target.value })}
+                className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-teal-500/50 transition-colors"
+                placeholder="••••••••"
+              />
+            </div>
+            <button
+              disabled={loading}
+              className="w-full mt-4 bg-teal-600 hover:bg-teal-500 text-white py-3 rounded-xl font-bold text-sm tracking-widest uppercase transition-all shadow-lg shadow-teal-900/20 active:scale-[0.98] flex items-center justify-center gap-2"
+            >
+              {loading ? <Loader2 size={16} className="animate-spin" /> : <UserPlus size={16} />}
+              {loading ? 'Processing...' : 'Register Student'}
+            </button>
+          </form>
+        </div>
+      </div>
+    </>
+  );
+};
+
+/* ───────────────────────────────────────────────────────── Incident Item ───────────────────────────────────────────────────────── */
 
 const IncidentItem = ({ incident, onResolve }) => (
   <div className={`cursor-default p-5 transition-colors hover:bg-white/[0.02] group ${incident.resolved ? 'opacity-40' : ''}`}>
@@ -197,12 +273,11 @@ const IncidentItem = ({ incident, onResolve }) => (
 
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Tab Pages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-const AssessmentsTab = ({ addToast }) => {
-  const exams = JSON.parse(localStorage.getItem('published_exams') || '[]');
+const AssessmentsTab = ({ exams, addToast }) => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-white">Published Assessments</h2>
+        <h2 className="text-lg font-bold text-white uppercase tracking-tight">Published Assessments</h2>
         <span className="text-xs text-zinc-500 font-mono">{exams.length} total</span>
       </div>
       {exams.length === 0 ? (
@@ -212,21 +287,27 @@ const AssessmentsTab = ({ addToast }) => {
           <p className="text-zinc-700 text-xs mt-2">Mentors can create and publish exams from their dashboard.</p>
         </div>
       ) : (
-        <div className="rounded-2xl border border-white/[0.06] bg-[#0c0c0e] overflow-hidden">
+        <div className="rounded-2xl border border-white/[0.06] bg-[#0c0c0e] overflow-hidden shadow-2xl">
           {exams.map((exam, i) => (
-            <div key={i} className="p-5 border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02] transition-colors flex items-center justify-between">
+            <div key={exam.id || i} className="p-5 border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02] transition-colors flex items-center justify-between group">
               <div>
-                <p className="text-sm font-semibold text-white">{exam.title || 'Untitled'}</p>
-                <p className="text-xs text-zinc-500 font-mono mt-0.5">{exam.id} Â· {exam.duration}min Â· {exam.questions?.length || 0}Q</p>
+                <p className="text-sm font-semibold text-white group-hover:text-teal-400 transition-colors uppercase tracking-tight">{exam.name || 'Untitled'}</p>
+                <div className="flex items-center gap-3 mt-1">
+                    <span className="text-[10px] text-zinc-500 font-mono">ID: {String(exam.id).slice(-6)}</span>
+                    <span className="w-1 h-1 rounded-full bg-zinc-700" />
+                    <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">{exam.duration} MIN</span>
+                    <span className="w-1 h-1 rounded-full bg-zinc-700" />
+                    <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">{exam.questionsCount || 0} QUESTS</span>
+                </div>
               </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/exam/${exam.id}`); addToast('Exam link copied!', 'success'); }}
-                  className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-zinc-300 hover:text-white hover:bg-white/10 transition-all"
+                  className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-[10px] font-bold text-zinc-300 uppercase tracking-widest hover:text-white hover:bg-white/10 transition-all active:scale-95"
                 >
-                  Copy Link
+                  Get Link
                 </button>
-                <span className="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 font-bold">Live</span>
+                <span className="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-400 font-bold uppercase tracking-widest">Live</span>
               </div>
             </div>
           ))}
@@ -236,41 +317,89 @@ const AssessmentsTab = ({ addToast }) => {
   );
 };
 
-const CandidatesTab = () => (
+const CandidatesTab = ({ students, onDelete, onAddClick }) => (
   <div className="space-y-6">
-    <h2 className="text-lg font-bold text-white">All Candidates</h2>
-    <div className="rounded-2xl border border-white/[0.06] bg-[#0c0c0e] overflow-hidden">
-      <table className="w-full text-left">
-        <thead className="border-b border-white/[0.04] bg-white/[0.01]">
+    <div className="flex items-center justify-between">
+      <div>
+        <h2 className="text-lg font-bold text-white uppercase tracking-tight">User Management</h2>
+        <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-0.5">Total Registered Students: {students.length}</p>
+      </div>
+      <button
+        onClick={onAddClick}
+        className="flex items-center gap-2 bg-teal-600/10 border border-teal-500/20 text-teal-400 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-teal-600 hover:text-white transition-all active:scale-95 shadow-lg"
+      >
+        <UserPlus size={14} /> Add Student
+      </button>
+    </div>
+    
+    <div className="rounded-2xl border border-white/[0.06] bg-[#0c0c0e] overflow-hidden shadow-2xl">
+      <table className="w-full text-left border-collapse">
+        <thead className="border-b border-white/[0.04] bg-white/[0.02]">
           <tr>
-            {['Candidate ID', 'Name', 'Exams Taken', 'Avg Score', 'Status'].map(h => (
-              <th key={h} className="px-5 py-4 text-[9px] font-bold uppercase tracking-widest text-zinc-600">{h}</th>
+            {['Student Name', 'Email Address', 'Account Date', 'Actions'].map(h => (
+              <th key={h} className="px-6 py-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">{h}</th>
             ))}
           </tr>
         </thead>
         <tbody className="divide-y divide-white/[0.02]">
-          {INITIAL_SESSIONS.map((s, i) => (
-            <tr key={i} className="hover:bg-white/[0.02] transition-colors">
-              <td className="px-5 py-3.5 font-mono text-[11px] text-zinc-500">{s.id}</td>
-              <td className="px-5 py-3.5 text-sm font-semibold text-zinc-200">{s.name}</td>
-              <td className="px-5 py-3.5 text-xs text-zinc-400">{Math.floor(Math.random() * 5) + 1}</td>
-              <td className="px-5 py-3.5 text-xs font-bold text-emerald-400">{s.score}%</td>
-              <td className="px-5 py-3.5"><span className="text-[9px] font-bold uppercase tracking-widest bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded">Active</span></td>
+          {students.length === 0 ? (
+            <tr>
+              <td colSpan="4" className="px-6 py-16 text-center">
+                <Users size={32} className="mx-auto text-zinc-800 mb-3" />
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-700">No students registered in database</p>
+              </td>
             </tr>
-          ))}
+          ) : (
+            students.map((s, i) => (
+              <tr key={s._id || i} className="hover:bg-white/[0.01] transition-colors group">
+                <td className="px-6 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-zinc-800/50 border border-white/5 flex items-center justify-center text-[10px] font-black text-zinc-500">
+                      {s.name?.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="text-sm font-semibold text-zinc-200">{s.name}</span>
+                  </div>
+                </td>
+                <td className="px-6 py-4 font-mono text-[11px] text-zinc-500">{s.email}</td>
+                <td className="px-6 py-4 text-[11px] text-zinc-600">
+                  {new Date(s.createdAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
+                </td>
+                <td className="px-6 py-4">
+                  <button
+                    onClick={() => onDelete(s._id, s.name)}
+                    className="p-2 text-zinc-600 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                    title="Remove Student"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </td>
+              </tr>
+            ))
+          )}
         </tbody>
       </table>
     </div>
   </div>
 );
 
-const AnalyticsTab = () => {
+const AnalyticsTab = ({ stats, sessions }) => {
   const metrics = [
-    { label: 'Total Exams Run', value: '1,847', trend: '+12%', color: 'text-teal-500' },
-    { label: 'Pass Rate', value: '78.4%', trend: '+3.2%', color: 'text-emerald-400' },
-    { label: 'Avg Completion', value: '42min', trend: '-5min', color: 'text-amber-400' },
-    { label: 'Violations Caught', value: '234', trend: '+8', color: 'text-red-400' },
+    { label: 'Total Exams Published', value: String(stats?.totalExams || 0), trend: 'Live', color: 'text-teal-500' },
+    { label: 'Total Submissions', value: String(stats?.totalSubmissions || 0), trend: 'Cumulative', color: 'text-emerald-400' },
+    { label: 'Active Sessions', value: String(stats?.activeSessions || 0), trend: 'Real-time', color: 'text-amber-400' },
+    { label: 'Violations Logged', value: String(stats?.flags || 0), trend: 'Critical', color: 'text-red-400' },
   ];
+
+  // Calculate risk distribution from live sessions
+  const risks = { Low: 0, Medium: 0, High: 0 };
+  sessions.forEach(s => { risks[s.risk] = (risks[s.risk] || 0) + 1; });
+  const total = sessions.length || 1;
+  const riskData = [
+    { l: 'Low Risk', v: Math.round((risks.Low / total) * 100), c: 'bg-emerald-500' },
+    { l: 'Medium Risk', v: Math.round((risks.Medium / total) * 100), c: 'bg-amber-500' },
+    { l: 'High Risk', v: Math.round((risks.High / total) * 100), c: 'bg-red-500' },
+  ];
+
   return (
     <div className="space-y-6">
       <h2 className="text-lg font-bold text-white">Platform Analytics</h2>
@@ -279,88 +408,108 @@ const AnalyticsTab = () => {
           <div key={i} className="bg-[#181a20] rounded-2xl p-5 border border-white/[0.06]">
             <p className="text-xs text-zinc-500 uppercase tracking-wide mb-3">{m.label}</p>
             <p className="text-3xl font-bold text-white">{m.value}</p>
-            <p className={`text-xs mt-1 font-bold ${m.color}`}>{m.trend} this month</p>
+            <p className={`text-xs mt-1 font-bold ${m.color}`}>{m.trend}</p>
           </div>
         ))}
       </div>
       <div className="grid grid-cols-2 gap-4">
-        {['Risk Distribution', 'Exam Categories'].map((label, i) => (
-          <div key={i} className="bg-[#181a20] rounded-2xl p-6 border border-white/[0.06]">
-            <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">{label}</p>
-            {i === 0 ? (
-              <div className="space-y-3">
-                {[{ l: 'Low Risk', v: 68, c: 'bg-emerald-500' }, { l: 'Medium Risk', v: 23, c: 'bg-amber-500' }, { l: 'High Risk', v: 9, c: 'bg-red-500' }].map((r, j) => (
-                  <div key={j}>
-                    <div className="flex justify-between text-xs mb-1"><span className="text-zinc-400">{r.l}</span><span className="text-zinc-300 font-bold">{r.v}%</span></div>
-                    <div className="h-1.5 bg-zinc-800 rounded-full"><div className={`h-full rounded-full ${r.c}`} style={{ width: `${r.v}%` }} /></div>
-                  </div>
-                ))}
+        <div className="bg-[#181a20] rounded-2xl p-6 border border-white/[0.06]">
+          <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">Risk Distribution</p>
+          <div className="space-y-3">
+            {riskData.map((r, j) => (
+              <div key={j}>
+                <div className="flex justify-between text-xs mb-1"><span className="text-zinc-400">{r.l}</span><span className="text-zinc-300 font-bold">{r.v}%</span></div>
+                <div className="h-1.5 bg-zinc-800 rounded-full"><div className={`h-full rounded-full ${r.c}`} style={{ width: `${r.v}%` }} /></div>
               </div>
-            ) : (
-              <div className="space-y-3">
-                {[{ l: 'Data Structures', v: 35 }, { l: 'Frontend Dev', v: 22 }, { l: 'Cloud & DevOps', v: 18 }, { l: 'Security', v: 25 }].map((r, j) => (
-                  <div key={j}>
-                    <div className="flex justify-between text-xs mb-1"><span className="text-zinc-400">{r.l}</span><span className="text-zinc-300 font-bold">{r.v}%</span></div>
-                    <div className="h-1.5 bg-zinc-800 rounded-full"><div className="h-full rounded-full bg-teal-600" style={{ width: `${r.v}%` }} /></div>
-                  </div>
-                ))}
-              </div>
-            )}
+            ))}
           </div>
-        ))}
+        </div>
+        <div className="bg-[#181a20] rounded-2xl p-6 border border-white/[0.06] flex items-center justify-center opacity-40">
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-600">Integrity Matrix Live</p>
+        </div>
       </div>
     </div>
   );
 };
 
-const SettingsTab = ({ addToast }) => (
-  <div className="space-y-6">
-    <h2 className="text-lg font-bold text-white">System Settings</h2>
-    {[
-      { label: 'AI Proctoring', desc: 'Real-time face detection and behavior analysis', enabled: true },
-      { label: 'Tab Switch Detection', desc: 'Flag students who switch browser tabs', enabled: true },
-      { label: 'Audio Monitoring', desc: 'Monitor ambient noise during exams', enabled: false },
-      { label: 'Geofencing', desc: 'Restrict access by geographic location', enabled: false },
-    ].map((setting, i) => {
-      const [enabled, setEnabled] = React.useState(setting.enabled);
-      return (
-        <div key={i} className="flex items-center justify-between p-5 rounded-2xl bg-[#181a20] border border-white/[0.06]">
-          <div>
-            <p className="text-sm font-semibold text-white">{setting.label}</p>
-            <p className="text-xs text-zinc-500 mt-0.5">{setting.desc}</p>
-          </div>
-          <button
-            onClick={() => { setEnabled(!enabled); addToast(`${setting.label} ${!enabled ? 'enabled' : 'disabled'}`, 'success'); }}
-            className={`relative w-12 h-6 rounded-full transition-colors ${enabled ? 'bg-teal-600' : 'bg-zinc-700'}`}
-          >
-            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${enabled ? 'translate-x-7' : 'translate-x-1'}`} />
-          </button>
-        </div>
-      );
-    })}
-    <div className="p-5 rounded-2xl bg-red-500/5 border border-red-500/20">
-      <p className="text-sm font-bold text-red-400 mb-2">Danger Zone</p>
-      <p className="text-xs text-zinc-500 mb-4">These actions are irreversible. Proceed with caution.</p>
-      <button onClick={() => { localStorage.clear(); addToast('All data cleared', 'warn'); }} className="px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold uppercase tracking-widest hover:bg-red-500/20 transition-all active:scale-95">
-        Clear All Local Data
+const SettingItem = ({ label, desc, initialEnabled, onToggle }) => {
+  const [enabled, setEnabled] = useState(initialEnabled);
+  return (
+    <div className="flex items-center justify-between p-5 rounded-2xl bg-[#181a20] border border-white/[0.06] hover:border-white/10 transition-colors">
+      <div>
+        <p className="text-sm font-semibold text-white">{label}</p>
+        <p className="text-xs text-zinc-500 mt-0.5">{desc}</p>
+      </div>
+      <button
+        onClick={() => { 
+          const newState = !enabled;
+          setEnabled(newState); 
+          onToggle(label, newState);
+        }}
+        className={`relative w-12 h-6 rounded-full transition-all duration-300 ${enabled ? 'bg-teal-600 shadow-lg shadow-teal-900/20' : 'bg-zinc-700'}`}
+      >
+        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-xl transition-all duration-300 ${enabled ? 'translate-x-7' : 'translate-x-1'}`} />
       </button>
     </div>
-  </div>
-);
+  );
+};
+
+const SettingsTab = ({ addToast }) => {
+  const settings = [
+    { label: 'AI Proctoring', desc: 'Real-time face detection and behavior analysis', enabled: true },
+    { label: 'Tab Switch Detection', desc: 'Flag students who switch browser tabs', enabled: true },
+    { label: 'Audio Monitoring', desc: 'Monitor ambient noise during exams', enabled: false },
+    { label: 'Geofencing', desc: 'Restrict access by geographic location', enabled: false },
+  ];
+
+  const handleToggle = (label, state) => {
+    addToast(`${label} ${state ? 'enabled' : 'disabled'}`, 'success');
+  };
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-lg font-bold text-white uppercase tracking-tight">System Settings</h2>
+      <div className="space-y-3">
+        {settings.map((setting, i) => (
+          <SettingItem 
+            key={i} 
+            label={setting.label} 
+            desc={setting.desc} 
+            initialEnabled={setting.enabled} 
+            onToggle={handleToggle}
+          />
+        ))}
+      </div>
+      <div className="p-6 rounded-2xl bg-red-500/5 border border-red-500/10 mt-8">
+        <p className="text-xs font-black text-red-500 uppercase tracking-[0.2em] mb-2">Danger Zone</p>
+        <p className="text-[11px] text-zinc-500 mb-4 font-medium">Resetting localized data will sign you out and clear pending session flags.</p>
+        <button 
+          onClick={() => { localStorage.clear(); addToast('System cache cleared', 'warn'); setTimeout(() => window.location.reload(), 1000); }} 
+          className="px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-red-500 hover:text-white transition-all active:scale-95 shadow-lg shadow-red-900/10"
+        >
+          Clear Persistence Layer
+        </button>
+      </div>
+    </div>
+  );
+};
 
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [activeTab, setTab] = useState('Overview');
-  const [sessions, setSessions] = useState(INITIAL_SESSIONS);
+  const [sessions, setSessions] = useState([]);
   const [incidents, setIncidents] = useState([]);
-  const [currentTime, setCurrentTime] = useState('');
+  const [allStudents, setAllStudents] = useState([]);
+  const [statsData, setStatsData] = useState(null);
+  const [examList, setExamList] = useState([]);
   const [toasts, setToasts] = useState([]);
   const [terminateTarget, setTerminateTarget] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showNotifs, setShowNotifs] = useState(false);
-  const [notifCount, setNotifCount] = useState(3);
+  const [notifCount, setNotifCount] = useState(0);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const addToast = (message, type = 'success') => {
     const id = Date.now();
@@ -372,23 +521,50 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
-    const timer = setInterval(() => setCurrentTime(new Date().toLocaleTimeString()), 1000);
 
-    const fetchLogs = async () => {
+    const fetchData = async () => {
       try {
-        const response = await api.get('/api/admin/logs');
-        setIncidents(response.data);
+        const response = await api.get('/api/exams/admin-stats');
+        const { stats, sessions, examList, incidents } = response.data;
+        setStatsData(stats);
+        setSessions(sessions || []);
+        setExamList(examList || []);
+        setIncidents(incidents || []);
       } catch (error) {
-        const raw = localStorage.getItem('vision_incidents');
-        if (raw) {
-          try { setIncidents(JSON.parse(raw)); } catch {}
-        }
+        console.error('Failed to fetch admin stats:', error);
       }
     };
-    fetchLogs();
 
-    return () => { document.body.style.overflow = 'auto'; clearInterval(timer); };
+    const fetchAllStudents = async () => {
+      try {
+        const data = await getStudents();
+        setAllStudents(data || []);
+      } catch (err) {
+        console.error('Failed to fetch students:', err);
+      }
+    };
+    
+    fetchData();
+    fetchAllStudents();
+    const pollInterval = setInterval(fetchData, 15000); // Poll every 15s
+
+    return () => { 
+      document.body.style.overflow = 'auto'; 
+      clearInterval(pollInterval);
+    };
   }, []);
+
+  const handleDeleteStudent = async (id, name) => {
+    if (window.confirm(`Are you sure you want to remove ${name}? This cannot be undone.`)) {
+      try {
+        await removeStudent(id);
+        addToast(`${name} removed successfully`, 'success');
+        setAllStudents(prev => prev.filter(s => s._id !== id));
+      } catch (err) {
+        addToast(err.message || 'Failed to remove student', 'error');
+      }
+    }
+  };
 
   /* â”€â”€ Termination Logic â”€â”€ */
   const terminateSession = (session) => {
@@ -473,10 +649,9 @@ export default function AdminDashboard() {
   const activeSessions = sessions.filter(s => s.status === 'active');
   const criticalIssues = incidents.filter(i => i.severity === 'high' && !i.resolved).length;
   const stats = [
-    { label: 'Active Exams', value: String(activeSessions.length), tag: 'SYNCED', color: 'text-teal-600' },
-    { label: 'Reported Alerts', value: String(criticalIssues), tag: 'URGENT', color: 'text-red-500' },
-    { label: 'Integrity Score', value: '98.2', tag: 'NOMINAL', color: 'text-emerald-500' },
-    { label: 'System Uptime', value: '99.9%', tag: 'STABLE', color: 'text-zinc-500' },
+    { label: 'Active Exams', value: String(statsData?.totalExams || 0), tag: 'LIVE', color: 'text-teal-600' },
+    { label: 'Reported Alerts', value: String(statsData?.flags || 0), tag: 'URGENT', color: 'text-red-500' },
+    { label: 'Integrity Score', value: statsData ? String(Math.max(0, 100 - (statsData.flags * 5))) : '100', tag: 'NOMINAL', color: 'text-emerald-500' },
   ];
 
   const filteredSessions = searchQuery
@@ -489,9 +664,16 @@ export default function AdminDashboard() {
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'Assessments': return <AssessmentsTab addToast={addToast} />;
-      case 'Candidates': return <CandidatesTab />;
-      case 'Analytics': return <AnalyticsTab />;
+      case 'Assessments': return <AssessmentsTab exams={examList} addToast={addToast} />;
+      case 'Candidates': 
+        return (
+          <CandidatesTab 
+            students={allStudents} 
+            onDelete={handleDeleteStudent} 
+            onAddClick={() => setShowAddModal(true)}
+          />
+        );
+      case 'Analytics': return <AnalyticsTab stats={statsData} sessions={sessions} />;
       case 'Settings': return <SettingsTab addToast={addToast} />;
       case 'Integrity':
         return (
@@ -518,7 +700,6 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-bold tracking-tight text-white uppercase">Admin Dashboard</h1>
-                <p className="text-xs font-medium text-zinc-600 uppercase tracking-widest mt-1">Status: Operational // {currentTime}</p>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -709,11 +890,7 @@ export default function AdminDashboard() {
         {/* Header */}
         <header className="flex h-14 items-center justify-between border-b border-white/5 bg-[#0f1117]/80 px-8 backdrop-blur-md sticky top-0 z-40">
           <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-600">
-            <span>Root</span>
-            <ChevronRight size={10} />
-            <span>Dashboard</span>
-            <ChevronRight size={10} />
-            <span className="text-teal-600">{activeTab}</span>
+            {/* Breadcrumbs removed */}
           </div>
 
           <div className="flex items-center gap-4">
@@ -746,20 +923,17 @@ export default function AdminDashboard() {
                       <span className="text-xs font-bold text-white uppercase tracking-widest">Notifications</span>
                       <button onClick={() => setShowNotifs(false)}><X size={14} className="text-zinc-500" /></button>
                     </div>
-                    {[
-                      { msg: 'Priya Sharma flagged: tab switch detected during exam', t: '2m ago', color: 'text-red-400' },
-                      { msg: 'Karan Mehta submitted Software Engineering exam early', t: '11m ago', color: 'text-emerald-400' },
-                      { msg: 'New session started: Computer Networks â€” Sneha Iyer', t: '58m ago', color: 'text-teal-500' },
-                    ].map((n, i) => (
+                    {[].map((n, i) => (
                       <div key={i} className="px-4 py-3 border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors cursor-pointer">
                         <p className={`text-xs font-medium ${n.color}`}>{n.msg}</p>
                         <p className="text-[10px] text-zinc-600 mt-0.5">{n.t}</p>
                       </div>
                     ))}
+                    <div className="p-4 text-center text-[10px] text-zinc-600 uppercase tracking-widest">No new notifications</div>
                   </div>
                 )}
               </div>
-              <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-[#181a20] text-[10px] font-black text-zinc-300 hover:bg-white/[0.08] hover:border-white/20 transition-all shadow-lg">AD</div>
+              {/* Avatar removed */}
             </div>
           </div>
         </header>
@@ -780,6 +954,16 @@ export default function AdminDashboard() {
       />
 
       <Toast toasts={toasts} removeToast={removeToast} />
+
+      <AddStudentModal 
+        isOpen={showAddModal} 
+        onClose={() => setShowAddModal(false)}
+        onSuccess={() => {
+          // Re-fetch students list to show the new one
+          getStudents().then(data => setAllStudents(data || []));
+        }}
+        addToast={addToast}
+      />
     </div>
   );
 }

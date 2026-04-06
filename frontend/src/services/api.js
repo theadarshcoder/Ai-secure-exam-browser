@@ -51,4 +51,42 @@ export const runCodingQuestion = async (examId, questionId, sourceCode, language
   }
 };
 
+// ─────────────────────────────────────────────────────────
+// User Management APIs
+// ─────────────────────────────────────────────────────────
+
+// Fetch all registered students
+export const getStudents = async () => {
+    try {
+        const response = await api.get('/api/admin/students');
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
+// Remove a student (Admin only)
+export const removeStudent = async (id) => {
+    try {
+        const response = await api.delete(`/api/admin/students/${id}`);
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
+// Add a new student/user
+export const addStudent = async (userData) => {
+    try {
+        // We use the existing register endpoint for adding users
+        const response = await api.post('/api/auth/register', {
+            ...userData,
+            role: 'student' // Ensure role is student when added from admin panel
+        });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
 export default api;

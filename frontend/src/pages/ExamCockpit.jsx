@@ -205,6 +205,7 @@ export default function ExamCockpit() {
   const [terminateCountdown, setTerminateCountdown] = useState(8);
   const [isFullscreen, setIsFullscreen] = useState(true);
   const [selectedLanguage, setSelectedLanguage] = useState('javascript');
+  const [confidence, setConfidence] = useState(98);
   const isTimeCritical = secondsLeft < 300 && secondsLeft > 0;
 
   // 1. Fullscreen Enforcement & Shortcut Blocking

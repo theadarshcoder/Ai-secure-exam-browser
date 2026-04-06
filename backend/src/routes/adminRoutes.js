@@ -14,4 +14,14 @@ router.get('/results', verifyToken, checkRole(['admin', 'mentor']), adminControl
 // Dashboard ke top "Total Students", "Live Exams" wale counters ke liye
 router.get('/stats', verifyToken, checkRole(['admin', 'mentor']), adminController.getDashboardStats);
 
+// ─────────────────────────────────────────────────────────
+// User Management (Students)
+// ─────────────────────────────────────────────────────────
+
+// Fetch saare students
+router.get('/students', verifyToken, checkRole(['admin', 'mentor']), adminController.getAllStudents);
+
+// Delete student (Sirf Admin kar sakta hai)
+router.delete('/students/:id', verifyToken, checkRole(['admin']), adminController.deleteStudent);
+
 module.exports = router;

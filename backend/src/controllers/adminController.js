@@ -63,3 +63,34 @@ exports.getDashboardStats = async (req, res) => {
         res.status(500).json({ message: 'Error fetching stats', error: error.message });
     }
 };
+
+// ═══════════════════════════════════════════════════════════
+// 1. Fetch All Students (Admin panel ki list ke liye)
+// ═══════════════════════════════════════════════════════════
+exports.getAllStudents = async (req, res) => {
+    try {
+        // Sirf students ko layenge, aur password nahi bhejenge (-password)
+        const students = await User.find({ role: 'student' }).select('-password').sort({ createdAt: -1 });
+        res.status(200).json(students);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching students', error: error.message });
+    }
+};
+
+// ═══════════════════════════════════════════════════════════
+// 2. Delete a Student
+// ═══════════════════════════════════════════════════════════
+exports.deleteStudent = async (req, res) => {
+    try {
+        const studentId = req.params.id;
+        const deletedStudent = await User.findByIdAndDelete(studentId);
+        
+        if (!deletedStudent) {
+            return res.status(404).json({ message: 'Student not found' });
+        }
+        
+        res.status(200).json({ message: 'Student removed successfully!' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error deleting student', error: error.message });
+    }
+};

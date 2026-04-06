@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import socketService from '../services/socket';
 import { Navbar } from '../components/Navbar';
@@ -379,6 +379,7 @@ const ResultSummaryCard = ({ r }) => (
 export default function MentorDashboard() {
   const [greeting, setGreeting] = useState('');
   const [timeStr, setTimeStr] = useState('');
+  const [userName] = useState(localStorage.getItem('vision_name') || 'Mentor');
   const [showAllResults, setShowAllResults] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
   const [selectedStudent, setSelectedStudent] = useState(null);
@@ -529,24 +530,15 @@ export default function MentorDashboard() {
         <div className="flex-1 overflow-y-auto modal-scroll pr-2 pr-0">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <div>
-              <p className="text-zinc-500 text-sm font-medium mb-1">{greeting}, Mentor Alex â€” {timeStr}</p>
-              <h1 className="text-2xl font-semibold text-white uppercase italic tracking-tighter">Command Center</h1>
-              <p className="text-zinc-400 text-sm mt-1.5 font-medium flex items-center gap-1.5">
-                <ShieldCheck size={14} className="text-violet-400" /> Building a career you actually like waking up for.
-              </p>
+              <p className="text-zinc-500 text-[10px] font-black uppercase tracking-[0.2em] mb-1.5">{greeting}, {userName} — {timeStr}</p>
+              <h1 className="text-3xl font-black text-white uppercase italic tracking-tighter leading-none">Command Center</h1>
             </div>
             <div className="flex items-center gap-3 shrink-0">
               <button
                 onClick={() => navigate('/mentor/create-exam')}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-[#0f1117] text-sm font-bold shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_28px_rgba(255,255,255,0.2)] hover:bg-zinc-100 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white text-black text-[11px] font-black uppercase tracking-widest shadow-[0_0_30px_rgba(255,255,255,0.1)] hover:shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:bg-zinc-100 hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
-                <Plus size={16} /> Create New Exam
-              </button>
-              <button
-                onClick={() => navigate('/mentor')}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1a1d26] border border-white/[0.07] text-sm font-semibold text-zinc-300 hover:text-white hover:bg-white/[0.08] hover:border-white/[0.12] transition-all"
-              >
-                <BookOpen size={16} /> View Old Exams
+                <Plus size={14} strokeWidth={3} /> Create New Exam
               </button>
             </div>
           </div>
@@ -579,17 +571,18 @@ export default function MentorDashboard() {
                 )}
               </div>
 
-              <div className="mt-5 grid grid-cols-3 gap-2">
-                {[
-                  { icon: <Eye size={15} />, label: 'View Roster', action: () => addToast('Roster: 73 students across 5 active exams', 'info') },
-                  { icon: <Video size={15} />, label: 'Live Feed', action: () => addToast('Live feed: All proctoring cameras active', 'success') },
-                  { icon: <BarChart3 size={15} />, label: 'Analytics', action: () => addToast('Analytics: Avg score 78% Â· Pass rate 82%', 'success') },
-                ].map((action, i) => (
-                  <button key={i} onClick={action.action} className="bg-[#181a20] border border-white/[0.06] rounded-xl px-4 py-3 flex items-center justify-center gap-2.5 text-xs font-medium text-zinc-400 hover:text-white hover:border-white/[0.12] hover:bg-white/[0.02] transition-all active:scale-95">
-                    {action.icon}
-                    {action.label}
-                  </button>
-                ))}
+              <div className="mt-5 border-t border-white/[0.04] pt-5 opacity-40 grayscale pointer-events-none">
+                <div className="flex items-center gap-2 mb-3">
+                  <Activity size={12} className="text-zinc-500" />
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">Quick Operations (Coming Soon)</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {['View Roster', 'Live Feed', 'Analytics'].map((label, i) => (
+                    <div key={i} className="bg-[#181a20] border border-white/[0.06] rounded-xl px-4 py-3 flex items-center justify-center text-[10px] font-black text-zinc-700 uppercase tracking-widest cursor-not-allowed">
+                      {label}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
