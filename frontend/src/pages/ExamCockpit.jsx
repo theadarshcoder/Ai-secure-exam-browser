@@ -72,18 +72,17 @@ const QuestionPalette = ({ questions, currentQ, answers, visited, markedForRevie
         </div>
       </div>
 
-      <div className="mt-auto px-5 py-6 border-t border-gray-100 bg-gray-50/30">
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.15em] mb-4">Legend</p>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+      <div className="mt-auto px-4 py-4 border-t border-gray-100 bg-gray-50/40">
+        <div className="flex flex-wrap gap-x-3 gap-y-2">
           {[
-            { color: 'bg-[#15803d]', label: `Answered (${answered})` },
-            { color: 'bg-[#ea580c]', label: `Visited (${visitedNotAnswered})` },
-            { color: 'bg-gray-200', label: `Not Visited (${notVisitedCount})` },
-            { color: 'bg-[#7c3aed]', label: `Marked (${markedCount})` },
+            { color: 'bg-[#15803d]', label: 'Answered' },
+            { color: 'bg-[#ea580c]', label: 'Visited' },
+            { color: 'bg-gray-300', label: 'Unseen' },
+            { color: 'bg-[#7c3aed]', label: 'Marked' },
           ].map((item, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-md ${item.color} shrink-0 shadow-sm shadow-black/5`} />
-              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tight truncate">{item.label}</span>
+            <div key={i} className="flex items-center gap-1.5">
+              <div className={`w-2 h-2 rounded-full ${item.color} shrink-0`} />
+              <span className="text-[9px] text-gray-400 font-semibold">{item.label}</span>
             </div>
           ))}
         </div>
@@ -550,15 +549,10 @@ export default function ExamCockpit() {
         </aside>
 
         {/* Main Content Area */}
-        <main className="flex-1 flex flex-col bg-[#f8f9fa] overflow-hidden relative">
-          {/* Floating Live Feed at Top-Right */}
-          <div className="absolute top-6 right-8 z-50">
-            <div className="bg-white/80 backdrop-blur-md p-2 rounded-2xl border border-white/20 shadow-2xl">
-              <ProctoringSidebar cameraActive={cameraActive} videoRef={videoRef} faceActive={faceBoxes.length > 0} />
-            </div>
-          </div>
+        <main className="flex-1 flex overflow-hidden bg-[#f8f9fa]">
+          {/* Question Scroll Area */}
           <div className="flex-1 overflow-y-auto scroll-thin px-8 py-6">
-            <div className="max-w-4xl mx-auto">
+            <div className="w-full">
               <AnimatePresence mode="wait">
                 <motion.div key={currentQ} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
                   <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)]">
@@ -697,10 +691,120 @@ export default function ExamCockpit() {
                       <button onClick={() => setShowConfirm(true)} className="bg-green-600 text-white px-8 py-2.5 rounded-xl text-[12px] font-bold flex items-center gap-2">Complete Exam <Send size={16} /></button>
                     )}
                   </div>
+
+                  {/* ── Bottom Info Panel ── */}
+                  <div className="mt-6 bg-white rounded-xl border border-gray-100 shadow-[0_2px_4px_rgba(0,0,0,0.04)] overflow-hidden">
+                    {/* Progress bar */}
+                    <div className="h-1 bg-gray-100">
+                      <div
+                        className="h-full bg-gradient-to-r from-teal-500 to-teal-600 transition-all duration-700"
+                        style={{ width: `${(answeredCount / Math.max(questions.length, 1)) * 100}%` }}
+                      />
+                    </div>
+
+                    <div className="px-6 py-4 flex items-center justify-between gap-6 flex-wrap">
+                      {/* Stats pills */}
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-[#15803d]" />
+                          <span className="text-[11px] font-bold text-gray-500">
+                            <span className="text-gray-900">{answeredCount}</span> Answered
+                          </span>
+                        </div>
+                        <div className="w-px h-3 bg-gray-200" />
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-gray-300" />
+                          <span className="text-[11px] font-bold text-gray-500">
+                            <span className="text-gray-900">{questions.length - answeredCount}</span> Remaining
+                          </span>
+                        </div>
+                        <div className="w-px h-3 bg-gray-200" />
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-[#7c3aed]" />
+                          <span className="text-[11px] font-bold text-gray-500">
+                            <span className="text-gray-900">{Object.values(markedForReview).filter(Boolean).length}</span> Marked
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Marks badge */}
+                      {q?.marks && (
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-teal-50 border border-teal-100 rounded-lg">
+                          <CheckCircle size={12} className="text-teal-600" />
+                          <span className="text-[11px] font-bold text-teal-700">+{q.marks} marks for correct answer</span>
+                        </div>
+                      )}
+
+                      {/* Keyboard hint */}
+                      <div className="flex items-center gap-3 text-[10px] text-gray-400 font-medium">
+                        <div className="flex items-center gap-1">
+                          <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded text-[9px] font-mono text-gray-500">←</kbd>
+                          <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded text-[9px] font-mono text-gray-500">→</kbd>
+                          <span>Navigate</span>
+                        </div>
+                        <div className="w-px h-3 bg-gray-200" />
+                        <div className="flex items-center gap-1">
+                          <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded text-[9px] font-mono text-gray-500">M</kbd>
+                          <span>Mark review</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </motion.div>
               </AnimatePresence>
             </div>
           </div>
+
+          {/* ── Proctoring Right Panel ── */}
+          <aside className="w-[200px] shrink-0 bg-white border-l border-gray-100 flex flex-col items-center pt-6 px-4 gap-5 overflow-y-auto scroll-thin">
+            {/* Camera Feed */}
+            <div className="w-full">
+              <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.18em] mb-3 text-center">Live Feed</p>
+              <div className="bg-white/80 backdrop-blur-md p-2 rounded-2xl border border-gray-100 shadow-md">
+                <ProctoringSidebar cameraActive={cameraActive} videoRef={videoRef} faceActive={faceBoxes.length > 0} />
+              </div>
+            </div>
+
+            {/* Integrity Score */}
+            <div className="w-full bg-gray-50 border border-gray-100 rounded-xl p-4 text-center">
+              <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.15em] mb-2">Integrity</p>
+              <div className="relative w-14 h-14 mx-auto mb-2">
+                <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="#f1f5f9" strokeWidth="3" />
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="#0d9488" strokeWidth="3"
+                    strokeDasharray={`${confidence} ${100 - confidence}`} strokeLinecap="round" />
+                </svg>
+                <span className="absolute inset-0 flex items-center justify-center text-[13px] font-black text-gray-800">{confidence}%</span>
+              </div>
+              <div className="flex items-center justify-center gap-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wide">Verified</span>
+              </div>
+            </div>
+
+            {/* Proctoring Status */}
+            <div className="w-full bg-gray-50 border border-gray-100 rounded-xl p-4">
+              <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.15em] mb-3">Status</p>
+              <div className="flex flex-col gap-2.5">
+                {[
+                  { label: 'Camera', ok: cameraActive },
+                  { label: 'Network', ok: true },
+                  { label: 'Audio', ok: true },
+                  { label: 'Face ID', ok: faceBoxes.length > 0 },
+                ].map(({ label, ok }) => (
+                  <div key={label} className="flex items-center justify-between">
+                    <span className="text-[10px] font-semibold text-gray-500">{label}</span>
+                    <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[8px] font-bold uppercase tracking-wide ${
+                      ok ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'
+                    }`}>
+                      <div className={`w-1 h-1 rounded-full ${ok ? 'bg-emerald-500' : 'bg-red-500 animate-pulse'}`} />
+                      {ok ? 'OK' : 'Off'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </aside>
         </main>
       </div>
 
