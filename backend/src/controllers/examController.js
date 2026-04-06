@@ -1,6 +1,7 @@
 const Exam = require('../models/Exam');
 const ExamSession = require('../models/ExamSession');
 const { getRedisClient } = require('../config/redis');
+const { executeCode } = require('../services/judge0'); // YEH LINE ADD KARO
 
 // ─────────────── POST /api/exams/create ───────────────
 // Mentor/Admin creates a new exam and saves it to MongoDB
@@ -130,14 +131,14 @@ exports.getExamById = async (req, res) => {
                 id: q._id,
                 index,
                 type: q.type,
-                text: q.text,
+                questionText: q.questionText,
                 marks: q.marks,
             };
             if (q.type === 'mcq') safe.options = q.options;
             if (q.type === 'short') safe.maxWords = q.maxWords;
             if (q.type === 'coding') {
                 safe.language = q.language;
-                safe.starterCode = q.starterCode;
+                safe.initialCode = q.initialCode;
             }
             return safe;
         });
@@ -383,14 +384,14 @@ exports.resumeExam = async (req, res) => {
                 id: q._id,
                 index,
                 type: q.type,
-                text: q.text,
+                questionText: q.questionText,
                 marks: q.marks,
             };
             if (q.type === 'mcq') safe.options = q.options;
             if (q.type === 'short') safe.maxWords = q.maxWords;
             if (q.type === 'coding') {
                 safe.language = q.language;
-                safe.starterCode = q.starterCode;
+                safe.initialCode = q.initialCode;
             }
             return safe;
         });
@@ -494,7 +495,7 @@ exports.submitExam = async (req, res) => {
             const result = { type: q.type, marks: q.marks || 1, scored: 0, correct: false };
 
             if (q.type === 'mcq' && studentAnswer !== undefined) {
-                if (Number(studentAnswer) === q.correctIndex) {
+                if (Number(studentAnswer) === q.correctOption) {
                     result.scored = q.marks || 1;
                     result.correct = true;
                     score += result.scored;
@@ -769,4 +770,59 @@ exports.getAdminStats = async (req, res) => {
         console.error('Failed to fetch admin stats:', error);
         res.status(500).json({ error: 'Failed to fetch admin stats' });
     }
+};
+// 4. Run Coding Question against Test Cases (For Students)
+exports.runCode = async (req, res) => {
+  try {
+    const { examId, questionId, sourceCode, language } = req.body;
+
+    const exam = await Exam.findById(examId);
+    if (!exam) return res.status(404).json({ message: 'Exam not found' });
+
+    const question = exam.questions.id(questionId);
+    if (!question || question.type !== 'coding') {
+      return res.status(400).json({ message: 'Invalid coding question' });
+    }
+
+    const results = [];
+    let allPassed = true;
+
+    // Har test case ke liye loop chalega
+    for (let i = 0; i < question.testCases.length; i++) {
+      const tc = question.testCases[i];
+      
+      // Judge0 ko code aur input bhejo
+      const executionResult = await executeCode(sourceCode, language, tc.input);
+
+      if (executionResult.success) {
+        // Output match karo (trim() lagaya hai taaki extra space problem na kare)
+        const passed = executionResult.output.trim() === tc.expectedOutput.trim();
+        if (!passed) allPassed = false;
+
+        results.push({
+          testCaseId: i + 1,
+          passed: passed,
+          // Agar test case hidden hai, toh student ko asli input/output mat dikhao
+          input: tc.isHidden ? 'Hidden Test Case' : tc.input,
+          expectedOutput: tc.isHidden ? 'Hidden' : tc.expectedOutput,
+          actualOutput: tc.isHidden ? 'Hidden' : executionResult.output,
+          time: executionResult.time,
+          memory: executionResult.memory
+        });
+      } else {
+        // Compilation ya Syntax Error
+        allPassed = false;
+        results.push({ 
+          testCaseId: i + 1, 
+          passed: false, 
+          error: executionResult.error 
+        });
+        break; // Agar syntax error hai toh aage ke test cases chalane ka fayda nahi
+      }
+    }
+
+    res.status(200).json({ allPassed, results });
+  } catch (error) {
+    res.status(500).json({ message: 'Error executing code', error: error.message });
+  }
 };

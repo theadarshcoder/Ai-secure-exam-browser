@@ -12,35 +12,35 @@ import {
 
 const AI_SUGGESTIONS = {
   DSA: [
-    { type: 'mcq', question: 'What is the time complexity of binary search on a sorted array of n elements?', options: ['O(n)', 'O(log n)', 'O(n log n)', 'O(1)'], correctIndex: 1, marks: 2 },
-    { type: 'mcq', question: 'Which data structure uses LIFO (Last In First Out) principle?', options: ['Queue', 'Stack', 'Linked List', 'Tree'], correctIndex: 1, marks: 1 },
-    { type: 'short', question: 'Explain the difference between a stack and a queue with real-world examples.', expectedAnswer: 'Stack follows LIFO, Queue follows FIFO', maxWords: 200, marks: 3 },
-    { type: 'coding', question: 'Write a function to reverse a linked list iteratively. The function should take the head node as input and return the new head.', language: 'javascript', starterCode: 'function reverseList(head) {\n  // your code here\n}', testCases: [{ input: '[1,2,3,4,5]', output: '[5,4,3,2,1]' }], marks: 5 },
-    { type: 'mcq', question: 'What is the worst-case time complexity of QuickSort?', options: ['O(n)', 'O(n log n)', 'O(n²)', 'O(log n)'], correctIndex: 2, marks: 2 },
-    { type: 'short', question: 'What are the advantages of using a hash table over a binary search tree?', expectedAnswer: 'O(1) average lookup, insertion, deletion vs O(log n)', maxWords: 150, marks: 3 },
+    { type: 'mcq', questionText: 'What is the time complexity of binary search on a sorted array of n elements?', options: ['O(n)', 'O(log n)', 'O(n log n)', 'O(1)'], correctOption: 1, marks: 2 },
+    { type: 'mcq', questionText: 'Which data structure uses LIFO (Last In First Out) principle?', options: ['Queue', 'Stack', 'Linked List', 'Tree'], correctOption: 1, marks: 1 },
+    { type: 'short', questionText: 'Explain the difference between a stack and a queue with real-world examples.', expectedAnswer: 'Stack follows LIFO, Queue follows FIFO', maxWords: 200, marks: 3 },
+    { type: 'coding', questionText: 'Write a function to reverse a linked list iteratively. The function should take the head node as input and return the new head.', language: 'javascript', initialCode: 'function reverseList(head) {\n  // your code here\n}', testCases: [{ input: '[1,2,3,4,5]', expectedOutput: '[5,4,3,2,1]' }], marks: 5 },
+    { type: 'mcq', questionText: 'What is the worst-case time complexity of QuickSort?', options: ['O(n)', 'O(n log n)', 'O(n²)', 'O(log n)'], correctOption: 2, marks: 2 },
+    { type: 'short', questionText: 'What are the advantages of using a hash table over a binary search tree?', expectedAnswer: 'O(1) average lookup, insertion, deletion vs O(log n)', maxWords: 150, marks: 3 },
   ],
   Frontend: [
-    { type: 'mcq', question: 'Which hook is used for side effects in React functional components?', options: ['useState', 'useEffect', 'useRef', 'useMemo'], correctIndex: 1, marks: 1 },
-    { type: 'mcq', question: 'What does the Virtual DOM improve in React applications?', options: ['Security', 'Performance', 'Accessibility', 'SEO'], correctIndex: 1, marks: 1 },
-    { type: 'short', question: 'Explain the concept of closures in JavaScript and provide a practical use case.', expectedAnswer: 'Closure is a function that retains access to outer scope variables', maxWords: 200, marks: 3 },
-    { type: 'coding', question: 'Implement a debounce function that delays invoking the provided function until after a specified wait time has elapsed since the last invocation.', language: 'javascript', starterCode: 'function debounce(fn, delay) {\n  // your code here\n}', testCases: [{ input: 'fn, 300', output: 'debounced function' }], marks: 5 },
-    { type: 'mcq', question: 'What is the purpose of the key prop in React lists?', options: ['Styling', 'Identification for reconciliation', 'Event handling', 'State management'], correctIndex: 1, marks: 2 },
+    { type: 'mcq', questionText: 'Which hook is used for side effects in React functional components?', options: ['useState', 'useEffect', 'useRef', 'useMemo'], correctOption: 1, marks: 1 },
+    { type: 'mcq', questionText: 'What does the Virtual DOM improve in React applications?', options: ['Security', 'Performance', 'Accessibility', 'SEO'], correctOption: 1, marks: 1 },
+    { type: 'short', questionText: 'Explain the concept of closures in JavaScript and provide a practical use case.', expectedAnswer: 'Closure is a function that retains access to outer scope variables', maxWords: 200, marks: 3 },
+    { type: 'coding', questionText: 'Implement a debounce function that delays invoking the provided function until after a specified wait time has elapsed since the last invocation.', language: 'javascript', initialCode: 'function debounce(fn, delay) {\n  // your code here\n}', testCases: [{ input: 'fn, 300', expectedOutput: 'debounced function' }], marks: 5 },
+    { type: 'mcq', questionText: 'What is the purpose of the key prop in React lists?', options: ['Styling', 'Identification for reconciliation', 'Event handling', 'State management'], correctOption: 1, marks: 2 },
   ],
   DBMS: [
-    { type: 'mcq', question: 'Which normal form eliminates transitive dependencies?', options: ['1NF', '2NF', '3NF', 'BCNF'], correctIndex: 2, marks: 2 },
-    { type: 'short', question: 'Explain the ACID properties in database transactions with examples.', expectedAnswer: 'Atomicity, Consistency, Isolation, Durability', maxWords: 250, marks: 4 },
-    { type: 'coding', question: 'Write an SQL query to find the second highest salary from an Employee table.', language: 'python', starterCode: '-- Write your SQL query here\nSELECT ...', testCases: [{ input: 'Employee table', output: 'Second highest salary' }], marks: 3 },
-    { type: 'mcq', question: 'Which type of join returns all records from both tables?', options: ['INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'FULL OUTER JOIN'], correctIndex: 3, marks: 1 },
+    { type: 'mcq', questionText: 'Which normal form eliminates transitive dependencies?', options: ['1NF', '2NF', '3NF', 'BCNF'], correctOption: 2, marks: 2 },
+    { type: 'short', questionText: 'Explain the ACID properties in database transactions with examples.', expectedAnswer: 'Atomicity, Consistency, Isolation, Durability', maxWords: 250, marks: 4 },
+    { type: 'coding', questionText: 'Write an SQL query to find the second highest salary from an Employee table.', language: 'python', initialCode: '-- Write your SQL query here\nSELECT ...', testCases: [{ input: 'Employee table', expectedOutput: 'Second highest salary' }], marks: 3 },
+    { type: 'mcq', questionText: 'Which type of join returns all records from both tables?', options: ['INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'FULL OUTER JOIN'], correctOption: 3, marks: 1 },
   ],
   Cloud: [
-    { type: 'mcq', question: 'Which AWS service is used for serverless computing?', options: ['EC2', 'Lambda', 'S3', 'RDS'], correctIndex: 1, marks: 1 },
-    { type: 'short', question: 'Explain the differences between IaaS, PaaS, and SaaS with examples.', expectedAnswer: 'IaaS: infrastructure, PaaS: platform, SaaS: software', maxWords: 200, marks: 3 },
-    { type: 'mcq', question: 'What does auto-scaling primarily help with?', options: ['Security', 'Handling variable load', 'Database optimization', 'Code deployment'], correctIndex: 1, marks: 2 },
+    { type: 'mcq', questionText: 'Which AWS service is used for serverless computing?', options: ['EC2', 'Lambda', 'S3', 'RDS'], correctOption: 1, marks: 1 },
+    { type: 'short', questionText: 'Explain the differences between IaaS, PaaS, and SaaS with examples.', expectedAnswer: 'IaaS: infrastructure, PaaS: platform, SaaS: software', maxWords: 200, marks: 3 },
+    { type: 'mcq', questionText: 'What does auto-scaling primarily help with?', options: ['Security', 'Handling variable load', 'Database optimization', 'Code deployment'], correctOption: 1, marks: 2 },
   ],
   Security: [
-    { type: 'mcq', question: 'What type of attack involves injecting malicious SQL statements?', options: ['XSS', 'CSRF', 'SQL Injection', 'DDoS'], correctIndex: 2, marks: 1 },
-    { type: 'short', question: 'Explain the concept of Zero Trust Architecture and its key principles.', expectedAnswer: 'Never trust, always verify. Key principles include least privilege, micro-segmentation', maxWords: 200, marks: 4 },
-    { type: 'coding', question: 'Write a function that sanitizes user input to prevent XSS attacks by escaping HTML entities.', language: 'javascript', starterCode: 'function sanitize(input) {\n  // your code here\n}', testCases: [{ input: '<script>alert("xss")</script>', output: '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;' }], marks: 5 },
+    { type: 'mcq', questionText: 'What type of attack involves injecting malicious SQL statements?', options: ['XSS', 'CSRF', 'SQL Injection', 'DDoS'], correctOption: 2, marks: 1 },
+    { type: 'short', questionText: 'Explain the concept of Zero Trust Architecture and its key principles.', expectedAnswer: 'Never trust, always verify. Key principles include least privilege, micro-segmentation', maxWords: 200, marks: 4 },
+    { type: 'coding', questionText: 'Write a function that sanitizes user input to prevent XSS attacks by escaping HTML entities.', language: 'javascript', initialCode: 'function sanitize(input) {\n  // your code here\n}', testCases: [{ input: '<script>alert("xss")</script>', expectedOutput: '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;' }], marks: 5 },
   ],
 };
 
@@ -113,10 +113,10 @@ const McqEditor = ({ question, updateQ }) => (
     {question.options.map((opt, oi) => (
       <div key={oi} className="flex items-center gap-2.5">
         <button 
-          onClick={() => updateQ(question.id, { correctIndex: oi })} 
-          className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center shrink-0 text-[10px] font-bold transition-all ${question.correctIndex === oi ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400' : 'border-white/[0.06] text-zinc-700 hover:border-white/[0.12]'}`}
+          onClick={() => updateQ(question.id, { correctOption: oi })} 
+          className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center shrink-0 text-[10px] font-bold transition-all ${question.correctOption === oi ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400' : 'border-white/[0.06] text-zinc-700 hover:border-white/[0.12]'}`}
         >
-          {question.correctIndex === oi ? <CheckCircle size={13} /> : String.fromCharCode(65 + oi)}
+          {question.correctOption === oi ? <CheckCircle size={13} /> : String.fromCharCode(65 + oi)}
         </button>
         <input 
           value={opt} 
@@ -167,8 +167,8 @@ const CodingEditor = ({ question, updateQ }) => (
       </select>
     </div>
     <textarea 
-      value={question.starterCode} 
-      onChange={e => updateQ(question.id, { starterCode: e.target.value })} 
+      value={question.initialCode} 
+      onChange={e => updateQ(question.id, { initialCode: e.target.value })} 
       placeholder="// Starter code..." 
       rows={5} 
       className="w-full bg-[#060810] border border-emerald-500/10 rounded-xl px-4 py-3 text-xs text-emerald-300/80 placeholder:text-zinc-800 focus:outline-none font-mono resize-none" 
@@ -188,10 +188,10 @@ const CodingEditor = ({ question, updateQ }) => (
             className="flex-1 bg-[#060810] border border-white/[0.04] rounded-lg px-2.5 py-1.5 text-xs text-zinc-300 font-mono focus:outline-none" 
           />
           <input 
-            value={tc.output} 
+            value={tc.expectedOutput} 
             onChange={e => {
               const testCases = [...question.testCases];
-              testCases[ti] = { ...testCases[ti], output: e.target.value };
+              testCases[ti] = { ...testCases[ti], expectedOutput: e.target.value };
               updateQ(question.id, { testCases });
             }} 
             placeholder="Output" 
@@ -205,7 +205,7 @@ const CodingEditor = ({ question, updateQ }) => (
         </div>
       ))}
       <button 
-        onClick={() => updateQ(question.id, { testCases: [...question.testCases, { input: '', output: '' }] })} 
+        onClick={() => updateQ(question.id, { testCases: [...question.testCases, { input: '', expectedOutput: '' }] })} 
         className="text-[10px] text-emerald-400/70 hover:text-emerald-400 font-medium flex items-center gap-1"
       >
         <Plus size={10} /> Add case
@@ -236,16 +236,16 @@ const csvRowToQuestion = (cols) => {
   if (type === 'mcq') {
     const options = [cols[2], cols[3], cols[4], cols[5]].filter(Boolean);
     const correctLetter = (cols[6] || 'A').toUpperCase();
-    const correctIndex = Math.max(0, ['A','B','C','D'].indexOf(correctLetter));
-    return { ...base, type: 'mcq', question: cols[1] || '', options, correctIndex, marks: parseInt(cols[7]) || 2 };
+    const correctOption = Math.max(0, ['A','B','C','D'].indexOf(correctLetter));
+    return { ...base, type: 'mcq', questionText: cols[1] || '', options, correctOption, marks: parseInt(cols[7]) || 2 };
   }
   if (type === 'short') {
-    return { ...base, type: 'short', question: cols[1] || '', expectedAnswer: cols[2] || '', maxWords: parseInt(cols[3]) || 150, marks: parseInt(cols[4]) || 3 };
+    return { ...base, type: 'short', questionText: cols[1] || '', expectedAnswer: cols[2] || '', maxWords: parseInt(cols[3]) || 150, marks: parseInt(cols[4]) || 3 };
   }
   if (type === 'coding') {
     const tcStr = cols[4] || '';
-    const testCases = tcStr ? tcStr.split(';').map(tc => { const [i, o] = tc.split('=>'); return { input: (i||'').trim(), output: (o||'').trim() }; }) : [{ input: '', output: '' }];
-    return { ...base, type: 'coding', question: cols[1] || '', language: cols[2] || 'javascript', starterCode: cols[3] || '', testCases, marks: parseInt(cols[5]) || 5 };
+    const testCases = tcStr ? tcStr.split(';').map(tc => { const [i, o] = tc.split('=>'); return { input: (i||'').trim(), expectedOutput: (o||'').trim() }; }) : [{ input: '', expectedOutput: '' }];
+    return { ...base, type: 'coding', questionText: cols[1] || '', language: cols[2] || 'javascript', initialCode: cols[3] || '', testCases, marks: parseInt(cols[5]) || 5 };
   }
   return null;
 };
@@ -283,13 +283,13 @@ export default function CreateExam() {
       passingMarks: exam.passingMarks,
       questions: questions.map(q => ({
         type: q.type,
-        text: q.question,
+        questionText: q.questionText,
         marks: q.marks,
         options: q.options,
-        correctIndex: q.correctIndex,
+        correctOption: q.correctOption,
         expectedAnswer: q.expectedAnswer,
         language: q.language,
-        starterCode: q.starterCode,
+        initialCode: q.initialCode,
         testCases: q.testCases
       })),
       scheduledDate: exam.scheduledDate || new Date().toISOString()
@@ -306,7 +306,16 @@ export default function CreateExam() {
       
       setPublishedExamId(serverExam.id || 'EX-' + Math.random().toString(36).substr(2, 6).toUpperCase());
       setShowSuccessModal(true);
-    } catch (error) {
+    } catch (err) {
+      if (err.response) {
+        // Server rejected the request — do NOT show success
+        console.error('Server side rejection:', err.response.data);
+        const errorMsg = err.response.data.error || err.response.data.message || 'Validation failed';
+        alert(`Failed to publish exam: ${errorMsg}`);
+        setIsPublishing(false);
+        return;
+      }
+
       console.warn('Backend offline. Saving exam locally for demo mode.');
       // Resilient offline fallback — save locally and show success
       const localId = 'EX-' + Math.random().toString(36).substr(2, 6).toUpperCase();
@@ -320,8 +329,10 @@ export default function CreateExam() {
           'Environment isolated via secure sandbox protocols.'
         ]
       };
+
       const existing = JSON.parse(localStorage.getItem('published_exams') || '[]');
       localStorage.setItem('published_exams', JSON.stringify([localExam, ...existing]));
+      
       setPublishedExamId(localId);
       setShowSuccessModal(true);
     } finally {
@@ -339,9 +350,9 @@ export default function CreateExam() {
 
   const addQ = (type) => {
     const tpl = {
-      mcq: { type: 'mcq', question: '', options: ['', '', '', ''], correctIndex: 0, marks: 1 },
-      short: { type: 'short', question: '', expectedAnswer: '', maxWords: 150, marks: 2 },
-      coding: { type: 'coding', question: '', language: 'javascript', starterCode: '', testCases: [{ input: '', output: '' }], marks: 5 },
+      mcq: { type: 'mcq', questionText: '', options: ['', '', '', ''], correctOption: 0, marks: 1 },
+      short: { type: 'short', questionText: '', expectedAnswer: '', maxWords: 150, marks: 2 },
+      coding: { type: 'coding', questionText: '', language: 'javascript', initialCode: '', testCases: [{ input: '', expectedOutput: '' }], marks: 5 },
     };
     const q = { ...tpl[type], id: Date.now() };
     setQuestions(p => [...p, q]);

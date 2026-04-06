@@ -56,4 +56,7 @@ router.get('/:id', verifyToken, examController.getExamById);
 // Legacy endpoint for backward compatibility
 router.get('/live-grid', verifyToken, checkPermission('view_live_grid'), examController.getMentorExams);
 
+// 4. Run Code API
+router.post('/run-code', verifyToken, examController.runCode);
+
 module.exports = router;
