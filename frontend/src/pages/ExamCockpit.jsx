@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import socketService from '../services/socket';
-import api from '../services/api';
+import api, { runCodingQuestion } from '../services/api';
+import Editor from '@monaco-editor/react';
 import {
   Camera, CameraOff, Clock, Shield, CheckCircle,
   ChevronRight, ChevronLeft, Send, XCircle,
@@ -204,6 +205,7 @@ export default function ExamCockpit() {
   const [terminated, setTerminated] = useState(null);
   const [terminateCountdown, setTerminateCountdown] = useState(8);
   const [isFullscreen, setIsFullscreen] = useState(true);
+  const [selectedLanguage, setSelectedLanguage] = useState('javascript');
   const isTimeCritical = secondsLeft < 300 && secondsLeft > 0;
 
   // 1. Fullscreen Enforcement & Shortcut Blocking
@@ -338,6 +340,9 @@ export default function ExamCockpit() {
         if (data.questions && data.questions.length > 0) {
           setQuestions(data.questions);
           if (data.duration) setSecondsLeft(data.duration * 60);
+          if (data.questions[0].type === 'coding') {
+            setSelectedLanguage(data.questions[0].language || 'javascript');
+          }
         }
       } catch (err) {
         console.warn('Backend unavailable, using mock data:', err.message);
@@ -347,34 +352,34 @@ export default function ExamCockpit() {
           duration: 90,
           questions: [
             {
-              id: 1, type: 'mcq', text: 'Which of the following data structures operates on a Last-In-First-Out (LIFO) principle?', 
+              id: 1, type: 'mcq', questionText: 'Which of the following data structures operates on a Last-In-First-Out (LIFO) principle?', 
               options: ['Queue', 'Stack', 'Linked List', 'Binary Tree'], marks: 4
             },
             {
-              id: 2, type: 'mcq', text: 'In object-oriented programming, what is the concept of wrapping data and methods that work on data within one unit?', 
+              id: 2, type: 'mcq', questionText: 'In object-oriented programming, what is the concept of wrapping data and methods that work on data within one unit?', 
               options: ['Polymorphism', 'Inheritance', 'Encapsulation', 'Abstraction'], marks: 4
             },
             {
-              id: 3, type: 'coding', text: 'Write a JavaScript function that takes an array of numbers and returns the sum of all positive numbers.', 
-              language: 'javascript', starterCode: 'function sumPositive(arr) {\n  // Your code here\n}', marks: 10
+              id: 3, type: 'coding', questionText: 'Write a JavaScript function that takes an array of numbers and returns the sum of all positive numbers.', 
+              language: 'javascript', initialCode: 'function sumPositive(arr) {\n  // Your code here\n}', marks: 10
             },
-            { id: 4, type: 'mcq', text: 'What is the time complexity of binary search on a sorted array of n elements?', options: ['O(n)', 'O(log n)', 'O(n log n)', 'O(1)'], marks: 4 },
-            { id: 5, type: 'mcq', text: 'Which scheduling algorithm can cause starvation of low-priority processes?', options: ['Round Robin', 'First Come First Serve', 'Shortest Job First (SJF)', 'Priority Scheduling'], marks: 4 },
-            { id: 6, type: 'mcq', text: 'In SQL, which clause is used to filter groups after aggregation?', options: ['WHERE', 'GROUP BY', 'HAVING', 'ORDER BY'], marks: 4 },
-            { id: 7, type: 'mcq', text: 'Which HTTP status code indicates that a requested resource has been permanently moved?', options: ['301', '302', '404', '500'], marks: 4 },
-            { id: 8, type: 'mcq', text: 'In React, what hook is used to perform side effects in a functional component?', options: ['useState', 'useContext', 'useEffect', 'useReducer'], marks: 4 },
-            { id: 9, type: 'mcq', text: 'Which of the following is NOT a valid JavaScript data type?', options: ['Symbol', 'BigInt', 'Float', 'undefined'], marks: 4 },
-            { id: 10, type: 'mcq', text: 'What does the CAP theorem state about distributed systems?', options: ['They can guarantee all three: Consistency, Availability, and Partition tolerance', 'They must sacrifice one of Consistency, Availability, or Partition tolerance', 'Consistency and Availability cannot coexist', 'Partition tolerance is optional'], marks: 4 },
-            { id: 11, type: 'mcq', text: 'Which sorting algorithm has the best average-case time complexity?', options: ['Bubble Sort', 'Insertion Sort', 'Merge Sort', 'Selection Sort'], marks: 4 },
-            { id: 12, type: 'mcq', text: 'In object-oriented design, which SOLID principle states that a class should have only one reason to change?', options: ['Open/Closed Principle', 'Single Responsibility Principle', 'Liskov Substitution', 'Interface Segregation'], marks: 4 },
-            { id: 13, type: 'mcq', text: 'Which data structure is used internally by a HashMap for collision resolution in Java?', options: ['Array', 'Linked List / Red-Black Tree', 'Binary Heap', 'Stack'], marks: 4 },
-            { id: 14, type: 'mcq', text: 'What is the primary purpose of a virtual memory system?', options: ['To speed up CPU processing', 'To allow processes to use more memory than physically available', 'To encrypt memory contents', 'To share GPU memory with the CPU'], marks: 4 },
-            { id: 15, type: 'mcq', text: 'Which protocol operates at the Transport layer of the OSI model?', options: ['HTTP', 'IP', 'TCP', 'Ethernet'], marks: 4 },
-            { id: 16, type: 'mcq', text: 'In CSS, which property establishes a new stacking context?', options: ['display: flex', 'position: relative with z-index', 'margin: auto', 'box-sizing: border-box'], marks: 4 },
-            { id: 17, type: 'mcq', text: 'Which Git command creates a new branch and immediately switches to it?', options: ['git branch <name>', 'git checkout <name>', 'git checkout -b <name>', 'git switch --create <name>'], marks: 4 },
-            { id: 18, type: 'mcq', text: 'What is a deadlock in operating systems?', options: ['A process that consumes 100% CPU', 'A set of processes each waiting on a resource held by another', 'A process that crashes unexpectedly', 'Memory that is allocated but never freed'], marks: 4 },
-            { id: 19, type: 'mcq', text: 'In asymptotic notation, if an algorithm is O(1), what does that mean?', options: ['It runs in one millisecond', 'Its runtime grows linearly with input', 'Its runtime is constant regardless of input size', 'It uses one unit of memory'], marks: 4 },
-            { id: 20, type: 'mcq', text: 'Which design pattern separates the construction of a complex object from its representation?', options: ['Factory', 'Builder', 'Prototype', 'Singleton'], marks: 4 }
+            { id: 4, type: 'mcq', questionText: 'What is the time complexity of binary search on a sorted array of n elements?', options: ['O(n)', 'O(log n)', 'O(n log n)', 'O(1)'], marks: 4 },
+            { id: 5, type: 'mcq', questionText: 'Which scheduling algorithm can cause starvation of low-priority processes?', options: ['Round Robin', 'First Come First Serve', 'Shortest Job First (SJF)', 'Priority Scheduling'], marks: 4 },
+            { id: 6, type: 'mcq', questionText: 'In SQL, which clause is used to filter groups after aggregation?', options: ['WHERE', 'GROUP BY', 'HAVING', 'ORDER BY'], marks: 4 },
+            { id: 7, type: 'mcq', questionText: 'Which HTTP status code indicates that a requested resource has been permanently moved?', options: ['301', '302', '404', '500'], marks: 4 },
+            { id: 8, type: 'mcq', questionText: 'In React, what hook is used to perform side effects in a functional component?', options: ['useState', 'useContext', 'useEffect', 'useReducer'], marks: 4 },
+            { id: 9, type: 'mcq', questionText: 'Which of the following is NOT a valid JavaScript data type?', options: ['Symbol', 'BigInt', 'Float', 'undefined'], marks: 4 },
+            { id: 10, type: 'mcq', questionText: 'What does the CAP theorem state about distributed systems?', options: ['They can guarantee all three: Consistency, Availability, and Partition tolerance', 'They must sacrifice one of Consistency, Availability, or Partition tolerance', 'Consistency and Availability cannot coexist', 'Partition tolerance is optional'], marks: 4 },
+            { id: 11, type: 'mcq', questionText: 'Which sorting algorithm has the best average-case time complexity?', options: ['Bubble Sort', 'Insertion Sort', 'Merge Sort', 'Selection Sort'], marks: 4 },
+            { id: 12, type: 'mcq', questionText: 'In object-oriented design, which SOLID principle states that a class should have only one reason to change?', options: ['Open/Closed Principle', 'Single Responsibility Principle', 'Liskov Substitution', 'Interface Segregation'], marks: 4 },
+            { id: 13, type: 'mcq', questionText: 'Which data structure is used internally by a HashMap for collision resolution in Java?', options: ['Array', 'Linked List / Red-Black Tree', 'Binary Heap', 'Stack'], marks: 4 },
+            { id: 14, type: 'mcq', questionText: 'What is the primary purpose of a virtual memory system?', options: ['To speed up CPU processing', 'To allow processes to use more memory than physically available', 'To encrypt memory contents', 'To share GPU memory with the CPU'], marks: 4 },
+            { id: 15, type: 'mcq', questionText: 'Which protocol operates at the Transport layer of the OSI model?', options: ['HTTP', 'IP', 'TCP', 'Ethernet'], marks: 4 },
+            { id: 16, type: 'mcq', questionText: 'In CSS, which property establishes a new stacking context?', options: ['display: flex', 'position: relative with z-index', 'margin: auto', 'box-sizing: border-box'], marks: 4 },
+            { id: 17, type: 'mcq', questionText: 'Which Git command creates a new branch and immediately switches to it?', options: ['git branch <name>', 'git checkout <name>', 'git checkout -b <name>', 'git switch --create <name>'], marks: 4 },
+            { id: 18, type: 'mcq', questionText: 'What is a deadlock in operating systems?', options: ['A process that consumes 100% CPU', 'A set of processes each waiting on a resource held by another', 'A process that crashes unexpectedly', 'Memory that is allocated but never freed'], marks: 4 },
+            { id: 19, type: 'mcq', questionText: 'In asymptotic notation, if an algorithm is O(1), what does that mean?', options: ['It runs in one millisecond', 'Its runtime grows linearly with input', 'Its runtime is constant regardless of input size', 'It uses one unit of memory'], marks: 4 },
+            { id: 20, type: 'mcq', questionText: 'Which design pattern separates the construction of a complex object from its representation?', options: ['Factory', 'Builder', 'Prototype', 'Singleton'], marks: 4 }
           ]
         };
         setExam(fallbackExam);
@@ -446,11 +451,18 @@ export default function ExamCockpit() {
   }, []);
 
   const handleRunCode = async () => {
+    if (!q || q.type !== 'coding') return;
     setIsExecuting(true);
+    setExecutionResult(null);
     try {
-      await new Promise(r => setTimeout(r, 1500));
-      setExecutionResult({ stdout: 'Environment active. Results simulated for demo.\n> Final output: Validated.', time: 0.24, memory: 1024 });
-    } catch (err) { setExecutionResult({ error: 'Execution Error', details: err.message }); } finally { setIsExecuting(false); }
+      const sourceCode = answers[currentQ] || q.initialCode || "";
+      const result = await runCodingQuestion(examId, q.id || q._id, sourceCode, selectedLanguage);
+      setExecutionResult(result);
+    } catch (err) { 
+      setExecutionResult({ error: 'Execution Failed', details: typeof err === 'string' ? err : err.message || 'Unknown error' }); 
+    } finally { 
+      setIsExecuting(false); 
+    }
   };
 
   const fmtTime = (s) => {
@@ -566,7 +578,7 @@ export default function ExamCockpit() {
                     </div>
                     
                     <div className="p-8 pt-10">
-                      <h2 className="text-[18px] font-semibold text-gray-900 leading-snug">{q?.text}</h2>
+                      <h2 className="text-[18px] font-semibold text-gray-900 leading-snug">{q?.questionText}</h2>
                     </div>
                     <div className="h-px bg-gray-100 mx-8" />
                     
@@ -584,20 +596,81 @@ export default function ExamCockpit() {
                       {q?.type === 'coding' && (
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{q.language} EDITOR</span>
-                            <button onClick={handleRunCode} disabled={isExecuting} className="px-4 py-1.5 bg-[#0f766e] text-white text-[10px] font-bold rounded-lg flex items-center gap-2">
+                            <div className="flex items-center gap-3">
+                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Environment</span>
+                              <select 
+                                value={selectedLanguage} 
+                                onChange={(e) => setSelectedLanguage(e.target.value)}
+                                className="bg-white border border-gray-200 rounded-md px-2 py-1 text-[10px] font-bold text-gray-600 focus:outline-none focus:border-teal-400"
+                              >
+                                <option value="javascript">Node.js</option>
+                                <option value="python">Python 3</option>
+                                <option value="cpp">C++</option>
+                                <option value="java">Java</option>
+                              </select>
+                            </div>
+                            <button onClick={handleRunCode} disabled={isExecuting} className="px-4 py-1.5 bg-[#0f766e] hover:bg-[#0d9488] text-white text-[10px] font-bold rounded-lg flex items-center gap-2 transition-colors shadow-sm">
                               {isExecuting ? <RotateCcw size={12} className="animate-spin" /> : <Play size={12} />} RUN CODE
                             </button>
                           </div>
-                          <textarea
-                            value={answers[currentQ] ?? q.starterCode}
-                            onChange={(e) => setAnswers(p => ({ ...p, [currentQ]: e.target.value }))}
-                            className="w-full h-80 bg-slate-50 border border-gray-100 rounded-lg p-5 font-mono text-[13px] text-gray-800 focus:outline-none focus:border-teal-200 transition-all resize-none"
-                            spellCheck="false"
-                          />
+                          
+                          <div className="border border-gray-100 rounded-xl overflow-hidden shadow-inner bg-zinc-900">
+                             <Editor 
+                                height="400px" 
+                                language={selectedLanguage === 'cpp' ? 'cpp' : selectedLanguage} 
+                                theme="vs-dark"
+                                value={answers[currentQ] ?? q.initialCode}
+                                onChange={(value) => setAnswers(p => ({ ...p, [currentQ]: value }))}
+                                options={{
+                                  fontSize: 14,
+                                  minimap: { enabled: false },
+                                  scrollBeyondLastLine: false,
+                                  automaticLayout: true,
+                                  padding: { top: 20, bottom: 20 }
+                                }}
+                            />
+                          </div>
+
                           {executionResult && (
-                            <div className={`p-4 rounded-lg border ${executionResult.error ? 'bg-red-50 border-red-200 text-red-600' : 'bg-slate-900 border-slate-700 text-emerald-400'} font-mono text-[11px]`}>
-                              <pre className="whitespace-pre-wrap">{executionResult.stdout || executionResult.error}</pre>
+                            <div className={`rounded-xl border overflow-hidden ${executionResult.allPassed ? 'border-green-100 bg-green-50/30' : 'border-zinc-800 bg-zinc-900'} transition-all`}>
+                              <div className={`px-4 py-2 border-b flex items-center justify-between ${executionResult.allPassed ? 'bg-green-100/50 border-green-100' : 'bg-zinc-800 border-zinc-700'}`}>
+                                <h4 className={`text-[11px] font-bold uppercase tracking-wider ${executionResult.allPassed ? 'text-green-700' : 'text-zinc-400'}`}>
+                                  {executionResult.allPassed ? 'Execution Results: All Passed ✅' : 'Execution Results: Breakdown'}
+                                </h4>
+                                {executionResult.results && (
+                                  <div className="text-[10px] font-mono text-zinc-500">
+                                    Total Cases: {executionResult.results.length}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="p-4 space-y-3">
+                                {executionResult.results ? (
+                                  executionResult.results.map((tc, index) => (
+                                    <div key={index} className={`p-3 rounded-lg border flex flex-col gap-2 ${tc.passed ? 'bg-green-50/50 border-green-100/50' : 'bg-red-50/50 border-red-100/50'}`}>
+                                      <div className="flex items-center justify-between">
+                                          <span className={`text-[10px] font-bold uppercase ${tc.passed ? 'text-green-700' : 'text-red-700'}`}>
+                                            Case {tc.testCaseId}: {tc.passed ? 'Passed ✅' : 'Failed ❌'}
+                                          </span>
+                                          {tc.time && <span className="text-[9px] font-mono text-gray-500">{tc.time}s | {tc.memory} KB</span>}
+                                      </div>
+                                      {!tc.passed && tc.actualOutput && (
+                                        <div className="bg-white/50 p-2 rounded border border-red-100/50">
+                                          <p className="text-[9px] font-bold text-red-400 uppercase mb-1">Actual Output</p>
+                                          <pre className="text-[11px] font-mono text-red-600 whitespace-pre-wrap">{tc.actualOutput}</pre>
+                                        </div>
+                                      )}
+                                      {!tc.passed && tc.error && (
+                                        <div className="bg-red-900/5 p-2 rounded border border-red-100/50">
+                                          <p className="text-[9px] font-bold text-red-400 uppercase mb-1">Engine Error</p>
+                                          <pre className="text-[11px] font-mono text-red-800 whitespace-pre-wrap">{tc.error}</pre>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))
+                                ) : (
+                                  <pre className="text-[11px] font-mono text-red-400 whitespace-pre-wrap">{executionResult.error || executionResult.details}</pre>
+                                )}
+                              </div>
                             </div>
                           )}
                         </div>

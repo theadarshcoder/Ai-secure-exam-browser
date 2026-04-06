@@ -36,4 +36,19 @@ api.interceptors.response.use(
   }
 );
 
+// Run Coding Question via Judge0
+export const runCodingQuestion = async (examId, questionId, sourceCode, language) => {
+  try {
+    const response = await api.post('/api/exams/run-code', {
+      examId,
+      questionId,
+      sourceCode,
+      language
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
 export default api;

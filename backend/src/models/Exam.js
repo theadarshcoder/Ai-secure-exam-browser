@@ -1,30 +1,33 @@
 const mongoose = require('mongoose');
 
-// Individual question schema — supports MCQ, Short Answer, and Coding
+// Ek naya schema test cases ke liye
+const testCaseSchema = new mongoose.Schema({
+    input: { type: String, required: true },
+    expectedOutput: { type: String, required: true },
+    isHidden: { type: Boolean, default: false } // True = Student ko input nahi dikhega
+});
+
 const questionSchema = new mongoose.Schema({
     type: { 
         type: String, 
         enum: ['mcq', 'short', 'coding'], 
         required: true 
     },
-    text: { type: String, required: true },
-    marks: { type: Number, default: 1 },
+    questionText: { type: String, required: true },
+    marks: { type: Number, default: 5 },
 
     // MCQ fields
     options: [{ type: String }],
-    correctIndex: { type: Number },
+    correctOption: { type: Number },
 
-    // Short answer fields
+    // Short answer fields (kept for compatibility)
     expectedAnswer: { type: String },
     maxWords: { type: Number },
 
     // Coding fields
-    language: { type: String },
-    starterCode: { type: String },
-    testCases: [{
-        input: { type: String },
-        output: { type: String }
-    }]
+    language: { type: String, default: 'javascript' },
+    initialCode: { type: String },
+    testCases: [testCaseSchema]
 }, { _id: true });
 
 const examSchema = new mongoose.Schema({
