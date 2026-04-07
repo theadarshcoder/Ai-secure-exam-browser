@@ -14,6 +14,12 @@ const examController = require('../controllers/examController');
 // Exam create karo (sirf admin/mentor)
 router.post('/create', verifyToken, checkRole(['admin', 'mentor']), examController.createExam);
 
+// Exam update karo (draft -> publish ya details edit)
+router.put('/update/:id', verifyToken, checkRole(['admin', 'mentor']), examController.updateExam);
+
+// Exam delete karo
+router.delete('/:id', verifyToken, checkRole(['admin', 'mentor']), examController.deleteExam);
+
 // Mentor ke apne banaye hue exams ki list
 router.get('/mentor-list', verifyToken, checkRole(['mentor', 'admin']), examController.getMentorExams);
 

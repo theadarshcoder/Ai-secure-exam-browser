@@ -18,7 +18,13 @@ exports.createExam = asyncHandler(async (req, res) => {
         throw new Error('Title and duration are required.');
     }
 
-    if (!isDraft && (!questions || questions.length === 0)) {
+    // Filter out completely empty questions from drafts to avoid mongoose crashes
+    let validQuestions = questions || [];
+    if (isDraft) {
+        validQuestions = validQuestions.filter(q => q && q.questionText && q.questionText.trim() !== '');
+    }
+
+    if (!isDraft && (!validQuestions || validQuestions.length === 0)) {
         res.status(400);
         throw new Error('At least 1 question is required to publish an exam.');
     }
@@ -27,9 +33,9 @@ exports.createExam = asyncHandler(async (req, res) => {
         title,
         category: category || 'General',
         duration,
-        totalMarks: totalMarks || (questions ? questions.reduce((sum, q) => sum + (q.marks || 1), 0) : 0),
+        totalMarks: totalMarks || (validQuestions ? validQuestions.reduce((sum, q) => sum + (q.marks || 1), 0) : 0),
         passingMarks: passingMarks || 40,
-        questions: questions || [],
+        questions: validQuestions,
         creator: req.user.id,
         status: status || 'published',
         scheduledDate: (scheduledDate && !isNaN(new Date(scheduledDate).getTime())) 
@@ -49,6 +55,82 @@ exports.createExam = asyncHandler(async (req, res) => {
         totalMarks: exam.totalMarks,
         scheduledDate: exam.scheduledDate
     });
+});
+
+// ─────────────── PUT /api/exams/update/:id ───────────────
+// Mentor/Admin updates an existing exam (e.g. from draft to published)
+exports.updateExam = asyncHandler(async (req, res) => {
+    const examId = req.params.id;
+    const { title, category, duration, totalMarks, passingMarks, questions, scheduledDate, status } = req.body;
+
+    const exam = await Exam.findById(examId);
+
+    if (!exam) {
+        res.status(404);
+        throw new Error('Exam not found');
+    }
+
+    // Only creator or admin can update
+    if (exam.creator.toString() !== req.user.id && req.user.role !== 'admin') {
+        res.status(403);
+        throw new Error('You do not have permission to update this exam.');
+    }
+
+    const isDraft = status === 'draft';
+
+    // Validation
+    if (!title || !duration) {
+        res.status(400);
+        throw new Error('Title and duration are required.');
+    }
+
+    let validQuestions = questions || [];
+    if (isDraft) {
+        validQuestions = validQuestions.filter(q => q && q.questionText && q.questionText.trim() !== '');
+    }
+
+    if (!isDraft && (!validQuestions || validQuestions.length === 0)) {
+        res.status(400);
+        throw new Error('At least 1 question is required to publish an exam.');
+    }
+
+    exam.title = title;
+    exam.category = category || exam.category;
+    exam.duration = duration;
+    exam.totalMarks = totalMarks || (validQuestions ? validQuestions.reduce((sum, q) => sum + (q.marks || 1), 0) : 0);
+    exam.passingMarks = passingMarks || exam.passingMarks;
+    exam.questions = validQuestions;
+    exam.status = status || exam.status;
+    if (scheduledDate && !isNaN(new Date(scheduledDate).getTime())) {
+        exam.scheduledDate = new Date(scheduledDate);
+    }
+
+    await exam.save();
+
+    res.json({ message: 'Exam updated successfully', exam });
+});
+
+// ─────────────── DELETE /api/exams/:id ───────────────
+// Mentor/Admin deletes an exam
+exports.deleteExam = asyncHandler(async (req, res) => {
+    const examId = req.params.id;
+
+    const exam = await Exam.findById(examId);
+
+    if (!exam) {
+        res.status(404);
+        throw new Error('Exam not found');
+    }
+
+    // Only creator or admin can delete
+    if (exam.creator.toString() !== req.user.id && req.user.role !== 'admin') {
+        res.status(403);
+        throw new Error('You do not have permission to delete this exam.');
+    }
+
+    await Exam.findByIdAndDelete(examId);
+
+    res.json({ message: 'Exam deleted successfully' });
 });
 
 // ─────────────── GET /api/exams/active ───────────────
