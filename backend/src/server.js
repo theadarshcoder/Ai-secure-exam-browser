@@ -21,6 +21,7 @@ const authRoutes = require('./routes/authRoutes');
 const examRoutes = require('./routes/examRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const sessionRoutes = require('./routes/sessionRoutes');
+const aiRoutes = require('./routes/aiRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -190,6 +191,7 @@ app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/exams', examRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/session', sessionRoutes);
+app.use('/api/ai', aiRoutes);
 
 // ─── 404 Global Handler ──────────────────────────────────
 app.use((req, res, next) => {

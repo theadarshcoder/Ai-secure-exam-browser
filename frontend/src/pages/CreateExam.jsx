@@ -10,39 +10,7 @@ import {
   Upload, FilePlus, FileSpreadsheet, Lock
 } from 'lucide-react';
 
-const AI_SUGGESTIONS = {
-  DSA: [
-    { type: 'mcq', questionText: 'What is the time complexity of binary search on a sorted array of n elements?', options: ['O(n)', 'O(log n)', 'O(n log n)', 'O(1)'], correctOption: 1, marks: 2 },
-    { type: 'mcq', questionText: 'Which data structure uses LIFO (Last In First Out) principle?', options: ['Queue', 'Stack', 'Linked List', 'Tree'], correctOption: 1, marks: 1 },
-    { type: 'short', questionText: 'Explain the difference between a stack and a queue with real-world examples.', expectedAnswer: 'Stack follows LIFO, Queue follows FIFO', maxWords: 200, marks: 3 },
-    { type: 'coding', questionText: 'Write a function to reverse a linked list iteratively. The function should take the head node as input and return the new head.', language: 'javascript', initialCode: 'function reverseList(head) {\n  // your code here\n}', testCases: [{ input: '[1,2,3,4,5]', expectedOutput: '[5,4,3,2,1]' }], marks: 5 },
-    { type: 'mcq', questionText: 'What is the worst-case time complexity of QuickSort?', options: ['O(n)', 'O(n log n)', 'O(n²)', 'O(log n)'], correctOption: 2, marks: 2 },
-    { type: 'short', questionText: 'What are the advantages of using a hash table over a binary search tree?', expectedAnswer: 'O(1) average lookup, insertion, deletion vs O(log n)', maxWords: 150, marks: 3 },
-  ],
-  Frontend: [
-    { type: 'mcq', questionText: 'Which hook is used for side effects in React functional components?', options: ['useState', 'useEffect', 'useRef', 'useMemo'], correctOption: 1, marks: 1 },
-    { type: 'mcq', questionText: 'What does the Virtual DOM improve in React applications?', options: ['Security', 'Performance', 'Accessibility', 'SEO'], correctOption: 1, marks: 1 },
-    { type: 'short', questionText: 'Explain the concept of closures in JavaScript and provide a practical use case.', expectedAnswer: 'Closure is a function that retains access to outer scope variables', maxWords: 200, marks: 3 },
-    { type: 'coding', questionText: 'Implement a debounce function that delays invoking the provided function until after a specified wait time has elapsed since the last invocation.', language: 'javascript', initialCode: 'function debounce(fn, delay) {\n  // your code here\n}', testCases: [{ input: 'fn, 300', expectedOutput: 'debounced function' }], marks: 5 },
-    { type: 'mcq', questionText: 'What is the purpose of the key prop in React lists?', options: ['Styling', 'Identification for reconciliation', 'Event handling', 'State management'], correctOption: 1, marks: 2 },
-  ],
-  DBMS: [
-    { type: 'mcq', questionText: 'Which normal form eliminates transitive dependencies?', options: ['1NF', '2NF', '3NF', 'BCNF'], correctOption: 2, marks: 2 },
-    { type: 'short', questionText: 'Explain the ACID properties in database transactions with examples.', expectedAnswer: 'Atomicity, Consistency, Isolation, Durability', maxWords: 250, marks: 4 },
-    { type: 'coding', questionText: 'Write an SQL query to find the second highest salary from an Employee table.', language: 'python', initialCode: '-- Write your SQL query here\nSELECT ...', testCases: [{ input: 'Employee table', expectedOutput: 'Second highest salary' }], marks: 3 },
-    { type: 'mcq', questionText: 'Which type of join returns all records from both tables?', options: ['INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'FULL OUTER JOIN'], correctOption: 3, marks: 1 },
-  ],
-  Cloud: [
-    { type: 'mcq', questionText: 'Which AWS service is used for serverless computing?', options: ['EC2', 'Lambda', 'S3', 'RDS'], correctOption: 1, marks: 1 },
-    { type: 'short', questionText: 'Explain the differences between IaaS, PaaS, and SaaS with examples.', expectedAnswer: 'IaaS: infrastructure, PaaS: platform, SaaS: software', maxWords: 200, marks: 3 },
-    { type: 'mcq', questionText: 'What does auto-scaling primarily help with?', options: ['Security', 'Handling variable load', 'Database optimization', 'Code deployment'], correctOption: 1, marks: 2 },
-  ],
-  Security: [
-    { type: 'mcq', questionText: 'What type of attack involves injecting malicious SQL statements?', options: ['XSS', 'CSRF', 'SQL Injection', 'DDoS'], correctOption: 2, marks: 1 },
-    { type: 'short', questionText: 'Explain the concept of Zero Trust Architecture and its key principles.', expectedAnswer: 'Never trust, always verify. Key principles include least privilege, micro-segmentation', maxWords: 200, marks: 4 },
-    { type: 'coding', questionText: 'Write a function that sanitizes user input to prevent XSS attacks by escaping HTML entities.', language: 'javascript', initialCode: 'function sanitize(input) {\n  // your code here\n}', testCases: [{ input: '<script>alert("xss")</script>', expectedOutput: '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;' }], marks: 5 },
-  ],
-};
+// AI Suggestions are now fetched from the backend live engine.
 
 const typeLabels = { mcq: 'MCQ', short: 'Short Answer', coding: 'Coding' };
 const typeColors = { mcq: '#3b82f6', short: '#8b5cf6', coding: '#10b981' };
@@ -432,27 +400,30 @@ export default function CreateExam() {
     setQuestions(p => { const n = [...p]; n.splice(i + 1, 0, d); return n; });
   };
 
-  const generateAI = () => {
+  const generateAI = async () => {
+    if (!syllabus && !exam.title) {
+        alert("Please provide some context (Title or Syllabus) for AI generation.");
+        return;
+    }
     setAiLoading(true);
-    setTimeout(() => {
-      const pool = AI_SUGGESTIONS[exam.category] || AI_SUGGESTIONS.DSA;
-      const suggestions = [];
-      const types = ['mcq', 'short', 'coding'];
-      types.forEach(type => {
-        const count = aiConfig[type];
-        if (count > 0) {
-          const matchingQs = pool.filter(q => q.type === type);
-          if (matchingQs.length > 0) {
-            for (let i = 0; i < count; i++) {
-              const template = matchingQs[i % matchingQs.length];
-              suggestions.push({ ...template, id: `ai-${Date.now()}-${type}-${i}`, accepted: false });
-            }
-          }
+    try {
+        const response = await api.post('/api/ai/generate', {
+            category: exam.category,
+            syllabus: syllabus,
+            config: aiConfig
+        });
+        
+        if (response.data.success) {
+            setAiSuggestions(response.data.questions);
+        } else {
+            throw new Error(response.data.error || "Generation failed");
         }
-      });
-      setAiSuggestions(suggestions);
-      setAiLoading(false);
-    }, 1500);
+    } catch (err) {
+        console.error('AI Suggestion Error:', err);
+        alert(err.response?.data?.error || "AI Service is currently unavailable. Please try again later.");
+    } finally {
+        setAiLoading(false);
+    }
   };
 
 
