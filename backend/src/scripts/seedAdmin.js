@@ -16,9 +16,18 @@ const seedAdmin = async () => {
         // Step 3: Create the requested Master Admin
         const adminUser = new User({
             name: 'Vinit',
-            email: 'vinit',      // Can be used as email directly
-            password: '1234',    // Bcrypt will hash this automatically
-            role: 'admin'
+            email: 'vinit',      // Login ID
+            password: '1234',    // Plain text, auto-hashed by model
+            role: 'admin',
+            permissions: [
+                'create_exam', 
+                'view_live_grid', 
+                'manage_users', 
+                'view_reports', 
+                'manage_exams', 
+                'delete_exam',
+                'system_settings'
+            ]
         });
 
         await adminUser.save();
