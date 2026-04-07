@@ -208,6 +208,31 @@ export default function ExamCockpit() {
   const [confidence, setConfidence] = useState(98);
   const isTimeCritical = secondsLeft < 300 && secondsLeft > 0;
 
+  // We define logIncident first so it's available for effects
+  const logIncident = useCallback(async (type, severity, details) => {
+    const studentId = localStorage.getItem('vision_email') || 'VSN-89241';
+    const incident = {
+      id: `INC-${Date.now()}`,
+      examId,
+      studentId,
+      type,
+      severity,
+      details,
+      timestamp: new Date().toISOString(),
+    };
+
+    socketService.emitViolation(incident);
+
+    try {
+      await api.post('/api/exams/incident', { examId, type, severity, details });
+    } catch (apiErr) {
+      console.warn('Incident API save failed:', apiErr.message);
+    }
+
+    const existing = JSON.parse(localStorage.getItem('vision_incidents') || '[]');
+    localStorage.setItem('vision_incidents', JSON.stringify([incident, ...existing]));
+  }, [examId]);
+
   // 1. Fullscreen Enforcement & Shortcut Blocking
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -255,31 +280,6 @@ export default function ExamCockpit() {
       document.removeEventListener('contextmenu', blockContextMenu);
     };
   }, [logIncident]);
-
-  // We define logIncident first so it's available for effects
-  const logIncident = useCallback(async (type, severity, details) => {
-    const studentId = localStorage.getItem('vision_email') || 'VSN-89241';
-    const incident = {
-      id: `INC-${Date.now()}`,
-      examId,
-      studentId,
-      type,
-      severity,
-      details,
-      timestamp: new Date().toISOString(),
-    };
-
-    socketService.emitViolation(incident);
-
-    try {
-      await api.post('/api/exams/incident', { examId, type, severity, details });
-    } catch (apiErr) {
-      console.warn('Incident API save failed:', apiErr.message);
-    }
-
-    const existing = JSON.parse(localStorage.getItem('vision_incidents') || '[]');
-    localStorage.setItem('vision_incidents', JSON.stringify([incident, ...existing]));
-  }, [examId]);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
