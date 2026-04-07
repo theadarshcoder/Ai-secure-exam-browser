@@ -461,7 +461,7 @@ export default function ExamCockpit() {
       const result = await runCodingQuestion(examId, q.id || q._id, sourceCode, selectedLanguage);
       setExecutionResult(result);
     } catch (err) { 
-      setExecutionResult({ error: 'Execution Failed', details: typeof err === 'string' ? err : err.message || 'Unknown error' }); 
+      setExecutionResult({ error: 'Execution Failed', details: typeof err === 'string' ? err : (err.error || err.message || 'Unknown error') }); 
     } finally { 
       setIsExecuting(false); 
     }
