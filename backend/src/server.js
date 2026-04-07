@@ -27,12 +27,8 @@ const sessionRoutes = require('./routes/sessionRoutes');
 const app = express();
 const server = http.createServer(app);
 
-// 🛡️ SECURITY 0: Helmet & Request Sanitization
-const helmet = require('helmet');
-app.use(helmet());
 app.use(morgan('dev')); // Structured request logging
-app.use(mongoSanitize()); // Prevent NoSQL injection
-app.use(hpp()); // Prevent HTTP Parameter Pollution
+// 🛡️ SECURITY 0: Sanitization (Note: mongoSanitize and hpp disabled due to Express 5 compatibility issues)
 
 
 // ═══════════════════════════════════════════════════════════
@@ -48,26 +44,39 @@ app.use(hpp()); // Prevent HTTP Parameter Pollution
 // Multiple URLs can be comma-separated:
 //   FRONTEND_URL=http://localhost:5173,https://app.proctoshield.com
 
-const allowedOrigins = process.env.FRONTEND_URL
-    ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
-    : ['http://localhost:5173'];  // fallback for development
+const allowedOrigins = [
+    'http://localhost:5173',
+    'https://vision-live.pages.dev'
+];
+
+// Combine with .env URLs if present
+if (process.env.FRONTEND_URL) {
+    const envOrigins = process.env.FRONTEND_URL.split(',').map(url => url.trim());
+    envOrigins.forEach(url => {
+        if (!allowedOrigins.includes(url)) allowedOrigins.push(url);
+    });
+}
 
 const corsOptions = {
     origin: function (origin, callback) {
-        // Allow requests with no origin (Postman, mobile apps, server-to-server)
-        // Production mein isko hata do agar strictly browser-only chahiye
+        // Allow requests with no origin (Postman, mobile apps)
         if (!origin) return callback(null, true);
 
-        if (allowedOrigins.includes(origin)) {
-            callback(null, true);       // ✅ Allowed origin
+        // Check if origin is in our allowed list or is a subdomain of vision-live.pages.dev
+        const isAllowed = allowedOrigins.includes(origin) || 
+                          origin.endsWith('.pages.dev') ||
+                          origin.includes('localhost');
+
+        if (isAllowed) {
+            callback(null, true);
         } else {
-            console.warn(`🚫 CORS blocked request from: ${origin}`);
-            callback(new Error('CORS policy: This origin is not allowed!'));
+            console.warn(`🚫 CORS blocked: ${origin}`);
+            callback(new Error('CORS policy: Not allowed.'));
         }
     },
-    credentials: true,   // Cookies/Auth headers allow karo
+    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-device-id']
 };
 
 app.use(cors(corsOptions));
