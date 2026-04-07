@@ -22,13 +22,19 @@ const ExamMeta = ({ exam }) => (
   </div>
 );
 
-const InstructionCard = ({ rules }) => (
+const defaultRules = [
+  "Biometric tracking and facial recognition must remain active throughout the session.",
+  "Tab switching or unfocusing the window will trigger an immediate session lock.",
+  "Environment is isolated via secure sandbox protocols. Hardware virtualization detected."
+];
+
+const InstructionCard = ({ rules = defaultRules }) => (
   <div className="mt-4 bg-gradient-to-b from-[#12141a] to-[#0a0c10] p-6 lg:p-8 rounded-3xl border border-white/[0.05] shadow-2xl">
     <h3 className="text-[11px] font-black text-white uppercase tracking-[0.2em] mb-6 flex items-center gap-3">
       <AlertCircle size={16} className="text-red-400" /> Operational Protocols
     </h3>
     <ul className="space-y-4 text-sm text-slate-400">
-      {rules.map((rule, idx) => (
+      {(rules || []).map((rule, idx) => (
         <li key={idx} className="flex items-start gap-4 group">
           <div className="w-1.5 h-1.5 rounded-full bg-red-500/20 mt-1.5 shrink-0 flex items-center justify-center group-hover:scale-125 transition-transform">
             <div className="w-1 h-1 bg-red-400 rounded-full" />
