@@ -687,6 +687,15 @@ exports.getMentorStats = async (req, res) => {
             pass: Math.round((s.passedCount / s.submissions) * 100)
         }));
 
+        // Activity Feed (built from recent submissions)
+        const activity = performanceSessions.map(s => ({
+            name: s.student?.name || 'Student',
+            action: s.violations.length > 0 ? 'flagged during' : 'submitted',
+            exam: s.exam?.title || 'Exam',
+            time: s.submittedAt ? getTimeAgo(s.submittedAt) : 'Recently',
+            type: s.violations.length > 0 ? 'flag' : 'submit'
+        }));
+
         res.json({
             stats: {
                 liveStudents: totalStudents - submittedCount,

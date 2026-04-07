@@ -1,6 +1,6 @@
 import { io } from 'socket.io-client';
 
-const SOCKET_URL = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000');
+const SOCKET_URL = import.meta.env.VITE_API_URL || 'https://vision-o16g.onrender.com';
 
 class SocketService {
   constructor() {
