@@ -275,8 +275,14 @@ const ActiveSessionItem = ({ exam }) => (
           <span className="text-[11px] font-semibold">{exam.flags}</span>
         </div>
       )}
-      <div className={`px-3 py-1 rounded-lg text-[11px] font-semibold ${exam.status === 'live' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-zinc-800 text-zinc-500'}`}>
-        {exam.status === 'live' ? 'â— Live' : 'Upcoming'}
+      <div className={`px-3 py-1 rounded-lg text-[11px] font-semibold ${
+        exam.status === 'live' 
+          ? 'bg-emerald-500/10 text-emerald-400' 
+          : exam.status === 'draft' 
+            ? 'bg-amber-500/10 text-amber-400' 
+            : 'bg-zinc-800 text-zinc-500'
+      }`}>
+        {exam.status === 'live' ? '● Live' : exam.status === 'draft' ? '● Draft' : 'Upcoming'}
       </div>
       <ChevronRight size={16} className="text-zinc-700 group-hover:text-zinc-400 transition-colors" />
     </div>

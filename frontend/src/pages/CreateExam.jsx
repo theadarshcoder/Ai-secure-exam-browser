@@ -378,12 +378,37 @@ export default function CreateExam() {
     }
   };
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
     setIsSaving(true);
-    setTimeout(() => {
+    
+    // Drafts don't need strict validation on questions, 
+    // but we need the basic exam info.
+    if (!exam.title || !exam.duration) {
+      alert('Please at least provide a Title and Duration to save a draft.');
       setIsSaving(false);
+      return;
+    }
+
+    const payload = {
+      ...exam,
+      status: 'draft',
+      questions: questions.map(q => {
+        const { id, ...cleanQ } = q;
+        return cleanQ;
+      })
+    };
+
+    try {
+      await api.post('/api/exams/create', payload);
+      // Navigate to dashboard where they can see the draft
       navigate('/mentor');
-    }, 1000);
+    } catch (err) {
+      console.error('Draft save failure:', err);
+      const msg = err.response?.data?.message || 'Failed to save draft.';
+      alert(msg);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const addQ = (type) => {

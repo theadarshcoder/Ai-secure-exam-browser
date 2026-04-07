@@ -8,22 +8,30 @@ const { getTimeAgo } = require('../utils/helpers');
 // ─────────────── POST /api/exams/create ───────────────
 // Mentor/Admin creates a new exam and saves it to MongoDB
 exports.createExam = asyncHandler(async (req, res) => {
-    const { title, category, duration, totalMarks, passingMarks, questions, scheduledDate } = req.body;
+    const { title, category, duration, totalMarks, passingMarks, questions, scheduledDate, status } = req.body;
 
-    if (!title || !duration || !questions || questions.length === 0) {
+    const isDraft = status === 'draft';
+
+    // Validation: Required for published, but drafts can be empty-ish
+    if (!title || !duration) {
         res.status(400);
-        throw new Error('Title, duration, and at least 1 question are required.');
+        throw new Error('Title and duration are required.');
+    }
+
+    if (!isDraft && (!questions || questions.length === 0)) {
+        res.status(400);
+        throw new Error('At least 1 question is required to publish an exam.');
     }
 
     const exam = new Exam({
         title,
         category: category || 'General',
         duration,
-        totalMarks: totalMarks || questions.reduce((sum, q) => sum + (q.marks || 1), 0),
+        totalMarks: totalMarks || (questions ? questions.reduce((sum, q) => sum + (q.marks || 1), 0) : 0),
         passingMarks: passingMarks || 40,
-        questions,
+        questions: questions || [],
         creator: req.user.id,
-        status: 'published',
+        status: status || 'published',
         scheduledDate: (scheduledDate && !isNaN(new Date(scheduledDate).getTime())) 
             ? new Date(scheduledDate) 
             : new Date()
