@@ -390,11 +390,13 @@ export default function ExamCockpit() {
   }, [examId]);
 
   useEffect(() => {
+    let localStream = null;
     const initCamera = async () => {
       try {
         const mediaStream = await navigator.mediaDevices.getUserMedia({ 
           video: { facingMode: 'user', width: 640, height: 480 }
         });
+        localStream = mediaStream;
         setStream(mediaStream);
         setCameraActive(true);
         if (videoRef.current) videoRef.current.srcObject = mediaStream;
@@ -412,8 +414,8 @@ export default function ExamCockpit() {
     };
     initCamera();
     loadModels();
-    return () => { if (stream) stream.getTracks().forEach(t => t.stop()); };
-  }, [stream]);
+    return () => { if (localStream) localStream.getTracks().forEach(t => t.stop()); };
+  }, []);
 
   useEffect(() => {
     if (videoRef.current && stream && cameraActive) {
@@ -580,7 +582,7 @@ export default function ExamCockpit() {
                     <div className="p-8">
                       {q?.type === 'mcq' && (
                         <div className="grid gap-3">
-                          {q.options.map((opt, i) => (
+                          {q?.options?.map((opt, i) => (
                             <button key={i} onClick={() => setAnswers(p => ({ ...p, [currentQ]: i }))} className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${answers[currentQ] === i ? 'border-teal-600 bg-teal-50' : 'border-gray-100 hover:border-gray-200'}`}>
                               <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${answers[currentQ] === i ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-400'}`}>{String.fromCharCode(65 + i)}</span>
                               <span className={`text-[15px] flex-1 text-left ${answers[currentQ] === i ? 'text-gray-900 font-semibold' : 'text-gray-600'}`}>{opt}</span>
