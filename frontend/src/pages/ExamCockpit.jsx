@@ -555,7 +555,7 @@ export default function ExamCockpit() {
           <div className="flex-1 overflow-y-auto scroll-thin px-8 py-6">
             <div className="w-full">
               <AnimatePresence mode="wait">
-                <motion.div key={currentQ} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                <Motion.div key={currentQ} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
                   <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)]">
                     <div className="px-8 py-4 flex items-center justify-between bg-gray-50/50 border-b border-gray-100">
                       <div className="flex items-center gap-3">
@@ -751,7 +751,7 @@ export default function ExamCockpit() {
                       </div>
                     </div>
                   </div>
-                </motion.div>
+                </Motion.div>
               </AnimatePresence>
             </div>
           </div>
