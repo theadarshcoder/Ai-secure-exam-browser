@@ -91,4 +91,10 @@ const examSessionSchema = new mongoose.Schema({
 // Ensure only one exam session exists per student per exam
 examSessionSchema.index({ exam: 1, student: 1 }, { unique: true });
 
+// Status index for dashboard counts (in_progress vs submitted)
+examSessionSchema.index({ status: 1 });
+
+// startedAt index for recent activity sorting
+examSessionSchema.index({ startedAt: -1 });
+
 module.exports = mongoose.model('ExamSession', examSessionSchema);

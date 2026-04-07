@@ -13,6 +13,10 @@ const jwt = require('jsonwebtoken');
 const { verifyToken, checkRole } = require('./middlewares/authMiddleware');
 const User = require('./models/User');
 const { connectRedis } = require('./config/redis');
+const morgan = require('morgan');
+const mongoSanitize = require('express-mongo-sanitize');
+const hpp = require('hpp');
+const validateEnv = require('./utils/envValidator');
 
 // ─── Route Imports ───────────────────────────────────────
 const authRoutes = require('./routes/authRoutes');
@@ -23,9 +27,12 @@ const sessionRoutes = require('./routes/sessionRoutes');
 const app = express();
 const server = http.createServer(app);
 
-// 🛡️ SECURITY 0: Helmet (HTTP Header Protection)
+// 🛡️ SECURITY 0: Helmet & Request Sanitization
 const helmet = require('helmet');
 app.use(helmet());
+app.use(morgan('dev')); // Structured request logging
+app.use(mongoSanitize()); // Prevent NoSQL injection
+app.use(hpp()); // Prevent HTTP Parameter Pollution
 
 
 // ═══════════════════════════════════════════════════════════
@@ -159,10 +166,11 @@ io.use(async (socket, next) => {
 
 
 // ═══════════════════════════════════════════════════════════
-//  📡 Initialize Database & Cache, then mount routes
+//  🔌 SECURITY 3: Initialize Database & Cache
 // ═══════════════════════════════════════════════════════════
 
 (async () => {
+    validateEnv(); // Verify required variables before starting
     await connectDB();
     await connectRedis();
 })();
@@ -259,3 +267,20 @@ server.listen(PORT, () => {
     console.log(`🛡️  Rate Limit: 100 req/15min (global) | 10 req/15min (auth)`);
     console.log(`🔌 Socket.IO: JWT authentication enabled\n`);
 });
+
+// ─── GRACEFUL SHUTDOWN ───────────────────────────────────
+// Stop accepting new connections and close DB cleanly
+const shutdown = () => {
+    console.log('\n🛑 SIGINT/SIGTERM received. Starting graceful shutdown...');
+    server.close(() => {
+        console.log('✔ HTTP server closed.');
+        const mongoose = require('mongoose');
+        mongoose.connection.close(false, () => {
+            console.log('✔ MongoDB connection closed.');
+            process.exit(0);
+        });
+    });
+};
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);

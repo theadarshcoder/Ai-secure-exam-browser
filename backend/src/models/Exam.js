@@ -55,4 +55,11 @@ const examSchema = new mongoose.Schema({
     scheduledDate: { type: Date, default: Date.now }
 }, { timestamps: true });
 
+// ─── INDEXES ─────────────────────────────────────────────
+// Creator index is critical for Mentor Dashboards
+examSchema.index({ creator: 1, createdAt: -1 });
+
+// Status index helps filter active exams for Students
+examSchema.index({ status: 1 });
+
 module.exports = mongoose.model('Exam', examSchema);
