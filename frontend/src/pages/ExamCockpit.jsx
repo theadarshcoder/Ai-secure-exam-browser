@@ -665,7 +665,10 @@ export default function ExamCockpit() {
                                     </div>
                                   ))
                                 ) : (
-                                  <pre className="text-[11px] font-mono text-red-400 whitespace-pre-wrap">{executionResult.error || executionResult.details}</pre>
+                                  <div className="flex flex-col gap-1">
+                                    <pre className="text-[11px] font-mono text-red-400 whitespace-pre-wrap font-bold">{executionResult.error}</pre>
+                                    <pre className="text-[11px] font-mono text-red-400 whitespace-pre-wrap">{executionResult.details}</pre>
+                                  </div>
                                 )}
                               </div>
                             </div>
