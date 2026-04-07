@@ -295,6 +295,44 @@ export default function CreateExam() {
       scheduledDate: exam.scheduledDate || new Date().toISOString()
     };
 
+    // --- Frontend Validation ---
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+      const qNum = i + 1;
+      
+      if (!q.questionText || !q.questionText.trim()) {
+        alert(`Question ${qNum}: Question text is required.`);
+        setIsPublishing(false);
+        setExpandedQ(q.id);
+        return;
+      }
+
+      if (q.type === 'mcq') {
+        const validOptions = q.options.filter(opt => opt && opt.trim());
+        if (validOptions.length < 2) {
+          alert(`Question ${qNum} (MCQ): At least 2 options are required.`);
+          setIsPublishing(false);
+          setExpandedQ(q.id);
+          return;
+        }
+        if (q.correctOption === undefined || q.correctOption < 0 || q.correctOption >= q.options.length) {
+          alert(`Question ${qNum} (MCQ): Please select a correct option.`);
+          setIsPublishing(false);
+          setExpandedQ(q.id);
+          return;
+        }
+      }
+
+      if (q.type === 'coding') {
+        if (!q.testCases || q.testCases.length === 0 || !q.testCases[0].input.trim() || !q.testCases[0].expectedOutput.trim()) {
+          alert(`Question ${qNum} (Coding): At least one valid test case is required.`);
+          setIsPublishing(false);
+          setExpandedQ(q.id);
+          return;
+        }
+      }
+    }
+
     try {
       // Connect to real backend
       const response = await api.post('/api/exams/create', payload);
@@ -304,7 +342,7 @@ export default function CreateExam() {
       const existing = JSON.parse(localStorage.getItem('published_exams') || '[]');
       localStorage.setItem('published_exams', JSON.stringify([serverExam, ...existing]));
       
-      setPublishedExamId(serverExam.id || 'EX-' + Math.random().toString(36).substr(2, 6).toUpperCase());
+      setPublishedExamId(serverExam.id || serverExam._id || 'EX-' + Math.random().toString(36).substr(2, 6).toUpperCase());
       setShowSuccessModal(true);
     } catch (err) {
       if (err.response) {
@@ -795,14 +833,15 @@ export default function CreateExam() {
 
                           {editingSuggestion === s.id ? (
                             <textarea
-                              value={s.question}
-                              onChange={e => setAiSuggestions(prev => prev.map(x => x.id === s.id ? {...x, question: e.target.value} : x))}
+                              value={s.questionText}
+                              onChange={e => setAiSuggestions(prev => prev.map(x => x.id === s.id ? {...x, questionText: e.target.value} : x))}
                               className="w-full bg-transparent text-sm text-zinc-200 focus:outline-none resize-none border-b border-violet-500/20 pb-2"
+                              placeholder="Edit question..."
                               rows={2}
                               autoFocus
                             />
                           ) : (
-                            <p className="text-sm text-zinc-300 leading-relaxed">{s.question}</p>
+                            <p className="text-sm text-zinc-300 leading-relaxed">{s.questionText}</p>
                           )}
 
                           {s.type === 'mcq' && (
@@ -884,7 +923,7 @@ export default function CreateExam() {
                     <div className="flex items-center gap-4 px-5 py-4 cursor-pointer" onClick={() => setExpandedQ(open ? null : q.id)}>
                       <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0" style={{ background: `${color}15`, color }}>{idx + 1}</div>
                       <span className="shrink-0" style={{ color }}>{typeIcons[q.type]}</span>
-                      <p className={`text-sm font-medium flex-1 truncate ${q.question ? 'text-zinc-200' : 'text-zinc-600 italic'}`}>{q.question || 'Untitled question'}</p>
+                      <p className={`text-sm font-medium flex-1 truncate ${q.questionText ? 'text-zinc-200' : 'text-zinc-600 italic'}`}>{q.questionText || 'Untitled question'}</p>
                       <span className="text-[11px] font-medium text-zinc-500 tabular-nums shrink-0 mr-2 bg-white/[0.03] px-2 py-1 rounded-md">{q.marks} marks</span>
                       <button onClick={e => { e.stopPropagation(); dupQ(q.id); }} className="w-8 h-8 rounded-lg hover:bg-white/[0.06] flex items-center justify-center text-zinc-600 hover:text-white transition-colors"><Copy size={13} /></button>
                       <button onClick={e => { e.stopPropagation(); removeQ(q.id); }} className="w-8 h-8 rounded-lg hover:bg-red-500/10 flex items-center justify-center text-zinc-600 hover:text-red-400 transition-colors"><Trash2 size={13} /></button>
@@ -898,8 +937,8 @@ export default function CreateExam() {
                     {open && (
                       <div className="px-5 pb-5 pt-2 space-y-6 border-t" style={{ borderColor: `${color}15` }}>
                         <textarea 
-                          value={q.question} 
-                          onChange={e => updateQ(q.id, { question: e.target.value })} 
+                          value={q.questionText} 
+                          onChange={e => updateQ(q.id, { questionText: e.target.value })} 
                           placeholder="Type your question..." 
                           rows={2} 
                           className="w-full bg-transparent text-base text-zinc-200 placeholder:text-zinc-700 focus:outline-none resize-none mt-2 leading-relaxed" 
