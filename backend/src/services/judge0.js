@@ -28,7 +28,6 @@ exports.executeCode = async (sourceCode, language, input = "") => {
       url: `${JUDGE0_URL}/submissions`,
       params: { base64_encoded: 'false', wait: 'true' }, // wait=true karke hum async ko sync bana lete hain
       headers: {
-        'content-type': 'application/json',
         'Content-Type': 'application/json',
         ...(API_KEY && { 'X-RapidAPI-Key': API_KEY, 'X-RapidAPI-Host': 'judge0-ce.p.rapidapi.com' })
       },

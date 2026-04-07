@@ -159,21 +159,32 @@ io.use(async (socket, next) => {
 
 
 // ═══════════════════════════════════════════════════════════
-//  📡 Routes Registration
+//  📡 Initialize Database & Cache, then mount routes
 // ═══════════════════════════════════════════════════════════
 
-connectDB();
-connectRedis();
+(async () => {
+    await connectDB();
+    await connectRedis();
+})();
 
 app.get('/', (req, res) => res.send('<h1>Server & Sockets working perfectly 🔒</h1>'));
 
-// Auth routes — Rate limiter EXTRA tight lagao
+// Auth routes — Rate limiter EXTRA tight
 app.use('/api/auth', authLimiter, authRoutes);
 
-// Baki routes — Global limiter se protected hain already
+// Protected routes — Global limiter active
 app.use('/api/exams', examRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/session', sessionRoutes);  // 🚨 Violation logging & history
+app.use('/api/session', sessionRoutes);
+
+// ─── 404 Global Handler ──────────────────────────────────
+app.use((req, res, next) => {
+    res.status(404).json({ error: 'Endpoint Not Found. Are you lost?' });
+});
+
+// ─── ERROR Global Handler ────────────────────────────────
+const { errorHandler } = require('./middlewares/errorMiddleware');
+app.use(errorHandler);
 
 
 
@@ -235,42 +246,6 @@ io.on('connection', (socket) => {
     });
 });
 
-
-// ═══════════════════════════════════════════════════════════
-//  🎯 Protected API Endpoints
-// ═══════════════════════════════════════════════════════════
-
-app.get('/api/mentor-dashboard', verifyToken, checkRole('mentor'), (req, res) => res.json({ message: "Welcome Mentor" }));
-app.get('/api/exam-panel', verifyToken, checkRole('student'), (req, res) => res.json({ message: "Welcome Student" }));
-
-// Code Execution Route (Judge0)
-const { executeCode } = require('./services/judge0.js');
-
-const LANGUAGE_MAP = {
-  'javascript': 63,
-  'python': 71,
-  'python3': 71,
-  'java': 62,
-  'cpp': 54,
-  'c': 50
-};
-
-app.post('/api/execute-code', verifyToken, async (req, res) => {
-  try {
-    const { source_code, language, stdin = '' } = req.body;
-    
-    if (!source_code) {
-      return res.status(400).json({ error: 'Source code is required' });
-    }
-
-    const language_id = LANGUAGE_MAP[language.toLowerCase()] || 63;
-    const result = await executeCode(source_code, language_id, stdin);
-    
-    res.json(result);
-  } catch (err) {
-    res.status(500).json({ error: 'Code execution failed', details: err.message });
-  }
-});
 
 
 // ═══════════════════════════════════════════════════════════

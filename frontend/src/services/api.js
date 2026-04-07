@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://vision-o16g.onrender.com';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001'; // Default to local backend for development (matching PORT 5001)
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -25,8 +25,7 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Agar 401 aata hai, aur request login ki NAHI thi, tabhi logout karo (token expire hua hai)
-    // Warna login fail hone par interceptor page reload kar dega error dikhane ki bajaye!
+    // Handle 401/403 only for non-login requests (avoids interceptor redirect on login failure)
     if ((error.response?.status === 401 || error.response?.status === 403) && !error.config?.url?.includes('/login')) {
       localStorage.clear(); // Clear everything for security
       window.location.href = '/login';

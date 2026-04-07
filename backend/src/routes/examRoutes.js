@@ -4,7 +4,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { verifyToken, checkRole, checkPermission } = require('../middlewares/authMiddleware');
+const { verifyToken, checkRole } = require('../middlewares/authMiddleware');
 const examController = require('../controllers/examController');
 
 // ═══════════════════════════════════════════════════════════
@@ -15,16 +15,16 @@ const examController = require('../controllers/examController');
 router.post('/create', verifyToken, checkRole(['admin', 'mentor']), examController.createExam);
 
 // Mentor ke apne banaye hue exams ki list
-router.get('/mentor-list', verifyToken, checkPermission('create_exam'), examController.getMentorExams);
+router.get('/mentor-list', verifyToken, checkRole(['mentor', 'admin']), examController.getMentorExams);
 
 // Mentor dashboard ke stats (live students, submissions, flags)
-router.get('/mentor-stats', verifyToken, checkPermission('create_exam'), examController.getMentorStats);
+router.get('/mentor-stats', verifyToken, checkRole(['mentor', 'admin']), examController.getMentorStats);
 
 // Kisi specific exam ke saare submissions dekho
-router.get('/submissions/:examId', verifyToken, checkPermission('view_live_grid'), examController.getExamSubmissions);
+router.get('/submissions/:examId', verifyToken, checkRole(['mentor', 'admin']), examController.getExamSubmissions);
 
 // Admin ke liye system-wide stats
-router.get('/admin-stats', verifyToken, checkPermission('manage_users'), examController.getAdminStats);
+router.get('/admin-stats', verifyToken, checkRole(['admin']), examController.getAdminStats);
 
 
 // ═══════════════════════════════════════════════════════════
@@ -54,7 +54,7 @@ router.post('/incident', verifyToken, examController.logIncident);
 router.get('/:id', verifyToken, examController.getExamById);
 
 // Legacy endpoint for backward compatibility
-router.get('/live-grid', verifyToken, checkPermission('view_live_grid'), examController.getMentorExams);
+router.get('/live-grid', verifyToken, checkRole(['mentor', 'admin']), examController.getMentorExams);
 
 // 4. Run Code API
 router.post('/run-code', verifyToken, examController.runCode);
