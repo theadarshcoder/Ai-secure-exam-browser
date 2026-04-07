@@ -14,8 +14,6 @@ const { verifyToken, checkRole } = require('./middlewares/authMiddleware');
 const User = require('./models/User');
 const { connectRedis } = require('./config/redis');
 const morgan = require('morgan');
-const mongoSanitize = require('express-mongo-sanitize');
-const hpp = require('hpp');
 const validateEnv = require('./utils/envValidator');
 
 // ─── Route Imports ───────────────────────────────────────
@@ -28,7 +26,6 @@ const app = express();
 const server = http.createServer(app);
 
 app.use(morgan('dev')); // Structured request logging
-// 🛡️ SECURITY 0: Sanitization (Note: mongoSanitize and hpp disabled due to Express 5 compatibility issues)
 
 
 // ═══════════════════════════════════════════════════════════
