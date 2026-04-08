@@ -389,21 +389,25 @@ export default function MentorDashboard() {
             <td className="px-6 py-4">
                <StatusBadge status={exam.status || 'draft'} />
             </td>
-            <td className="px-6 py-4 text-right">
-               <div className="flex items-center justify-end gap-2">
+            <td className="px-6 py-4">
+               <div className="flex items-center gap-4">
+                  <button 
+                    onClick={() => navigate(`/examcockpit/${exam.id || exam._id}`)}
+                    className="text-xs font-bold text-zinc-500 hover:text-emerald-600 uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95"
+                  >
+                    <Eye size={14} /> View
+                  </button>
                   <button 
                     onClick={() => navigate(`/create-exam?edit=${exam.id || exam._id}`)}
-                    className="p-1.5 text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all active:scale-95"
-                    title="Edit Exam"
+                    className="text-xs font-bold text-zinc-500 hover:text-amber-600 uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95"
                   >
-                    <Edit3 size={16} />
+                    <Edit3 size={14} /> Edit
                   </button>
                   <button 
                     onClick={() => handleDeleteExam(exam.id || exam._id)}
-                    className="p-1.5 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all active:scale-95"
-                    title="Delete Exam"
+                    className="text-xs font-bold text-zinc-400 hover:text-red-600 uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95"
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={14} /> Delete
                   </button>
                </div>
             </td>

@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, FileText, Settings,
   Search, FileUp, UserPlus, Trash2, Eye,
   ShieldCheck, Activity, AlertOctagon,
-  ChevronRight, LogOut, Bell, RefreshCw
+  ChevronRight, LogOut, Bell, RefreshCw, Edit3
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import api, { 
@@ -373,6 +373,9 @@ export default function AdminDashboard() {
               <div className="flex items-center gap-4">
                 <button onClick={() => navigate(`/examcockpit/${exam.id || exam._id}`)} className="text-xs font-bold text-zinc-500 hover:text-emerald-600 uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95">
                   <Eye size={14} /> View
+                </button>
+                <button onClick={() => navigate(`/create-exam?edit=${exam.id || exam._id}`)} className="text-xs font-bold text-zinc-500 hover:text-amber-600 uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95">
+                  <Edit3 size={14} /> Edit
                 </button>
                 <button onClick={() => handleDeleteExam(exam.id || exam._id)} className="text-xs font-bold text-zinc-400 hover:text-red-600 uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95">
                   <Trash2 size={14} /> Delete
