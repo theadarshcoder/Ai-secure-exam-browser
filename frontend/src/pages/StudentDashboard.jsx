@@ -1,169 +1,218 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Navbar } from '../components/Navbar';
 import api from '../services/api';
 import { 
   PlayCircle, BookOpen, ShieldCheck, 
   ArrowRight, Clock, CheckCircle2, Lock, ListChecks, Calendar,
-  Activity, Fingerprint, LifeBuoy, AlertTriangle
+  Fingerprint, LifeBuoy, AlertTriangle, Search, Filter,
+  ChevronRight, Hash, Info, UserCircle, Activity, ClipboardList
 } from 'lucide-react';
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Mock Data (Fallback jab backend down ho) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-
+/* ─────────────── Mock Data ─────────────── */
 const MOCK_EXAMS = [
   { id: 'EXM-CS101', title: 'Computer Science 101 - Final', duration: 90, questionsCount: 50, startTime: new Date(Date.now() + 60000).toISOString() },
   { id: 'EXM-DSA', title: 'Data Structures & Algorithms', duration: 120, questionsCount: 40, startTime: new Date(Date.now() - 1800000).toISOString() },
   { id: 'EXM-OS', title: 'Operating Systems Midterm', duration: 60, questionsCount: 30, startTime: new Date(Date.now() + 300000).toISOString() },
   { id: 'EXM-DBMS', title: 'Database Management Systems', duration: 45, questionsCount: 20, startTime: new Date(Date.now() + 86400000).toISOString() },
-  { id: 'EXM-SE', title: 'Software Engineering Fundamentals', duration: 90, questionsCount: 50, startTime: new Date(Date.now() - 60000).toISOString() },
-  { id: 'EXM-NW', title: 'Computer Networks Assessment', duration: 60, questionsCount: 25, startTime: new Date(Date.now() + 7200000).toISOString() },
-  { id: 'EXM-AI', title: 'Artificial Intelligence Basics', duration: 180, questionsCount: 60, startTime: new Date(Date.now() + 172800000).toISOString() },
-  { id: 'EXM-ML', title: 'Machine Learning Core Exam', duration: 120, questionsCount: 40, startTime: new Date(Date.now() + 259200000).toISOString() },
+  { id: 'EXM-SE', title: 'Software Engineering Fundamentals', duration: 90, questionsCount: 50, startTime: new Date(Date.now() - 60000).toISOString(), alreadySubmitted: true }
 ];
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ─────────────── Sub-components ─────────────── */
+
+const SkeletonExamCard = () => (
+  <div className="bg-[#12161f]/50 p-6 rounded-3xl border border-white/[0.02] flex flex-col xl:flex-row xl:items-center justify-between gap-6 animate-pulse">
+    <div className="flex gap-5 items-start w-full">
+      <div className="w-14 h-14 rounded-2xl bg-white/[0.03] shrink-0" />
+      <div className="w-full">
+        <div className="w-24 h-4 rounded-full bg-white/[0.03] mb-3" />
+        <div className="w-3/4 max-w-sm h-7 rounded-lg bg-white/[0.05] mb-4" />
+        <div className="flex gap-4">
+          <div className="w-28 h-4 rounded-full bg-white/[0.03]" />
+          <div className="w-20 h-4 rounded-full bg-white/[0.03]" />
+        </div>
+      </div>
+    </div>
+    <div className="w-full xl:w-40 h-14 rounded-xl bg-white/[0.03] shrink-0" />
+  </div>
+);
 
 const Sidebar = ({ currentTime, userName, userEmail, onSupport }) => (
-  <aside className="h-full flex flex-col min-w-[260px] lg:max-w-xs shrink-0 relative z-10">
-    <div className="flex-1 flex flex-col bg-[#0c0e14] rounded-[24px] border border-white/[0.04] p-6 lg:p-7 shadow-2xl relative overflow-hidden group">
-      <div className="absolute -top-32 -left-32 w-64 h-64 bg-emerald-500/10 blur-[80px] rounded-full pointer-events-none" />
-      <div className="absolute -bottom-32 -right-32 w-64 h-64 bg-teal-600/10 blur-[80px] rounded-full pointer-events-none" />
-
-      <div className="flex items-center gap-2 mb-8 relative z-10">
-        <div className="w-6 h-6 rounded-full bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 shadow-inner">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 absolute animate-ping" />
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 relative" />
+  <aside className="w-full lg:w-[280px] shrink-0 relative z-10 flex flex-col gap-4">
+    <div className="bg-[#111827] rounded-xl border border-white/5 p-5 lg:p-6 shadow-sm relative overflow-hidden flex flex-col h-full lg:h-auto">
+      {/* Clean User Profile */}
+      <div className="flex items-center gap-3 mb-6 pb-6 border-b border-white/[0.05] relative z-10 w-full">
+        
+        {/* Fixed Sizing Avatar */}
+        <div className="w-10 h-10 shrink-0 rounded-full bg-slate-800/30 border border-white/5 flex items-center justify-center text-slate-400">
+          <UserCircle size={20} strokeWidth={1.5} />
         </div>
-        <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Active Sandbox</span>
-      </div>
 
-      <div className="flex items-center gap-4 mb-8 relative z-10 text-center">
-        <div className="w-[46px] h-[46px] rounded-[14px] bg-gradient-to-tr from-teal-600 to-teal-500 p-[1px] shrink-0 shadow-lg">
-          <div className="w-full h-full bg-[#12141a] rounded-[13px] flex items-center justify-center text-white font-black text-lg tracking-wider">
-            {userName ? userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'VS'}
+        {/* Clean Text Stack Rhythm */}
+        <div className="flex flex-col leading-tight">
+          <div className="flex items-center gap-2 mb-0.5">
+            <h2 className="text-[15px] font-semibold text-slate-100">{userName || 'Vinit'}</h2>
+            <span className="w-2 h-2 bg-emerald-400 rounded-full"></span>
           </div>
-        </div>
-        <div>
-          <h2 className="text-xl font-black text-white tracking-tight leading-none mb-1.5 text-left">{userName || 'Vision Student'}</h2>
-          <p className="text-[10px] text-slate-500 font-mono font-black tracking-[0.15em] uppercase text-left">{userEmail || 'ID: VSN-00000'}</p>
-        </div>
-      </div>
+          
+          <span className="text-[12px] text-slate-500 mb-1">
+            @{userEmail?.split('@')[0] || 'vinit'}
+          </span>
 
-      <div className="space-y-4 relative z-10">
-        <div className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] mb-4 pb-1 border-b border-white/[0.02]">Telemetry</div>
-        {[
-          { icon: <ShieldCheck size={14} className="text-emerald-500" />, label: 'Integrity', status: 'Verified', statusColor: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-          { icon: <Clock size={14} className="text-teal-400" />, label: 'Sync Time', status: currentTime, statusColor: 'text-teal-400', bg: 'bg-teal-600/10' },
-          { icon: <Fingerprint size={14} className="text-amber-500" />, label: 'Biometrics', status: 'Mapped', statusColor: 'text-amber-500', bg: 'bg-amber-500/10' },
-        ].map((v, i) => (
-          <div key={i} className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {v.icon}
-              <span className="text-xs font-bold text-slate-400 uppercase">{v.label}</span>
-            </div>
-            <span className={`text-[9px] font-black ${v.statusColor} uppercase tracking-widest ${v.bg} px-2 py-0.5 rounded border border-white/5`}>{v.status}</span>
-          </div>
-        ))}
-      </div>
-
-      <div className="flex-1 flex flex-col justify-end pt-6 relative z-10">
-        <div className="bg-teal-600/5 rounded-2xl p-4 border border-teal-600/10 relative overflow-hidden">
-          <div className="flex items-start gap-3 relative z-10">
-            <div className="w-8 h-8 rounded-lg bg-teal-600/10 flex items-center justify-center border border-teal-600/20 shrink-0 text-teal-400 shadow-lg"><ShieldCheck size={14} /></div>
-            <div>
-              <h4 className="text-[10px] font-black text-teal-300 uppercase tracking-widest mb-1">Zero-Trust Active</h4>
-              <p className="text-[9px] text-slate-500 leading-relaxed font-semibold">Local OS telemetry hooked. Environment isolated.</p>
-            </div>
-          </div>
+          <span className="text-xs text-gray-500">
+            Secure session
+          </span>
         </div>
       </div>
 
-      <div className="mt-8 pt-6 border-t border-white/[0.04] relative z-10">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h3 className="text-sm font-black text-white tracking-tight mb-1 uppercase">Support</h3>
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Vision Secure Node</p>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 shadow-inner"><LifeBuoy size={16} /></div>
-        </div>
-        <button onClick={onSupport} className="w-full bg-white text-[#0a0c10] hover:bg-slate-200 text-[10px] font-black uppercase tracking-widest h-12 rounded-xl transition-all shadow-xl active:scale-95 flex items-center justify-center gap-2">Initialize Channel <ArrowRight size={14} /></button>
+      {/* Telemetry (System Status) */}
+      <div className="relative z-10 flex-1">
+         <div className="flex items-center gap-2 mb-4">
+           <div className="relative flex items-center justify-center w-2 h-2">
+             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+           </div>
+           <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">System Status</h3>
+         </div>
+         <div className="space-y-3.5">
+           <div className="flex justify-between items-center text-[13px]">
+             <span className="text-slate-500 font-medium">Integrity</span>
+             <span className="text-emerald-500 font-semibold flex items-center gap-1.5"><CheckCircle2 size={13} strokeWidth={2.5}/> Verified</span>
+           </div>
+           <div className="flex justify-between items-center text-[13px]">
+             <span className="text-slate-500 font-medium">Connection</span>
+             <span className="text-slate-700 dark:text-slate-300 font-mono text-[12px] font-medium">{currentTime}</span>
+           </div>
+           <div className="flex justify-between items-center text-[13px]">
+             <span className="text-slate-500 font-medium">Biometrics</span>
+             <span className="text-emerald-500 font-semibold flex items-center gap-1.5"><Lock size={13} strokeWidth={2.5}/> Authenticated</span>
+           </div>
+         </div>
+      </div>
+
+      {/* Centered Support Action */}
+      <div className="mt-6 pt-5 border-t border-white/[0.05] relative z-10">
+         <button onClick={onSupport} className="w-full py-2.5 rounded-lg text-xs font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:hover:text-slate-200 dark:hover:bg-white/[0.04] transition-all flex items-center justify-center gap-2">
+           <LifeBuoy size={15} strokeWidth={2} /> Get Help
+         </button>
       </div>
     </div>
   </aside>
 );
 
-const ExamCard = ({ exam, now, onLaunch }) => {
+const ExamCard = ({ exam, now, onLaunch, index }) => {
   const startTime = new Date(exam.startTime);
-  const unlockTime = new Date(startTime.getTime() - 15 * 60000);
+  const unlockTime = new Date(startTime.getTime() - 15 * 60000); 
   const isLive = now >= startTime;
   const isPreOnboarding = now >= unlockTime && now < startTime;
-  const canLaunch = now >= unlockTime;
   const isSubmitted = exam.alreadySubmitted;
 
+  // Derive visual states
+  let cardBg = index === 0 ? "bg-[#111827] opacity-100 shadow-xl" : "bg-[#111827] opacity-90 hover:opacity-100"; 
+  let statusColor = "text-slate-500";
+  let statusText = "Upcoming";
+  let btnText = "Not Available";
+  let btnDisabled = true;
+  let btnSecondary = false;
+
+  if (isSubmitted) {
+    cardBg = "bg-[#0B0F14] opacity-50 grayscale hover:grayscale-0 border-white/[0.02]";
+    statusColor = "text-slate-500";
+    statusText = "Completed";
+    btnText = "View Results";
+    btnDisabled = false;
+    btnSecondary = true;
+  } else if (isLive) {
+    cardBg = "bg-[#111827] opacity-100 border-white/10 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.5)]"; 
+    statusText = "Live Now";
+    btnText = "Start Exam";
+    btnDisabled = false;
+  } else if (isPreOnboarding) {
+    cardBg = "bg-[#111827] opacity-100";
+    statusColor = "text-blue-400";
+    statusText = "Final Checks";
+    btnText = "Enter Waiting Room";
+    btnDisabled = false;
+  }
+
   return (
-    <div className={`bg-[#12161f] p-5 lg:p-6 rounded-3xl border transition-all duration-300 flex flex-col xl:flex-row xl:items-center justify-between gap-4 ${isSubmitted ? 'border-slate-800/30 opacity-50' : canLaunch ? 'border-emerald-900/30 hover:bg-[#151a25] shadow-lg' : 'border-white/[0.03] opacity-60'}`}>
-      <div className="flex gap-4 items-start">
-        <div className={`w-12 h-12 rounded-2xl bg-[#0a0c10] flex items-center justify-center border border-white/[0.05] shadow-inner ${isSubmitted ? 'text-slate-600' : canLaunch ? 'text-emerald-400' : 'text-slate-600'}`}>
-          <BookOpen size={20} />
+    <div className={`p-5 lg:p-6 rounded-xl border border-white/5 transition-all duration-300 flex flex-col sm:flex-row sm:items-center justify-between gap-6 group ${cardBg}`}>
+      
+      {/* Primary Info */}
+      <div className="flex gap-4 items-start sm:items-center">
+        <div className={`w-12 h-12 shrink-0 rounded-xl flex items-center justify-center border ${isLive ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400' : 'border-white/5 bg-white/[0.02] text-slate-500 group-hover:text-slate-300'} transition-colors`}>
+          <ClipboardList size={22} strokeWidth={1.5} />
         </div>
-        <div>
-          <div className="flex flex-wrap items-center gap-2 mb-2">
-            {isSubmitted ? (
-              <span className="bg-slate-500/10 text-slate-400 border border-slate-500/20 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5"><CheckCircle2 size={8} /> Submitted</span>
-            ) : isLive ? (
-              <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" /> Live Now</span>
-            ) : isPreOnboarding ? (
-              <span className="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-blue-400 animate-pulse" /> Final Checks</span>
+        
+        <div className="flex flex-col justify-center">
+          <div className="flex items-center gap-3 mb-1.5">
+            <h3 className="text-base font-semibold text-slate-100 leading-none">{exam.title}</h3>
+            
+            {(isLive || isPreOnboarding) ? (
+              <span className={`text-[10px] uppercase tracking-wider font-bold flex items-center gap-1.5 px-2 py-0.5 rounded ${isLive ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}`}>
+                {isLive && <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
+                {statusText}
+              </span>
             ) : (
-              <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-amber-500" /> Standby</span>
+              <span className="text-[11px] font-medium text-slate-500">{statusText}</span>
             )}
-            <span className="text-[9px] text-slate-600 font-black tracking-widest uppercase">NODE: {exam.id}</span>
           </div>
-          <h3 className="font-black text-lg text-white mb-2 tracking-tight uppercase leading-tight">{exam.title}</h3>
-          <div className="flex flex-wrap items-center gap-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">
-            <span className="flex items-center gap-1.5 text-teal-400"><Calendar size={12}/> {startTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at {startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span>
-            <span className="flex items-center gap-1.5"><Clock size={12}/> {exam.duration} MINS</span>
-            <span className="flex items-center gap-1.5"><ListChecks size={12}/> {exam.questionsCount} MSQ</span>
+          
+          <div className="flex items-center gap-2 text-[13px] text-slate-500 font-medium">
+            <span>{startTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+            <span>•</span>
+            <span>{exam.duration} min</span>
           </div>
         </div>
       </div>
+
+      {/* CTA Area */}
       <button 
-        disabled={!canLaunch || isSubmitted} 
-        onClick={() => onLaunch(exam.id)} 
-        className={`shrink-0 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${isSubmitted ? 'bg-slate-800/50 text-slate-600 cursor-not-allowed border border-white/5' : canLaunch ? 'bg-white text-[#0a0c10] hover:bg-slate-200 shadow-xl active:scale-95' : 'bg-white/5 text-slate-600 cursor-not-allowed border border-white/5'}`}
+        disabled={btnDisabled} 
+        onClick={() => btnSecondary ? navigate('/dashboard') : onLaunch(exam.id)} 
+        className={`shrink-0 px-5 py-2.5 rounded-lg font-semibold text-[13px] transition-all focus:outline-none
+          ${btnDisabled 
+            ? 'bg-transparent text-slate-600 cursor-not-allowed border border-white/5' 
+            : btnSecondary 
+              ? 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/5'
+              : 'bg-white text-[#0a0c10] hover:bg-slate-200 border border-white shadow-sm hover:shadow active:scale-[0.98]'
+          }`}
       >
-        {isSubmitted ? 'Completed' : canLaunch ? 'Launch Sequence' : 'Locked'} {!isSubmitted && (canLaunch ? <ArrowRight size={14} className="inline ml-1" /> : <Clock size={12} className="inline ml-1" />)}
+        {btnText}
       </button>
     </div>
   );
 };
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Main Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ─────────────── Main Page ─────────────── */
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
   const [now, setNow] = useState(new Date());
+  
+  // Support state
   const [showSupport, setShowSupport] = useState(false);
   const [supportMsg, setSupportMsg] = useState('');
   const [supportSent, setSupportSent] = useState(false);
 
-  // Exam data from API
+  // Search & Filter State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All'); // All, Live, Upcoming, Completed
+
+  // Exam Data
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isLiveData, setIsLiveData] = useState(false);
 
-  // User info from localStorage (login ke baad save hota hai)
+  // User Info
   const userName = localStorage.getItem('vision_name') || localStorage.getItem('vision_email')?.split('@')[0] || 'Vision Student';
   const userEmail = localStorage.getItem('vision_email') || '';
 
-  // â”€â”€â”€ Fetch Active Exams from Backend API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Fetch Logic
   useEffect(() => {
     const fetchExams = async () => {
       try {
-        // Real API call â€” GET /api/exams/active
         const response = await api.get('/api/exams/active');
-        
-        // Backend ka data ExamCard ke format mein map karo
         if (Array.isArray(response.data)) {
           const liveExams = response.data.map(exam => ({
             id: exam?.id || 'EXM-UNKNOWN',
@@ -171,34 +220,26 @@ export default function StudentDashboard() {
             duration: exam?.duration || 60,
             questionsCount: exam?.questionsCount || 0,
             startTime: exam?.startTime || new Date().toISOString(),
-            category: exam?.category || 'General',
-            creator: exam?.creator || 'System',
             alreadySubmitted: exam?.alreadySubmitted || false
           }));
-
           setExams(liveExams);
           setIsLiveData(true);
-          console.log(`âœ… Loaded ${liveExams.length} exams from backend`);
         }
       } catch (error) {
-        // Backend down? Mock data use karo (demo/offline ke liye)
-        console.warn('âš ï¸  Backend unreachable, using mock exams:', error.message);
+        console.warn('Backend unreachable, using mock exams:', error.message);
         setExams(MOCK_EXAMS);
         setIsLiveData(false);
       } finally {
         setLoading(false);
       }
     };
-
     fetchExams();
   }, []);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     const timer = setInterval(() => setNow(new Date()), 1000);
-    
     localStorage.removeItem('vision_terminated_sessions');
-    
     return () => {
       document.body.style.overflow = 'auto';
       clearInterval(timer);
@@ -210,96 +251,159 @@ export default function StudentDashboard() {
     setTimeout(() => { setShowSupport(false); setSupportSent(false); setSupportMsg(''); }, 2000);
   };
 
+  // ─────────────── Filtering Engine ───────────────
+  const filteredExams = useMemo(() => {
+    return exams.filter(exam => {
+      // 1. Text Search Filter
+      if (searchQuery && !exam.title.toLowerCase().includes(searchQuery.toLowerCase()) && !exam.id.toLowerCase().includes(searchQuery.toLowerCase())) {
+        return false;
+      }
+      
+      // 2. Status Category Filter
+      if (statusFilter !== 'All') {
+        const startTime = new Date(exam.startTime);
+        const unlockTime = new Date(startTime.getTime() - 15 * 60000);
+        const isLiveOrPre = now >= unlockTime;
+        const isSubmitted = exam.alreadySubmitted;
+
+        if (statusFilter === 'Completed' && !isSubmitted) return false;
+        if (statusFilter === 'Live' && (isSubmitted || !isLiveOrPre)) return false;
+        if (statusFilter === 'Upcoming' && (isSubmitted || isLiveOrPre)) return false;
+      }
+      
+      return true;
+    });
+  }, [exams, searchQuery, statusFilter, now]);
+  
   const currentTime = now.toLocaleTimeString('en-GB', { hour12: false });
 
   return (
     <>
-    <div className="h-screen w-full bg-[#0a0c10] font-sans flex flex-col overflow-hidden text-slate-200">
-      <Navbar role="Student" />
-      <style>{`html, body { overflow: hidden !important; height: 100% !important; overscroll-behavior: none !important; }`}</style>
+    {/* Raw Internal Tool Wrapper */}
+    <div className="h-screen w-full bg-[#0B0F14] font-sans flex flex-col overflow-hidden text-slate-200 relative">
+      <div className="relative z-10 flex flex-col h-full w-full">
+        <Navbar role="Student" />
+        <style>{`html, body { overflow: hidden !important; height: 100% !important; overscroll-behavior: none !important; }`}</style>
 
-      <main className="flex-1 max-w-[1200px] w-full mx-auto px-6 pt-24 pb-8 grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 overflow-hidden">
+        <main className="flex-1 w-full max-w-[1440px] mx-auto px-4 lg:px-8 pt-24 pb-8 flex flex-col lg:flex-row gap-8 overflow-hidden z-10 relative">
         <Sidebar currentTime={currentTime} userName={userName} userEmail={userEmail} onSupport={() => setShowSupport(true)} />
 
-        <section className="bg-[#0b0f19] rounded-[40px] p-6 lg:p-10 border border-slate-800/60 shadow-2xl flex flex-col h-full overflow-hidden relative">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-8 shrink-0 border-b border-white/[0.04] pb-6">
+        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+          
+          {/* Breadcrumbs & Header Section */}
+          <div className="shrink-0 mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
              <div>
-               <h1 className="text-2xl font-black text-white tracking-tight uppercase">Your Assignments</h1>
-               <p className="text-[11px] text-slate-500 font-bold mt-1">
-                 {isLiveData 
-                   ? `${exams.length} exam(s) loaded from server.`
-                   : 'Offline mode â€” showing demo exams.'}
+               <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-3">
+                 <span>Gateway</span>
+                 <ChevronRight size={10} />
+                 <span>Candidate</span>
+                 <ChevronRight size={10} />
+                 <span className="text-emerald-400">Assignments</span>
+               </div>
+               <h1 className="text-3xl lg:text-4xl font-extrabold text-white tracking-tight mb-2">My Assessments</h1>
+               <p className="text-xs text-slate-400 font-medium">
+                 {isLiveData ? `${exams.length} assignments synchronised from server.` : 'Offline mode actively showing local cache.'}
                </p>
              </div>
-             <div className="hidden sm:flex items-center gap-3">
-               <div className="w-12 h-12 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-2xl flex items-center justify-center shadow-lg"><PlayCircle size={24} /></div>
+             
+             {/* Search & Filter Bar */}
+             <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                <div className="relative w-full sm:w-64">
+                   <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                   <input 
+                     type="text" 
+                     placeholder="Search exam or ID..."
+                     value={searchQuery}
+                     onChange={(e) => setSearchQuery(e.target.value)}
+                     className="w-full bg-[#12161f] border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all font-medium"
+                   />
+                </div>
+                <div className="flex items-center gap-1 bg-[#12161f] border border-slate-800 rounded-xl p-1 w-full sm:w-auto overflow-x-auto custom-scrollbar">
+                  {['All', 'Live', 'Upcoming', 'Completed'].map(f => (
+                    <button 
+                      key={f}
+                      onClick={() => setStatusFilter(f)}
+                      className={`px-4 py-1.5 rounded-lg text-[10px] uppercase tracking-widest font-bold whitespace-nowrap transition-all ${statusFilter === f ? 'bg-white text-black shadow-sm' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
+                    >
+                      {f}
+                    </button>
+                  ))}
+                </div>
              </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto pr-2 space-y-4 custom-scrollbar">
+          {/* Exam List Container */}
+          <div className="flex-1 overflow-y-auto pr-3 pb-10 custom-scrollbar">
              {loading ? (
-               <div className="h-full w-full flex flex-col items-center justify-center text-center">
-                 <div className="w-8 h-8 border-2 border-slate-700 border-t-emerald-400 rounded-full animate-spin mb-4" />
-                 <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Loading exams...</p>
+               <div className="space-y-4 mt-2">
+                 <SkeletonExamCard />
+                 <SkeletonExamCard />
+                 <SkeletonExamCard />
                </div>
-             ) : exams.length > 0 ? (
-                exams.map(exam => (
-                  <ExamCard 
-                    key={exam.id} 
-                    exam={exam} 
-                    now={now} 
-                    onLaunch={(id) => navigate(`/exam/${id}/verify`)} 
-                  />
-                ))
+             ) : filteredExams.length > 0 ? (
+                 <div className="flex flex-col gap-4 mt-6 mb-8">
+                   {filteredExams.map(exam => (
+                     <ExamCard 
+                       key={exam.id} 
+                       exam={exam} 
+                       now={now} 
+                       onLaunch={(id) => navigate(`/exam/${id}/verify`)} 
+                     />
+                   ))}
+                 </div>
               ) : (
-                <div className="h-full w-full flex flex-col items-center justify-center text-center opacity-40">
-                   <CheckCircle2 size={48} className="text-zinc-800 mb-4" />
-                   <h3 className="text-sm font-black text-white uppercase tracking-widest">Protocol Nominal</h3>
-                   <p className="text-[10px] text-slate-600 mt-1 uppercase font-bold tracking-tighter">No pending operations detected.</p>
+                <div className="h-48 md:h-64 w-full flex flex-col items-center justify-center text-center bg-[#0d1017] border border-dashed border-white/10 rounded-3xl mt-4">
+                   <Filter size={32} className="text-zinc-700 mb-4" />
+                   <h3 className="text-sm font-black text-white uppercase tracking-widest mb-1">No Alignments Found</h3>
+                   <p className="text-xs text-slate-500 font-medium max-w-[250px]">Adjust your search query or filters to reveal matching assignments.</p>
+                   {(searchQuery || statusFilter !== 'All') && (
+                     <button onClick={() => {setSearchQuery(''); setStatusFilter('All');}} className="mt-4 text-[10px] text-emerald-400 font-bold uppercase tracking-widest hover:underline">Clear Filters</button>
+                   )}
                 </div>
               )}
           </div>
-        </section>
+        </div>
       </main>
+      </div>
     </div>
     
     {/* Support Chat Modal */}
     {showSupport && (
       <>
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]" onClick={() => setShowSupport(false)} />
-        <div className="fixed bottom-6 right-6 z-[101] w-80 bg-[#0f1117] border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+        <div className="fixed bottom-6 right-6 z-[101] w-80 lg:w-96 bg-[#0f1117] border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5">
           <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06] bg-[#0c0c0e]">
             <div className="flex items-center gap-2">
               <div className="relative w-2 h-2"><div className="absolute inset-0 bg-emerald-500 rounded-full animate-ping opacity-40" /><div className="w-2 h-2 rounded-full bg-emerald-500 relative" /></div>
-              <span className="text-xs font-bold text-white uppercase tracking-widest">Vision Support</span>
+              <span className="text-xs font-bold text-white uppercase tracking-widest">Live Channel</span>
             </div>
-            <button onClick={() => setShowSupport(false)} className="text-zinc-500 hover:text-white"><ArrowRight size={14} className="rotate-180" /></button>
+            <button onClick={() => setShowSupport(false)} className="text-zinc-500 hover:text-white p-1 rounded hover:bg-white/5"><ChevronRight size={16} className="rotate-90" /></button>
           </div>
           <div className="px-5 py-4">
             {supportSent ? (
-              <div className="text-center py-4">
-                <CheckCircle2 size={32} className="text-emerald-400 mx-auto mb-2" />
-                <p className="text-sm font-bold text-white">Message Sent!</p>
-                <p className="text-xs text-zinc-500 mt-1">A supervisor will respond shortly.</p>
-              </div>
+               <div className="text-center py-8">
+                 <CheckCircle2 size={36} className="text-emerald-400 mx-auto mb-3" />
+                 <p className="text-sm font-black tracking-widest uppercase text-white">Transmission Sent</p>
+                 <p className="text-xs text-zinc-500 mt-2 font-medium">A supervisor will initiate proxy support shortly.</p>
+               </div>
             ) : (
-              <>
-                <p className="text-xs text-zinc-400 mb-3">Describe your issue and a proctor will assist you:</p>
-                <textarea
-                  value={supportMsg}
-                  onChange={e => setSupportMsg(e.target.value)}
-                  placeholder="Type your message..."
-                  rows={3}
-                  className="w-full bg-[#181a20] border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-teal-600/40 resize-none"
-                />
-                <button
-                  onClick={handleSupport}
-                  disabled={!supportMsg.trim()}
-                  className="mt-3 w-full py-2.5 rounded-xl bg-white text-[#0a0c10] text-xs font-black uppercase tracking-widest hover:bg-zinc-100 transition-all active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
-                >
-                  Send Message
-                </button>
-              </>
+               <>
+                 <p className="text-xs text-zinc-400 mb-3 font-medium">Relay your technical issue securely:</p>
+                 <textarea
+                   value={supportMsg}
+                   onChange={e => setSupportMsg(e.target.value)}
+                   placeholder="Describe what is happening on your node..."
+                   rows={4}
+                   className="w-full bg-[#181a20] border border-white/[0.06] rounded-xl px-3 py-3 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-teal-600/40 resize-none font-medium"
+                 />
+                 <button
+                   onClick={handleSupport}
+                   disabled={!supportMsg.trim()}
+                   className="mt-4 w-full py-3 rounded-xl bg-white text-[#0a0c10] text-xs font-black uppercase tracking-widest hover:bg-slate-200 transition-all shadow-lg active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
+                 >
+                   Transmit Packet
+                 </button>
+               </>
             )}
           </div>
         </div>
@@ -308,4 +412,3 @@ export default function StudentDashboard() {
     </>
   );
 }
-
