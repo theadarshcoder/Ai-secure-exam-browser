@@ -113,6 +113,52 @@ export const getSystemHealth = async () => {
     }
 };
 
+export const getDashboardStats = async () => {
+    try {
+        const response = await api.get('/api/admin/stats');
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
+export const bulkImportUsers = async (usersArray) => {
+    try {
+        const response = await api.post('/api/admin/bulk-import', { users: usersArray });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
+export const getSettings = async () => {
+    try {
+        const response = await api.get('/api/admin/settings');
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
+export const saveSettings = async (settingsData) => {
+    try {
+        const response = await api.post('/api/admin/settings', settingsData);
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
+export const getAdminExams = async () => {
+    try {
+        const response = await api.get('/api/exams/mentor-list');
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
+
 export const getAuditLogs = async () => {
     try {
         const response = await api.get('/api/admin/audit-logs');

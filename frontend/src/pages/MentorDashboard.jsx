@@ -49,8 +49,8 @@ const StatusBadge = ({ status }) => {
     normal: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     warning: 'bg-amber-50 text-amber-700 border-amber-200',
     terminated: 'bg-red-50 text-red-700 border-red-200',
-    active: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-    draft: 'bg-slate-100 text-slate-600 border-slate-200',
+    active: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    draft: 'bg-zinc-100 text-zinc-600 border-zinc-200',
   };
 
   const current = styles[status?.toLowerCase()] || styles.draft;
@@ -63,22 +63,22 @@ const StatusBadge = ({ status }) => {
 };
 
 const DataTable = ({ headers, data, renderRow, loading }) => (
-  <div className="w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+  <div className="w-full overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
     <div className="overflow-x-auto">
       <table className="w-full text-left border-collapse">
-        <thead className="bg-slate-50 border-b border-slate-200 font-sans">
+        <thead className="bg-zinc-50 border-b border-zinc-200 font-sans">
           <tr>
             {headers.map((h, i) => (
-              <th key={i} className="px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              <th key={i} className="px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-zinc-500">
                 {h}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100">
+        <tbody className="divide-y divide-zinc-100">
           {loading ? (
             <tr>
-              <td colSpan={headers.length} className="px-6 py-12 text-center text-slate-400">
+              <td colSpan={headers.length} className="px-6 py-12 text-center text-zinc-400">
                 <div className="flex items-center justify-center gap-2">
                   <RefreshCw size={16} className="animate-spin" /> Syncing with server...
                 </div>
@@ -86,7 +86,7 @@ const DataTable = ({ headers, data, renderRow, loading }) => (
             </tr>
           ) : data.length === 0 ? (
             <tr>
-              <td colSpan={headers.length} className="px-6 py-12 text-center text-slate-400 font-medium">
+              <td colSpan={headers.length} className="px-6 py-12 text-center text-zinc-400 font-medium">
                 No active records found.
               </td>
             </tr>
@@ -153,31 +153,31 @@ export default function MentorDashboard() {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {MOCK_STATS.map((stat, i) => (
-          <div key={i} className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm">
+          <div key={i} className="p-6 rounded-2xl bg-white border border-zinc-200 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600">
+              <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600">
                 <stat.icon size={20} />
               </div>
               <span className={`text-xs font-bold flex items-center gap-1 ${
                 stat.trendType === 'up' ? 'text-emerald-600' : 
-                stat.trendType === 'down' ? 'text-red-600' : 'text-slate-400'
+                stat.trendType === 'down' ? 'text-red-600' : 'text-zinc-400'
               }`}>
                 {stat.trendType === 'up' && <ArrowUpRight size={14} />}
                 {stat.trendType === 'down' && <ArrowDownRight size={14} />}
                 {stat.trend !== '0' && stat.trend}
               </span>
             </div>
-            <h3 className="text-3xl font-black text-slate-900 tracking-tight">{stat.value}</h3>
-            <p className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-wider">{stat.label}</p>
+            <h3 className="text-3xl font-black text-zinc-900 tracking-tight">{stat.value}</h3>
+            <p className="text-xs font-bold text-zinc-500 mt-1 uppercase tracking-wider">{stat.label}</p>
           </div>
         ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-8 p-6 rounded-2xl bg-white border border-slate-200 shadow-sm">
+        <div className="lg:col-span-8 p-6 rounded-2xl bg-white border border-zinc-200 shadow-sm">
           <div className="flex items-center justify-between mb-6">
-            <h4 className="text-sm font-bold text-slate-900 uppercase tracking-tight">Recent Activity</h4>
-            <button className="text-xs font-bold text-indigo-600 hover:underline">View All</button>
+            <h4 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Recent Activity</h4>
+            <button className="text-xs font-bold text-emerald-600 hover:underline">View All</button>
           </div>
           <div className="space-y-4">
              {violations.length > 0 ? violations.map((v) => (
@@ -185,46 +185,46 @@ export default function MentorDashboard() {
                    <div className="flex items-center gap-3">
                       <AlertTriangle size={16} className="text-red-500" />
                       <div>
-                         <p className="text-[13px] font-bold text-slate-900">{v.student}</p>
-                         <p className="text-[11px] text-slate-500">{v.type}</p>
+                         <p className="text-[13px] font-bold text-zinc-900">{v.student}</p>
+                         <p className="text-[11px] text-zinc-500">{v.type}</p>
                       </div>
                    </div>
-                   <span className="text-[10px] font-bold text-slate-400 uppercase">{v.time}</span>
+                   <span className="text-[10px] font-bold text-zinc-400 uppercase">{v.time}</span>
                 </div>
              )) : (
-               <div className="h-32 flex flex-col items-center justify-center text-slate-400 gap-2">
+               <div className="h-32 flex flex-col items-center justify-center text-zinc-400 gap-2">
                   <ShieldCheck size={24} className="opacity-20" />
                   <p className="text-xs font-bold uppercase tracking-widest opacity-40 text-center">No integrity violations detected <br/>in the current session</p>
                </div>
              )}
           </div>
         </div>
-        <div className="lg:col-span-4 p-6 rounded-2xl bg-white border border-slate-200 shadow-sm">
+        <div className="lg:col-span-4 p-6 rounded-2xl bg-white border border-zinc-200 shadow-sm">
            <div className="flex items-center gap-2 mb-6">
-              <CheckCircle2 size={16} className="text-indigo-600" />
-              <h4 className="text-sm font-bold text-slate-900 uppercase tracking-tight">System Compliance</h4>
+              <CheckCircle2 size={16} className="text-emerald-600" />
+              <h4 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">System Compliance</h4>
            </div>
            <div className="space-y-6">
               <div>
-                 <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
+                 <div className="flex justify-between items-center text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">
                     <span>Identity Verified</span>
-                    <span className="text-indigo-600">100%</span>
+                    <span className="text-emerald-600">100%</span>
                  </div>
-                 <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                 <div className="h-1.5 bg-zinc-100 rounded-full overflow-hidden">
                     <div className="h-full bg-emerald-500 w-full" />
                  </div>
               </div>
               <div>
-                 <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
+                 <div className="flex justify-between items-center text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">
                     <span>Proctoring Relay</span>
-                    <span className="text-indigo-600">Stable</span>
+                    <span className="text-emerald-600">Stable</span>
                  </div>
-                 <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-indigo-500 w-[94%]" />
+                 <div className="h-1.5 bg-zinc-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-emerald-500 w-[94%]" />
                  </div>
               </div>
            </div>
-           <p className="text-[11px] text-slate-500 mt-8 leading-relaxed italic">
+           <p className="text-[11px] text-zinc-500 mt-8 leading-relaxed italic">
              "Encrypted proctoring stream is active. AI diagnostics reporting minimal outlier behavior."
            </p>
         </div>
@@ -236,22 +236,22 @@ export default function MentorDashboard() {
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
+          <h2 className="text-lg font-black text-zinc-900 tracking-tight flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
             Live Environment
           </h2>
-          <p className="text-xs text-slate-500 mt-1 uppercase tracking-widest font-bold">Node: vision-edge-alpha</p>
+          <p className="text-xs text-zinc-500 mt-1 uppercase tracking-widest font-bold">Node: vision-edge-alpha</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+            <Search className="absolute left-3 top-1/2 -tranzinc-y-1/2 text-zinc-400" size={14} />
             <input 
               type="text" 
               placeholder="Filter candidates..."
-              className="pl-9 pr-4 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none w-64 bg-white"
+              className="pl-9 pr-4 py-2 text-xs border border-zinc-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none w-64 bg-white"
             />
           </div>
-          <button className="p-2 border border-slate-200 rounded-xl text-slate-500 hover:bg-slate-50 transition-all">
+          <button className="p-2 border border-zinc-200 rounded-xl text-zinc-500 hover:bg-zinc-50 transition-all">
             <Filter size={14} />
           </button>
         </div>
@@ -261,24 +261,24 @@ export default function MentorDashboard() {
         headers={['Candidate Name', 'Current Exam', 'Status', 'Violations', 'Actions']}
         data={MOCK_LIVE_SESSIONS}
         renderRow={(session) => (
-          <tr key={session.id} className="hover:bg-slate-50 transition-colors group">
+          <tr key={session.id} className="hover:bg-zinc-50 transition-colors group">
             <td className="px-6 py-4">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-slate-600 text-xs">
+                <div className="w-8 h-8 rounded-lg bg-zinc-100 border border-zinc-200 flex items-center justify-center font-bold text-zinc-600 text-xs">
                   {session.name.charAt(0)}
                 </div>
-                <span className="text-sm font-semibold text-slate-900">{session.name}</span>
+                <span className="text-sm font-semibold text-zinc-900">{session.name}</span>
               </div>
             </td>
-            <td className="px-6 py-4 text-xs font-medium text-slate-600">
+            <td className="px-6 py-4 text-xs font-medium text-zinc-600">
               {session.exam}
             </td>
             <td className="px-6 py-4">
                <StatusBadge status={session.status} />
             </td>
             <td className="px-6 py-4">
-               <div className={`flex items-center gap-1.5 text-xs font-bold tabular-nums ${session.violations > 5 ? 'text-red-600' : 'text-slate-500'}`}>
-                  <AlertTriangle size={12} className={session.violations > 0 ? 'text-amber-500' : 'text-slate-300'} />
+               <div className={`flex items-center gap-1.5 text-xs font-bold tabular-nums ${session.violations > 5 ? 'text-red-600' : 'text-zinc-500'}`}>
+                  <AlertTriangle size={12} className={session.violations > 0 ? 'text-amber-500' : 'text-zinc-300'} />
                   {session.violations}
                </div>
             </td>
@@ -296,8 +296,8 @@ export default function MentorDashboard() {
   const renderExamLibrary = () => (
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="flex items-center justify-between">
-         <h2 className="text-lg font-black text-slate-900 tracking-tight">Exam Library</h2>
-         <button className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-indigo-700 transition-all active:scale-95 shadow-lg shadow-indigo-600/20">
+         <h2 className="text-lg font-black text-zinc-900 tracking-tight">Exam Library</h2>
+         <button className="flex items-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-emerald-700 transition-all active:scale-95 shadow-lg shadow-emerald-600/20">
             <Plus size={16} /> Create New Exam
          </button>
       </div>
@@ -306,18 +306,18 @@ export default function MentorDashboard() {
         headers={['Assessment Title', 'Type', 'Duration', 'Questions', 'Status', 'Action']}
         data={MOCK_EXAMS}
         renderRow={(exam) => (
-          <tr key={exam.id} className="hover:bg-slate-50 transition-colors">
-            <td className="px-6 py-4 font-bold text-sm text-slate-900">{exam.title}</td>
-            <td className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{exam.type}</td>
-            <td className="px-6 py-4 text-xs text-slate-500 tabular-nums font-medium">{exam.duration} MIN</td>
-            <td className="px-6 py-4 text-xs text-slate-500 tabular-nums font-medium">{exam.questions} Qs</td>
+          <tr key={exam.id} className="hover:bg-zinc-50 transition-colors">
+            <td className="px-6 py-4 font-bold text-sm text-zinc-900">{exam.title}</td>
+            <td className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-widest">{exam.type}</td>
+            <td className="px-6 py-4 text-xs text-zinc-500 tabular-nums font-medium">{exam.duration} MIN</td>
+            <td className="px-6 py-4 text-xs text-zinc-500 tabular-nums font-medium">{exam.questions} Qs</td>
             <td className="px-6 py-4">
                <StatusBadge status={exam.status} />
             </td>
             <td className="px-6 py-4 text-right">
                <div className="flex items-center justify-end gap-2">
-                  <button className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"><Edit3 size={16} /></button>
-                  <button className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all"><MoreVertical size={16} /></button>
+                  <button className="p-1.5 text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"><Edit3 size={16} /></button>
+                  <button className="p-1.5 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 rounded-lg transition-all"><MoreVertical size={16} /></button>
                </div>
             </td>
           </tr>
@@ -329,8 +329,8 @@ export default function MentorDashboard() {
   const renderResults = () => (
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="flex items-center justify-between">
-         <h2 className="text-lg font-black text-slate-900 tracking-tight">Post-Exam Analytics</h2>
-         <button className="flex items-center gap-2 text-xs font-bold text-slate-600 border border-slate-200 px-4 py-2 rounded-xl hover:bg-white shadow-sm transition-all">
+         <h2 className="text-lg font-black text-zinc-900 tracking-tight">Post-Exam Analytics</h2>
+         <button className="flex items-center gap-2 text-xs font-bold text-zinc-600 border border-zinc-200 px-4 py-2 rounded-xl hover:bg-white shadow-sm transition-all">
             <Download size={14} /> Export CSV
          </button>
       </div>
@@ -339,23 +339,23 @@ export default function MentorDashboard() {
         headers={['Student', 'Exam Name', 'Result', 'Violations', 'Submission Time', 'Action']}
         data={MOCK_RESULTS}
         renderRow={(res) => (
-          <tr key={res.id} className="hover:bg-slate-50 transition-colors">
-            <td className="px-6 py-4 text-sm font-semibold text-slate-800">{res.name}</td>
-            <td className="px-6 py-4 text-xs font-medium text-slate-600">{res.exam}</td>
+          <tr key={res.id} className="hover:bg-zinc-50 transition-colors">
+            <td className="px-6 py-4 text-sm font-semibold text-zinc-800">{res.name}</td>
+            <td className="px-6 py-4 text-xs font-medium text-zinc-600">{res.exam}</td>
             <td className="px-6 py-4">
                <div className="flex items-center gap-2">
-                 <div className="max-w-[100px] flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
+                 <div className="max-w-[100px] flex-1 h-1 bg-zinc-100 rounded-full overflow-hidden">
                     <div className={`h-full rounded-full ${res.score >= 80 ? 'bg-emerald-500' : 'bg-amber-400'}`} style={{ width: `${res.score}%` }} />
                  </div>
                  <span className={`text-xs font-black tabular-nums ${res.score >= 80 ? 'text-emerald-700' : 'text-amber-700'}`}>{res.score}%</span>
                </div>
             </td>
             <td className="px-6 py-4 text-xs font-bold text-red-500 tabular-nums">{res.violations} Flags</td>
-            <td className="px-6 py-4 text-[10px] items-center gap-1.5 font-bold text-slate-400 flex uppercase tracking-wider">
+            <td className="px-6 py-4 text-[10px] items-center gap-1.5 font-bold text-zinc-400 flex uppercase tracking-wider">
                <Clock size={12} /> {res.time}
             </td>
             <td className="px-6 py-4">
-               <button className="text-indigo-600 font-bold text-[11px] uppercase tracking-widest hover:underline flex items-center gap-1">
+               <button className="text-emerald-600 font-bold text-[11px] uppercase tracking-widest hover:underline flex items-center gap-1">
                  View Report <Eye size={12} />
                </button>
             </td>
@@ -376,13 +376,13 @@ export default function MentorDashboard() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans text-slate-900 select-none antialiased">
+    <div className="flex h-screen bg-zinc-50 font-sans text-zinc-900 select-none antialiased">
       {/* Fixed Sidebar */}
-      <aside className="w-64 bg-slate-950 flex flex-col z-30 shadow-2xl shrink-0">
+      <aside className="w-64 bg-zinc-950 flex flex-col z-30 shadow-2xl shrink-0">
         <div className="h-20 flex items-center px-8 border-b border-white/5">
           <div className="flex items-center gap-3">
-             <VisionLogo className="h-6 w-6 text-indigo-500" />
-             <span className="text-sm font-black uppercase tracking-[0.3em] text-white">VISION <span className="text-slate-500 font-bold">PRO</span></span>
+             <VisionLogo className="h-6 w-6 text-emerald-500" />
+             <span className="text-sm font-black uppercase tracking-[0.3em] text-white">VISION <span className="text-zinc-500 font-bold">PRO</span></span>
           </div>
         </div>
 
@@ -393,14 +393,14 @@ export default function MentorDashboard() {
               onClick={() => setActiveTab(item.id)}
               className={`group flex w-full items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 relative ${
                 activeTab === item.id 
-                ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-900/40' 
-                : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-900/40' 
+                : 'text-zinc-400 hover:bg-white/5 hover:text-white'
               }`}
             >
               <item.icon size={18} className={`transition-transform duration-300 ${activeTab === item.id ? 'scale-110' : 'group-hover:scale-110'}`} />
               <span className="text-xs font-bold uppercase tracking-wider">{item.label}</span>
               {activeTab === item.id && (
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 w-1 h-3 bg-white/30 rounded-full" />
+                <div className="absolute right-2 top-1/2 -tranzinc-y-1/2 w-1 h-3 bg-white/30 rounded-full" />
               )}
             </button>
           ))}
@@ -409,7 +409,7 @@ export default function MentorDashboard() {
         <div className="p-6 mt-auto border-t border-white/5">
           <button 
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 p-3 bg-white/5 hover:bg-red-500/10 text-slate-400 hover:text-red-400 rounded-xl text-xs font-bold transition-all uppercase tracking-widest active:scale-95 border border-white/5"
+            className="w-full flex items-center justify-center gap-2 p-3 bg-white/5 hover:bg-red-500/10 text-zinc-400 hover:text-red-400 rounded-xl text-xs font-bold transition-all uppercase tracking-widest active:scale-95 border border-white/5"
           >
             <LogOut size={16} /> Exit Module
           </button>
@@ -419,25 +419,25 @@ export default function MentorDashboard() {
       {/* Main Container */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Header */}
-        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-10 relative z-20">
-          <div className="flex items-center gap-3 text-xs font-bold text-slate-400 uppercase tracking-widest">
-            <span className="hover:text-indigo-600 transition-colors cursor-pointer">Mentor</span>
+        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-zinc-200 flex items-center justify-between px-10 relative z-20">
+          <div className="flex items-center gap-3 text-xs font-bold text-zinc-400 uppercase tracking-widest">
+            <span className="hover:text-emerald-600 transition-colors cursor-pointer">Mentor</span>
             <ChevronRight size={14} className="opacity-50" />
-            <span className="text-slate-900">{activeTab}</span>
+            <span className="text-zinc-900">{activeTab}</span>
           </div>
 
           <div className="flex items-center gap-6">
             <div className="relative group cursor-pointer">
-               <Bell size={20} className="text-slate-400 hover:text-indigo-600 transition-colors" />
+               <Bell size={20} className="text-zinc-400 hover:text-emerald-600 transition-colors" />
                <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
             </div>
-            <div className="h-6 w-px bg-slate-200" />
+            <div className="h-6 w-px bg-zinc-200" />
             <div className="flex items-center gap-3 cursor-pointer group">
               <div className="text-right">
-                <p className="text-[11px] font-bold text-slate-900 group-hover:text-indigo-600 transition-colors uppercase tracking-tight leading-none">{userName}</p>
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mt-1">Lead Architect</p>
+                <p className="text-[11px] font-bold text-zinc-900 group-hover:text-emerald-600 transition-colors uppercase tracking-tight leading-none">{userName}</p>
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-400 mt-1">Lead Architect</p>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center font-black text-slate-600 uppercase text-sm shadow-sm group-hover:border-indigo-200 transition-all">
+              <div className="w-10 h-10 rounded-xl bg-zinc-100 border border-zinc-200 flex items-center justify-center font-black text-zinc-600 uppercase text-sm shadow-sm group-hover:border-emerald-200 transition-all">
                 {userName.charAt(0)}
               </div>
             </div>

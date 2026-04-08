@@ -11,15 +11,18 @@ const adminController = require('../controllers/adminController');
 router.get('/results', verifyToken, checkRole(['admin', 'mentor']), adminController.getAllResults);
 
 // Dashboard counters (Live Students, Total Exams, etc.)
-router.get('/stats', verifyToken, checkRole(['admin', 'mentor']), adminController.getDashboardStats);
+router.get('/stats', verifyToken, checkRole(['admin', 'super_mentor', 'mentor']), adminController.getDashboardStats);
 
 // ─────────────────────────────────────────────────────────
 // User Management
 // ─────────────────────────────────────────────────────────
 
 // Students CRUD
-router.get('/students', verifyToken, checkRole(['admin', 'mentor']), adminController.getAllStudents);
-router.delete('/students/:id', verifyToken, checkRole(['admin']), adminController.deleteStudent);
+router.get('/students', verifyToken, checkRole(['admin', 'super_mentor', 'mentor']), adminController.getAllStudents);
+router.delete('/students/:id', verifyToken, checkRole(['admin', 'super_mentor']), adminController.deleteStudent);
+
+// Bulk Import
+router.post('/bulk-import', verifyToken, checkRole(['admin', 'super_mentor']), adminController.bulkImportUsers);
 
 // Mentors CRUD (Admin ONLY)
 router.get('/mentors', verifyToken, checkRole(['admin']), adminController.getAllMentors);
@@ -30,9 +33,16 @@ router.delete('/mentors/:id', verifyToken, checkRole(['admin']), adminController
 // ─────────────────────────────────────────────────────────
 
 // Global Health Check (DB, Judge0, Live Layer)
-router.get('/health', verifyToken, checkRole(['admin']), adminController.getSystemHealth);
+router.get('/health', verifyToken, checkRole(['admin', 'super_mentor']), adminController.getSystemHealth);
 
 // Audit Logs retrieval
-router.get('/audit-logs', verifyToken, checkRole(['admin']), adminController.getAuditLogs);
+router.get('/audit-logs', verifyToken, checkRole(['admin', 'super_mentor']), adminController.getAuditLogs);
+
+// ─────────────────────────────────────────────────────────
+// Global Settings
+// ─────────────────────────────────────────────────────────
+
+router.get('/settings', verifyToken, checkRole(['admin', 'super_mentor']), adminController.getSettings);
+router.post('/settings', verifyToken, checkRole(['admin', 'super_mentor']), adminController.saveSettings);
 
 module.exports = router;

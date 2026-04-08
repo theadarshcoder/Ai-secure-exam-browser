@@ -169,10 +169,14 @@ exports.getActiveExams = asyncHandler(async (req, res) => {
 // Optimized with Aggregation Pipeline to avoid N+1 query pattern
 exports.getMentorExams = asyncHandler(async (req, res) => {
     const mongoose = require('mongoose');
-    const mentorId = new mongoose.Types.ObjectId(req.user.id);
+    
+    // Admins and super mentors see all exams; regular mentors see their own
+    const matchStage = (req.user.role === 'admin' || req.user.role === 'super_mentor')
+        ? {}
+        : { creator: new mongoose.Types.ObjectId(req.user.id) };
 
     const stats = await Exam.aggregate([
-        { $match: { creator: mentorId } },
+        { $match: matchStage },
         { $sort: { createdAt: -1 } },
         {
             $lookup: {
@@ -210,10 +214,15 @@ exports.getMentorExams = asyncHandler(async (req, res) => {
                             cond: { $gt: [{ $size: { $ifNull: ['$$s.violations', []] } }, 0] }
                         }
                     }
-                }
+                },
+                creatorName: { $first: '$creatorInfo.name' }
             }
         }
     ]);
+
+    // Populate creator details manually if needed, or stick to a simple lookup
+    // Since aggregate doesn't run Mongoose middleware, we can add a $lookup for creator
+
 
     res.json(stats);
 });

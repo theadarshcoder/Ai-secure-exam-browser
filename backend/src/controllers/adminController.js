@@ -2,6 +2,7 @@ const ExamSession = require('../models/ExamSession');
 const Exam = require('../models/Exam');
 const User = require('../models/User');
 const AuditLog = require('../models/AuditLog');
+const Setting = require('../models/Setting');
 const { asyncHandler } = require('../middlewares/errorMiddleware');
 const axios = require('axios');
 const mongoose = require('mongoose');
@@ -147,4 +148,78 @@ exports.getAuditLogs = asyncHandler(async (req, res) => {
         .sort({ createdAt: -1 })
         .limit(100);
     res.json(logs);
+});
+
+// ═══════════════════════════════════════════════════════════
+// Bulk Import Users
+// ═══════════════════════════════════════════════════════════
+
+exports.bulkImportUsers = asyncHandler(async (req, res) => {
+    const { users } = req.body;
+    
+    if (!users || !Array.isArray(users)) {
+        res.status(400);
+        throw new Error('Please provide a valid array of users');
+    }
+
+    const results = [];
+
+    for (const userData of users) {
+        try {
+            // Check if already exists to avoid crashing entire batch
+            const existing = await User.findOne({ email: userData.email });
+            if (existing) {
+                results.push({ email: userData.email, status: 'failed', reason: 'Email already exists' });
+                continue;
+            }
+
+            const randNum = Math.floor(1000 + Math.random() * 9000);
+            const password = `password${randNum}`;
+
+            const newUser = new User({
+                name: userData.name,
+                email: userData.email,
+                role: userData.role || 'student',
+                password: password
+            });
+
+            await newUser.save();
+
+            results.push({
+                email: userData.email,
+                password: password,
+                status: 'success'
+            });
+        } catch (error) {
+            results.push({ email: userData.email, status: 'failed', reason: error.message });
+        }
+    }
+
+    res.json({ message: 'Bulk import processed', results });
+});
+
+// ═══════════════════════════════════════════════════════════
+// Global Settings
+// ═══════════════════════════════════════════════════════════
+
+exports.getSettings = asyncHandler(async (req, res) => {
+    let setting = await Setting.findOne();
+    if (!setting) {
+        setting = await Setting.create({});
+    }
+    res.json(setting);
+});
+
+exports.saveSettings = asyncHandler(async (req, res) => {
+    let setting = await Setting.findOne();
+    if (setting) {
+        setting.maxTabSwitches = req.body.maxTabSwitches ?? setting.maxTabSwitches;
+        setting.forceFullscreen = req.body.forceFullscreen ?? setting.forceFullscreen;
+        setting.allowLateSubmissions = req.body.allowLateSubmissions ?? setting.allowLateSubmissions;
+        setting.enableWebcam = req.body.enableWebcam ?? setting.enableWebcam;
+        await setting.save();
+    } else {
+        setting = await Setting.create(req.body);
+    }
+    res.json({ message: 'Settings saved successfully', setting });
 });
