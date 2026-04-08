@@ -685,9 +685,9 @@ export default function CreateExam() {
             <div className="text-left flex-1">
               <h2 className="text-base font-semibold text-white flex items-center gap-3 tracking-tight">
                 AI Suggestion Engine
-                <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md bg-violet-500/20 text-violet-300 border border-violet-500/30">Beta</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30">BETA - UNDER CONSTRUCTION</span>
               </h2>
-              <p className="text-xs text-zinc-400 mt-1.5">Paste your curriculum or topics and describe your requirements for AI to generate questions.</p>
+              <p className="text-xs text-amber-500/70 mt-1.5 font-medium">Auto-generation is currently disabled while the AI engine model is being trained.</p>
             </div>
             <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-white/[0.02] border border-white/[0.04] transition-transform duration-300 ${showAI ? 'rotate-180' : ''}`}>
               <ChevronDown size={18} className="text-zinc-500 group-hover:text-white transition-colors" />
