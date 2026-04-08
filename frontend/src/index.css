@@ -303,3 +303,28 @@
 /* ── Scrollbar inside Light ── */
 [data-theme="light"] .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
 [data-theme="light"] .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; }
+
+/* SaaS Style Utilities */
+.badge-capsule {
+  @apply px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border;
+}
+
+.btn-indigo {
+  @apply bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-indigo-700 transition-all active:scale-95 shadow-sm flex items-center gap-2;
+}
+
+.table-saas {
+  @apply w-full text-left border-collapse;
+}
+
+.table-saas thead {
+  @apply bg-slate-50 border-b border-slate-200;
+}
+
+.table-saas th {
+  @apply px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-slate-500;
+}
+
+.table-saas td {
+  @apply px-6 py-4 text-sm text-slate-600 border-b border-slate-100;
+}
