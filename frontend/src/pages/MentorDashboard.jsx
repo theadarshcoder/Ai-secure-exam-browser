@@ -98,9 +98,18 @@ export default function MentorDashboard() {
   const [exams, setExams] = useState([]);
   const [results, setResults] = useState([]);
   const [searchFilter, setSearchFilter] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
   // Real-time violation alerts state (via Socket.IO)
   const [violations, setViolations] = useState([]);
+
+  // Setup search debouncing
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchFilter);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchFilter]);
 
   useEffect(() => {
     const userEmail = localStorage.getItem('vision_email');
@@ -293,11 +302,11 @@ export default function MentorDashboard() {
   );
 
   const renderLiveProctoring = () => {
-    // Filter live sessions based on search
+    // Filter live sessions based on debounced search
     const filtered = liveSessions.filter(s => 
-      !searchFilter || 
-      (s.name || '').toLowerCase().includes(searchFilter.toLowerCase()) ||
-      (s.exam || '').toLowerCase().includes(searchFilter.toLowerCase())
+      !debouncedSearch || 
+      (s.name || '').toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      (s.exam || '').toLowerCase().includes(debouncedSearch.toLowerCase())
     );
 
     return (

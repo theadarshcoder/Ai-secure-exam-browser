@@ -84,7 +84,7 @@ exports.deleteStudent = asyncHandler(async (req, res) => {
 
     // Log the action
     await AuditLog.create({
-        adminId: req.user._id,
+        adminId: req.user.id,
         action: 'DELETE_STUDENT',
         details: { name: deletedStudent.name, email: deletedStudent.email }
     });
@@ -103,7 +103,7 @@ exports.deleteMentor = asyncHandler(async (req, res) => {
 
     // Log the action
     await AuditLog.create({
-        adminId: req.user._id,
+        adminId: req.user.id,
         action: 'DELETE_MENTOR',
         details: { name: deletedMentor.name, email: deletedMentor.email }
     });
@@ -163,36 +163,47 @@ exports.bulkImportUsers = asyncHandler(async (req, res) => {
     }
 
     const results = [];
+    const validUsersToInsert = [];
+    const bcrypt = require('bcryptjs');
+
+    // Generate a shared salt for this batch to optimize hashing
+    const salt = await bcrypt.genSalt(10);
+
+    // Fetch existing emails to avoid individual DB calls
+    const emailsToImport = users.map(u => u.email);
+    const existingUsers = await User.find({ email: { $in: emailsToImport } }).select('email');
+    const existingEmailsSet = new Set(existingUsers.map(u => u.email));
 
     for (const userData of users) {
-        try {
-            // Check if already exists to avoid crashing entire batch
-            const existing = await User.findOne({ email: userData.email });
-            if (existing) {
-                results.push({ email: userData.email, status: 'failed', reason: 'Email already exists' });
-                continue;
-            }
-
-            const randNum = Math.floor(1000 + Math.random() * 9000);
-            const password = `password${randNum}`;
-
-            const newUser = new User({
-                name: userData.name,
-                email: userData.email,
-                role: userData.role || 'student',
-                password: password
-            });
-
-            await newUser.save();
-
-            results.push({
-                email: userData.email,
-                password: password,
-                status: 'success'
-            });
-        } catch (error) {
-            results.push({ email: userData.email, status: 'failed', reason: error.message });
+        if (existingEmailsSet.has(userData.email)) {
+            results.push({ email: userData.email, status: 'failed', reason: 'Email already exists' });
+            continue;
         }
+
+        const randNum = Math.floor(1000 + Math.random() * 9000);
+        const plainPassword = `password${randNum}`;
+        const hashedPassword = await bcrypt.hash(plainPassword, salt);
+
+        validUsersToInsert.push({
+            name: userData.name,
+            email: userData.email,
+            role: userData.role || 'student',
+            password: hashedPassword // Pre-hashed
+        });
+
+        results.push({
+            email: userData.email,
+            password: plainPassword,
+            status: 'success'
+        });
+        
+        // Add to set to prevent duplicates within the same batch
+        existingEmailsSet.add(userData.email);
+    }
+
+    if (validUsersToInsert.length > 0) {
+        // bypass middleware hook using insertMany
+        await User.insertMany(validUsersToInsert, { ordered: false });
     }
 
     res.json({ message: 'Bulk import processed', results });

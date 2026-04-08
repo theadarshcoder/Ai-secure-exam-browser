@@ -17,7 +17,8 @@ import api, {
   bulkImportUsers,
   getSettings,
   saveSettings,
-  getAdminExams
+  getAdminExams,
+  getAuditLogs
 } from '../services/api';
 
 // ─────────────────────────────────────────────────────────
@@ -90,6 +91,7 @@ export default function AdminDashboard() {
   // App States
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({ totalUsers: 0, activeExams: 0, systemHealth: '100%', totalViolations: 0 });
+  const [auditLogs, setAuditLogs] = useState([]);
   const [users, setUsers] = useState([]);
   const [exams, setExams] = useState([]);
   const [settings, setSettingsState] = useState({
@@ -110,13 +112,17 @@ export default function AdminDashboard() {
       setLoading(true);
       try {
           if (tab === 'Overview') {
-              const res = await getDashboardStats();
+              const [res, logsRes] = await Promise.all([
+                  getDashboardStats().catch(() => ({})),
+                  getAuditLogs().catch(() => [])
+              ]);
               setStats({
                   totalUsers: res.totalAttempts || 0,
                   activeExams: res.liveExams || 0,
                   systemHealth: '100%',
                   totalViolations: res.flaggedSessions || 0
               });
+              setAuditLogs(logsRes || []);
           } else if (tab === 'Users') {
               const [studentsRes, mentorsRes] = await Promise.all([
                   getStudents().catch(() => []),
@@ -252,11 +258,29 @@ export default function AdminDashboard() {
 
       <div className="p-6 rounded-2xl bg-white border border-zinc-200 shadow-sm">
         <div className="flex items-center justify-between mb-6">
-           <h4 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Recent System Activity</h4>
+           <h4 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Recent System Activity (Audit Logs)</h4>
+           {loading && <RefreshCw size={14} className="animate-spin text-zinc-400" />}
         </div>
-        <div className="h-32 flex flex-col items-center justify-center text-zinc-400 gap-2">
-           <Activity size={24} className="opacity-20" />
-           <p className="text-xs font-bold uppercase tracking-widest opacity-40 text-center">System operational. Activity logs<br/>stream actively.</p>
+        <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+           {auditLogs.length > 0 ? auditLogs.map((log) => (
+              <div key={log._id} className="flex flex-col p-4 bg-zinc-50 border border-zinc-100 rounded-xl">
+                 <div className="flex items-center justify-between mb-2">
+                    <p className="text-[13px] font-bold text-zinc-900">{log.action}</p>
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{new Date(log.createdAt).toLocaleString()}</span>
+                 </div>
+                 <p className="text-[11px] text-zinc-500 font-medium">By: {log.adminId?.name || 'Admin'} ({log.adminId?.email || 'N/A'})</p>
+                 {log.details && Object.keys(log.details).length > 0 && (
+                    <div className="mt-3 p-3 bg-white rounded-lg border border-zinc-200 text-[10px] font-mono text-zinc-600">
+                       {JSON.stringify(log.details, null, 2)}
+                    </div>
+                 )}
+              </div>
+           )) : (
+              <div className="h-32 flex flex-col items-center justify-center text-zinc-400 gap-2">
+                 <Activity size={24} className="opacity-20" />
+                 <p className="text-xs font-bold uppercase tracking-widest opacity-40 text-center">No recent audit logs found.</p>
+              </div>
+           )}
         </div>
       </div>
     </div>
