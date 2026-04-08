@@ -52,7 +52,6 @@ const Sidebar = ({ currentTime, userName, userEmail, onSupport }) => (
         <div className="flex flex-col leading-tight">
           <div className="flex items-center gap-2 mb-0.5">
             <h2 className="text-[15px] font-semibold text-slate-100">{userName || 'Vinit'}</h2>
-            <span className="w-2 h-2 bg-emerald-400 rounded-full"></span>
           </div>
           
           <span className="text-[12px] text-slate-500 mb-1">

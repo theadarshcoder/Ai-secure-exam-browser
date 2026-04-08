@@ -43,29 +43,7 @@ const StepIndicator = ({ step }) => {
   );
 };
 
-const TelemetryWidget = ({ modelsLoaded, active }) => (
-  <div className="bg-[#0a0c10] rounded-2xl p-4 border border-white/[0.02] shadow-[inset_0_0_20px_rgba(0,0,0,0.2)]">
-    <div className="flex items-center gap-2 mb-4">
-      <div className="relative flex items-center justify-center">
-        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 z-10" />
-        <div className="absolute inset-0 w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping opacity-50" />
-      </div>
-      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Live Telemetry</span>
-    </div>
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] text-slate-500 font-medium tracking-wide">Vision AI Engine</span>
-        <span className={`text-[10px] font-bold tracking-widest ${modelsLoaded ? 'text-emerald-400' : 'text-amber-400 animate-pulse'}`}>
-          {modelsLoaded ? 'ACTIVE' : 'BOOTING'}
-        </span>
-      </div>
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] text-slate-500 font-medium tracking-wide">Neural Latency</span>
-        <span className="text-[10px] font-bold tracking-widest text-emerald-400">{active ? '~24ms' : '---'}</span>
-      </div>
-    </div>
-  </div>
-);
+
 
 const ErrorState = ({ error, onRetry, isConnecting }) => (
   <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-black/50 rounded-2xl border border-white/5 relative z-10 m-2">
@@ -256,9 +234,7 @@ export default function IDVerification() {
           <div className="flex-1 flex flex-col bg-gradient-to-b from-[#12141a] to-transparent rounded-3xl p-6 border border-white/[0.05]">
             <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.3em] mb-6">Identity Verification Pipeline</h3>
             <StepIndicator step={step} />
-            <div className="mt-auto pt-8">
-              <TelemetryWidget modelsLoaded={modelsLoaded} active={modelsLoaded && !!stream && step === 1} />
-            </div>
+
           </div>
         </aside>
 
