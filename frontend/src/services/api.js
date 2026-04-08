@@ -168,4 +168,44 @@ export const getAuditLogs = async () => {
     }
 };
 
+// ─────────────────────────────────────────────────────────
+// Mentor Dashboard APIs
+// ─────────────────────────────────────────────────────────
+
+export const getMentorStats = async () => {
+    try {
+        const response = await api.get('/api/exams/mentor-stats');
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
+export const getMentorExamList = async () => {
+    try {
+        const response = await api.get('/api/exams/mentor-list');
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
+export const getAllResults = async () => {
+    try {
+        const response = await api.get('/api/admin/results');
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
+export const deleteExam = async (id) => {
+    try {
+        const response = await api.delete(`/api/exams/${id}`);
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
 export default api;
