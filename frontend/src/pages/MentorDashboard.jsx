@@ -6,7 +6,7 @@ import {
   Search, Bell, Plus, ChevronRight, MoreVertical,
   LogOut, Settings, Clock, AlertTriangle, 
   CheckCircle2, XCircle, ArrowUpRight, ArrowDownRight,
-  Filter, Download, Eye, Power, User, ShieldCheck, 
+  Filter, Download, Eye, Power, Users, ShieldCheck, 
   Edit3, RefreshCw
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
@@ -43,8 +43,6 @@ const MOCK_RESULTS = [
 /* ─────────────────────────────────────────────────────────
    Components
    ───────────────────────────────────────────────────────── */
-
-const Users = ({ size, className }) => <User size={size} className={className} />; // Shim for MOCK_STATS usage
 
 const StatusBadge = ({ status }) => {
   const styles = {
