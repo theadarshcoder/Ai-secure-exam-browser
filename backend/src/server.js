@@ -283,9 +283,12 @@ const shutdown = () => {
     server.close(() => {
         console.log('✔ HTTP server closed.');
         const mongoose = require('mongoose');
-        mongoose.connection.close(false, () => {
+        mongoose.connection.close().then(() => {
             console.log('✔ MongoDB connection closed.');
             process.exit(0);
+        }).catch(err => {
+            console.error('❌ MongoDB close error:', err.message);
+            process.exit(1);
         });
     });
 };
