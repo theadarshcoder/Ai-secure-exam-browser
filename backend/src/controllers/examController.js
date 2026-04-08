@@ -258,6 +258,60 @@ exports.getExamById = asyncHandler(async (req, res) => {
     });
 });
 
+// ─────────────── GET /api/exams/mentor/:id ───────────────
+// Load exam for mentor (INCLUDES full data for editing)
+exports.getMentorExamById = asyncHandler(async (req, res) => {
+    const exam = await Exam.findById(req.params.id);
+
+    if (!exam) {
+        res.status(404);
+        throw new Error('Exam not found');
+    }
+
+    // Must be creator or admin
+    if (exam.creator.toString() !== req.user.id && req.user.role !== 'admin') {
+        res.status(403);
+        throw new Error('You do not have permission to view this exam details.');
+    }
+
+    res.json(exam);
+});
+
+// ─────────────── PATCH /api/exams/:id/status ───────────────
+// Quick toggle exam status (draft -> published -> completed)
+exports.updateExamStatus = asyncHandler(async (req, res) => {
+    const examId = req.params.id;
+    const { status } = req.body;
+
+    if (!['draft', 'published', 'completed'].includes(status)) {
+        res.status(400);
+        throw new Error('Invalid status.');
+    }
+
+    const exam = await Exam.findById(examId);
+
+    if (!exam) {
+        res.status(404);
+        throw new Error('Exam not found');
+    }
+
+    if (exam.creator.toString() !== req.user.id && req.user.role !== 'admin') {
+        res.status(403);
+        throw new Error('You do not have permission to update this exam.');
+    }
+
+    // Extra check: prevent publishing an empty draft
+    if (status === 'published' && (!exam.questions || exam.questions.length === 0)) {
+        res.status(400);
+        throw new Error('Cannot publish an exam with no questions.');
+    }
+
+    exam.status = status;
+    await exam.save();
+
+    res.json({ message: `Exam status updated to ${status}`, examId, status });
+});
+
 // ─────────────── POST /api/exams/start ───────────────
 // Student starts the exam — an exam session is created
 // If a session already exists (e.g., disconnection), resume the session

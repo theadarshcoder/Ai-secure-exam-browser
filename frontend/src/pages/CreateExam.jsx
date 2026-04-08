@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { Navbar } from '../components/Navbar';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, Plus, Trash2, Code, ListChecks, AlignLeft,
   CheckCircle, Save, Send, Copy, Award, Clock,
@@ -220,6 +220,7 @@ const csvRowToQuestion = (cols) => {
 
 export default function CreateExam() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [exam, setExam] = useState({ title: '', description: '', duration: 60, totalMarks: 100, passingMarks: 40, category: 'DSA', scheduledDate: '' });
   const [questions, setQuestions] = useState([]);
   const [expandedQ, setExpandedQ] = useState(null);
@@ -238,6 +239,49 @@ export default function CreateExam() {
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [publishedExamId, setPublishedExamId] = useState('');
+  const [editId, setEditId] = useState(null);
+  const [initialLoading, setInitialLoading] = useState(false);
+
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const id = queryParams.get('id');
+    if (id) {
+      setEditId(id);
+      loadDraft(id);
+    }
+  }, [location.search]);
+
+  const loadDraft = async (id) => {
+    setInitialLoading(true);
+    try {
+      const response = await api.get(`/api/exams/mentor/${id}`);
+      const data = response.data;
+      if (data) {
+        setExam({
+          title: data.title || '',
+          category: data.category || 'DSA',
+          duration: data.duration || 60,
+          totalMarks: data.totalMarks || 100,
+          passingMarks: data.passingMarks || 40,
+          scheduledDate: data.scheduledDate ? new Date(data.scheduledDate).toISOString().slice(0, 16) : ''
+        });
+        
+        if (data.questions && data.questions.length > 0) {
+          const loadedQuestions = data.questions.map(q => ({
+            ...q,
+            id: q._id || Date.now() + Math.random()
+          }));
+          setQuestions(loadedQuestions);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load draft:", err);
+      alert("Failed to load draft. It may have been deleted.");
+      navigate('/mentor/create-exam'); // Clear query param
+    } finally {
+      setInitialLoading(false);
+    }
+  };
 
   const handlePublish = async () => {
     if (questions.length === 0) return;
@@ -302,9 +346,14 @@ export default function CreateExam() {
     }
 
     try {
-      // Connect to real backend
-      const response = await api.post('/api/exams/create', payload);
-      const serverExam = response.data;
+      let response;
+      if (editId) {
+        response = await api.put(`/api/exams/update/${editId}`, { ...payload, status: 'published' });
+      } else {
+        response = await api.post('/api/exams/create', { ...payload, status: 'published' });
+      }
+      
+      const serverExam = response.data.exam || response.data; // Depending on update vs create response structure
       
       // Update local state and persistence for frontend components
       const existing = JSON.parse(localStorage.getItem('published_exams') || '[]');
@@ -367,7 +416,11 @@ export default function CreateExam() {
     };
 
     try {
-      await api.post('/api/exams/create', payload);
+      if (editId) {
+        await api.put(`/api/exams/update/${editId}`, payload);
+      } else {
+        await api.post('/api/exams/create', payload);
+      }
       // Navigate to dashboard where they can see the draft
       navigate('/mentor');
     } catch (err) {
@@ -508,7 +561,10 @@ export default function CreateExam() {
 
           <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-2">
             <div>
-              <h1 className="text-3xl font-extrabold text-white tracking-tight leading-tight">Create Assessment</h1>
+              <h1 className="text-3xl font-extrabold text-white tracking-tight leading-tight">
+                {editId ? 'Edit Assessment' : 'Create Assessment'}
+                {initialLoading && <Loader2 size={16} className="inline ml-3 animate-spin text-zinc-500" />}
+              </h1>
               <p className="text-sm text-zinc-400 mt-2 flex items-center gap-3">
                 <span className="flex items-center gap-1.5"><ListChecks size={15} className="text-zinc-500" /> {questions.length} questions</span>
                 <span className="w-1 h-1 rounded-full bg-zinc-700" />
@@ -669,8 +725,8 @@ export default function CreateExam() {
                   <div className="flex items-center gap-3 mb-4 p-3 rounded-xl bg-[#0a0c10] border border-white/[0.05]">
                     <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest mr-1">File contains:</span>
                     {[
-                      { id: 'import', label: '📋 Actual Questions', desc: 'MCQ / Short / Coding rows' },
-                      { id: 'syllabus', label: '📄 Syllabus / Topics', desc: 'AI generates questions' },
+                      { id: 'import', label: 'Actual Questions', desc: 'MCQ / Short / Coding rows' },
+                      { id: 'syllabus', label: 'Syllabus / Topics', desc: 'AI generates questions' },
                     ].map(opt => (
                       <button
                         key={opt.id}
@@ -744,7 +800,7 @@ export default function CreateExam() {
                             <div>
                               <p className="text-sm font-semibold text-zinc-200">{uploadedFile.name}</p>
                               <p className={`text-xs mt-0.5 ${ uploadIntent === 'import' ? 'text-violet-400' : 'text-emerald-400' }`}>
-                                {uploadIntent === 'import' ? '✓ Data captured from file' : '✓ Content processed — topics mapped'}
+                                {uploadIntent === 'import' ? 'Data captured from file' : 'Content processed — topics mapped'}
                               </p>
                             </div>
                           </div>

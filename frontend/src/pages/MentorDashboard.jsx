@@ -10,7 +10,8 @@ import {
   BarChart3, Bell, FileText, TrendingUp,
   ArrowDownRight, ExternalLink, Filter,
   AlertCircle, ShieldCheck, BookOpen, CreditCard,
-  Activity, ScanFace, OctagonX, CheckCircle2
+  Activity, ScanFace, OctagonX, CheckCircle2,
+  Trash2, Edit, Play, CheckSquare, MoreVertical
 } from 'lucide-react';
 
 // --- Default Empty State ---
@@ -257,37 +258,75 @@ const StatCard = ({ label, value, delta, deltaLabel, color }) => (
   </div>
 );
 
-const ActiveSessionItem = ({ exam }) => (
-  <div className="bg-[#181a20] rounded-2xl p-5 border border-white/[0.06] flex items-center justify-between gap-4 hover:border-white/[0.12] transition-colors group cursor-pointer">
-    <div className="flex items-center gap-4 flex-1 min-w-0">
-      <div className="w-10 h-10 rounded-xl bg-[#0f1117] border border-white/[0.06] flex items-center justify-center text-sm font-bold text-zinc-400 shrink-0">
-        {exam.students}
-      </div>
-      <div className="min-w-0">
-        <p className="text-sm font-medium text-zinc-200 truncate group-hover:text-white transition-colors">{exam.name}</p>
-        <p className="text-xs text-zinc-600 mt-0.5">{exam.id} Â· {exam.status === 'live' ? `${exam.time} elapsed` : `Starts at ${exam.time}`}</p>
-      </div>
-    </div>
-    <div className="flex items-center gap-3 shrink-0">
-      {exam.flags > 0 && (
-        <div className="flex items-center gap-1.5 text-amber-400 bg-amber-400/10 px-2.5 py-1 rounded-lg">
-          <AlertTriangle size={12} />
-          <span className="text-[11px] font-semibold">{exam.flags}</span>
+const ActiveSessionItem = ({ exam, onStatusChange, onDelete, onEdit }) => {
+  const [showMenu, setShowMenu] = useState(false);
+
+  return (
+    <div className="bg-[#181a20] rounded-2xl p-5 border border-white/[0.06] flex items-center justify-between gap-4 hover:border-white/[0.12] transition-colors group relative">
+      <div className="flex items-center gap-4 flex-1 min-w-0">
+        <div className="w-10 h-10 rounded-xl bg-[#0f1117] border border-white/[0.06] flex items-center justify-center text-sm font-bold text-zinc-400 shrink-0">
+          {exam.students}
         </div>
-      )}
-      <div className={`px-3 py-1 rounded-lg text-[11px] font-semibold ${
-        exam.status === 'live' 
-          ? 'bg-emerald-500/10 text-emerald-400' 
-          : exam.status === 'draft' 
-            ? 'bg-amber-500/10 text-amber-400' 
-            : 'bg-zinc-800 text-zinc-500'
-      }`}>
-        {exam.status === 'live' ? '● Live' : exam.status === 'draft' ? '● Draft' : 'Upcoming'}
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-zinc-200 truncate group-hover:text-white transition-colors">{exam.name}</p>
+          <p className="text-xs text-zinc-600 mt-0.5">{exam.id} • {exam.status === 'live' ? `${exam.time} elapsed` : `Starts at ${exam.time}`}</p>
+        </div>
       </div>
-      <ChevronRight size={16} className="text-zinc-700 group-hover:text-zinc-400 transition-colors" />
+      <div className="flex items-center gap-3 shrink-0">
+        {exam.flags > 0 && (
+          <div className="flex items-center gap-1.5 text-amber-400 bg-amber-400/10 px-2.5 py-1 rounded-lg">
+            <AlertTriangle size={12} />
+            <span className="text-[11px] font-semibold">{exam.flags}</span>
+          </div>
+        )}
+        <div className={`px-3 py-1 rounded-lg text-[11px] font-semibold ${
+          exam.status === 'live' 
+            ? 'bg-emerald-500/10 text-emerald-400' 
+            : exam.status === 'draft' 
+              ? 'bg-amber-500/10 text-amber-400' 
+              : 'bg-zinc-800 text-zinc-500'
+        }`}>
+          {exam.status === 'live' ? 'Live' : exam.status === 'draft' ? 'Draft' : 'Completed'}
+        </div>
+
+        {/* Action Menu Toggle */}
+        <div className="relative">
+          <button 
+            onClick={() => setShowMenu(!showMenu)} 
+            onBlur={() => setTimeout(() => setShowMenu(false), 200)}
+            className="p-1.5 rounded-lg text-zinc-500 hover:bg-white/[0.05] hover:text-white transition-colors"
+          >
+            <MoreVertical size={16} />
+          </button>
+          
+          {showMenu && (
+            <div className="absolute right-0 top-full mt-1 w-36 bg-[#181a20] border border-white/[0.08] shadow-xl rounded-xl overflow-hidden z-20 animate-in fade-in zoom-in-95 origin-top-right">
+              {exam.status === 'draft' && (
+                <>
+                  <button onClick={() => onStatusChange(exam.id, 'published')} className="w-full px-4 py-2.5 text-left text-xs font-semibold text-emerald-400 hover:bg-white/[0.03] flex items-center gap-2">
+                    <Play size={13} /> Publish Live
+                  </button>
+                  <button onClick={() => onEdit(exam.id)} className="w-full px-4 py-2.5 text-left text-xs font-semibold text-zinc-300 hover:bg-white/[0.03] flex items-center gap-2">
+                    <Edit size={13} /> Edit Draft
+                  </button>
+                </>
+              )}
+              {exam.status === 'live' && (
+                <button onClick={() => onStatusChange(exam.id, 'completed')} className="w-full px-4 py-2.5 text-left text-xs font-semibold text-blue-400 hover:bg-white/[0.03] flex items-center gap-2">
+                  <CheckSquare size={13} /> Mark Completed
+                </button>
+              )}
+              <div className="h-px bg-white/[0.04]" />
+              <button onClick={() => onDelete(exam.id)} className="w-full px-4 py-2.5 text-left text-xs font-semibold text-red-400 hover:bg-red-500/10 flex items-center gap-2">
+                <Trash2 size={13} /> Delete Exam
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const ActivityItem = ({ item }) => {
   const dotColor = item.type === 'flag' ? 'bg-amber-400' : item.type === 'review' ? 'bg-blue-400' : 'bg-emerald-400';
@@ -415,6 +454,45 @@ export default function MentorDashboard() {
   const [studentPerformance, setStudentPerformance] = useState([]);
   const [resultsSummary, setResultsSummary] = useState([]);
 
+  const fetchLiveGrid = async () => {
+    try {
+      const response = await api.get('/api/exams/mentor-list');
+      if (Array.isArray(response.data)) {
+        setLiveExams(response.data);
+      } else {
+        console.warn('Mentor list response is not an array');
+        setLiveExams([]);
+      }
+    } catch (error) {
+      console.error('Grid sync failure:', error);
+    }
+  };
+
+  const handleStatusUpdate = async (id, newStatus) => {
+    try {
+      await api.patch(`/api/exams/${id}/status`, { status: newStatus });
+      addToast(`Exam status updated to ${newStatus}`, 'success');
+      fetchLiveGrid(); // Refresh the list
+    } catch (err) {
+      addToast(err.response?.data?.error || err.response?.data?.message || 'Failed to update status', 'error');
+    }
+  };
+
+  const handleDeleteExam = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this exam? This action cannot be undone.")) return;
+    try {
+      await api.delete(`/api/exams/${id}`);
+      addToast('Exam deleted successfully', 'success');
+      fetchLiveGrid(); // Refresh
+    } catch (err) {
+      addToast(err.response?.data?.error || err.response?.data?.message || 'Failed to delete exam', 'error');
+    }
+  };
+
+  const handleEditDraft = (id) => {
+    navigate(`/mentor/create-exam?id=${id}`);
+  };
+
   useEffect(() => {
     const userEmail = localStorage.getItem('vision_email') || 'mentor@vision.auth';
     socketService.connect(userEmail);
@@ -435,23 +513,6 @@ export default function MentorDashboard() {
       setRecentActivity(prev => [newActivity, ...prev.slice(0, 5)]);
     });
 
-    // Fetch live exam grid from backend
-    const fetchLiveGrid = async () => {
-      try {
-        const response = await api.get('/api/exams/mentor-list');
-        if (Array.isArray(response.data)) {
-          setLiveExams(response.data);
-          console.log(`✅ Loaded ${response.data.length} live sessions`);
-        } else {
-          console.warn('⚠️ Mentor list response is not an array');
-          setLiveExams([]);
-        }
-      } catch (error) {
-        console.error('Grid sync failure:', error);
-      }
-    };
-
-    // Fetch mentor dashboard stats from backend
     const fetchStats = async () => {
       try {
         const response = await api.get('/api/exams/mentor-stats');
@@ -555,7 +616,13 @@ export default function MentorDashboard() {
 
               <div className="space-y-2">
                 {liveExams.length > 0 ? liveExams.map((exam, i) => (
-                  <ActiveSessionItem key={i} exam={exam} />
+                  <ActiveSessionItem 
+                    key={i} 
+                    exam={exam} 
+                    onStatusChange={handleStatusUpdate}
+                    onDelete={handleDeleteExam}
+                    onEdit={handleEditDraft}
+                  />
                 )) : (
                   <div className="text-center py-10 text-zinc-600 text-xs font-medium">No active sessions. Create an exam to get started.</div>
                 )}

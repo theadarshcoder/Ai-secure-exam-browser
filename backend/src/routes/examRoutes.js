@@ -57,6 +57,9 @@ router.post('/submit', verifyToken, examController.submitExam);
 router.post('/incident', verifyToken, examController.logIncident);
 
 // Exam details (questions without correct answers — security)
+router.get('/mentor/:id', verifyToken, checkRole(['mentor', 'admin']), examController.getMentorExamById);
+router.patch('/:id/status', verifyToken, checkRole(['mentor', 'admin']), examController.updateExamStatus);
+
 router.get('/:id', verifyToken, examController.getExamById);
 
 // Legacy endpoint for backward compatibility
