@@ -269,7 +269,7 @@ io.on('connection', (socket) => {
 // ═══════════════════════════════════════════════════════════
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`\n🚀 Server running on port ${PORT}`);
     console.log(`🔒 CORS: Allowed origins → ${allowedOrigins.join(', ')}`);
     console.log(`🛡️  Rate Limit: 100 req/15min (global) | 10 req/15min (auth)`);
