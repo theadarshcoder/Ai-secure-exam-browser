@@ -12,7 +12,7 @@ require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const { verifyToken, checkRole } = require('./middlewares/authMiddleware');
 const User = require('./models/User');
-const { connectRedis } = require('./config/redis');
+// const { connectRedis } = require('./config/redis');
 const morgan = require('morgan');
 const validateEnv = require('./utils/envValidator');
 
@@ -179,7 +179,7 @@ io.use(async (socket, next) => {
 (async () => {
     validateEnv(); // Verify required variables before starting
     await connectDB();
-    await connectRedis();
+    // await connectRedis();
 })();
 
 app.get('/', (req, res) => res.send('<h1>Server & Sockets working perfectly 🔒</h1>'));
