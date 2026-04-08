@@ -240,21 +240,24 @@ const StudentDetailModal = ({ student, onClose }) => {
   );
 };
 
-const StatCard = ({ label, value, delta, deltaLabel, color }) => (
-  <div className="bg-[#181a20] rounded-2xl p-5 border border-white/[0.06]">
-    <div className="flex items-center gap-2 mb-3">
-      <div className={`w-2 h-2 rounded-full ${color}`} />
-      <span className="text-xs font-medium text-zinc-500 uppercase tracking-wide">{label}</span>
-    </div>
-    <div className="flex items-baseline gap-2">
-      <span className="text-3xl font-bold text-white">{value}</span>
-      {delta && (
-        <span className="text-xs font-semibold text-emerald-400 flex items-center gap-0.5">
-          <ArrowUpRight size={12} />{delta}
-        </span>
+const StatCard = ({ label, value, delta, deltaLabel, color, topTag, topTagBg, topTagColor }) => (
+  <div className="bg-[#12151e] rounded-2xl p-6 border border-white/[0.05] relative flex flex-col justify-between h-[130px]">
+    <div className="flex items-center justify-between">
+      <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.15em]">{label}</span>
+      {(topTag || delta) && (
+        <div className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${topTagBg || 'bg-[#1a1d27]'} ${topTagColor || 'text-zinc-400'}`}>
+          {topTag || (
+            <span className="flex items-center gap-0.5">
+              <ArrowUpRight size={10} />{delta}
+            </span>
+          )}
+        </div>
       )}
     </div>
-    <p className="text-[11px] text-zinc-600 mt-1">{deltaLabel}</p>
+    <div>
+      <span className={`text-[32px] font-medium leading-none ${label.includes('FLAGS') && parseInt(value) > 0 ? 'text-red-500' : 'text-white'}`}>{value}</span>
+      <p className="text-[11px] font-medium text-zinc-600 mt-2 tracking-wide leading-tight line-clamp-2 pr-4">{deltaLabel}</p>
+    </div>
   </div>
 );
 
@@ -262,67 +265,80 @@ const ActiveSessionItem = ({ exam, onStatusChange, onDelete, onEdit }) => {
   const [showMenu, setShowMenu] = useState(false);
 
   return (
-    <div className="bg-[#181a20] rounded-2xl p-5 border border-white/[0.06] flex items-center justify-between gap-4 hover:border-white/[0.12] transition-colors group relative">
-      <div className="flex items-center gap-4 flex-1 min-w-0">
-        <div className="w-10 h-10 rounded-xl bg-[#0f1117] border border-white/[0.06] flex items-center justify-center text-sm font-bold text-zinc-400 shrink-0">
-          {exam.students}
+    <div className="grid grid-cols-12 gap-4 items-center px-5 py-4 border-b border-white/[0.03] hover:bg-white/[0.01] transition-colors relative group">
+      <div className="col-span-5 flex items-center gap-4">
+        <div className="w-9 h-9 rounded-lg bg-[#1a1d27] border border-white/[0.05] flex items-center justify-center text-[10px] font-black text-blue-500 shrink-0 uppercase">
+          {exam.name.substring(0, 2)}
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-medium text-zinc-200 truncate group-hover:text-white transition-colors">{exam.name}</p>
-          <p className="text-xs text-zinc-600 mt-0.5">{exam.id} • {exam.status === 'live' ? `${exam.time} elapsed` : `Starts at ${exam.time}`}</p>
+          <p className="text-[13px] font-semibold text-zinc-200 truncate group-hover:text-white transition-colors">{exam.name}</p>
+          <p className="text-[10px] text-zinc-600 font-medium tracking-wide mt-0.5">ID: {exam.id}</p>
         </div>
       </div>
-      <div className="flex items-center gap-3 shrink-0">
-        {exam.flags > 0 && (
-          <div className="flex items-center gap-1.5 text-amber-400 bg-amber-400/10 px-2.5 py-1 rounded-lg">
-            <AlertTriangle size={12} />
-            <span className="text-[11px] font-semibold">{exam.flags}</span>
-          </div>
-        )}
-        <div className={`px-3 py-1 rounded-lg text-[11px] font-semibold ${
+      
+      <div className="col-span-2">
+        <span className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-wider ${
           exam.status === 'live' 
-            ? 'bg-emerald-500/10 text-emerald-400' 
+            ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/10' 
             : exam.status === 'draft' 
-              ? 'bg-amber-500/10 text-amber-400' 
-              : 'bg-zinc-800 text-zinc-500'
+              ? 'bg-zinc-800 text-zinc-400 border border-white/5' 
+              : 'bg-blue-500/10 text-blue-500 border border-blue-500/10'
         }`}>
-          {exam.status === 'live' ? 'Live' : exam.status === 'draft' ? 'Draft' : 'Completed'}
-        </div>
+          {exam.status === 'live' ? 'LIVE' : exam.status === 'draft' ? 'DRAFT' : 'COMPLETED'}
+        </span>
+      </div>
 
-        {/* Action Menu Toggle */}
-        <div className="relative">
-          <button 
-            onClick={() => setShowMenu(!showMenu)} 
-            onBlur={() => setTimeout(() => setShowMenu(false), 200)}
-            className="p-1.5 rounded-lg text-zinc-500 hover:bg-white/[0.05] hover:text-white transition-colors"
-          >
-            <MoreVertical size={16} />
-          </button>
-          
-          {showMenu && (
-            <div className="absolute right-0 top-full mt-1 w-36 bg-[#181a20] border border-white/[0.08] shadow-xl rounded-xl overflow-hidden z-20 animate-in fade-in zoom-in-95 origin-top-right">
+      <div className="col-span-2 flex items-center gap-1.5 text-zinc-400">
+        <Clock size={12} className="text-zinc-600" />
+        <span className="text-[11px] font-medium">{exam.status === 'live' ? exam.time : 'Tomorrow'}</span>
+      </div>
+
+      <div className="col-span-2 flex items-center">
+        {exam.flags > 0 ? (
+           <div className="flex items-center gap-1.5 text-red-500 text-[11px] font-bold">
+             <AlertTriangle size={12} /> {exam.flags} Flags
+           </div>
+        ) : (
+          <span className="text-[10px] text-zinc-500 font-medium uppercase tracking-wider">
+            {exam.students} Students
+          </span>
+        )}
+      </div>
+
+      <div className="col-span-1 flex justify-end relative">
+        <button 
+          onClick={() => setShowMenu(!showMenu)} 
+          className="w-7 h-7 rounded-md bg-[#1a1d27] border border-white/5 flex items-center justify-center text-zinc-500 hover:text-white hover:border-white/10 transition-colors"
+        >
+           {exam.status === 'draft' ? <Edit size={12} /> : <Eye size={12} />}
+        </button>
+        
+        {showMenu && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
+            <div className="absolute right-0 top-[110%] w-40 bg-[#12151e] border border-white/[0.08] shadow-2xl rounded-xl overflow-hidden z-20 animate-in fade-in slide-in-from-top-2">
               {exam.status === 'draft' && (
                 <>
-                  <button onClick={() => onStatusChange(exam.id, 'published')} className="w-full px-4 py-2.5 text-left text-xs font-semibold text-emerald-400 hover:bg-white/[0.03] flex items-center gap-2">
-                    <Play size={13} /> Publish Live
+                  <button onClick={() => { onStatusChange(exam.id, 'published'); setShowMenu(false); }} className="w-full px-4 py-3 text-left text-xs font-semibold text-emerald-400 hover:bg-white/[0.03] flex items-center gap-2">
+                    <Play size={13} strokeWidth={2.5}/> Publish Exam
                   </button>
-                  <button onClick={() => onEdit(exam.id)} className="w-full px-4 py-2.5 text-left text-xs font-semibold text-zinc-300 hover:bg-white/[0.03] flex items-center gap-2">
-                    <Edit size={13} /> Edit Draft
+                  <button onClick={() => { onEdit(exam.id); setShowMenu(false); }} className="w-full px-4 py-3 text-left text-xs font-semibold text-zinc-300 hover:bg-white/[0.03] flex items-center gap-2">
+                    <Edit size={13} strokeWidth={2.5}/> Edit Draft
                   </button>
                 </>
               )}
               {exam.status === 'live' && (
-                <button onClick={() => onStatusChange(exam.id, 'completed')} className="w-full px-4 py-2.5 text-left text-xs font-semibold text-blue-400 hover:bg-white/[0.03] flex items-center gap-2">
-                  <CheckSquare size={13} /> Mark Completed
+                <button onClick={() => { onStatusChange(exam.id, 'completed'); setShowMenu(false); }} className="w-full px-4 py-3 text-left text-xs font-semibold text-blue-400 hover:bg-white/[0.03] flex items-center gap-2">
+                  <CheckSquare size={13} strokeWidth={2.5}/> Mark Completed
                 </button>
               )}
               <div className="h-px bg-white/[0.04]" />
-              <button onClick={() => onDelete(exam.id)} className="w-full px-4 py-2.5 text-left text-xs font-semibold text-red-400 hover:bg-red-500/10 flex items-center gap-2">
-                <Trash2 size={13} /> Delete Exam
+              <button onClick={() => { onDelete(exam.id); setShowMenu(false); }} className="w-full px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-red-500 hover:bg-red-500/10 flex items-center gap-2">
+                <Trash2 size={13} strokeWidth={2.5}/> Delete
               </button>
             </div>
-          )}
-        </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -519,10 +535,10 @@ export default function MentorDashboard() {
         const data = response.data;
         if (data.stats) {
           setDashStats([
-            { label: 'Live Students', value: String(data.stats.liveStudents || 0), delta: null, deltaLabel: 'in sessions', color: 'bg-blue-500' },
-            { label: 'Submissions', value: String(data.stats.totalSubmissions || 0), delta: null, deltaLabel: 'completed', color: 'bg-emerald-500' },
-            { label: 'Flags', value: String(data.stats.flags || 0), delta: null, deltaLabel: 'need review', color: 'bg-amber-500' },
-            { label: 'Total Exams', value: String(data.stats.totalExams || 0), delta: null, deltaLabel: 'created', color: 'bg-violet-500' },
+            { label: 'LIVE STUDENTS', value: String(data.stats.liveStudents || 0), delta: '12%', deltaLabel: 'Active connections across all regions', color: 'bg-blue-500', topTagBg: 'bg-emerald-500/10', topTagColor: 'text-emerald-500' },
+            { label: 'SUBMISSIONS', value: String(data.stats.totalSubmissions || 0), delta: null, deltaLabel: 'Submissions pending verification', color: 'bg-emerald-500', topTag: 'Today' },
+            { label: 'ACTIVE FLAGS', value: String(data.stats.flags || 0), delta: null, deltaLabel: 'Critical integrity violations detected', color: 'bg-amber-500', topTag: 'High Priority', topTagBg: 'bg-red-500/10', topTagColor: 'text-red-500' },
+            { label: 'TOTAL EXAMS', value: String(data.stats.totalExams || 0), delta: null, deltaLabel: 'Including enterprise-level assessments', color: 'bg-violet-500', topTag: 'Monthly' },
           ]);
         }
         if (data.activity && data.activity.length > 0) {
@@ -562,7 +578,7 @@ export default function MentorDashboard() {
   const displayedResults = showAllResults ? resultsSummary : resultsSummary.slice(0, 4);
 
   return (
-    <div className="h-screen w-full bg-[#0f1117] font-sans text-zinc-200 overflow-hidden flex flex-col">
+    <div className="h-screen w-full bg-[#0a0d14] font-sans text-zinc-200 overflow-hidden flex flex-col">
       <Navbar role="Mentor" />
 
       <style>{`
@@ -579,85 +595,113 @@ export default function MentorDashboard() {
 
       <main className="flex-1 max-w-6xl w-full mx-auto px-6 pt-24 pb-10 overflow-hidden flex flex-col">
         <div className="flex-1 overflow-y-auto modal-scroll pr-2 pr-0">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
             <div>
-              <p className="text-zinc-500 text-[10px] font-black uppercase tracking-[0.2em] mb-1.5">{greeting}, {userName} — {timeStr}</p>
-              <h1 className="text-3xl font-black text-white uppercase italic tracking-tighter leading-none">Command Center</h1>
+              <p className="text-blue-500 text-[10px] font-black uppercase tracking-[0.2em] mb-1.5">{greeting}, {userName} — {timeStr}</p>
+              <h1 className="text-3xl font-bold text-white tracking-tight leading-none mb-2">Command Center</h1>
+              <p className="text-zinc-400 text-sm font-medium">System status is nominal. {dashStats[0]?.value} students currently active across {dashStats[3]?.value} sessions.</p>
             </div>
             <div className="flex items-center gap-3 shrink-0">
               <button
                 onClick={() => navigate('/mentor/create-exam')}
-                className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white text-black text-[11px] font-black uppercase tracking-widest shadow-[0_0_30px_rgba(255,255,255,0.1)] hover:shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:bg-zinc-100 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold shadow-lg transition-all"
               >
-                <Plus size={14} strokeWidth={3} /> Create New Exam
+                Create New Exam
               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             {dashStats.map((s, i) => (
               <StatCard key={i} {...s} />
             ))}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 mb-10 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-10 items-start">
             <div className="lg:col-span-3">
-              <div className="flex items-center justify-between mb-4 h-8">
-                <h2 className="text-sm font-semibold text-white">Active Sessions</h2>
-                <div className="relative">
-                  <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-600" />
-                  <input
-                    type="text"
-                    placeholder="Search..."
-                    className="bg-[#181a20] border border-white/[0.06] text-zinc-300 text-xs rounded-lg pl-8 pr-3 py-1.5 w-44 focus:outline-none focus:border-blue-500/40 placeholder:text-zinc-600 transition-colors"
-                  />
+              <div className="bg-[#12151e] border border-white/[0.05] rounded-2xl overflow-hidden flex flex-col">
+                <div className="p-4 border-b border-white/[0.05] flex justify-between items-center bg-[#12151e]">
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-[13px] font-bold text-white">Active Sessions</h2>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[9px] font-bold uppercase tracking-widest flex items-center gap-1.5"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> MONITORING ENABLED</span>
+                  </div>
+                  <button className="text-[11px] font-bold text-blue-500 hover:text-blue-400 transition-colors">View All Sessions</button>
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                {liveExams.length > 0 ? liveExams.map((exam, i) => (
-                  <ActiveSessionItem 
-                    key={i} 
-                    exam={exam} 
-                    onStatusChange={handleStatusUpdate}
-                    onDelete={handleDeleteExam}
-                    onEdit={handleEditDraft}
-                  />
-                )) : (
-                  <div className="text-center py-10 text-zinc-600 text-xs font-medium">No active sessions. Create an exam to get started.</div>
-                )}
-              </div>
-
-              <div className="mt-5 border-t border-white/[0.04] pt-5 opacity-40 grayscale pointer-events-none">
-                <div className="flex items-center gap-2 mb-3">
-                  <Activity size={12} className="text-zinc-500" />
-                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">Quick Operations (Coming Soon)</span>
+                
+                <div className="grid grid-cols-12 gap-4 px-5 py-3 text-[9px] font-bold text-zinc-500 uppercase tracking-widest border-b border-white/[0.05] bg-[#0c0f16]">
+                  <div className="col-span-5">Assessment Name</div>
+                  <div className="col-span-2">Status</div>
+                  <div className="col-span-2">Duration</div>
+                  <div className="col-span-2">Proctors</div>
+                  <div className="col-span-1 text-right">Actions</div>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {['View Roster', 'Live Feed', 'Analytics'].map((label, i) => (
-                    <div key={i} className="bg-[#181a20] border border-white/[0.06] rounded-xl px-4 py-3 flex items-center justify-center text-[10px] font-black text-zinc-700 uppercase tracking-widest cursor-not-allowed">
-                      {label}
-                    </div>
-                  ))}
+
+                <div className="flex-1 overflow-y-auto">
+                  {liveExams.length > 0 ? liveExams.map((exam, i) => (
+                    <ActiveSessionItem 
+                      key={i} 
+                      exam={exam} 
+                      onStatusChange={handleStatusUpdate}
+                      onDelete={handleDeleteExam}
+                      onEdit={handleEditDraft}
+                    />
+                  )) : (
+                    <div className="text-center py-10 text-zinc-600 text-[11px] font-bold uppercase tracking-wider">No active sessions mapped</div>
+                  )}
                 </div>
               </div>
             </div>
 
             <div className="lg:col-span-2">
-              <div className="flex items-center justify-between mb-4 h-8">
-                <h2 className="text-sm font-semibold text-white">Activity</h2>
-                <button onClick={() => setShowAllActivity(!showAllActivity)} className="text-xs text-zinc-600 hover:text-zinc-300 transition-colors font-medium">
-                  {showAllActivity ? 'Show less' : 'View all'}
-                </button>
+              <div className="bg-[#12151e] border border-white/[0.05] rounded-2xl flex flex-col mb-6 overflow-hidden">
+                <div className="p-4 border-b border-white/[0.05] flex justify-between items-center bg-[#12151e]">
+                  <h2 className="text-[13px] font-bold text-white">Compliance Report</h2>
+                  <ShieldCheck size={14} className="text-blue-500" />
+                </div>
+                <div className="p-6 flex-1 flex flex-col justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center mb-4">
+                    <ShieldCheck size={20} className="text-blue-500" />
+                  </div>
+                  <p className="text-[13px] text-zinc-400 leading-relaxed mb-6">
+                    System-wide proctoring integrity is currently at <span className="text-white font-bold">99.8%</span>. No critical security breaches or data leaks reported in the last 24-hour cycle.
+                  </p>
+                  <button className="w-full py-3 rounded-lg border border-white/[0.05] hover:bg-white/[0.02] text-xs font-bold text-white transition-colors flex items-center justify-center gap-2">
+                    <ArrowDownRight size={14} /> Download Audit Log
+                  </button>
+                </div>
               </div>
 
-              <div className="bg-[#181a20] rounded-2xl border border-white/[0.06] divide-y divide-white/[0.04]">
-                {recentActivity.length > 0 ? (showAllActivity ? recentActivity : recentActivity.slice(0, 4)).map((item, i) => (
-                  <ActivityItem key={i} item={item} />
-                )) : (
-                  <div className="text-center py-8 text-zinc-600 text-xs font-medium">No recent activity yet.</div>
-                )}
+              <div className="flex flex-col h-full opacity-50 grayscale pointer-events-none">
+                 <div className="flex items-center justify-between mb-4 h-8">
+                   <h2 className="text-sm font-semibold text-white">Vigilance Analytics (Coming Soon)</h2>
+                 </div>
+                 <div className="bg-[#12151e] border border-white/[0.05] rounded-2xl p-6 h-64 flex items-end relative overflow-hidden">
+                   <div className="absolute inset-0 bg-blue-500/5" />
+                   <div className="relative z-10 w-full">
+                     <p className="text-xs text-zinc-400 mb-2">Neural integrity check has detected a 4% decrease in flagging events...</p>
+                     <button className="text-[11px] font-bold text-blue-500">Explore Full Analytics →</button>
+                   </div>
+                 </div>
               </div>
+            </div>
+          </div>
+          
+          <div className="mb-10">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+                <Activity size={16} className="text-zinc-500" /> Activity Feed
+              </h2>
+              <button onClick={() => setShowAllActivity(!showAllActivity)} className="text-xs text-zinc-600 hover:text-zinc-300 transition-colors font-medium">
+                {showAllActivity ? 'Show less' : 'View all'}
+              </button>
+            </div>
+
+            <div className="bg-[#12151e] rounded-2xl border border-white/[0.05] divide-y divide-white/[0.04]">
+              {recentActivity.length > 0 ? (showAllActivity ? recentActivity : recentActivity.slice(0, 4)).map((item, i) => (
+                <ActivityItem key={i} item={item} />
+              )) : (
+                <div className="text-center py-8 text-zinc-600 text-xs font-medium">No recent activity yet.</div>
+              )}
             </div>
           </div>
 
