@@ -280,13 +280,17 @@ server.listen(PORT, () => {
 // Stop accepting new connections and close DB cleanly
 const shutdown = () => {
     console.log('\n🛑 SIGINT/SIGTERM received. Starting graceful shutdown...');
-    server.close(() => {
+    server.close(async () => {
         console.log('✔ HTTP server closed.');
         const mongoose = require('mongoose');
-        mongoose.connection.close(false, () => {
+        try {
+            await mongoose.connection.close();
             console.log('✔ MongoDB connection closed.');
             process.exit(0);
-        });
+        } catch (err) {
+            console.error('Error during MongoDB close:', err);
+            process.exit(1);
+        }
     });
 };
 
