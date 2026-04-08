@@ -149,7 +149,7 @@ const SubmitModal = ({ isOpen, onClose, onConfirm, stats }) => (
   </AnimatePresence>
 );
 
-const ExitModal = ({ isOpen, onClose, onExit, password, setPassword }) => (
+const ExitModal = ({ isOpen, onClose, onExit, password, setPassword, error }) => (
   <AnimatePresence>
     {isOpen && (
       <Motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[120] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6">
@@ -164,8 +164,11 @@ const ExitModal = ({ isOpen, onClose, onExit, password, setPassword }) => (
             value={password} 
             onChange={e => setPassword(e.target.value)} 
             placeholder="Password" 
-            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-center text-gray-900 font-mono tracking-widest mb-6 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 transition-all" 
+            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-center text-gray-900 font-mono tracking-widest mb-2 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 transition-all" 
           />
+          <div className="min-h-[20px] mb-4">
+            {error && <span className="text-xs font-bold text-red-500">{error}</span>}
+          </div>
           <div className="flex gap-3">
             <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all text-sm font-semibold">Cancel</button>
             <button onClick={onExit} className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white transition-all text-sm font-semibold shadow-lg">Exit</button>
@@ -201,6 +204,7 @@ export default function ExamCockpit() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [showExitPrompt, setShowExitPrompt] = useState(false);
   const [exitPassword, setExitPassword] = useState('');
+  const [exitError, setExitError] = useState('');
   const [terminated, setTerminated] = useState(null);
   const [terminateCountdown, setTerminateCountdown] = useState(8);
   const [isFullscreen, setIsFullscreen] = useState(true);
@@ -815,7 +819,7 @@ export default function ExamCockpit() {
       </div>
 
       <SubmitModal isOpen={showConfirm} onClose={() => setShowConfirm(false)} stats={{ answered: answeredCount, unanswered: questions.length - answeredCount, marked: Object.values(markedForReview).filter(Boolean).length }} onConfirm={() => { setSubmitted(true); setTimeout(() => navigate('/student'), 2000); }} />
-      <ExitModal isOpen={showExitPrompt} onClose={() => setShowExitPrompt(false)} password={exitPassword} setPassword={setExitPassword} onExit={() => { if (exitPassword === '12345') { setSubmitted(true); setTimeout(() => navigate('/student'), 1000); } else { alert('Incorrect Pass'); setExitPassword(''); } }} />
+      <ExitModal isOpen={showExitPrompt} onClose={() => { setShowExitPrompt(false); setExitError(''); setExitPassword(''); }} password={exitPassword} setPassword={e => { setExitPassword(e); setExitError(''); }} error={exitError} onExit={() => { if (exitPassword === '12345') { setSubmitted(true); setTimeout(() => navigate('/student'), 1000); } else { setExitError('Incorrect Pass'); setExitPassword(''); } }} />
       <TabToast toast={tabToast} />
 
       {/* Fullscreen Overlay */}

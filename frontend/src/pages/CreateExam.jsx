@@ -241,6 +241,13 @@ export default function CreateExam() {
   const [publishedExamId, setPublishedExamId] = useState('');
   const [editId, setEditId] = useState(null);
   const [initialLoading, setInitialLoading] = useState(false);
+  const [toasts, setToasts] = useState([]);
+
+  const addToast = (msg, type = 'success') => {
+    const id = Date.now();
+    setToasts(p => [...p, { id, msg, type }]);
+    setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 4000);
+  };
 
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
@@ -276,7 +283,7 @@ export default function CreateExam() {
       }
     } catch (err) {
       console.error("Failed to load draft:", err);
-      alert("Failed to load draft. It may have been deleted.");
+      addToast("Failed to load draft. It may have been deleted.", 'error');
       navigate('/mentor/create-exam'); // Clear query param
     } finally {
       setInitialLoading(false);
@@ -313,7 +320,7 @@ export default function CreateExam() {
       const qNum = i + 1;
       
       if (!q.questionText || !q.questionText.trim()) {
-        alert(`Question ${qNum}: Question text is required.`);
+        addToast(`Question ${qNum}: Question text is required.`, 'error');
         setIsPublishing(false);
         setExpandedQ(q.id);
         return;
@@ -322,13 +329,13 @@ export default function CreateExam() {
       if (q.type === 'mcq') {
         const validOptions = q.options.filter(opt => opt && opt.trim());
         if (validOptions.length < 2) {
-          alert(`Question ${qNum} (MCQ): At least 2 options are required.`);
+          addToast(`Question ${qNum} (MCQ): At least 2 options are required.`, 'error');
           setIsPublishing(false);
           setExpandedQ(q.id);
           return;
         }
         if (q.correctOption === undefined || q.correctOption < 0 || q.correctOption >= q.options.length) {
-          alert(`Question ${qNum} (MCQ): Please select a correct option.`);
+          addToast(`Question ${qNum} (MCQ): Please select a correct option.`, 'error');
           setIsPublishing(false);
           setExpandedQ(q.id);
           return;
@@ -337,7 +344,7 @@ export default function CreateExam() {
 
       if (q.type === 'coding') {
         if (!q.testCases || q.testCases.length === 0 || !q.testCases[0].input.trim() || !q.testCases[0].expectedOutput.trim()) {
-          alert(`Question ${qNum} (Coding): At least one valid test case is required.`);
+          addToast(`Question ${qNum} (Coding): At least one valid test case is required.`, 'error');
           setIsPublishing(false);
           setExpandedQ(q.id);
           return;
@@ -366,7 +373,7 @@ export default function CreateExam() {
         // Server rejected the request — do NOT show success
         console.error('Server side rejection:', err.response.data);
         const errorMsg = err.response.data.error || err.response.data.message || 'Validation failed';
-        alert(`Failed to publish exam: ${errorMsg}`);
+        addToast(`Failed to publish exam: ${errorMsg}`, 'error');
         setIsPublishing(false);
         return;
       }
@@ -401,7 +408,7 @@ export default function CreateExam() {
     // Drafts don't need strict validation on questions, 
     // but we need the basic exam info.
     if (!exam.title || !exam.duration) {
-      alert('Please at least provide a Title and Duration to save a draft.');
+      addToast('Please at least provide a Title and Duration to save a draft.', 'error');
       setIsSaving(false);
       return;
     }
@@ -426,7 +433,7 @@ export default function CreateExam() {
     } catch (err) {
       console.error('Draft save failure:', err);
       const msg = err.response?.data?.message || 'Failed to save draft.';
-      alert(msg);
+      addToast(msg, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -455,7 +462,7 @@ export default function CreateExam() {
 
   const generateAI = async () => {
     if (!syllabus && !exam.title) {
-        alert("Please provide some context (Title or Syllabus) for AI generation.");
+        addToast("Please provide some context (Title or Syllabus) for AI generation.", 'error');
         return;
     }
     setAiLoading(true);
@@ -473,7 +480,7 @@ export default function CreateExam() {
         }
     } catch (err) {
         console.error('AI Suggestion Error:', err);
-        alert(err.response?.data?.error || "AI Service is currently unavailable. Please try again later.");
+        addToast(err.response?.data?.error || "AI Service is currently unavailable. Please try again later.", 'error');
     } finally {
         setAiLoading(false);
     }
@@ -504,7 +511,7 @@ export default function CreateExam() {
       } else {
         // PDF: real parsing not implemented yet
         setTimeout(() => {
-          alert('PDF question extraction is coming soon. Please use CSV import for now.');
+          addToast('PDF question extraction is coming soon. Please use CSV import for now.', 'info');
           setFileParseLoading(false);
         }, 1000);
       }
@@ -1145,7 +1152,7 @@ export default function CreateExam() {
                 onClick={() => {
                   const link = `${window.location.origin}/login`;
                   navigator.clipboard.writeText(link);
-                  alert('Link copied! Students will login and see this exam on their dashboard.');
+                  addToast('Link copied! Students will login and see this exam on their dashboard.', 'success');
                 }}
                 className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-[#0a0c10] text-sm font-bold transition-colors flex items-center justify-center gap-2"
               >
@@ -1161,6 +1168,20 @@ export default function CreateExam() {
           </div>
         </div>
       )}
+
+      {/* Toast Notifications */}
+      <div className="fixed bottom-6 right-6 z-[200] flex flex-col gap-2 pointer-events-none">
+        {toasts.map(t => (
+          <div key={t.id} className={`flex items-center gap-3 px-4 py-3 rounded-xl border shadow-2xl backdrop-blur-md pointer-events-auto transition-all ${t.type === 'error' ? 'bg-red-950/90 border-red-500/30 text-red-300' :
+              t.type === 'info' ? 'bg-[#181a20] border-teal-600/30 text-teal-400' :
+                'bg-zinc-900/90 border-emerald-500/30 text-emerald-300'
+            }`}>
+            {t.type === 'error' ? <AlertCircle size={14} /> : <CheckCircle size={14} />}
+            <span className="text-xs font-semibold">{t.msg}</span>
+            <button onClick={() => setToasts(p => p.filter(x => x.id !== t.id))} className="ml-1 opacity-50 hover:opacity-100"><X size={12} /></button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

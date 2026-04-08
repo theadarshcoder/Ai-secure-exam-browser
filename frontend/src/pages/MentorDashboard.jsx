@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import socketService from '../services/socket';
-import { Navbar } from '../components/Navbar';
 import { useNavigate } from 'react-router-dom';
 import {
   Users, AlertTriangle, CheckCircle, Clock,
@@ -11,7 +10,8 @@ import {
   ArrowDownRight, ExternalLink, Filter,
   AlertCircle, ShieldCheck, BookOpen, CreditCard,
   Activity, ScanFace, OctagonX, CheckCircle2,
-  Trash2, Edit, Play, CheckSquare, MoreVertical
+  Trash2, Edit, Play, CheckSquare, MoreVertical,
+  LayoutDashboard, LogOut, Settings, History
 } from 'lucide-react';
 
 // --- Default Empty State ---
@@ -431,6 +431,7 @@ export default function MentorDashboard() {
   const [terminatedStudents, setTerminatedStudents] = useState({});
   const [toasts, setToasts] = useState([]);
   const [showAllActivity, setShowAllActivity] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const navigate = useNavigate();
 
   const addToast = (msg, type = 'success') => {
@@ -443,7 +444,7 @@ export default function MentorDashboard() {
     const entry = {
       studentId: student.id || 'VSN-89241',
       examId: student.exam,
-      reason: `Terminated by Mentor â€” ${student.exam}`,
+      reason: `Terminated by Mentor — ${student.exam}`,
       terminatedBy: 'mentor',
       timestamp: new Date().toISOString(),
     };
@@ -470,20 +471,6 @@ export default function MentorDashboard() {
   const [studentPerformance, setStudentPerformance] = useState([]);
   const [resultsSummary, setResultsSummary] = useState([]);
 
-  const fetchLiveGrid = async () => {
-    try {
-      const response = await api.get('/api/exams/mentor-list');
-      if (Array.isArray(response.data)) {
-        setLiveExams(response.data);
-      } else {
-        console.warn('Mentor list response is not an array');
-        setLiveExams([]);
-      }
-    } catch (error) {
-      console.error('Grid sync failure:', error);
-    }
-  };
-
   const handleStatusUpdate = async (id, newStatus) => {
     try {
       await api.patch(`/api/exams/${id}/status`, { status: newStatus });
@@ -509,16 +496,49 @@ export default function MentorDashboard() {
     navigate(`/mentor/create-exam?id=${id}`);
   };
 
+  const fetchLiveGrid = React.useCallback(async () => {
+    try {
+      const { data } = await api.get('/api/exams/live-stats');
+      setLiveExams(data.exams || []);
+    } catch (error) {
+      console.error('Grid sync failure:', error);
+    }
+  }, []);
+
+  const fetchStats = React.useCallback(async () => {
+    try {
+      const response = await api.get('/api/exams/mentor-stats');
+      const data = response.data;
+      if (data.stats) {
+        setDashStats([
+          { label: 'LIVE STUDENTS', value: String(data.stats.liveStudents || 0), delta: '12%', deltaLabel: 'Active connections across all regions', color: 'bg-blue-500', topTagBg: 'bg-emerald-500/10', topTagColor: 'text-emerald-500' },
+          { label: 'SUBMISSIONS', value: String(data.stats.totalSubmissions || 0), delta: null, deltaLabel: 'Submissions pending verification', color: 'bg-emerald-500', topTag: 'Today' },
+          { label: 'ACTIVE FLAGS', value: String(data.stats.flags || 0), delta: null, deltaLabel: 'Critical integrity violations detected', color: 'bg-amber-500', topTag: 'High Priority', topTagBg: 'bg-red-500/10', topTagColor: 'text-red-500' },
+          { label: 'TOTAL EXAMS', value: String(data.stats.totalExams || 0), delta: null, deltaLabel: 'Including enterprise-level assessments', color: 'bg-violet-500', topTag: 'Monthly' },
+        ]);
+      }
+      if (data.activity && data.activity.length > 0) {
+        setRecentActivity(data.activity);
+      }
+      if (data.performance) {
+        setStudentPerformance(data.performance);
+      }
+      if (data.summary) {
+        setResultsSummary(data.summary);
+      }
+    } catch (error) {
+      console.error('Stats sync failure:', error);
+    }
+  }, []);
+
   useEffect(() => {
     const userEmail = localStorage.getItem('vision_email') || 'mentor@vision.auth';
     socketService.connect(userEmail);
 
-    // Listen for real-time proctoring violations
     socketService.onMentorAlert((data) => {
       console.log("CRITICAL VIOLATION:", data);
       setSocketAlerts(prev => [data, ...prev]);
 
-      // Inject into live activity feed
       const newActivity = {
         name: data.studentId?.split?.('-')?.pop?.() || 'Student',
         action: 'triggered alert',
@@ -529,39 +549,13 @@ export default function MentorDashboard() {
       setRecentActivity(prev => [newActivity, ...prev.slice(0, 5)]);
     });
 
-    const fetchStats = async () => {
-      try {
-        const response = await api.get('/api/exams/mentor-stats');
-        const data = response.data;
-        if (data.stats) {
-          setDashStats([
-            { label: 'LIVE STUDENTS', value: String(data.stats.liveStudents || 0), delta: '12%', deltaLabel: 'Active connections across all regions', color: 'bg-blue-500', topTagBg: 'bg-emerald-500/10', topTagColor: 'text-emerald-500' },
-            { label: 'SUBMISSIONS', value: String(data.stats.totalSubmissions || 0), delta: null, deltaLabel: 'Submissions pending verification', color: 'bg-emerald-500', topTag: 'Today' },
-            { label: 'ACTIVE FLAGS', value: String(data.stats.flags || 0), delta: null, deltaLabel: 'Critical integrity violations detected', color: 'bg-amber-500', topTag: 'High Priority', topTagBg: 'bg-red-500/10', topTagColor: 'text-red-500' },
-            { label: 'TOTAL EXAMS', value: String(data.stats.totalExams || 0), delta: null, deltaLabel: 'Including enterprise-level assessments', color: 'bg-violet-500', topTag: 'Monthly' },
-          ]);
-        }
-        if (data.activity && data.activity.length > 0) {
-          setRecentActivity(data.activity);
-        }
-        if (data.performance) {
-          setStudentPerformance(data.performance);
-        }
-        if (data.summary) {
-          setResultsSummary(data.summary);
-        }
-      } catch (error) {
-        console.error('Stats sync failure:', error);
-      }
-    };
-
     fetchLiveGrid();
     fetchStats();
 
     return () => {
       socketService.disconnect();
     };
-  }, []);
+  }, [fetchLiveGrid, fetchStats]);
 
   useEffect(() => {
     const update = () => {
@@ -577,10 +571,13 @@ export default function MentorDashboard() {
 
   const displayedResults = showAllResults ? resultsSummary : resultsSummary.slice(0, 4);
 
-  return (
-    <div className="h-screen w-full bg-[#0a0d14] font-sans text-zinc-200 overflow-hidden flex flex-col">
-      <Navbar role="Mentor" />
+  const handleLogout = () => {
+    localStorage.clear();
+    navigate('/login');
+  };
 
+  return (
+    <div className="h-screen w-full bg-[#0a0d14] font-sans text-zinc-200 overflow-hidden flex">
       <style>{`
         html, body { 
           overflow: hidden !important; 
@@ -592,22 +589,145 @@ export default function MentorDashboard() {
         .modal-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.05); border-radius: 10px; }
         .modal-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.1); }
       `}</style>
+      
+      {/* Sidebar */}
+      <aside className="w-64 bg-[#0a0c10] border-r border-white/[0.05] flex flex-col relative z-20 h-screen shrink-0 relative">
+        <div className="absolute top-0 right-0 w-px h-full bg-gradient-to-b from-transparent via-blue-500/10 to-transparent" />
+        
+        <div className="h-20 flex items-center px-6">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white">
+              <ShieldCheck size={18} strokeWidth={2.5} />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-white tracking-tight leading-none">Proctorly</p>
+              <p className="text-[9px] font-black tracking-widest text-zinc-500 uppercase mt-1">Enterprise Monitor</p>
+            </div>
+          </div>
+        </div>
 
-      <main className="flex-1 max-w-6xl w-full mx-auto px-6 pt-24 pb-10 overflow-hidden flex flex-col">
-        <div className="flex-1 overflow-y-auto modal-scroll pr-2 pr-0">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
+        <nav className="flex-1 px-4 py-8 flex flex-col gap-2">
+          <button className="flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-600 border border-blue-500/50 text-white w-full shadow-[0_0_20px_rgba(37,99,235,0.15)] transition-all">
+            <LayoutDashboard size={16} />
+            <span className="text-xs font-bold tracking-wide">Command Center</span>
+          </button>
+          <button className="flex items-center gap-3 px-4 py-3 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.03] transition-all w-full text-left">
+            <Video size={16} />
+            <span className="text-xs font-semibold tracking-wide flex-1">Active Sessions</span>
+          </button>
+          <button className="flex items-center gap-3 px-4 py-3 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.03] transition-all w-full text-left">
+            <BarChart3 size={16} />
+            <span className="text-xs font-semibold tracking-wide flex-1">Mentor Insights</span>
+          </button>
+          <button className="flex items-center gap-3 px-4 py-3 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.03] transition-all w-full text-left">
+            <History size={16} />
+            <span className="text-xs font-semibold tracking-wide flex-1">History</span>
+          </button>
+          <button
+            onClick={() => navigate('/mentor/create-exam')}
+            className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold transition-all shadow-lg shadow-blue-500/10 mt-4 mb-2 mx-4"
+          >
+            <Plus size={14} /> Create New Exam
+          </button>
+        </nav>
+
+        <div className="px-4 py-8 border-t border-white/[0.05] mt-auto">
+          <div className="p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/10">
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500">System Nominal</p>
+            </div>
+            <p className="text-[9px] text-zinc-500 font-medium leading-relaxed">Proctoring core active via Secure WebSocket Layer.</p>
+          </div>
+        </div>
+      </aside>
+
+      <main className="flex-1 flex flex-col relative h-screen overflow-hidden">
+        {/* Top Header */}
+        <header className="h-20 border-b border-white/[0.05] flex items-center justify-between px-8 bg-[#0a0d14]/80 backdrop-blur-md z-10 shrink-0">
+          <div className="flex-1 max-w-xl relative">
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-600" />
+            <input 
+              type="text" 
+              placeholder="Search sessions, exams, or students..." 
+              className="w-full bg-[#12151e] border border-white/[0.05] rounded-xl pl-10 pr-4 py-2.5 text-xs text-zinc-300 focus:outline-none focus:border-white/10 transition-colors"
+            />
+          </div>
+          
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-4">
+              <button className="relative text-zinc-400 hover:text-white transition-colors">
+                <Bell size={18} />
+                <span className="absolute top-0 right-0 w-2 h-2 bg-blue-500 rounded-full border-2 border-[#0a0d14]" />
+              </button>
+              <button className="text-zinc-400 hover:text-white transition-colors">
+                <AlertCircle size={18} />
+              </button>
+            </div>
+            
+            <div className="relative pl-6 border-l border-white/[0.05]">
+              <button 
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                className="flex items-center gap-3 hover:bg-white/[0.03] p-1.5 rounded-xl transition-all active:scale-95 group"
+              >
+                <div className="text-right hidden sm:block">
+                  <p className="text-xs font-bold text-white leading-tight group-hover:text-blue-400 transition-colors uppercase tracking-tight">{userName}</p>
+                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 mt-0.5">Lead Mentor</p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1c2230] to-[#12151e] border border-white/[0.08] flex items-center justify-center font-bold text-white uppercase text-base shadow-lg relative group-hover:border-blue-500/40 transition-all">
+                  {userName.charAt(0)}
+                  <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-[#0a0d14] rounded-full shadow-lg" />
+                </div>
+                <ChevronDown size={14} className={`text-zinc-600 transition-transform duration-300 ${showProfileMenu ? 'rotate-180 text-blue-400' : ''}`} />
+              </button>
+
+              {showProfileMenu && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowProfileMenu(false)} />
+                  <div className="absolute right-0 mt-3 w-64 bg-[#12151e] border border-white/[0.1] rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.6)] z-50 py-2 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="px-5 py-4 border-b border-white/[0.05] mb-2 bg-gradient-to-br from-white/[0.02] to-transparent">
+                      <p className="text-xs font-bold text-white mb-1">{userName}</p>
+                      <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Enterprise Master</p>
+                    </div>
+                    
+                    <div className="px-2 space-y-0.5">
+                      <button className="w-full flex items-center justify-between px-3 py-2.5 text-xs font-semibold text-zinc-400 hover:text-white hover:bg-white/[0.04] rounded-lg transition-all group">
+                        <div className="flex items-center gap-3">
+                          <Users size={14} className="group-hover:text-blue-400 transition-colors" /> Profile Overview
+                        </div>
+                        <ChevronRight size={12} className="opacity-20 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                      </button>
+                      <button className="w-full flex items-center justify-between px-3 py-2.5 text-xs font-semibold text-zinc-400 hover:text-white hover:bg-white/[0.04] rounded-lg transition-all group">
+                        <div className="flex items-center gap-3">
+                          <Settings size={14} className="group-hover:text-blue-400 transition-colors" /> Account Settings
+                        </div>
+                        <ChevronRight size={12} className="opacity-20 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                      </button>
+                    </div>
+
+                    <div className="h-px bg-white/[0.05] my-2 mx-2" />
+                    
+                    <div className="px-2">
+                      <button 
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-red-400/80 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all flex items-center gap-3"
+                      >
+                        <LogOut size={14} /> End Session
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <div className="flex-1 overflow-y-auto modal-scroll px-8 py-8">
+          <div className="flex flex-col gap-4 mb-2">
             <div>
               <p className="text-blue-500 text-[10px] font-black uppercase tracking-[0.2em] mb-1.5">{greeting}, {userName} — {timeStr}</p>
               <h1 className="text-3xl font-bold text-white tracking-tight leading-none mb-2">Command Center</h1>
               <p className="text-zinc-400 text-sm font-medium">System status is nominal. {dashStats[0]?.value} students currently active across {dashStats[3]?.value} sessions.</p>
-            </div>
-            <div className="flex items-center gap-3 shrink-0">
-              <button
-                onClick={() => navigate('/mentor/create-exam')}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold shadow-lg transition-all"
-              >
-                Create New Exam
-              </button>
             </div>
           </div>
 
