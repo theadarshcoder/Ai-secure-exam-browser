@@ -3,9 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "postinstall": "npm install --prefix backend",
-    "build": "echo 'Skipping frontend build for backend deployment'",
-    "start": "node backend/src/server.js",
+    "build": "cd backend && npm install",
+    "start": "cd backend && node src/server.js",
     "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
     "backend": "cd backend && npm run dev",
     "frontend": "cd frontend && npm run dev"
