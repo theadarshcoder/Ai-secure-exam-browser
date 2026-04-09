@@ -7,8 +7,11 @@ import {
   CheckCircle, Save, Send, Copy, Award, Clock,
   BookOpen, ChevronDown, ChevronUp, Sparkles, Wand2,
   Check, X, Pencil, Loader2, FileText, AlertCircle,
-  Upload, FilePlus, FileSpreadsheet, Lock
+  Upload, FilePlus, FileSpreadsheet, Lock,
+  LayoutDashboard, Users, BarChart3, Settings, Bell,
+  ChevronRight, LogOut, Eye, Edit3, Star, RefreshCw
 } from 'lucide-react';
+import VisionLogo from '../components/VisionLogo';
 
 // AI Suggestions are now fetched from the backend live engine.
 
@@ -242,6 +245,19 @@ export default function CreateExam() {
   const [editId, setEditId] = useState(null);
   const [initialLoading, setInitialLoading] = useState(false);
   const [toasts, setToasts] = useState([]);
+
+  const navItems = [
+    { id: 'Overview', label: 'Overview', icon: LayoutDashboard },
+    { id: 'Live Proctoring', label: 'Live Proctoring', icon: Users },
+    { id: 'Exam Management', label: 'Exam Library', icon: FileText },
+    { id: 'Results & Reports', label: 'Results & Reports', icon: BarChart3 },
+    { id: 'Settings', label: 'System Settings', icon: Settings },
+  ];
+
+  const handleLogout = () => {
+    sessionStorage.clear(); localStorage.clear();
+    navigate('/login');
+  };
 
   const addToast = (msg, type = 'success') => {
     const id = Date.now();
@@ -545,9 +561,8 @@ export default function CreateExam() {
     setQuestions(p => [...p, q]);
     setAiSuggestions(s => s.filter(x => x.id !== suggestion.id));
   };
-
   const acceptAll = () => {
-    const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1000, accepted: undefined }));
+const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1000, accepted: undefined }));
     setQuestions(p => [...p, ...newQs]);
     setAiSuggestions([]);
   };
@@ -555,633 +570,457 @@ export default function CreateExam() {
   const totalM = questions.reduce((s, q) => s + (q.marks || 0), 0);
 
   return (
-    <div className="min-h-screen bg-[#0a0c10] font-sans text-zinc-200 relative">
-      <Navbar role="Mentor" />
-
-      {/* Subtle Background Glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-violet-600/[0.04] blur-[120px] rounded-full pointer-events-none" />
-
-      <main className="relative max-w-7xl mx-auto px-6 pt-24 pb-24 flex flex-col lg:flex-row gap-8 items-start">
-        
-        {/* Left Column: Editor */}
-        <div className="flex-1 space-y-12 min-w-0">
-
-          <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-2">
-            <div>
-              <h1 className="text-3xl font-extrabold text-white tracking-tight leading-tight">
-                {editId ? 'Edit Assessment' : 'Create Assessment'}
-                {initialLoading && <Loader2 size={16} className="inline ml-3 animate-spin text-zinc-500" />}
-              </h1>
-              <p className="text-sm text-zinc-400 mt-2 flex items-center gap-3">
-                <span className="flex items-center gap-1.5"><ListChecks size={15} className="text-zinc-500" /> {questions.length} questions</span>
-                <span className="w-1 h-1 rounded-full bg-zinc-700" />
-                <span className="flex items-center gap-1.5">
-                  <Award size={15} className={totalM === exam.totalMarks ? "text-emerald-400" : "text-zinc-500"} /> 
-                  {totalM} / {exam.totalMarks} marks assigned
-                </span>
-              </p>
-            </div>
-          </header>
-
-        {/* ═══ SECTION 1: Exam Details ═══ */}
-        <section className="bg-[#0f1117]/80 backdrop-blur-xl rounded-[24px] border border-white/[0.06] p-8 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/[0.1] to-transparent" />
-          <div className="mb-6">
-            <h2 className="text-sm font-semibold text-white tracking-wide">Exam Details</h2>
-            <p className="text-xs text-zinc-500 mt-1">Configure basic information and primary details for the assessment.</p>
+    <div className="flex h-screen bg-[#0a0c10] font-sans text-zinc-200 select-none antialiased overflow-hidden">
+      {/* Fixed Sidebar */}
+      <aside className="w-64 bg-zinc-950 flex flex-col z-30 shadow-2xl shrink-0 border-r border-white/5">
+        <div className="h-20 flex items-center px-8 border-b border-white/5">
+          <div className="flex items-center gap-3">
+             <VisionLogo className="h-6 w-6 text-emerald-500" />
+             <span className="text-sm font-black uppercase tracking-[0.3em] text-white">VISION <span className="text-zinc-500 font-bold">PRO</span></span>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="col-span-2">
-              <label className={LABEL_BASE}>Exam Title</label>
-              <input value={exam.title} onChange={e => setExam({...exam, title: e.target.value})} placeholder="e.g. Data Structures & Algorithms — Mid Term" className={INPUT_BASE + " text-base h-11"} />
-            </div>
-            <div>
-              <label className={LABEL_BASE}>Category</label>
-              {!['DSA', 'Frontend', 'DBMS', 'Cloud', 'Security', ''].includes(exam.category) ? (
-                <div className="flex gap-2">
-                  <input 
-                    value={exam.category === 'OTHER_CUSTOM' ? '' : exam.category} 
-                    onChange={e => setExam({...exam, category: e.target.value})} 
-                    placeholder="Type custom category..." 
-                    className={INPUT_BASE + " h-11 flex-1"} 
-                    autoFocus
-                  />
-                  <button 
-                    onClick={() => setExam({...exam, category: 'DSA'})} 
-                    className="h-11 px-3 text-xs bg-[#0a0c10] border border-white/[0.06] rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors flex items-center justify-center font-bold uppercase tracking-wider shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]"
-                    title="Back to Presets"
-                  >
-                    X
-                  </button>
-                </div>
-              ) : (
-                <div className="relative">
-                  <select 
-                    value={exam.category} 
-                    onChange={e => {
-                      if (e.target.value === 'Other') {
-                        setExam({...exam, category: 'OTHER_CUSTOM'});
-                      } else {
-                        setExam({...exam, category: e.target.value});
-                      }
-                    }} 
-                    className={INPUT_BASE + " h-11 !pl-3 relative appearance-none cursor-pointer"}
-                  >
-                    {['DSA', 'Frontend', 'DBMS', 'Cloud', 'Security'].map(c => <option key={c} value={c}>{c}</option>)}
-                    <option value="Other">Other (Custom)</option>
-                  </select>
-                  <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
-                </div>
+        </div>
+
+        <nav className="flex-1 p-6 space-y-1.5">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => navigate('/mentor')}
+              className={`group flex w-full items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 relative ${
+                item.id === 'Exam Management' 
+                ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-900/40' 
+                : 'text-zinc-400 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <item.icon size={18} className={`transition-transform duration-300 ${item.id === 'Exam Management' ? 'scale-110' : 'group-hover:scale-110'}`} />
+              <span className="text-xs font-bold uppercase tracking-wider">{item.label}</span>
+              {item.id === 'Exam Management' && (
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 w-1 h-3 bg-white/30 rounded-full" />
               )}
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mt-8 pt-8 border-t border-white/[0.04]">
-            <div>
-              <label className={LABEL_BASE}>Duration</label>
-              <StepperInput 
-                value={exam.duration} 
-                onChange={v => setExam({...exam, duration: v})} 
-                icon={Clock} 
-                unit="min" 
-                step={5} 
-              />
-            </div>
-            <div>
-              <label className={LABEL_BASE}>Total Marks</label>
-              <StepperInput 
-                value={exam.totalMarks} 
-                onChange={v => setExam({...exam, totalMarks: v})} 
-                step={10} 
-              />
-            </div>
-            <div>
-              <label className={LABEL_BASE}>Pass Marks</label>
-              <StepperInput 
-                value={exam.passingMarks} 
-                onChange={v => setExam({...exam, passingMarks: v})} 
-                step={5} 
-              />
-            </div>
-            <div>
-              <label className={LABEL_BASE}>Schedule</label>
-              <input type="datetime-local" value={exam.scheduledDate} onChange={e => setExam({...exam, scheduledDate: e.target.value})} className={INPUT_BASE + " w-full bg-[#0a0c10] border border-white/[0.06] rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-white/[0.15] focus:bg-[#0f1117] transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] [color-scheme:dark]"} />
-            </div>
-          </div>
-        </section>
+            </button>
+          ))}
+        </nav>
 
-        <div className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
-
-        {/* ═══ SECTION 2: AI Exam Setter ═══ */}
-        <section className="bg-gradient-to-b from-[#141226]/80 to-[#0f1117]/80 backdrop-blur-xl rounded-[24px] border border-violet-500/15 p-8 shadow-[0_0_40px_rgba(139,92,246,0.03)] focus-within:border-violet-500/30 transition-colors relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-violet-500/30 to-transparent" />
-          <button
-            onClick={() => setShowAI(!showAI)}
-            className="w-full flex items-center gap-5 group"
+        <div className="p-6 mt-auto border-t border-white/5">
+          <button 
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 p-3 bg-white/5 hover:bg-red-500/10 text-zinc-400 hover:text-red-400 rounded-xl text-xs font-bold transition-all uppercase tracking-widest active:scale-95 border border-white/5"
           >
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500/20 to-blue-500/20 border border-violet-500/20 flex items-center justify-center shadow-[inset_0_1px_rgba(255,255,255,0.1)] group-hover:scale-105 transition-transform">
-              <Sparkles size={20} className="text-violet-400" />
-            </div>
-            <div className="text-left flex-1">
-              <h2 className="text-base font-semibold text-white flex items-center gap-3 tracking-tight">
-                AI Suggestion Engine
-                <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30">BETA - UNDER CONSTRUCTION</span>
-              </h2>
-              <p className="text-xs text-amber-500/70 mt-1.5 font-medium">Auto-generation is currently disabled while the AI engine model is being trained.</p>
-            </div>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-white/[0.02] border border-white/[0.04] transition-transform duration-300 ${showAI ? 'rotate-180' : ''}`}>
-              <ChevronDown size={18} className="text-zinc-500 group-hover:text-white transition-colors" />
-            </div>
+            <LogOut size={16} /> Exit Module
           </button>
+        </div>
+      </aside>
 
-          {showAI && (
-            <div className="mt-4 bg-[#0f1117] rounded-2xl border border-white/[0.06] p-5 space-y-4">
-              {/* Input Mode Tabs */}
-              <div className="flex items-center gap-1 bg-[#0a0c10] p-1 rounded-xl border border-white/[0.05] w-fit mb-4">
-                {[{ id: 'text', label: 'Paste Syllabus' }, { id: 'file', label: 'Upload File' }].map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setInputMode(tab.id)}
-                    className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                      inputMode === tab.id
-                        ? 'bg-violet-600 text-white shadow-[0_0_12px_rgba(139,92,246,0.3)]'
-                        : 'text-zinc-500 hover:text-zinc-300'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+      {/* Main Container */}
+      <main className="flex-1 flex flex-col h-screen overflow-hidden relative bg-[#060810]">
+        {/* Header (Breadcrumbs) */}
+        <header className="h-20 bg-[#060810]/80 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-10 relative z-20">
+          <div className="flex items-center gap-3 text-xs font-bold text-zinc-400 uppercase tracking-widest leading-none">
+            <span onClick={() => navigate('/mentor')} className="hover:text-emerald-500 transition-colors cursor-pointer">Mentor</span>
+            <ChevronRight size={14} className="opacity-30" />
+            <span className="hover:text-emerald-500 transition-colors cursor-pointer" onClick={() => navigate('/mentor')}>Exam Library</span>
+            <ChevronRight size={14} className="opacity-30" />
+            <span className="text-white">{editId ? 'Edit' : 'Create'} Assessment</span>
+          </div>
+
+          <div className="flex items-center gap-6">
+            <div className="relative group cursor-pointer">
+               <Bell size={20} className="text-zinc-500 hover:text-emerald-500 transition-colors" />
+            </div>
+            <div className="h-6 w-px bg-white/5" />
+            <div className="flex items-center gap-3 cursor-pointer group">
+              <div className="text-right">
+                <p className="text-[11px] font-bold text-white group-hover:text-emerald-500 transition-colors uppercase tracking-tight leading-none">{sessionStorage.getItem('vision_name') || 'Mentor'}</p>
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 mt-1">Authorized</p>
               </div>
+              <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/5 flex items-center justify-center font-black text-white uppercase text-sm shadow-sm group-hover:border-emerald-500/50 transition-all">
+                {(sessionStorage.getItem('vision_name') || 'M').charAt(0)}
+              </div>
+            </div>
+          </div>
+        </header>
 
-              {inputMode === 'text' ? (
-                <div>
-                  <label className={LABEL_BASE}>Syllabus / Topics</label>
-                  <textarea
-                    value={syllabus}
-                    onChange={e => setSyllabus(e.target.value)}
-                    placeholder={"Paste your syllabus or list topics...\n\ne.g.\n\u2022 Arrays & Strings\n\u2022 Linked Lists\n\u2022 Trees & Graphs\n\u2022 Sorting Algorithms\n\u2022 Dynamic Programming"}
-                    rows={5}
-                    className={INPUT_BASE + " resize-none"}
-                  />
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto p-10 custom-scrollbar relative">
+          {/* Subtle Background Glow */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-emerald-500/[0.03] blur-[120px] rounded-full pointer-events-none" />
+
+          <div className="max-w-7xl mx-auto">
+            {/* Title Header */}
+            <div className="mb-10">
+              <div className="flex items-center justify-between mb-2">
+                <h1 className="text-3xl font-black text-white tracking-tight uppercase">
+                  {editId ? 'Edit Assessment' : 'New Assessment'}
+                  {initialLoading && <Loader2 size={24} className="inline ml-4 animate-spin text-zinc-700" />}
+                </h1>
+                <div className="flex items-center gap-3">
+                  <div className={`px-4 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest flex items-center gap-2 ${totalM === exam.totalMarks ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-amber-500/10 border-amber-500/30 text-amber-400'}`}>
+                    <Award size={14} /> {totalM} / {exam.totalMarks} Marks Assigned
+                  </div>
                 </div>
-              ) : (
-                <div>
-                  <label className={LABEL_BASE}>Upload PDF or CSV</label>
+              </div>
+              <p className="text-xs text-zinc-500 font-medium uppercase tracking-[0.1em]">Configure your secure testing environment</p>
+            </div>
 
-                  {/* Intent toggle */}
-                  <div className="flex items-center gap-3 mb-4 p-3 rounded-xl bg-[#0a0c10] border border-white/[0.05]">
-                    <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest mr-1">File contains:</span>
-                    {[
-                      { id: 'import', label: 'Actual Questions', desc: 'MCQ / Short / Coding rows' },
-                      { id: 'syllabus', label: 'Syllabus / Topics', desc: 'AI generates questions' },
-                    ].map(opt => (
-                      <button
-                        key={opt.id}
-                        onClick={() => { setUploadIntent(opt.id); setUploadedFile(null); }}
-                        className={`flex-1 px-3 py-2 rounded-lg text-left transition-all border ${
-                          uploadIntent === opt.id
-                            ? 'border-violet-500/40 bg-violet-500/10'
-                            : 'border-white/[0.05] hover:border-white/[0.1]'
-                        }`}
-                      >
-                        <p className={`text-xs font-semibold ${ uploadIntent === opt.id ? 'text-violet-300' : 'text-zinc-400' }`}>{opt.label}</p>
-                        <p className="text-[10px] text-zinc-600 mt-0.5">{opt.desc}</p>
-                      </button>
-                    ))}
+            <div className="flex flex-col lg:flex-row gap-10 items-start">
+              {/* Left Column: Build Flow */}
+              <div className="flex-1 space-y-12 min-w-0 pb-32">
+                
+                {/* ═══ SECTION 1: Details ═══ */}
+                <section className="bg-[#0f1117]/80 backdrop-blur-xl rounded-[32px] border border-white/[0.06] p-10 shadow-2xl relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent" />
+                  <div className="mb-8 items-center flex justify-between">
+                    <div>
+                      <h2 className="text-sm font-bold text-white uppercase tracking-wider">Exam Parameters</h2>
+                      <p className="text-[10px] text-zinc-500 mt-1 uppercase font-semibold">Core assessment configuration</p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="col-span-2">
+                      <label className={LABEL_BASE}>Assessment Title</label>
+                      <input value={exam.title} onChange={e => setExam({...exam, title: e.target.value})} placeholder="e.g. System Design Mastery Challenge" className={INPUT_BASE + " text-base h-12"} />
+                    </div>
+                    <div>
+                      <label className={LABEL_BASE}>Category</label>
+                      <div className="relative">
+                        <select 
+                          value={exam.category} 
+                          onChange={e => setExam({...exam, category: e.target.value})} 
+                          className={INPUT_BASE + " h-12 !pl-4 appearance-none cursor-pointer uppercase font-bold text-xs tracking-widest"}
+                        >
+                          {['DSA', 'Frontend', 'DBMS', 'Cloud', 'Security', 'Other'].map(c => <option key={c} value={c} className="bg-zinc-950">{c}</option>)}
+                        </select>
+                        <ChevronDown size={14} className="absolute right-5 top-1/2 -translate-y-1/2 text-zinc-600 pointer-events-none" />
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Dropzone */}
-                  {!uploadedFile ? (
-                    <div
-                      onDragOver={e => { e.preventDefault(); setIsDragOver(true); }}
-                      onDragLeave={() => setIsDragOver(false)}
-                      onDrop={onDropFile}
-                      onClick={() => document.getElementById('file-upload-input').click()}
-                      className={`relative flex flex-col items-center justify-center gap-2 py-6 rounded-2xl border border-dashed cursor-pointer transition-all ${
-                        isDragOver
-                          ? 'border-violet-500/60 bg-violet-500/[0.08]'
-                          : 'border-white/[0.12] bg-[#0a0c10]/60 hover:border-violet-500/30 hover:bg-violet-500/[0.04]'
-                      }`}
-                    >
-                      <input
-                        id="file-upload-input"
-                        type="file"
-                        accept=".pdf,.csv"
-                        className="hidden"
-                        onChange={e => handleFile(e.target.files[0])}
-                      />
-                      <div className="w-14 h-14 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
-                        <Upload size={22} className="text-violet-400" />
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mt-10 pt-10 border-t border-white/[0.04]">
+                    <div>
+                      <label className={LABEL_BASE}>Duration</label>
+                      <StepperInput value={exam.duration} onChange={v => setExam({...exam, duration: v})} icon={Clock} unit="min" step={5} />
+                    </div>
+                    <div>
+                      <label className={LABEL_BASE}>Total Marks</label>
+                      <StepperInput value={exam.totalMarks} onChange={v => setExam({...exam, totalMarks: v})} step={5} />
+                    </div>
+                    <div>
+                      <label className={LABEL_BASE}>Passing</label>
+                      <StepperInput value={exam.passingMarks} onChange={v => setExam({...exam, passingMarks: v})} step={5} />
+                    </div>
+                    <div>
+                      <label className={LABEL_BASE}>Schedule</label>
+                      <input type="datetime-local" value={exam.scheduledDate} onChange={e => setExam({...exam, scheduledDate: e.target.value})} className={INPUT_BASE + " h-11 [color-scheme:dark] uppercase text-[10px] font-bold"} />
+                    </div>
+                  </div>
+                </section>
+
+                {/* ═══ SECTION 2: AI Engine ═══ */}
+                <section className="bg-[#0f1117]/80 backdrop-blur-xl rounded-[32px] border border-violet-500/20 p-10 shadow-2xl relative overflow-hidden group/ai">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-violet-500/30 to-transparent" />
+                  <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-violet-600/10 border border-violet-500/20 flex items-center justify-center text-violet-400">
+                        <Sparkles size={24} />
+                      </div>
+                      <div>
+                        <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-3">
+                          AI Question Engine
+                          <span className="text-[9px] px-2 py-0.5 rounded bg-violet-500 text-white font-black">BETA</span>
+                        </h2>
+                        <p className="text-[10px] text-zinc-500 mt-1 uppercase font-semibold">Generate from syllabus or documentation</p>
+                      </div>
+                    </div>
+                    <button onClick={() => setShowAI(!showAI)} className="px-4 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06] text-[10px] font-black uppercase text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-all">
+                      {showAI ? 'Close Engine' : 'Open Engine'}
+                    </button>
+                  </div>
+
+                  {showAI && (
+                    <div className="space-y-8 animate-in slide-in-from-top-4 duration-500">
+                       {/* Tabs */}
+                       <div className="flex items-center gap-1.5 p-1.5 bg-[#0a0c10] border border-white/5 rounded-2xl w-fit">
+                          {[{id:'text', label:'Syllabus Text'}, {id:'file', label:'File Upload'}].map(t => (
+                            <button key={t.id} onClick={() => setInputMode(t.id)} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${inputMode === t.id ? 'bg-violet-600 text-white shadow-lg shadow-violet-900/40' : 'text-zinc-600 hover:text-zinc-400'}`}>
+                              {t.label}
+                            </button>
+                          ))}
+                       </div>
+
+                       {inputMode === 'text' ? (
+                         <div className="space-y-4">
+                           <label className={LABEL_BASE}>Input Knowledge Base</label>
+                           <textarea value={syllabus} onChange={e => setSyllabus(e.target.value)} placeholder="Paste your syllabus, lecture notes, or specific topics here..." rows={6} className={INPUT_BASE + " resize-none p-5 text-sm leading-relaxed"} />
+                         </div>
+                       ) : (
+                         <div className="space-y-4">
+                            <label className={LABEL_BASE}>Document Processor</label>
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                               {[{id:'syllabus', label:'Topics Only', icon: ListChecks}, {id:'import', label:'Direct Questions', icon: FileSpreadsheet}].map(t => (
+                                 <button key={t.id} onClick={() => setUploadIntent(t.id)} className={`flex items-center gap-3 p-4 rounded-2xl border transition-all text-left ${uploadIntent === t.id ? 'bg-violet-600/10 border-violet-500/40' : 'bg-white/[0.02] border-white/[0.05] hover:bg-white/[0.05]'}`}>
+                                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${uploadIntent === t.id ? 'bg-violet-600 text-white' : 'bg-white/5 text-zinc-500'}`}><t.icon size={18} /></div>
+                                   <div><p className={`text-xs font-bold ${uploadIntent === t.id ? 'text-white' : 'text-zinc-400'}`}>{t.label}</p><p className="text-[10px] text-zinc-600">PDF / CSV format</p></div>
+                                 </button>
+                               ))}
+                            </div>
+                            
+                            {!uploadedFile ? (
+                              <div onDragOver={e => {e.preventDefault(); setIsDragOver(true)}} onDragLeave={() => setIsDragOver(false)} onDrop={onDropFile} onClick={() => document.getElementById('ai-file').click()} className={`py-12 border-2 border-dashed rounded-[32px] flex flex-col items-center justify-center gap-4 transition-all cursor-pointer ${isDragOver ? 'border-violet-500 bg-violet-600/5' : 'border-white/[0.06] hover:border-violet-500/30 bg-[#0a0c10]'}`}>
+                                <input id="ai-file" type="file" className="hidden" onChange={e => handleFile(e.target.files[0])} />
+                                <Upload size={32} className="text-violet-500/40" />
+                                <div className="text-center">
+                                  <p className="text-sm font-bold text-zinc-400 uppercase tracking-widest">Drop secure file</p>
+                                  <p className="text-[10px] text-zinc-600 mt-2">Maximum size 10MB</p>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="p-4 bg-violet-600/5 border border-violet-500/20 rounded-2xl flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                  <div className="w-12 h-12 bg-violet-600/20 rounded-xl flex items-center justify-center text-violet-400">{uploadedFile.name.endsWith('.pdf') ? <FileText size={20} /> : <FileSpreadsheet size={20} />}</div>
+                                  <div><p className="text-sm font-bold text-white truncate max-w-[200px]">{uploadedFile.name}</p><p className="text-[10px] text-zinc-500 uppercase">File Verified</p></div>
+                                </div>
+                                <button onClick={() => setUploadedFile(null)} className="p-2 hover:bg-red-500/10 text-zinc-600 hover:text-red-400 transition-colors"><X size={18} /></button>
+                              </div>
+                            )}
+                         </div>
+                       )}
+
+                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-white/[0.04]">
+                          <div><label className={LABEL_BASE}>MCQs Count</label><StepperInput value={aiConfig.mcq} onChange={v => setAiConfig({...aiConfig, mcq:v})} min={0} /></div>
+                          <div><label className={LABEL_BASE}>Short Qs Count</label><StepperInput value={aiConfig.short} onChange={v => setAiConfig({...aiConfig, short:v})} min={0} /></div>
+                          <div><label className={LABEL_BASE}>Coding Logic</label><StepperInput value={aiConfig.coding} onChange={v => setAiConfig({...aiConfig, coding:v})} min={0} /></div>
+                       </div>
+
+                       <button onClick={generateAI} disabled={aiLoading} className="w-full h-14 bg-white text-black rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:bg-zinc-200 transition-all flex items-center justify-center gap-3">
+                          {aiLoading ? <Loader2 size={18} className="animate-spin" /> : <Wand2 size={18} />}
+                          {aiLoading ? 'Synthesizing...' : 'Initialize AI Generation'}
+                       </button>
+
+                       {/* Suggestions Area */}
+                       {aiSuggestions.length > 0 && (
+                         <div className="pt-6 border-t border-white/[0.04] space-y-4">
+                            <div className="flex items-center justify-between mb-4 px-2">
+                               <p className="text-[10px] font-black text-violet-400 uppercase tracking-widest">{aiSuggestions.length} engine suggestions</p>
+                               <button onClick={acceptAll} className="text-[10px] font-black text-emerald-400 hover:text-emerald-300 uppercase underline decoration-2 underline-offset-4">Accept All Candidates</button>
+                            </div>
+                            <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                               {aiSuggestions.map((s, idx) => (
+                                 <div key={idx} className="p-5 bg-white/[0.02] border border-white/[0.05] rounded-3xl group flex items-start gap-4 hover:border-violet-500/30 transition-all">
+                                    <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-[10px] font-black text-zinc-600 group-hover:bg-violet-600 group-hover:text-white transition-all shrink-0">{idx+1}</div>
+                                    <div className="flex-1 min-w-0">
+                                       <div className="flex items-center gap-2 mb-2">
+                                          <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-violet-600/20 text-violet-400">{typeLabels[s.type]}</span>
+                                          <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">{s.marks} PTS</span>
+                                       </div>
+                                       <p className="text-xs font-semibold text-zinc-300 leading-relaxed mb-3">{s.questionText}</p>
+                                       <button onClick={() => acceptSuggestion(s)} className="text-[10px] font-black uppercase text-emerald-500 hover:text-emerald-400">Add to Exam</button>
+                                    </div>
+                                    <button onClick={() => setAiSuggestions(prev => prev.filter((_, i) => i !== idx))} className="opacity-0 group-hover:opacity-100 p-2 hover:bg-red-500/10 text-zinc-700 hover:text-red-400 transition-all"><Trash2 size={14} /></button>
+                                 </div>
+                               ))}
+                            </div>
+                         </div>
+                       )}
+                    </div>
+                  )}
+                </section>
+
+                {/* ═══ SECTION 3: Questions Builder ═══ */}
+                <section className="bg-transparent space-y-8">
+                  <div className="flex items-center justify-between px-2">
+                    <div>
+                      <h2 className="text-lg font-black text-white uppercase tracking-tight">Active Assessment Set</h2>
+                      <p className="text-[10px] text-zinc-600 mt-1 uppercase font-bold tracking-widest">Constructing {questions.length} modules</p>
+                    </div>
+                  </div>
+
+                  {questions.length === 0 ? (
+                    <div className="py-24 border-2 border-dashed border-white/[0.05] rounded-[40px] flex flex-col items-center justify-center gap-5 group">
+                      <div className="w-20 h-20 rounded-3xl bg-white/[0.02] border border-white/[0.05] flex items-center justify-center text-zinc-800 group-hover:text-emerald-500 transition-all group-hover:scale-105 duration-500">
+                        <FilePlus size={32} />
                       </div>
                       <div className="text-center">
-                        <p className="text-sm font-semibold text-zinc-300">Drop your file here</p>
-                        <p className="text-xs text-zinc-600 mt-1">Supports <span className="text-violet-400 font-medium">.pdf</span> and <span className="text-violet-400 font-medium">.csv</span> formats</p>
-                      </div>
-                      <div className="flex items-center gap-3 mt-1">
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.06] text-[11px] text-zinc-500">
-                          <FileText size={12} className="text-red-400" /> PDF
-                        </div>
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.06] text-[11px] text-zinc-500">
-                          <FilePlus size={12} className="text-emerald-400" /> CSV
-                        </div>
+                        <p className="text-sm font-bold text-zinc-500 uppercase tracking-widest">Library is empty</p>
+                        <p className="text-[10px] text-zinc-700 mt-2 uppercase font-black">Begin by adding questions manually or via AI</p>
                       </div>
                     </div>
                   ) : (
-                    <div className="rounded-2xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
-                      {fileParseLoading ? (
-                        <div className="flex items-center gap-3 py-2">
-                          <Loader2 size={18} className="animate-spin text-violet-400" />
-                          <div>
-                            <p className="text-sm font-semibold text-zinc-300">AI is reading your file...</p>
-                            <p className="text-xs text-zinc-600 mt-0.5">Extracting topics and syllabus structure</p>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                              uploadedFile.name.endsWith('.pdf') ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400'
-                            }`}>
-                              {uploadedFile.name.endsWith('.pdf') ? <FileText size={18} /> : <FilePlus size={18} />}
+                    <div className="space-y-6">
+                      {questions.map((q, i) => (
+                        <div key={q.id} className={`group bg-[#0f1117]/80 backdrop-blur-xl border rounded-[32px] transition-all relative overflow-hidden ${expandedQ === q.id ? 'ring-2 ring-emerald-500/20 border-emerald-500/30' : 'border-white/[0.06] hover:border-white/[0.12]'}`}>
+                          <div className="flex items-center justify-between p-8">
+                            <div className="flex items-center gap-6 min-w-0">
+                               <div className="w-12 h-12 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-center text-xs font-black text-zinc-700 group-hover:text-white transition-all shrink-0 select-none">
+                                  {i + 1}
+                               </div>
+                               <div className="min-w-0">
+                                 <div className="flex items-center gap-3 mb-2">
+                                    <span className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider" style={{ background: `${typeColors[q.type]}20`, color: typeColors[q.type], border: `1px solid ${typeColors[q.type]}30` }}>
+                                      {typeLabels[q.type]}
+                                    </span>
+                                    <span className="text-[9px] font-black text-zinc-600 uppercase tracking-[0.2em]">{q.marks} Marks assigned</span>
+                                 </div>
+                                 <input value={q.questionText} onChange={e => updateQ(q.id, { questionText: e.target.value })} placeholder="Type assessment focus..." className="bg-transparent border-none text-base font-bold text-white placeholder:text-zinc-800 focus:ring-0 w-full lg:w-[450px]" />
+                               </div>
                             </div>
-                            <div>
-                              <p className="text-sm font-semibold text-zinc-200">{uploadedFile.name}</p>
-                              <p className={`text-xs mt-0.5 ${ uploadIntent === 'import' ? 'text-violet-400' : 'text-emerald-400' }`}>
-                                {uploadIntent === 'import' ? 'Data captured from file' : 'Content processed — topics mapped'}
-                              </p>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => { setUploadedFile(null); setSyllabus(''); }}
-                            className="w-8 h-8 rounded-lg hover:bg-white/[0.06] flex items-center justify-center text-zinc-600 hover:text-red-400 transition-colors"
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-                      )}
 
-                      {!fileParseLoading && syllabus && uploadIntent === 'syllabus' && (
-                        <div className="mt-3 pt-3 border-t border-white/[0.05]">
-                          <label className={LABEL_BASE}>Extracted Syllabus</label>
-                          <textarea
-                            value={syllabus}
-                            onChange={e => setSyllabus(e.target.value)}
-                            rows={4}
-                            className={INPUT_BASE + " resize-none mt-1"}
-                          />
+                            <div className="flex items-center gap-3">
+                               <button onClick={() => setExpandedQ(expandedQ === q.id ? null : q.id)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/[0.02] border border-white/5 text-zinc-500 hover:text-white transition-colors">
+                                 {expandedQ === q.id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                               </button>
+                               <button onClick={() => dupQ(q.id)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/[0.02] border border-white/5 text-zinc-500 hover:text-emerald-400 transition-colors">
+                                 <Copy size={16} />
+                               </button>
+                               <button onClick={() => removeQ(q.id)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/[0.02] border border-white/5 text-zinc-500 hover:text-red-400 transition-colors">
+                                 <Trash2 size={16} />
+                               </button>
+                            </div>
+                          </div>
+
+                          {expandedQ === q.id && (
+                            <div className="px-8 pb-8 pt-4 border-t border-white/[0.04] animate-in slide-in-from-top-2 duration-300">
+                               <div className="mb-6 flex items-center gap-4">
+                                  <div className="flex items-center bg-white/[0.02] border border-white/5 rounded-2xl pr-4 overflow-hidden">
+                                     <input type="number" value={q.marks} onChange={e => updateQ(q.id, { marks: parseInt(e.target.value) || 0 })} className="w-14 h-12 bg-transparent border-none text-sm font-black text-white text-center focus:ring-0 tabular-nums" />
+                                     <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Points</span>
+                                  </div>
+                               </div>
+                               {q.type === 'mcq' && <McqEditor question={q} updateQ={updateQ} />}
+                               {q.type === 'short' && <ShortEditor question={q} updateQ={updateQ} />}
+                               {q.type === 'coding' && <CodingEditor question={q} updateQ={updateQ} />}
+                            </div>
+                          )}
                         </div>
-                      )}
+                      ))}
                     </div>
                   )}
-                </div>
-              )}
+                </section>
+              </div>
 
-              {!(inputMode === 'file' && uploadIntent === 'import') && (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
-                    <div>
-                      <label className={LABEL_BASE}>Target MCQs</label>
-                      <StepperInput value={aiConfig.mcq} onChange={v => setAiConfig({...aiConfig, mcq: v})} min={0} step={1} />
-                    </div>
-                    <div>
-                      <label className={LABEL_BASE}>Short Answer Qs</label>
-                      <StepperInput value={aiConfig.short} onChange={v => setAiConfig({...aiConfig, short: v})} min={0} step={1} />
-                    </div>
-                    <div>
-                      <label className={LABEL_BASE}>Coding Qs</label>
-                      <StepperInput value={aiConfig.coding} onChange={v => setAiConfig({...aiConfig, coding: v})} min={0} step={1} />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 mt-4 border-t border-white/[0.04] pt-5">
-                    <button
-                      onClick={generateAI}
-                      disabled={aiLoading}
-                      className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-blue-600 text-sm font-semibold text-white flex items-center gap-2 hover:from-violet-500 hover:to-blue-500 transition-all disabled:opacity-50"
-                    >
-                      {aiLoading ? <><Loader2 size={16} className="animate-spin" /> Generating...</> : <><Wand2 size={16} /> Generate Questions</>}
-                    </button>
-                    <span className="text-xs text-zinc-500">AI will generate a total of <strong className="text-zinc-300">{aiConfig.mcq + aiConfig.short + aiConfig.coding}</strong> questions.</span>
-                  </div>
-                </>
-              )}
-
-              {/* AI Suggestions */}
-              {aiSuggestions.length > 0 && (
-                <div className="space-y-3 pt-2">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-zinc-400 font-medium">{aiSuggestions.length} suggestions ready</p>
-                    <button onClick={acceptAll} className="text-[10px] text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1 transition-colors">
-                      <CheckCircle size={11} /> Accept All
-                    </button>
-                  </div>
-
-                  {aiSuggestions.map((s, idx) => (
-                    <div key={s.id} className="bg-[#0a0c10] rounded-xl border border-white/[0.06] p-4 group hover:border-violet-500/20 transition-colors">
-                      <div className="flex items-start gap-3">
-                        <div className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5" style={{ background: `${typeColors[s.type]}15`, color: typeColors[s.type] }}>
-                          {idx + 1}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1.5">
-                            <span className="text-[9px] font-semibold uppercase tracking-widest px-1.5 py-0.5 rounded-md" style={{ background: `${typeColors[s.type]}15`, color: typeColors[s.type] }}>
-                              {typeLabels[s.type]}
-                            </span>
-                            <span className="text-[9px] text-zinc-600">{s.marks} marks</span>
-                          </div>
-
-                          {editingSuggestion === s.id ? (
-                            <textarea
-                              value={s.questionText}
-                              onChange={e => setAiSuggestions(prev => prev.map(x => x.id === s.id ? {...x, questionText: e.target.value} : x))}
-                              className="w-full bg-transparent text-sm text-zinc-200 focus:outline-none resize-none border-b border-violet-500/20 pb-2"
-                              placeholder="Edit question..."
-                              rows={2}
-                              autoFocus
-                            />
-                          ) : (
-                            <p className="text-sm text-zinc-300 leading-relaxed">{s.questionText}</p>
-                          )}
-
-                          {s.type === 'mcq' && (
-                            <div className="mt-2 grid grid-cols-2 gap-1.5">
-                              {s.options.map((opt, oi) => (
-                                <div key={oi} className={`text-[11px] px-2.5 py-1.5 rounded-lg ${oi === s.correctIndex ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'text-zinc-500 bg-white/[0.02] border border-white/[0.04]'}`}>
-                                  {String.fromCharCode(65 + oi)}. {opt}
-                                </div>
-                              ))}
+              {/* Right Column: Actions / Summary */}
+              <aside className="w-full lg:w-80 space-y-8 lg:sticky lg:top-10 shrink-0 pb-10">
+                
+                {/* Master Actions */}
+                <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-[40px] p-8 space-y-8 shadow-2xl relative overflow-hidden group/actions">
+                  <div className="absolute -top-10 -right-10 w-32 h-32 bg-emerald-500/10 blur-[60px] rounded-full group-hover/actions:scale-150 transition-transform duration-700" />
+                  
+                  <div className="space-y-5">
+                    <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em] ml-1">Add Content</p>
+                    <div className="grid grid-cols-1 gap-3">
+                       {Object.entries(typeLabels).map(([type, label]) => (
+                         <button key={type} onClick={() => addQ(type)} className="w-full flex items-center gap-4 p-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl hover:bg-white/5 hover:border-emerald-500/30 group/btn transition-all text-left">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 group-hover/btn:scale-110 transition-transform">
+                              {typeIcons[type]}
                             </div>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button onClick={() => setEditingSuggestion(editingSuggestion === s.id ? null : s.id)} className="w-7 h-7 rounded-lg hover:bg-white/[0.04] flex items-center justify-center text-zinc-600 hover:text-violet-400 transition-colors" title="Edit">
-                            <Pencil size={12} />
-                          </button>
-                          <button onClick={() => acceptSuggestion(s)} className="w-7 h-7 rounded-lg hover:bg-emerald-500/10 flex items-center justify-center text-zinc-600 hover:text-emerald-400 transition-colors" title="Accept">
-                            <Check size={14} />
-                          </button>
-                          <button onClick={() => setAiSuggestions(prev => prev.filter(x => x.id !== s.id))} className="w-7 h-7 rounded-lg hover:bg-red-500/10 flex items-center justify-center text-zinc-600 hover:text-red-400 transition-colors" title="Reject">
-                            <X size={14} />
-                          </button>
-                        </div>
-                      </div>
+                            <div>
+                               <p className="text-xs font-black text-white uppercase tracking-wider">{label}</p>
+                               <p className="text-[9px] text-zinc-600 uppercase font-bold">New Module</p>
+                            </div>
+                         </button>
+                       ))}
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </section>
-
-        <div className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
-
-        {/* ═══ SECTION 3: Questions ═══ */}
-        <section className="bg-[#0f1117]/80 backdrop-blur-xl rounded-[24px] border border-white/[0.06] p-8 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/[0.1] to-transparent" />
-          <div className="flex items-center justify-between mb-8 pb-6 border-b border-white/[0.04]">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-white/[0.03] border border-white/[0.05] flex items-center justify-center">
-                <FileText size={18} className="text-zinc-400" />
-              </div>
-              <div>
-                <h2 className="text-base font-semibold text-white tracking-tight">Active Questions</h2>
-                <div className="text-xs text-zinc-500 mt-1 flex items-center gap-2">
-                  <span className="text-zinc-300 font-medium">{questions.length}</span> questions added
-                  <span className="w-1 h-1 rounded-full bg-zinc-700" />
-                  <span className="text-zinc-300 font-medium">{totalM}</span> total marks
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 bg-[#0a0c10] p-1.5 rounded-xl border border-white/[0.04]">
-              {Object.entries(typeLabels).map(([type, label]) => (
-                <button key={type} onClick={() => addQ(type)} className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]" style={{ background: `${typeColors[type]}10`, color: typeColors[type] }}>
-                  <Plus size={14} /> {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {questions.length === 0 ? (
-            <div className="rounded-2xl border-2 border-dashed border-white/[0.05] py-20 text-center bg-[#0a0c10]/50">
-              <div className="w-16 h-16 bg-white/[0.02] rounded-full flex items-center justify-center mx-auto mb-4 border border-white/[0.05]">
-                <BookOpen size={24} className="text-zinc-600" />
-              </div>
-              <p className="text-base font-medium text-zinc-300">No questions drafted yet</p>
-              <p className="text-xs text-zinc-500 mt-2 max-w-sm mx-auto">Click a question type above to add manually, or expand the AI Exam Setter to generate suggestions from a syllabus.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {questions.map((q, idx) => {
-                const open = expandedQ === q.id;
-                const color = typeColors[q.type];
-                return (
-                  <div key={q.id} className="rounded-2xl border transition-all overflow-hidden" style={{ borderColor: open ? `${color}40` : 'rgba(255,255,255,0.06)', background: open ? `${color}05` : '#0a0c10', boxShadow: open ? `0 0 30px ${color}08` : 'none' }}>
-
-                    {/* Header */}
-                    <div className="flex items-center gap-4 px-5 py-4 cursor-pointer" onClick={() => setExpandedQ(open ? null : q.id)}>
-                      <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0" style={{ background: `${color}15`, color }}>{idx + 1}</div>
-                      <span className="shrink-0" style={{ color }}>{typeIcons[q.type]}</span>
-                      <p className={`text-sm font-medium flex-1 truncate ${q.questionText ? 'text-zinc-200' : 'text-zinc-600 italic'}`}>{q.questionText || 'Untitled question'}</p>
-                      <span className="text-[11px] font-medium text-zinc-500 tabular-nums shrink-0 mr-2 bg-white/[0.03] px-2 py-1 rounded-md">{q.marks} marks</span>
-                      <button onClick={e => { e.stopPropagation(); dupQ(q.id); }} className="w-8 h-8 rounded-lg hover:bg-white/[0.06] flex items-center justify-center text-zinc-600 hover:text-white transition-colors"><Copy size={13} /></button>
-                      <button onClick={e => { e.stopPropagation(); removeQ(q.id); }} className="w-8 h-8 rounded-lg hover:bg-red-500/10 flex items-center justify-center text-zinc-600 hover:text-red-400 transition-colors"><Trash2 size={13} /></button>
-                      <div className="w-px h-4 bg-white/[0.06] mx-1" />
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform ${open ? 'rotate-180 bg-white/[0.04]' : ''}`}>
-                        <ChevronDown size={14} className="text-zinc-500" />
-                      </div>
-                    </div>
-
-                    {/* Editor */}
-                    {open && (
-                      <div className="px-5 pb-5 pt-2 space-y-6 border-t" style={{ borderColor: `${color}15` }}>
-                        <textarea 
-                          value={q.questionText} 
-                          onChange={e => updateQ(q.id, { questionText: e.target.value })} 
-                          placeholder="Type your question..." 
-                          rows={2} 
-                          className="w-full bg-transparent text-base text-zinc-200 placeholder:text-zinc-700 focus:outline-none resize-none mt-2 leading-relaxed" 
-                          autoFocus 
-                        />
-
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-                            <Award size={14} />
-                          </div>
-                          <input 
-                            type="number" 
-                            value={q.marks} 
-                            onChange={e => updateQ(q.id, { marks: parseInt(e.target.value) || 0 })} 
-                            className="w-16 bg-[#0f1117] border border-white/[0.06] rounded-xl px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-white/[0.12] tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-center" 
-                            min={1} 
-                          />
-                          <span className="text-xs text-zinc-600 font-medium">points</span>
-                        </div>
-
-                        {q.type === 'mcq' && <McqEditor question={q} updateQ={updateQ} />}
-                        {q.type === 'short' && <ShortEditor question={q} updateQ={updateQ} />}
-                        {q.type === 'coding' && <CodingEditor question={q} updateQ={updateQ} />}
-                      </div>
-                    )}
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
 
-        {/* Marks Status */}
-        {questions.length > 0 && (
-          <div className={`rounded-xl px-4 py-3 flex items-center gap-2.5 border text-xs ${
-            totalM === exam.totalMarks ? 'bg-emerald-500/[0.04] border-emerald-500/[0.1] text-emerald-400/80' : 'bg-amber-500/[0.04] border-amber-500/[0.1] text-amber-400/80'
-          }`}>
-            {totalM === exam.totalMarks ? <CheckCircle size={13} /> : <AlertCircle size={13} />}
-            {totalM === exam.totalMarks ? 'Marks balanced — ready to publish' : `${totalM} marks assigned, exam total is ${exam.totalMarks}`}
+                  <div className="h-px bg-white/[0.06]" />
+
+                  <div className="space-y-4 pt-2">
+                    <button onClick={handlePublish} disabled={isPublishing || questions.length === 0} className="w-full h-16 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-[#0a0c10] rounded-[24px] font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-3 transition-all active:scale-95 group/pub">
+                      {isPublishing ? <Loader2 size={18} className="animate-spin text-[#0a0c10]" /> : <Send size={18} className="group-hover/pub:translate-x-1 group-hover/pub:-translate-y-1 transition-transform" />}
+                      {isPublishing ? 'Deploying...' : 'Deploy Now'}
+                    </button>
+                    <button onClick={handleSaveDraft} disabled={isSaving} className="w-full h-16 bg-white/[0.05] border border-white/[0.08] hover:bg-white/[0.08] text-white rounded-[24px] font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all active:scale-95">
+                      {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                      Save Progress
+                    </button>
+                  </div>
+                </div>
+
+                {/* Status Card */}
+                <div className="bg-zinc-950 border border-white/[0.03] rounded-[32px] p-6 space-y-5">
+                   <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest px-2">Integrity Status</h3>
+                   <div className="space-y-4">
+                      <div className="flex items-center justify-between px-2">
+                         <span className="text-xs text-zinc-600 font-medium tracking-tight">System Identity</span>
+                         <span className="text-[10px] font-bold text-white bg-white/5 px-2 py-0.5 rounded border border-white/5 uppercase tracking-tighter">Vision Pro</span>
+                      </div>
+                      <div className="flex items-center justify-between px-2">
+                         <span className="text-xs text-zinc-600 font-medium tracking-tight">Data Security</span>
+                         <span className="text-[10px] font-bold text-emerald-400 uppercase">AES-256</span>
+                      </div>
+                      <div className="h-px bg-white/[0.03] mx-2" />
+                      <div className="p-4 bg-[#0a0c10] rounded-2xl space-y-1">
+                         <p className="text-[9px] font-black text-zinc-700 uppercase leading-none">Assessment ID</p>
+                         <p className="text-[11px] font-mono text-zinc-400 truncate tracking-tight">{editId || 'Generated on Publish'}</p>
+                      </div>
+                   </div>
+                </div>
+              </aside>
+            </div>
           </div>
-        )}
         </div>
-
-        {/* Right Column: Sticky Sidebar */}
-        <aside className="w-full lg:w-80 shrink-0 space-y-6 lg:sticky lg:top-24">
-          
-          {/* Action Buttons */}
-          <div className="flex flex-col gap-3">
-            <button 
-              onClick={handlePublish}
-              disabled={isPublishing || isSaving || questions.length === 0}
-              className="w-full py-3.5 rounded-xl bg-white text-sm font-extrabold text-[#0a0c10] shadow-[0_0_24px_rgba(255,255,255,0.15)] hover:shadow-[0_0_30px_rgba(255,255,255,0.25)] hover:bg-zinc-100 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
-            >
-              {isPublishing ? <><Loader2 size={16} className="animate-spin" /> Publishing...</> : <><Send size={16} /> Publish Exam</>}
-            </button>
-            
-            <button 
-              onClick={handleSaveDraft}
-              disabled={isPublishing || isSaving}
-              className="w-full py-3.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-sm font-semibold text-zinc-300 hover:text-white hover:bg-white/[0.08] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
-            >
-              {isSaving ? <><Loader2 size={16} className="animate-spin" /> Saving...</> : <><Save size={16} /> Save Draft</>}
-            </button>
-          </div>
-
-          {/* Setup Summary */}
-          <div className="bg-[#0f1117]/80 backdrop-blur-xl rounded-[24px] border border-white/[0.06] p-6 shadow-2xl">
-            <h3 className="text-sm font-semibold text-white tracking-wide mb-4">Exam Summary</h3>
-            
-            <div className="space-y-4">
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs text-zinc-500 font-medium tracking-wide uppercase">Title</span>
-                <span className="text-sm text-zinc-200 font-medium truncate">{exam.title || 'Untitled Exam'}</span>
-              </div>
-              
-              <div className="flex items-center justify-between py-2 border-t border-white/[0.04]">
-                <span className="text-xs text-zinc-500">Category</span>
-                <span className="text-xs font-semibold text-zinc-300 px-2.5 py-1 rounded bg-white/[0.03] border border-white/[0.04]">{exam.category}</span>
-              </div>
-              
-              <div className="flex items-center justify-between py-2 border-t border-white/[0.04]">
-                <span className="text-xs text-zinc-500">Duration</span>
-                <span className="text-xs font-medium text-zinc-300 flex items-center gap-1.5"><Clock size={12} className="text-zinc-500"/> {exam.duration}m</span>
-              </div>
-
-              <div className="flex items-center justify-between py-2 border-t border-white/[0.04]">
-                <span className="text-xs text-zinc-500">Added Qs</span>
-                <span className="text-xs font-medium text-zinc-300">{questions.length}</span>
-              </div>
-
-              <div className="py-2 border-t border-white/[0.04] space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-zinc-500 focus-within:">Marks Allocation</span>
-                  <span className={`text-xs font-bold ${totalM === exam.totalMarks ? 'text-emerald-400' : 'text-amber-400'}`}>
-                    {totalM} / {exam.totalMarks}
-                  </span>
-                </div>
-                
-                {/* Progress Bar */}
-                <div className="h-1.5 w-full bg-[#181a20] rounded-full overflow-hidden flex">
-                  {questions.map((q, i) => {
-                    const width = `${(q.marks / exam.totalMarks) * 100}%`;
-                    const color = q.type === 'mcq' ? 'bg-blue-500' : q.type === 'short' ? 'bg-violet-500' : 'bg-emerald-500';
-                    return <div key={i} className={`h-full ${color}`} style={{ width }} />
-                  })}
-                </div>
-                
-                {totalM !== exam.totalMarks && (
-                  <p className="text-[10px] text-amber-500/80 leading-relaxed">
-                    <AlertCircle size={10} className="inline mr-1 -mt-0.5" /> 
-                    Please adjust marks so they hit exactly {exam.totalMarks}.
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-
-        </aside>
-
       </main>
 
       {/* Success Modal */}
       {showSuccessModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-[#0f1117] border border-emerald-500/30 rounded-3xl w-full max-w-md p-8 shadow-2xl relative overflow-hidden animate-in fade-in zoom-in-95 duration-300">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-teal-400" />
-            
-            <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mb-6 mx-auto">
-              <CheckCircle size={32} className="text-emerald-500" />
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md bg-black/60">
+          <div className="bg-[#0f1117] border border-emerald-500/20 w-full max-w-sm rounded-[40px] p-10 text-center shadow-2xl animate-in zoom-in-95 duration-300 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-500 to-teal-500" />
+            <div className="w-20 h-20 bg-emerald-500/10 border border-emerald-500/20 rounded-[28px] flex items-center justify-center mx-auto mb-8 text-emerald-400 shadow-[0_0_40px_rgba(16,185,129,0.15)]">
+              <CheckCircle size={40} strokeWidth={2.5} />
             </div>
+            <h2 className="text-2xl font-black text-white mb-3 uppercase tracking-tight">System Deployed</h2>
+            <p className="text-xs text-zinc-500 mb-8 leading-relaxed font-semibold uppercase tracking-wider">Assessment protocol is now active across all proctor nodes.</p>
             
-            <h2 className="text-2xl font-bold text-white text-center mb-2">Exam Published!</h2>
-            <p className="text-zinc-400 text-sm text-center mb-8">"{exam.title || 'Untitled Exam'}" is now live and available for candidates.</p>
-            
-            <div className="bg-[#0a0c10] rounded-2xl p-5 mb-8 border border-white/[0.06] space-y-4">
-              <div className="flex justify-between items-center pb-3 border-b border-white/[0.04]">
-                <span className="text-xs text-zinc-500 font-medium uppercase tracking-widest">Exam Code</span>
-                <span className="text-sm font-mono text-emerald-400 font-bold tracking-wider">{publishedExamId}</span>
-              </div>
-              <div className="flex justify-between items-center pb-3 border-b border-white/[0.04]">
-                <span className="text-xs text-zinc-500 font-medium uppercase tracking-widest">Questions</span>
-                <span className="text-sm text-zinc-300 font-semibold">{questions.length}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-zinc-500 font-medium uppercase tracking-widest">Duration</span>
-                <span className="text-sm text-zinc-300 font-semibold">{exam.duration} mins</span>
+            <div className="bg-[#0a0c10] border border-white/5 rounded-2xl p-5 flex flex-col gap-4 mb-10">
+              <div className="flex items-center justify-between gap-4">
+                <div className="text-left font-mono min-w-0">
+                  <p className="text-[9px] text-zinc-700 font-bold uppercase tracking-widest mb-1 leading-none">Access Hash</p>
+                  <p className="text-xs text-white truncate font-black tracking-widest">{publishedExamId}</p>
+                </div>
+                <button 
+                  onClick={() => { navigator.clipboard.writeText(publishedExamId); addToast('Hash Copied!'); }}
+                  className="shrink-0 p-3 bg-white/[0.03] border border-emerald-500/20 rounded-xl text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                >
+                  <Copy size={16} />
+                </button>
               </div>
             </div>
-            
-            <div className="flex flex-col gap-3">
-              <button 
-                onClick={() => {
-                  const link = `${window.location.origin}/login`;
-                  navigator.clipboard.writeText(link);
-                  addToast('Link copied! Students will login and see this exam on their dashboard.', 'success');
-                }}
-                className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-[#0a0c10] text-sm font-bold transition-colors flex items-center justify-center gap-2"
-              >
-                <Copy size={16} /> Copy Exam Link
-              </button>
-              <button 
-                onClick={() => navigate('/mentor')}
-                className="w-full py-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-zinc-300 hover:text-white text-sm font-semibold transition-colors"
-              >
-                Return to Dashboard
-              </button>
-            </div>
+
+            <button onClick={() => navigate('/mentor')} className="group w-full bg-white text-black h-16 rounded-[24px] font-black text-xs uppercase tracking-[0.2em] hover:bg-zinc-200 transition-all active:scale-[0.98] flex items-center justify-center gap-3">
+              Return to Module
+              <ArrowLeft size={16} className="rotate-180 group-hover:translate-x-1 transition-transform" />
+            </button>
           </div>
         </div>
       )}
 
-      {/* Toast Notifications */}
-      <div className="fixed bottom-6 right-6 z-[200] flex flex-col gap-2 pointer-events-none">
+      {/* Toasts */}
+      <div className="fixed bottom-10 right-10 z-[200] space-y-4">
         {toasts.map(t => (
-          <div key={t.id} className={`flex items-center gap-3 px-4 py-3 rounded-xl border shadow-2xl backdrop-blur-md pointer-events-auto transition-all ${t.type === 'error' ? 'bg-red-950/90 border-red-500/30 text-red-300' :
-              t.type === 'info' ? 'bg-[#181a20] border-teal-600/30 text-teal-400' :
-                'bg-zinc-900/90 border-emerald-500/30 text-emerald-300'
-            }`}>
-            {t.type === 'error' ? <AlertCircle size={14} /> : <CheckCircle size={14} />}
-            <span className="text-xs font-semibold">{t.msg}</span>
-            <button onClick={() => setToasts(p => p.filter(x => x.id !== t.id))} className="ml-1 opacity-50 hover:opacity-100"><X size={12} /></button>
+          <div key={t.id} className={`flex items-center gap-4 px-6 py-5 rounded-[24px] border shadow-2xl animate-in slide-in-from-right-10 duration-500 ${t.type === 'error' ? 'bg-red-950/40 border-red-500/20 text-red-100' : 'bg-emerald-950/40 border-emerald-500/20 text-emerald-100'}`}>
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${t.type === 'error' ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+               {t.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle size={18} />}
+            </div>
+            <div>
+               <p className="text-xs font-black uppercase tracking-widest mb-0.5 leading-none">{t.type === 'error' ? 'System Error' : 'Success'}</p>
+               <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-tight">{t.msg}</p>
+            </div>
           </div>
         ))}
       </div>
+
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.05); border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.1); }
+        select { background-image: none !important; }
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+          filter: invert(1);
+          opacity: 0.5;
+          cursor: pointer;
+        }
+      `}</style>
     </div>
   );
 }
