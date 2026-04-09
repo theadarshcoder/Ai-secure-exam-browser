@@ -333,7 +333,7 @@ export default function MentorDashboard() {
   const [stats, setStats] = useState({ liveStudents: 0, totalSubmissions: 0, flags: 0, totalExams: 0 });
   const [activity, setActivity] = useState([]);
   const [liveSessions, setLiveSessions] = useState([]);
-  const [mentorExams, setMentorExams] = useState([]);
+  const [exams, setExams] = useState([]);
   const [results, setResults] = useState([]);
   const [resultFilter, setResultFilter] = useState('ALL');
   const [sessionDetail, setSessionDetail] = useState(null);
