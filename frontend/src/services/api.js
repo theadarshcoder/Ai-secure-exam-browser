@@ -12,7 +12,7 @@ const api = axios.create({
 // Request interceptor for attaching JWT
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('vision_token');
+    const token = sessionStorage.getItem('vision_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -26,7 +26,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if ((error.response?.status === 401 || error.response?.status === 403) && !error.config?.url?.includes('/login')) {
-      localStorage.clear();
+      sessionStorage.clear(); localStorage.clear();
       window.location.href = '/login';
     }
     return Promise.reject(error);

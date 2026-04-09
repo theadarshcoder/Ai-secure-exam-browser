@@ -326,7 +326,7 @@ const EvaluationModal = ({ sessionData, onClose, onGradeSubmit, isSubmitting }) 
 export default function MentorDashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('Overview');
-  const [userName] = useState(localStorage.getItem('vision_name') || 'Mentor');
+  const [userName] = useState(sessionStorage.getItem('vision_name') || 'Mentor');
   
   // Live data states
   const [loading, setLoading] = useState(false);
@@ -356,7 +356,7 @@ export default function MentorDashboard() {
   }, [searchFilter]);
 
   useEffect(() => {
-    const userEmail = localStorage.getItem('vision_email');
+    const userEmail = sessionStorage.getItem('vision_email');
     if (userEmail) socketService.connect(userEmail);
 
     socketService.onMentorAlert((data) => {
@@ -401,7 +401,7 @@ export default function MentorDashboard() {
   };
 
   const handleLogout = () => {
-    localStorage.clear();
+    sessionStorage.clear(); localStorage.clear();
     navigate('/login');
   };
 

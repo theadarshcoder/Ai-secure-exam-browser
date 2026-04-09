@@ -89,8 +89,8 @@ export default function AdminDashboard() {
   const fileInputRef = useRef(null);
   const [activeTab, setActiveTab] = useState('Overview');
   
-  const [userName] = useState(localStorage.getItem('vision_name') || 'Administrator');
-  const [userRole] = useState(localStorage.getItem('vision_role') || 'admin');
+  const [userName] = useState(sessionStorage.getItem('vision_name') || 'Administrator');
+  const [userRole] = useState(sessionStorage.getItem('vision_role') || 'admin');
 
   // App States
   const [loading, setLoading] = useState(false);
@@ -157,7 +157,7 @@ export default function AdminDashboard() {
   };
 
   const handleLogout = () => {
-    localStorage.clear();
+    sessionStorage.clear(); localStorage.clear();
     navigate('/login');
   };
 

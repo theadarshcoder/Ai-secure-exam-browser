@@ -12,7 +12,7 @@ class SocketService {
       return this.socket;
     }
 
-    const token = localStorage.getItem('vision_token');
+    const token = sessionStorage.getItem('vision_token');
 
     if (!token) {
       console.warn('⚠️ Socket: No token found! Login first.');
@@ -35,8 +35,8 @@ class SocketService {
       console.error('🚫 Socket connection failed:', err.message);
       if (err.message.includes('Authentication') || err.message.includes('token') || err.message.includes('Session')) {
         console.warn('🔑 Token expired/invalid — redirecting to login');
-        localStorage.removeItem('vision_token');
-        localStorage.removeItem('vision_role');
+        sessionStorage.removeItem('vision_token');
+        sessionStorage.removeItem('vision_role');
         window.location.href = '/login';
       }
     });

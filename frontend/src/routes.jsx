@@ -34,7 +34,7 @@ const ThemeEnforcer = () => {
 const DashboardRedirect = () => {
   const navigate = useNavigate();
   useEffect(() => {
-    const role = localStorage.getItem('vision_role')?.toLowerCase();
+    const role = sessionStorage.getItem('vision_role')?.toLowerCase();
     if (role === 'admin') navigate('/admin');
     else if (role === 'mentor') navigate('/mentor');
     else navigate('/student');
@@ -43,8 +43,8 @@ const DashboardRedirect = () => {
 };
 
 const ProtectedRoute = ({ allowedRoles, children }) => {
-  const token = localStorage.getItem('vision_token');
-  const role = localStorage.getItem('vision_role')?.toLowerCase();
+  const token = sessionStorage.getItem('vision_token');
+  const role = sessionStorage.getItem('vision_role')?.toLowerCase();
 
   if (!token) {
     return <Navigate to="/login" replace />;
@@ -63,8 +63,8 @@ const ProtectedRoute = ({ allowedRoles, children }) => {
 };
 
 const LoginRedirect = () => {
-  const token = localStorage.getItem('vision_token');
-  const role = localStorage.getItem('vision_role')?.toLowerCase();
+  const token = sessionStorage.getItem('vision_token');
+  const role = sessionStorage.getItem('vision_role')?.toLowerCase();
   
   if (token && role) {
     const map = { admin: '/admin', mentor: '/mentor', student: '/student' };

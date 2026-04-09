@@ -204,8 +204,8 @@ export default function StudentDashboard() {
   const [isLiveData, setIsLiveData] = useState(false);
 
   // User Info
-  const userName = localStorage.getItem('vision_name') || localStorage.getItem('vision_email')?.split('@')[0] || 'Vision Student';
-  const userEmail = localStorage.getItem('vision_email') || '';
+  const userName = sessionStorage.getItem('vision_name') || sessionStorage.getItem('vision_email')?.split('@')[0] || 'Vision Student';
+  const userEmail = sessionStorage.getItem('vision_email') || '';
 
   // Fetch Logic
   useEffect(() => {

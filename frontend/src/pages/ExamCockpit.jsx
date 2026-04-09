@@ -214,7 +214,7 @@ export default function ExamCockpit() {
 
   // We define logIncident first so it's available for effects
   const logIncident = useCallback(async (type, severity, details) => {
-    const studentId = localStorage.getItem('vision_email') || 'VSN-89241';
+    const studentId = sessionStorage.getItem('vision_email') || 'VSN-89241';
     const incident = {
       id: `INC-${Date.now()}`,
       examId,
@@ -300,7 +300,7 @@ export default function ExamCockpit() {
 
   useEffect(() => {
     if (submitted || terminated) return;
-    const studentId = localStorage.getItem('vision_email') || 'VSN-89241';
+    const studentId = sessionStorage.getItem('vision_email') || 'VSN-89241';
     const check = () => {
       try {
         const list = JSON.parse(localStorage.getItem('vision_terminated_sessions') || '[]');

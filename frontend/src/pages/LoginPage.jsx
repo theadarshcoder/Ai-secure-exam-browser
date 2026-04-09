@@ -215,10 +215,10 @@ const LoginPage = () => {
       const { token, user: userData } = response.data;
 
       // Store real session data
-      localStorage.setItem('vision_token', token);
-      localStorage.setItem('vision_role', userData.role);
-      localStorage.setItem('vision_email', userData.email);
-      localStorage.setItem('vision_name', userData.name);
+      sessionStorage.setItem('vision_token', token);
+      sessionStorage.setItem('vision_role', userData.role);
+      sessionStorage.setItem('vision_email', userData.email);
+      sessionStorage.setItem('vision_name', userData.name);
 
       // Trigger full screen for candidate (student) if needed
       if (userData.role === 'student') {
