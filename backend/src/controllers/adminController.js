@@ -28,7 +28,7 @@ exports.getAllResults = asyncHandler(async (req, res) => {
         passed: session.passed,
         status: session.status,
         tabSwitches: session.tabSwitchCount,
-        totalViolations: session.violations.length,
+        totalViolations: session.violations?.length || 0,
         submittedAt: session.submittedAt || session.startedAt 
     }));
 
