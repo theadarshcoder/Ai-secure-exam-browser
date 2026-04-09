@@ -33,7 +33,11 @@ export function Navbar({ role, hideSignOut }) {
             {role && !hideSignOut && (
               <button 
                 className="bg-transparent border border-slate-800 text-slate-400 hover:bg-slate-900 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all active:scale-[0.98]" 
-                onClick={() => navigate('/')}
+                onClick={() => {
+                  sessionStorage.clear();
+                  localStorage.clear();
+                  navigate('/');
+                }}
               >
                 <LogOut size={14} /> Sign Out
               </button>

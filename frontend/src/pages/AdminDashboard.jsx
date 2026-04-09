@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import socketService from '../services/socket';
 import {
   LayoutDashboard, Users, FileText, Settings,
   Search, FileUp, UserPlus, Trash2, Eye,
@@ -99,6 +100,7 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState([]);
   const [exams, setExams] = useState([]);
   const [adminResults, setAdminResults] = useState([]);
+  const [resultFilter, setResultFilter] = useState('ALL');
   // Evaluation Modal state
   const [showEvalModal, setShowEvalModal] = useState(false);
   const [evalSessionData, setEvalSessionData] = useState(null);
@@ -130,6 +132,17 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchDataForTab(activeTab);
   }, [activeTab]);
+
+  useEffect(() => {
+    const userEmail = sessionStorage.getItem('vision_email');
+    if (userEmail) socketService.connect(userEmail);
+
+    socketService.onStudentHelp((data) => {
+      addToast(`HELP REQUEST: ${data.studentName} - ${data.message}`, 'error');
+    });
+
+    return () => socketService.disconnect();
+  }, [addToast]);
 
   const fetchDataForTab = async (tab) => {
       setLoading(true);
@@ -575,7 +588,20 @@ export default function AdminDashboard() {
   const renderResults = () => (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
       <div className="flex items-center justify-between">
-         <h2 className="text-lg font-black text-zinc-900 tracking-tight">System-Wide Results & Reports</h2>
+         <div className="flex items-center gap-4">
+           <h2 className="text-lg font-black text-zinc-900 tracking-tight">System-Wide Results & Reports</h2>
+           <div className="hidden md:flex bg-zinc-100/80 p-1 rounded-lg">
+             {['ALL', 'PENDING', 'PAST'].map(f => (
+               <button 
+                 key={f}
+                 onClick={() => setResultFilter(f)}
+                 className={`px-4 py-1.5 rounded-md text-[10px] font-bold tracking-widest uppercase transition-all ${resultFilter === f ? 'bg-white text-emerald-600 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
+               >
+                 {f === 'PAST' ? 'EVALUATED / PAST' : f}
+               </button>
+             ))}
+           </div>
+         </div>
          <div className="flex items-center gap-3">
            <button 
              onClick={handleExportCsv}
@@ -591,11 +617,28 @@ export default function AdminDashboard() {
            </button>
          </div>
       </div>
+      {/* Mobile filter bar */}
+      <div className="md:hidden flex bg-zinc-100/80 p-1 rounded-lg w-full overflow-x-auto scroll-thin mb-4 mt-2">
+        {['ALL', 'PENDING', 'PAST'].map(f => (
+          <button 
+            key={f}
+            onClick={() => setResultFilter(f)}
+            className={`px-4 py-1.5 rounded-md text-[10px] font-bold tracking-widest uppercase transition-all whitespace-nowrap ${resultFilter === f ? 'bg-white text-emerald-600 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
+          >
+            {f === 'PAST' ? 'EVALUATED / PAST' : f}
+          </button>
+        ))}
+      </div>
 
       <DataTable 
         loading={loading}
         headers={['Student', 'Exam', 'Score', 'Status', 'Violations', 'Submitted', 'Action']}
-        data={adminResults}
+        data={adminResults.filter(r => {
+          if (resultFilter === 'ALL') return true;
+          if (resultFilter === 'PENDING') return r.status === 'pending_review';
+          if (resultFilter === 'PAST') return r.status === 'evaluated' || r.status === 'completed';
+          return true;
+        })}
         renderRow={(res, idx) => (
           <tr key={res._id || idx} className="hover:bg-zinc-50/80 transition-colors">
             <td className="px-6 py-4">

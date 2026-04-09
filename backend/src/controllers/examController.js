@@ -1123,3 +1123,29 @@ exports.runCode = asyncHandler(async (req, res) => {
 
     res.json({ allPassed, results });
 });
+
+// ─────────────── POST /api/exams/help ───────────────
+// Student requests help from mentor/admin
+exports.requestHelp = asyncHandler(async (req, res) => {
+    const { msg } = req.body;
+    if (!msg || !msg.trim()) {
+        res.status(400);
+        throw new Error('Message is required.');
+    }
+
+    const userName = req.user.name || req.user.email;
+    const supportMessage = {
+        studentName: userName,
+        studentEmail: req.user.email,
+        studentId: req.user._id,
+        message: msg,
+        timestamp: new Date()
+    };
+
+    const io = req.app.get('io');
+    if (io) {
+        io.to('role_mentor').to('role_admin').emit('student_need_help', supportMessage);
+    }
+
+    res.status(200).json({ success: true, message: 'Support request sent.' });
+});

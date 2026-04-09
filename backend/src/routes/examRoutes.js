@@ -62,6 +62,9 @@ router.put('/evaluate/:sessionId', verifyToken, checkRole(['mentor', 'admin']), 
 // Proctoring violation log karo (Tab Switch, Face Not Detected, etc.)
 router.post('/incident', verifyToken, examController.logIncident);
 
+// Student requests help
+router.post('/help', verifyToken, examController.requestHelp);
+
 // Exam details (questions without correct answers — security)
 router.get('/mentor/:id', verifyToken, checkRole(['mentor', 'admin']), examController.getMentorExamById);
 router.patch('/:id/status', verifyToken, checkRole(['mentor', 'admin']), examController.updateExamStatus);

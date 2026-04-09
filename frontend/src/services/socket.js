@@ -61,6 +61,12 @@ class SocketService {
     }
   }
 
+  onStudentHelp(callback) {
+    if (this.socket) {
+        this.socket.on('student_need_help', callback);
+    }
+  }
+
   onMentorAlert(callback) {
     if (this.socket) {
       this.socket.on('mentor_alert', callback);

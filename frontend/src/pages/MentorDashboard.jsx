@@ -333,9 +333,10 @@ export default function MentorDashboard() {
   const [stats, setStats] = useState({ liveStudents: 0, totalSubmissions: 0, flags: 0, totalExams: 0 });
   const [activity, setActivity] = useState([]);
   const [liveSessions, setLiveSessions] = useState([]);
-  const [exams, setExams] = useState([]);
+  const [mentorExams, setMentorExams] = useState([]);
   const [results, setResults] = useState([]);
-  const [searchFilter, setSearchFilter] = useState('');
+  const [resultFilter, setResultFilter] = useState('ALL');
+  const [sessionDetail, setSessionDetail] = useState(null);
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
   // Evaluation Modal state
@@ -381,8 +382,12 @@ export default function MentorDashboard() {
       }, ...prev].slice(0, 10));
     });
 
+    socketService.onStudentHelp((data) => {
+      addToast(`HELP REQUEST: ${data.studentName} - ${data.message}`, 'error');
+    });
+
     return () => socketService.disconnect();
-  }, []);
+  }, [addToast]);
 
   // Fetch data per tab
   useEffect(() => {
@@ -721,7 +726,20 @@ export default function MentorDashboard() {
   const renderResults = () => (
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="flex items-center justify-between">
-         <h2 className="text-lg font-black text-zinc-900 tracking-tight">Post-Exam Analytics</h2>
+         <div className="flex items-center gap-4">
+           <h2 className="text-lg font-black text-zinc-900 tracking-tight">Post-Exam Analytics</h2>
+           <div className="hidden md:flex bg-zinc-100/80 p-1 rounded-lg">
+             {['ALL', 'PENDING', 'PAST'].map(f => (
+               <button 
+                 key={f}
+                 onClick={() => setResultFilter(f)}
+                 className={`px-4 py-1.5 rounded-md text-[10px] font-bold tracking-widest uppercase transition-all ${resultFilter === f ? 'bg-white text-emerald-600 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
+               >
+                 {f === 'PAST' ? 'EVALUATED / PAST' : f}
+               </button>
+             ))}
+           </div>
+         </div>
          <div className="flex items-center gap-3">
            <button 
              onClick={handleExportCsv}
@@ -737,11 +755,29 @@ export default function MentorDashboard() {
            </button>
          </div>
       </div>
+      
+      {/* Mobile filter bar */}
+      <div className="md:hidden flex bg-zinc-100/80 p-1 rounded-lg w-full overflow-x-auto scroll-thin mb-4">
+        {['ALL', 'PENDING', 'PAST'].map(f => (
+          <button 
+            key={f}
+            onClick={() => setResultFilter(f)}
+            className={`px-4 py-1.5 rounded-md text-[10px] font-bold tracking-widest uppercase transition-all whitespace-nowrap ${resultFilter === f ? 'bg-white text-emerald-600 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
+          >
+            {f === 'PAST' ? 'EVALUATED / PAST' : f}
+          </button>
+        ))}
+      </div>
 
       <DataTable 
         loading={loading}
         headers={['Student', 'Exam Name', 'Result', 'Status', 'Violations', 'Submitted', 'Action']}
-        data={results}
+        data={results.filter(r => {
+          if (resultFilter === 'ALL') return true;
+          if (resultFilter === 'PENDING') return r.status === 'pending_review';
+          if (resultFilter === 'PAST') return r.status === 'evaluated' || r.status === 'completed';
+          return true;
+        })}
         renderRow={(res, idx) => (
           <tr key={res._id || idx} className="hover:bg-zinc-50 transition-colors">
             <td className="px-6 py-4">

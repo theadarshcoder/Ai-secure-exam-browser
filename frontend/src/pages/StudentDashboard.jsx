@@ -245,9 +245,15 @@ export default function StudentDashboard() {
     };
   }, []);
 
-  const handleSupport = () => {
-    setSupportSent(true);
-    setTimeout(() => { setShowSupport(false); setSupportSent(false); setSupportMsg(''); }, 2000);
+  const handleSupport = async () => {
+    try {
+      setSupportSent(true);
+      await api.post('/api/exams/help', { msg: supportMsg });
+      setTimeout(() => { setShowSupport(false); setSupportSent(false); setSupportMsg(''); }, 2000);
+    } catch (err) {
+      setSupportSent(false);
+      console.error('Failed to send support request:', err);
+    }
   };
 
   // ─────────────── Filtering Engine ───────────────

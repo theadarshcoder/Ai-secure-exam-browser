@@ -480,6 +480,20 @@ export default function ExamCockpit() {
   const q = questions[currentQ];
   const answeredCount = Object.keys(answers).length;
 
+  const handleFinalSubmit = async () => {
+    try {
+      setSubmitted(true);
+      await api.post('/api/exams/submit', {
+        examId: examId || exam._id,
+        answers: answers
+      });
+      setTimeout(() => navigate('/student'), 2000);
+    } catch (err) {
+      console.error('Final Submit error:', err);
+      setTimeout(() => navigate('/student'), 2000);
+    }
+  };
+
   if (terminated) {
     return (
       <div className="h-screen bg-[#08020a] flex items-center justify-center font-sans relative overflow-hidden">
@@ -818,8 +832,8 @@ export default function ExamCockpit() {
         </main>
       </div>
 
-      <SubmitModal isOpen={showConfirm} onClose={() => setShowConfirm(false)} stats={{ answered: answeredCount, unanswered: questions.length - answeredCount, marked: Object.values(markedForReview).filter(Boolean).length }} onConfirm={() => { setSubmitted(true); setTimeout(() => navigate('/student'), 2000); }} />
-      <ExitModal isOpen={showExitPrompt} onClose={() => { setShowExitPrompt(false); setExitError(''); setExitPassword(''); }} password={exitPassword} setPassword={e => { setExitPassword(e); setExitError(''); }} error={exitError} onExit={() => { if (exitPassword === '12345') { setSubmitted(true); setTimeout(() => navigate('/student'), 1000); } else { setExitError('Incorrect Pass'); setExitPassword(''); } }} />
+      <SubmitModal isOpen={showConfirm} onClose={() => setShowConfirm(false)} stats={{ answered: answeredCount, unanswered: questions.length - answeredCount, marked: Object.values(markedForReview).filter(Boolean).length }} onConfirm={handleFinalSubmit} />
+      <ExitModal isOpen={showExitPrompt} onClose={() => { setShowExitPrompt(false); setExitError(''); setExitPassword(''); }} password={exitPassword} setPassword={e => { setExitPassword(e); setExitError(''); }} error={exitError} onExit={() => { if (exitPassword === '12345') { handleFinalSubmit(); } else { setExitError('Incorrect Pass'); setExitPassword(''); } }} />
       <TabToast toast={tabToast} />
 
       {/* Fullscreen Overlay */}
