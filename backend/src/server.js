@@ -90,20 +90,19 @@ app.use(express.json());
 // 100 requests per 15 minutes per IP (normal usage ke liye kaafi hai)
 const globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,    // 15 minute ka window
-    max: 100,                     // Max 100 requests per window
+    max: 1000,                    // 100 se 1000 kar diya (dashboards hit limits fast)
     message: {
         error: 'Too many requests! Please try again in 15 minutes.',
         retryAfter: '15 minutes'
     },
-    standardHeaders: true,        // Rate limit info headers mein bhi bhejo
+    standardHeaders: true,
     legacyHeaders: false
 });
 
 // Auth Rate Limiter — Strict limits for Login/Register endpoints
-// Limits attempts to prevent brute-force attacks.
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,    // 15 minute ka window
-    max: 1000,                   // Development ke liye 1000 kar diya taaki testing na ruke
+    max: 2000,                   // 1000 se 2000 kar diya (Doubled per user request)
     message: {
         error: 'Too many login attempts! Please try again in 15 minutes.',
         retryAfter: '15 minutes'
