@@ -636,7 +636,7 @@ export default function AdminDashboard() {
         data={adminResults.filter(r => {
           if (resultFilter === 'ALL') return true;
           if (resultFilter === 'PENDING') return r.status === 'pending_review';
-          if (resultFilter === 'PAST') return r.status === 'evaluated' || r.status === 'completed';
+          if (resultFilter === 'PAST') return r.status === 'submitted' || r.status === 'evaluated' || r.status === 'completed';
           return true;
         })}
         renderRow={(res, idx) => (
