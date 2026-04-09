@@ -20,8 +20,8 @@ const typeColors = { mcq: '#3b82f6', short: '#8b5cf6', coding: '#10b981' };
 const typeIcons = { mcq: <ListChecks size={13} />, short: <AlignLeft size={13} />, coding: <Code size={13} /> };
 
 // --- Styles ---
-const INPUT_BASE = "w-full bg-[#0a0c10] border border-white/[0.06] rounded-xl px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-white/[0.15] focus:bg-[#0f1117] transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]";
-const LABEL_BASE = "text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2 block ml-0.5";
+const INPUT_BASE = "w-full bg-white border border-zinc-200 rounded-xl px-4 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all shadow-sm";
+const LABEL_BASE = "text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 block ml-0.5";
 
 // --- Components ---
 
@@ -611,28 +611,28 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
       </aside>
 
       {/* Main Container */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden relative bg-[#060810]">
+      <main className="flex-1 flex flex-col h-screen overflow-hidden relative bg-zinc-50">
         {/* Header (Breadcrumbs) */}
-        <header className="h-20 bg-[#060810]/80 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-10 relative z-20">
-          <div className="flex items-center gap-3 text-xs font-bold text-zinc-400 uppercase tracking-widest leading-none">
+        <header className="h-20 bg-zinc-50/80 backdrop-blur-md border-b border-zinc-200 flex items-center justify-between px-10 relative z-20">
+          <div className="flex items-center gap-3 text-xs font-bold text-zinc-500 uppercase tracking-widest leading-none">
             <span onClick={() => navigate('/mentor')} className="hover:text-emerald-500 transition-colors cursor-pointer">Mentor</span>
             <ChevronRight size={14} className="opacity-30" />
             <span className="hover:text-emerald-500 transition-colors cursor-pointer" onClick={() => navigate('/mentor')}>Exam Library</span>
             <ChevronRight size={14} className="opacity-30" />
-            <span className="text-white">{editId ? 'Edit' : 'Create'} Assessment</span>
+            <span className="text-zinc-900">{editId ? 'Edit' : 'Create'} Assessment</span>
           </div>
 
           <div className="flex items-center gap-6">
             <div className="relative group cursor-pointer">
                <Bell size={20} className="text-zinc-500 hover:text-emerald-500 transition-colors" />
             </div>
-            <div className="h-6 w-px bg-white/5" />
+            <div className="h-6 w-px bg-zinc-100" />
             <div className="flex items-center gap-3 cursor-pointer group">
               <div className="text-right">
-                <p className="text-[11px] font-bold text-white group-hover:text-emerald-500 transition-colors uppercase tracking-tight leading-none">{sessionStorage.getItem('vision_name') || 'Mentor'}</p>
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 mt-1">Authorized</p>
+                <p className="text-[11px] font-bold text-zinc-900 group-hover:text-emerald-500 transition-colors uppercase tracking-tight leading-none">{sessionStorage.getItem('vision_name') || 'Mentor'}</p>
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-400 mt-1">Authorized</p>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/5 flex items-center justify-center font-black text-white uppercase text-sm shadow-sm group-hover:border-emerald-500/50 transition-all">
+              <div className="w-10 h-10 rounded-xl bg-zinc-100 border border-zinc-200 flex items-center justify-center font-black text-zinc-900 uppercase text-sm shadow-sm group-hover:border-emerald-500/50 transition-all">
                 {(sessionStorage.getItem('vision_name') || 'M').charAt(0)}
               </div>
             </div>
@@ -648,7 +648,7 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
             {/* Title Header */}
             <div className="mb-10">
               <div className="flex items-center justify-between mb-2">
-                <h1 className="text-3xl font-black text-white tracking-tight uppercase">
+                <h1 className="text-3xl font-black text-zinc-900 tracking-tight uppercase">
                   {editId ? 'Edit Assessment' : 'New Assessment'}
                   {initialLoading && <Loader2 size={24} className="inline ml-4 animate-spin text-zinc-700" />}
                 </h1>
@@ -666,11 +666,11 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
               <div className="flex-1 space-y-12 min-w-0 pb-32">
                 
                 {/* ═══ SECTION 1: Details ═══ */}
-                <section className="bg-[#0f1117]/80 backdrop-blur-xl rounded-[32px] border border-white/[0.06] p-10 shadow-2xl relative overflow-hidden">
+                <section className="bg-white/80 backdrop-blur-xl rounded-[32px] border border-zinc-200 p-10 shadow-2xl relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent" />
                   <div className="mb-8 items-center flex justify-between">
                     <div>
-                      <h2 className="text-sm font-bold text-white uppercase tracking-wider">Exam Parameters</h2>
+                      <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-wider">Exam Parameters</h2>
                       <p className="text-[10px] text-zinc-500 mt-1 uppercase font-semibold">Core assessment configuration</p>
                     </div>
                   </div>
@@ -688,14 +688,14 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                           onChange={e => setExam({...exam, category: e.target.value})} 
                           className={INPUT_BASE + " h-12 !pl-4 appearance-none cursor-pointer uppercase font-bold text-xs tracking-widest"}
                         >
-                          {['DSA', 'Frontend', 'DBMS', 'Cloud', 'Security', 'Other'].map(c => <option key={c} value={c} className="bg-zinc-950">{c}</option>)}
+                          {['DSA', 'Frontend', 'DBMS', 'Cloud', 'Security', 'Other'].map(c => <option key={c} value={c} className="bg-white">{c}</option>)}
                         </select>
-                        <ChevronDown size={14} className="absolute right-5 top-1/2 -translate-y-1/2 text-zinc-600 pointer-events-none" />
+                        <ChevronDown size={14} className="absolute right-5 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
                       </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mt-10 pt-10 border-t border-white/[0.04]">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mt-10 pt-10 border-t border-zinc-200">
                     <div>
                       <label className={LABEL_BASE}>Duration</label>
                       <StepperInput value={exam.duration} onChange={v => setExam({...exam, duration: v})} icon={Clock} unit="min" step={5} />
@@ -716,7 +716,7 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                 </section>
 
                 {/* ═══ SECTION 2: AI Engine ═══ */}
-                <section className="bg-[#0f1117]/80 backdrop-blur-xl rounded-[32px] border border-violet-500/20 p-10 shadow-2xl relative overflow-hidden group/ai">
+                <section className="bg-white/80 backdrop-blur-xl rounded-[32px] border border-violet-500/20 p-10 shadow-2xl relative overflow-hidden group/ai">
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-violet-500/30 to-transparent" />
                   <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-4">
@@ -724,14 +724,14 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                         <Sparkles size={24} />
                       </div>
                       <div>
-                        <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-3">
+                        <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-wider flex items-center gap-3">
                           AI Question Engine
-                          <span className="text-[9px] px-2 py-0.5 rounded bg-violet-500 text-white font-black">BETA</span>
+                          <span className="text-[9px] px-2 py-0.5 rounded bg-violet-500 text-zinc-900 font-black">BETA</span>
                         </h2>
                         <p className="text-[10px] text-zinc-500 mt-1 uppercase font-semibold">Generate from syllabus or documentation</p>
                       </div>
                     </div>
-                    <button onClick={() => setShowAI(!showAI)} className="px-4 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06] text-[10px] font-black uppercase text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-all">
+                    <button onClick={() => setShowAI(!showAI)} className="px-4 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-[10px] font-black uppercase text-zinc-500 hover:text-zinc-900 hover:bg-zinc-800 transition-all">
                       {showAI ? 'Close Engine' : 'Open Engine'}
                     </button>
                   </div>
@@ -739,9 +739,9 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                   {showAI && (
                     <div className="space-y-8 animate-in slide-in-from-top-4 duration-500">
                        {/* Tabs */}
-                       <div className="flex items-center gap-1.5 p-1.5 bg-[#0a0c10] border border-white/5 rounded-2xl w-fit">
+                       <div className="flex items-center gap-1.5 p-1.5 bg-white border border-zinc-200 rounded-2xl w-fit">
                           {[{id:'text', label:'Syllabus Text'}, {id:'file', label:'File Upload'}].map(t => (
-                            <button key={t.id} onClick={() => setInputMode(t.id)} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${inputMode === t.id ? 'bg-violet-600 text-white shadow-lg shadow-violet-900/40' : 'text-zinc-600 hover:text-zinc-400'}`}>
+                            <button key={t.id} onClick={() => setInputMode(t.id)} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${inputMode === t.id ? 'bg-violet-600 text-zinc-900 shadow-lg shadow-violet-900/40' : 'text-zinc-400 hover:text-zinc-500'}`}>
                               {t.label}
                             </button>
                           ))}
@@ -757,62 +757,62 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                             <label className={LABEL_BASE}>Document Processor</label>
                             <div className="grid grid-cols-2 gap-4 mb-4">
                                {[{id:'syllabus', label:'Topics Only', icon: ListChecks}, {id:'import', label:'Direct Questions', icon: FileSpreadsheet}].map(t => (
-                                 <button key={t.id} onClick={() => setUploadIntent(t.id)} className={`flex items-center gap-3 p-4 rounded-2xl border transition-all text-left ${uploadIntent === t.id ? 'bg-violet-600/10 border-violet-500/40' : 'bg-white/[0.02] border-white/[0.05] hover:bg-white/[0.05]'}`}>
-                                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${uploadIntent === t.id ? 'bg-violet-600 text-white' : 'bg-white/5 text-zinc-500'}`}><t.icon size={18} /></div>
-                                   <div><p className={`text-xs font-bold ${uploadIntent === t.id ? 'text-white' : 'text-zinc-400'}`}>{t.label}</p><p className="text-[10px] text-zinc-600">PDF / CSV format</p></div>
+                                 <button key={t.id} onClick={() => setUploadIntent(t.id)} className={`flex items-center gap-3 p-4 rounded-2xl border transition-all text-left ${uploadIntent === t.id ? 'bg-violet-600/10 border-violet-500/40' : 'bg-zinc-50 border-zinc-200 hover:bg-white/[0.05]'}`}>
+                                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${uploadIntent === t.id ? 'bg-violet-600 text-zinc-900' : 'bg-zinc-100 text-zinc-500'}`}><t.icon size={18} /></div>
+                                   <div><p className={`text-xs font-bold ${uploadIntent === t.id ? 'text-zinc-900' : 'text-zinc-500'}`}>{t.label}</p><p className="text-[10px] text-zinc-400">PDF / CSV format</p></div>
                                  </button>
                                ))}
                             </div>
                             
                             {!uploadedFile ? (
-                              <div onDragOver={e => {e.preventDefault(); setIsDragOver(true)}} onDragLeave={() => setIsDragOver(false)} onDrop={onDropFile} onClick={() => document.getElementById('ai-file').click()} className={`py-12 border-2 border-dashed rounded-[32px] flex flex-col items-center justify-center gap-4 transition-all cursor-pointer ${isDragOver ? 'border-violet-500 bg-violet-600/5' : 'border-white/[0.06] hover:border-violet-500/30 bg-[#0a0c10]'}`}>
+                              <div onDragOver={e => {e.preventDefault(); setIsDragOver(true)}} onDragLeave={() => setIsDragOver(false)} onDrop={onDropFile} onClick={() => document.getElementById('ai-file').click()} className={`py-12 border-2 border-dashed rounded-[32px] flex flex-col items-center justify-center gap-4 transition-all cursor-pointer ${isDragOver ? 'border-violet-500 bg-violet-600/5' : 'border-zinc-200 hover:border-violet-500/30 bg-white'}`}>
                                 <input id="ai-file" type="file" className="hidden" onChange={e => handleFile(e.target.files[0])} />
                                 <Upload size={32} className="text-violet-500/40" />
                                 <div className="text-center">
-                                  <p className="text-sm font-bold text-zinc-400 uppercase tracking-widest">Drop secure file</p>
-                                  <p className="text-[10px] text-zinc-600 mt-2">Maximum size 10MB</p>
+                                  <p className="text-sm font-bold text-zinc-500 uppercase tracking-widest">Drop secure file</p>
+                                  <p className="text-[10px] text-zinc-400 mt-2">Maximum size 10MB</p>
                                 </div>
                               </div>
                             ) : (
                               <div className="p-4 bg-violet-600/5 border border-violet-500/20 rounded-2xl flex items-center justify-between">
                                 <div className="flex items-center gap-4">
                                   <div className="w-12 h-12 bg-violet-600/20 rounded-xl flex items-center justify-center text-violet-400">{uploadedFile.name.endsWith('.pdf') ? <FileText size={20} /> : <FileSpreadsheet size={20} />}</div>
-                                  <div><p className="text-sm font-bold text-white truncate max-w-[200px]">{uploadedFile.name}</p><p className="text-[10px] text-zinc-500 uppercase">File Verified</p></div>
+                                  <div><p className="text-sm font-bold text-zinc-900 truncate max-w-[200px]">{uploadedFile.name}</p><p className="text-[10px] text-zinc-500 uppercase">File Verified</p></div>
                                 </div>
-                                <button onClick={() => setUploadedFile(null)} className="p-2 hover:bg-red-500/10 text-zinc-600 hover:text-red-400 transition-colors"><X size={18} /></button>
+                                <button onClick={() => setUploadedFile(null)} className="p-2 hover:bg-red-500/10 text-zinc-400 hover:text-red-400 transition-colors"><X size={18} /></button>
                               </div>
                             )}
                          </div>
                        )}
 
-                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-white/[0.04]">
+                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-zinc-200">
                           <div><label className={LABEL_BASE}>MCQs Count</label><StepperInput value={aiConfig.mcq} onChange={v => setAiConfig({...aiConfig, mcq:v})} min={0} /></div>
                           <div><label className={LABEL_BASE}>Short Qs Count</label><StepperInput value={aiConfig.short} onChange={v => setAiConfig({...aiConfig, short:v})} min={0} /></div>
                           <div><label className={LABEL_BASE}>Coding Logic</label><StepperInput value={aiConfig.coding} onChange={v => setAiConfig({...aiConfig, coding:v})} min={0} /></div>
                        </div>
 
-                       <button onClick={generateAI} disabled={aiLoading} className="w-full h-14 bg-white text-black rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:bg-zinc-200 transition-all flex items-center justify-center gap-3">
+                       <button onClick={generateAI} disabled={aiLoading} className="w-full h-14 bg-zinc-900 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:bg-zinc-200 transition-all flex items-center justify-center gap-3">
                           {aiLoading ? <Loader2 size={18} className="animate-spin" /> : <Wand2 size={18} />}
                           {aiLoading ? 'Synthesizing...' : 'Initialize AI Generation'}
                        </button>
 
                        {/* Suggestions Area */}
                        {aiSuggestions.length > 0 && (
-                         <div className="pt-6 border-t border-white/[0.04] space-y-4">
+                         <div className="pt-6 border-t border-zinc-200 space-y-4">
                             <div className="flex items-center justify-between mb-4 px-2">
                                <p className="text-[10px] font-black text-violet-400 uppercase tracking-widest">{aiSuggestions.length} engine suggestions</p>
                                <button onClick={acceptAll} className="text-[10px] font-black text-emerald-400 hover:text-emerald-300 uppercase underline decoration-2 underline-offset-4">Accept All Candidates</button>
                             </div>
                             <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                                {aiSuggestions.map((s, idx) => (
-                                 <div key={idx} className="p-5 bg-white/[0.02] border border-white/[0.05] rounded-3xl group flex items-start gap-4 hover:border-violet-500/30 transition-all">
-                                    <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-[10px] font-black text-zinc-600 group-hover:bg-violet-600 group-hover:text-white transition-all shrink-0">{idx+1}</div>
+                                 <div key={idx} className="p-5 bg-zinc-50 border border-zinc-200 rounded-3xl group flex items-start gap-4 hover:border-violet-500/30 transition-all">
+                                    <div className="w-8 h-8 rounded-xl bg-zinc-100 flex items-center justify-center text-[10px] font-black text-zinc-400 group-hover:bg-violet-600 group-hover:text-zinc-900 transition-all shrink-0">{idx+1}</div>
                                     <div className="flex-1 min-w-0">
                                        <div className="flex items-center gap-2 mb-2">
                                           <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-violet-600/20 text-violet-400">{typeLabels[s.type]}</span>
-                                          <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">{s.marks} PTS</span>
+                                          <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">{s.marks} PTS</span>
                                        </div>
-                                       <p className="text-xs font-semibold text-zinc-300 leading-relaxed mb-3">{s.questionText}</p>
+                                       <p className="text-xs font-semibold text-zinc-700 leading-relaxed mb-3">{s.questionText}</p>
                                        <button onClick={() => acceptSuggestion(s)} className="text-[10px] font-black uppercase text-emerald-500 hover:text-emerald-400">Add to Exam</button>
                                     </div>
                                     <button onClick={() => setAiSuggestions(prev => prev.filter((_, i) => i !== idx))} className="opacity-0 group-hover:opacity-100 p-2 hover:bg-red-500/10 text-zinc-700 hover:text-red-400 transition-all"><Trash2 size={14} /></button>
@@ -829,14 +829,14 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                 <section className="bg-transparent space-y-8">
                   <div className="flex items-center justify-between px-2">
                     <div>
-                      <h2 className="text-lg font-black text-white uppercase tracking-tight">Active Assessment Set</h2>
-                      <p className="text-[10px] text-zinc-600 mt-1 uppercase font-bold tracking-widest">Constructing {questions.length} modules</p>
+                      <h2 className="text-lg font-black text-zinc-900 uppercase tracking-tight">Active Assessment Set</h2>
+                      <p className="text-[10px] text-zinc-400 mt-1 uppercase font-bold tracking-widest">Constructing {questions.length} modules</p>
                     </div>
                   </div>
 
                   {questions.length === 0 ? (
-                    <div className="py-24 border-2 border-dashed border-white/[0.05] rounded-[40px] flex flex-col items-center justify-center gap-5 group">
-                      <div className="w-20 h-20 rounded-3xl bg-white/[0.02] border border-white/[0.05] flex items-center justify-center text-zinc-800 group-hover:text-emerald-500 transition-all group-hover:scale-105 duration-500">
+                    <div className="py-24 border-2 border-dashed border-zinc-200 rounded-[40px] flex flex-col items-center justify-center gap-5 group">
+                      <div className="w-20 h-20 rounded-3xl bg-zinc-50 border border-zinc-200 flex items-center justify-center text-zinc-800 group-hover:text-emerald-500 transition-all group-hover:scale-105 duration-500">
                         <FilePlus size={32} />
                       </div>
                       <div className="text-center">
@@ -847,10 +847,10 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                   ) : (
                     <div className="space-y-6">
                       {questions.map((q, i) => (
-                        <div key={q.id} className={`group bg-[#0f1117]/80 backdrop-blur-xl border rounded-[32px] transition-all relative overflow-hidden ${expandedQ === q.id ? 'ring-2 ring-emerald-500/20 border-emerald-500/30' : 'border-white/[0.06] hover:border-white/[0.12]'}`}>
+                        <div key={q.id} className={`group bg-white/80 backdrop-blur-xl border rounded-[32px] transition-all relative overflow-hidden ${expandedQ === q.id ? 'ring-2 ring-emerald-500/20 border-emerald-500/30' : 'border-zinc-200 hover:border-white/[0.12]'}`}>
                           <div className="flex items-center justify-between p-8">
                             <div className="flex items-center gap-6 min-w-0">
-                               <div className="w-12 h-12 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-center text-xs font-black text-zinc-700 group-hover:text-white transition-all shrink-0 select-none">
+                               <div className="w-12 h-12 rounded-2xl bg-zinc-50 border border-zinc-200 flex items-center justify-center text-xs font-black text-zinc-700 group-hover:text-zinc-900 transition-all shrink-0 select-none">
                                   {i + 1}
                                </div>
                                <div className="min-w-0">
@@ -858,31 +858,31 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                                     <span className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider" style={{ background: `${typeColors[q.type]}20`, color: typeColors[q.type], border: `1px solid ${typeColors[q.type]}30` }}>
                                       {typeLabels[q.type]}
                                     </span>
-                                    <span className="text-[9px] font-black text-zinc-600 uppercase tracking-[0.2em]">{q.marks} Marks assigned</span>
+                                    <span className="text-[9px] font-black text-zinc-400 uppercase tracking-[0.2em]">{q.marks} Marks assigned</span>
                                  </div>
-                                 <input value={q.questionText} onChange={e => updateQ(q.id, { questionText: e.target.value })} placeholder="Type assessment focus..." className="bg-transparent border-none text-base font-bold text-white placeholder:text-zinc-800 focus:ring-0 w-full lg:w-[450px]" />
+                                 <input value={q.questionText} onChange={e => updateQ(q.id, { questionText: e.target.value })} placeholder="Type assessment focus..." className="bg-transparent border-none text-base font-bold text-zinc-900 placeholder:text-zinc-800 focus:ring-0 w-full lg:w-[450px]" />
                                </div>
                             </div>
 
                             <div className="flex items-center gap-3">
-                               <button onClick={() => setExpandedQ(expandedQ === q.id ? null : q.id)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/[0.02] border border-white/5 text-zinc-500 hover:text-white transition-colors">
+                               <button onClick={() => setExpandedQ(expandedQ === q.id ? null : q.id)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-500 hover:text-zinc-900 transition-colors">
                                  {expandedQ === q.id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                                </button>
-                               <button onClick={() => dupQ(q.id)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/[0.02] border border-white/5 text-zinc-500 hover:text-emerald-400 transition-colors">
+                               <button onClick={() => dupQ(q.id)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-500 hover:text-emerald-400 transition-colors">
                                  <Copy size={16} />
                                </button>
-                               <button onClick={() => removeQ(q.id)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/[0.02] border border-white/5 text-zinc-500 hover:text-red-400 transition-colors">
+                               <button onClick={() => removeQ(q.id)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-500 hover:text-red-400 transition-colors">
                                  <Trash2 size={16} />
                                </button>
                             </div>
                           </div>
 
                           {expandedQ === q.id && (
-                            <div className="px-8 pb-8 pt-4 border-t border-white/[0.04] animate-in slide-in-from-top-2 duration-300">
+                            <div className="px-8 pb-8 pt-4 border-t border-zinc-200 animate-in slide-in-from-top-2 duration-300">
                                <div className="mb-6 flex items-center gap-4">
-                                  <div className="flex items-center bg-white/[0.02] border border-white/5 rounded-2xl pr-4 overflow-hidden">
-                                     <input type="number" value={q.marks} onChange={e => updateQ(q.id, { marks: parseInt(e.target.value) || 0 })} className="w-14 h-12 bg-transparent border-none text-sm font-black text-white text-center focus:ring-0 tabular-nums" />
-                                     <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Points</span>
+                                  <div className="flex items-center bg-zinc-50 border border-zinc-200 rounded-2xl pr-4 overflow-hidden">
+                                     <input type="number" value={q.marks} onChange={e => updateQ(q.id, { marks: parseInt(e.target.value) || 0 })} className="w-14 h-12 bg-transparent border-none text-sm font-black text-zinc-900 text-center focus:ring-0 tabular-nums" />
+                                     <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Points</span>
                                   </div>
                                </div>
                                {q.type === 'mcq' && <McqEditor question={q} updateQ={updateQ} />}
@@ -908,13 +908,13 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                     <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em] ml-1">Add Content</p>
                     <div className="grid grid-cols-1 gap-3">
                        {Object.entries(typeLabels).map(([type, label]) => (
-                         <button key={type} onClick={() => addQ(type)} className="w-full flex items-center gap-4 p-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl hover:bg-white/5 hover:border-emerald-500/30 group/btn transition-all text-left">
+                         <button key={type} onClick={() => addQ(type)} className="w-full flex items-center gap-4 p-4 bg-zinc-50 border border-zinc-200 rounded-2xl hover:bg-zinc-800 hover:border-emerald-500/30 group/btn transition-all text-left">
                             <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 group-hover/btn:scale-110 transition-transform">
                               {typeIcons[type]}
                             </div>
                             <div>
-                               <p className="text-xs font-black text-white uppercase tracking-wider">{label}</p>
-                               <p className="text-[9px] text-zinc-600 uppercase font-bold">New Module</p>
+                               <p className="text-xs font-black text-zinc-900 uppercase tracking-wider">{label}</p>
+                               <p className="text-[9px] text-zinc-400 uppercase font-bold">New Module</p>
                             </div>
                          </button>
                        ))}
@@ -928,7 +928,7 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                       {isPublishing ? <Loader2 size={18} className="animate-spin text-[#0a0c10]" /> : <Send size={18} className="group-hover/pub:translate-x-1 group-hover/pub:-translate-y-1 transition-transform" />}
                       {isPublishing ? 'Deploying...' : 'Deploy Now'}
                     </button>
-                    <button onClick={handleSaveDraft} disabled={isSaving} className="w-full h-16 bg-white/[0.05] border border-white/[0.08] hover:bg-white/[0.08] text-white rounded-[24px] font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all active:scale-95">
+                    <button onClick={handleSaveDraft} disabled={isSaving} className="w-full h-16 bg-white/[0.05] border border-white/[0.08] hover:bg-zinc-800 text-zinc-900 rounded-[24px] font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all active:scale-95">
                       {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
                       Save Progress
                     </button>
@@ -936,21 +936,21 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                 </div>
 
                 {/* Status Card */}
-                <div className="bg-zinc-950 border border-white/[0.03] rounded-[32px] p-6 space-y-5">
+                <div className="bg-white border border-white/[0.03] rounded-[32px] p-6 space-y-5">
                    <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest px-2">Integrity Status</h3>
                    <div className="space-y-4">
                       <div className="flex items-center justify-between px-2">
-                         <span className="text-xs text-zinc-600 font-medium tracking-tight">System Identity</span>
-                         <span className="text-[10px] font-bold text-white bg-white/5 px-2 py-0.5 rounded border border-white/5 uppercase tracking-tighter">Vision Pro</span>
+                         <span className="text-xs text-zinc-400 font-medium tracking-tight">System Identity</span>
+                         <span className="text-[10px] font-bold text-zinc-900 bg-zinc-100 px-2 py-0.5 rounded border border-zinc-200 uppercase tracking-tighter">Vision Pro</span>
                       </div>
                       <div className="flex items-center justify-between px-2">
-                         <span className="text-xs text-zinc-600 font-medium tracking-tight">Data Security</span>
+                         <span className="text-xs text-zinc-400 font-medium tracking-tight">Data Security</span>
                          <span className="text-[10px] font-bold text-emerald-400 uppercase">AES-256</span>
                       </div>
-                      <div className="h-px bg-white/[0.03] mx-2" />
-                      <div className="p-4 bg-[#0a0c10] rounded-2xl space-y-1">
+                      <div className="h-px bg-zinc-50 mx-2" />
+                      <div className="p-4 bg-white rounded-2xl space-y-1">
                          <p className="text-[9px] font-black text-zinc-700 uppercase leading-none">Assessment ID</p>
-                         <p className="text-[11px] font-mono text-zinc-400 truncate tracking-tight">{editId || 'Generated on Publish'}</p>
+                         <p className="text-[11px] font-mono text-zinc-500 truncate tracking-tight">{editId || 'Generated on Publish'}</p>
                       </div>
                    </div>
                 </div>
@@ -963,23 +963,23 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
       {/* Success Modal */}
       {showSuccessModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md bg-black/60">
-          <div className="bg-[#0f1117] border border-emerald-500/20 w-full max-w-sm rounded-[40px] p-10 text-center shadow-2xl animate-in zoom-in-95 duration-300 relative overflow-hidden">
+          <div className="bg-white border border-emerald-500/20 w-full max-w-sm rounded-[40px] p-10 text-center shadow-2xl animate-in zoom-in-95 duration-300 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-500 to-teal-500" />
             <div className="w-20 h-20 bg-emerald-500/10 border border-emerald-500/20 rounded-[28px] flex items-center justify-center mx-auto mb-8 text-emerald-400 shadow-[0_0_40px_rgba(16,185,129,0.15)]">
               <CheckCircle size={40} strokeWidth={2.5} />
             </div>
-            <h2 className="text-2xl font-black text-white mb-3 uppercase tracking-tight">System Deployed</h2>
+            <h2 className="text-2xl font-black text-zinc-900 mb-3 uppercase tracking-tight">System Deployed</h2>
             <p className="text-xs text-zinc-500 mb-8 leading-relaxed font-semibold uppercase tracking-wider">Assessment protocol is now active across all proctor nodes.</p>
             
-            <div className="bg-[#0a0c10] border border-white/5 rounded-2xl p-5 flex flex-col gap-4 mb-10">
+            <div className="bg-white border border-zinc-200 rounded-2xl p-5 flex flex-col gap-4 mb-10">
               <div className="flex items-center justify-between gap-4">
                 <div className="text-left font-mono min-w-0">
                   <p className="text-[9px] text-zinc-700 font-bold uppercase tracking-widest mb-1 leading-none">Access Hash</p>
-                  <p className="text-xs text-white truncate font-black tracking-widest">{publishedExamId}</p>
+                  <p className="text-xs text-zinc-900 truncate font-black tracking-widest">{publishedExamId}</p>
                 </div>
                 <button 
                   onClick={() => { navigator.clipboard.writeText(publishedExamId); addToast('Hash Copied!'); }}
-                  className="shrink-0 p-3 bg-white/[0.03] border border-emerald-500/20 rounded-xl text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                  className="shrink-0 p-3 bg-zinc-50 border border-emerald-500/20 rounded-xl text-emerald-400 hover:bg-emerald-500/10 transition-colors"
                 >
                   <Copy size={16} />
                 </button>
@@ -1003,7 +1003,7 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
             </div>
             <div>
                <p className="text-xs font-black uppercase tracking-widest mb-0.5 leading-none">{t.type === 'error' ? 'System Error' : 'Success'}</p>
-               <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-tight">{t.msg}</p>
+               <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-tight">{t.msg}</p>
             </div>
           </div>
         ))}
