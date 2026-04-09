@@ -35,7 +35,7 @@ const DashboardRedirect = () => {
   const navigate = useNavigate();
   useEffect(() => {
     const role = sessionStorage.getItem('vision_role')?.toLowerCase();
-    if (role === 'admin') navigate('/admin');
+    if (role === 'admin' || role === 'super_mentor') navigate('/admin');
     else if (role === 'mentor') navigate('/mentor');
     else navigate('/student');
   }, [navigate]);
@@ -53,6 +53,7 @@ const ProtectedRoute = ({ allowedRoles, children }) => {
   if (allowedRoles && !allowedRoles.includes(role)) {
     const redirectMap = {
       admin: '/admin',
+      super_mentor: '/admin',
       mentor: '/mentor',
       student: '/student'
     };
@@ -67,7 +68,7 @@ const LoginRedirect = () => {
   const role = sessionStorage.getItem('vision_role')?.toLowerCase();
   
   if (token && role) {
-    const map = { admin: '/admin', mentor: '/mentor', student: '/student' };
+    const map = { admin: '/admin', super_mentor: '/admin', mentor: '/mentor', student: '/student' };
     return <Navigate to={map[role] || '/student'} replace />;
   }
   
@@ -93,25 +94,25 @@ export default function AppRouter() {
           <Route path="/login" element={<LoginRedirect />} />
           
           <Route path="/admin" element={
-            <ProtectedRoute allowedRoles={['admin']}>
+            <ProtectedRoute allowedRoles={['admin', 'super_mentor']}>
               <AdminDashboard />
             </ProtectedRoute>
           } />
           
           <Route path="/admin/session" element={
-            <ProtectedRoute allowedRoles={['admin']}>
+            <ProtectedRoute allowedRoles={['admin', 'super_mentor']}>
               <SessionMonitor />
             </ProtectedRoute>
           } />
           
           <Route path="/mentor" element={
-            <ProtectedRoute allowedRoles={['mentor', 'admin']}>
+            <ProtectedRoute allowedRoles={['mentor', 'admin', 'super_mentor']}>
               <MentorDashboard />
             </ProtectedRoute>
           } />
           
           <Route path="/mentor/create-exam" element={
-            <ProtectedRoute allowedRoles={['mentor', 'admin']}>
+            <ProtectedRoute allowedRoles={['mentor', 'admin', 'super_mentor']}>
               <CreateExam />
             </ProtectedRoute>
           } />

@@ -971,22 +971,20 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
             <h2 className="text-2xl font-black text-zinc-900 mb-3 uppercase tracking-tight">System Deployed</h2>
             <p className="text-xs text-zinc-500 mb-8 leading-relaxed font-semibold uppercase tracking-wider">Assessment protocol is now active across all proctor nodes.</p>
             
-            <div className="bg-white border border-zinc-200 rounded-2xl p-5 flex flex-col gap-4 mb-10">
-              <div className="flex items-center justify-between gap-4">
-                <div className="text-left font-mono min-w-0">
-                  <p className="text-[9px] text-zinc-700 font-bold uppercase tracking-widest mb-1 leading-none">Access Hash</p>
-                  <p className="text-xs text-zinc-900 truncate font-black tracking-widest">{publishedExamId}</p>
-                </div>
-                <button 
-                  onClick={() => { navigator.clipboard.writeText(publishedExamId); addToast('Hash Copied!'); }}
-                  className="shrink-0 p-3 bg-zinc-50 border border-emerald-500/20 rounded-xl text-emerald-400 hover:bg-emerald-500/10 transition-colors"
-                >
-                  <Copy size={16} />
-                </button>
+            <div className="bg-zinc-50 border border-zinc-200 rounded-2xl p-5 flex flex-col gap-4 mb-10">
+              <div className="text-left font-mono min-w-0">
+                <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest mb-1.5 leading-none">Student Exam Link</p>
+                <p className="text-[10px] text-zinc-700 font-bold tracking-tight break-all leading-relaxed">{`${window.location.origin}/exam/${publishedExamId}`}</p>
               </div>
+              <button 
+                onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/exam/${publishedExamId}`); addToast('Exam link copied to clipboard!'); }}
+                className="w-full py-3 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20"
+              >
+                <Copy size={14} /> Copy Link
+              </button>
             </div>
 
-            <button onClick={() => navigate('/mentor')} className="group w-full bg-white text-black h-16 rounded-[24px] font-black text-xs uppercase tracking-[0.2em] hover:bg-zinc-200 transition-all active:scale-[0.98] flex items-center justify-center gap-3">
+            <button onClick={() => navigate('/mentor')} className="group w-full bg-white text-black h-14 rounded-[20px] font-black text-xs uppercase tracking-[0.2em] hover:bg-zinc-100 transition-all active:scale-[0.98] flex items-center justify-center gap-3 border border-zinc-200">
               Return to Module
               <ArrowLeft size={16} className="rotate-180 group-hover:translate-x-1 transition-transform" />
             </button>

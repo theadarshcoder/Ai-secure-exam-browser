@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import socketService from '../services/socket';
 import {
@@ -8,7 +8,7 @@ import {
   CheckCircle2, ArrowUpRight, ArrowDownRight,
   Filter, Download, Eye, Power, Users, ShieldCheck, 
   Edit3, RefreshCw, Trash2, X, Check, AlertCircle,
-  Code, MessageSquare, Star
+  Code, MessageSquare, Star, CheckCircle, AlertOctagon
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import { 
@@ -347,6 +347,19 @@ export default function MentorDashboard() {
   // Real-time violation alerts state (via Socket.IO)
   const [violations, setViolations] = useState([]);
 
+  // Toast notification system
+  const [toasts, setToasts] = useState([]);
+  const addToast = useCallback((msg, type = 'success') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, msg, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
+  }, []);
+
+  // Confirm modal system
+  const [confirmModal, setConfirmModal] = useState({ show: false, msg: '', onConfirm: null });
+  const showConfirm = (msg, onConfirm) => setConfirmModal({ show: true, msg, onConfirm });
+  const closeConfirm = () => setConfirmModal({ show: false, msg: '', onConfirm: null });
+
   // Setup search debouncing
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -406,14 +419,16 @@ export default function MentorDashboard() {
   };
 
   const handleDeleteExam = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this exam?')) return;
-    try {
-      await deleteExam(id);
-      setExams(exams.filter(e => (e.id || e._id) !== id));
-    } catch (err) {
-      console.error(err);
-      alert('Failed to delete exam.');
-    }
+    showConfirm('Are you sure you want to delete this exam?', async () => {
+      try {
+        await deleteExam(id);
+        setExams(exams.filter(e => (e.id || e._id) !== id));
+        addToast('Exam deleted successfully.');
+      } catch (err) {
+        console.error(err);
+        addToast('Failed to delete exam.', 'error');
+      }
+    });
   };
 
   const handleViewSession = async (sessionId) => {
@@ -424,7 +439,7 @@ export default function MentorDashboard() {
       setEvalSessionData(data);
     } catch (err) {
       console.error('Failed to load session:', err);
-      alert('Failed to load session details.');
+      addToast('Failed to load session details.', 'error');
       setShowEvalModal(false);
     } finally {
       setEvalLoading(false);
@@ -436,14 +451,14 @@ export default function MentorDashboard() {
     setIsSubmitting(true);
     try {
       await evaluateSession(evalSessionData.sessionId, gradeArray);
-      alert('Session graded successfully!');
+      addToast('Session graded successfully!');
       setShowEvalModal(false);
       setEvalSessionData(null);
       // Refresh results
       fetchDataForTab('Results & Reports');
     } catch (err) {
       console.error('Failed to submit grades:', err);
-      alert('Failed to submit grades: ' + (err.message || 'Unknown error'));
+      addToast('Failed to submit grades: ' + (err.message || 'Unknown error'), 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -451,7 +466,7 @@ export default function MentorDashboard() {
 
   const handleExportCsv = () => {
     if (results.length === 0) {
-      alert('No results to export.');
+      addToast('No results to export.', 'error');
       return;
     }
     const headers = 'Student,Email,Exam,Score,Percentage,Violations,Status,Submitted At\n';
@@ -678,13 +693,13 @@ export default function MentorDashboard() {
             <td className="px-6 py-4">
                <div className="flex items-center gap-4">
                   <button 
-                    onClick={() => navigate(`/examcockpit/${exam.id || exam._id}`)}
+                    onClick={() => navigate(`/mentor/create-exam?id=${exam.id || exam._id}&view=true`)}
                     className="text-xs font-bold text-zinc-500 hover:text-emerald-600 uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95"
                   >
                     <Eye size={14} /> View
                   </button>
                   <button 
-                    onClick={() => navigate(`/mentor/create-exam?edit=${exam.id || exam._id}`)}
+                    onClick={() => navigate(`/mentor/create-exam?id=${exam.id || exam._id}`)}
                     className="text-xs font-bold text-zinc-500 hover:text-amber-600 uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95"
                   >
                     <Edit3 size={14} /> Edit
@@ -878,6 +893,38 @@ export default function MentorDashboard() {
           />
         )
       )}
+
+      {/* Confirm Modal */}
+      {confirmModal.show && (
+        <div className="fixed inset-0 bg-zinc-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-8 shadow-2xl w-full max-w-sm border border-zinc-200 animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto mb-5">
+              <AlertOctagon size={24} className="text-amber-500" />
+            </div>
+            <h3 className="text-sm font-black text-zinc-900 text-center uppercase tracking-wider mb-2">Confirm Action</h3>
+            <p className="text-xs text-zinc-500 text-center mb-8 font-medium">{confirmModal.msg}</p>
+            <div className="flex items-center gap-3">
+              <button onClick={closeConfirm} className="flex-1 h-12 rounded-xl border border-zinc-200 text-xs font-bold text-zinc-500 uppercase tracking-wider hover:bg-zinc-50 transition-all active:scale-95">Cancel</button>
+              <button onClick={() => { confirmModal.onConfirm?.(); closeConfirm(); }} className="flex-1 h-12 rounded-xl bg-red-600 text-white text-xs font-bold uppercase tracking-wider hover:bg-red-700 transition-all shadow-lg shadow-red-900/20 active:scale-95">Confirm</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notifications */}
+      <div className="fixed bottom-8 right-8 z-[200] space-y-3">
+        {toasts.map(t => (
+          <div key={t.id} className={`flex items-center gap-3 px-5 py-4 rounded-2xl border shadow-2xl animate-in slide-in-from-right-10 duration-500 ${t.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'}`}>
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${t.type === 'error' ? 'bg-red-100 text-red-500' : 'bg-emerald-100 text-emerald-500'}`}>
+               {t.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle size={16} />}
+            </div>
+            <div>
+               <p className="text-[10px] font-black uppercase tracking-widest mb-0.5 leading-none">{t.type === 'error' ? 'Error' : 'Success'}</p>
+               <p className="text-[11px] font-semibold">{t.msg}</p>
+            </div>
+          </div>
+        ))}
+      </div>
 
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }

@@ -232,7 +232,7 @@ const LoginPage = () => {
         }
       }
 
-      const target = userData.role === 'student' ? '/student' : userData.role === 'mentor' ? '/mentor' : '/admin';
+      const target = userData.role === 'student' ? '/student' : (userData.role === 'mentor' ? '/mentor' : '/admin');
       navigate(target);
     } catch (err) {
       console.error('Login Error:', err);

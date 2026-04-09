@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, FileText, Settings,
   Search, FileUp, UserPlus, Trash2, Eye,
   ShieldCheck, Activity, AlertOctagon,
   ChevronRight, LogOut, Bell, RefreshCw, Edit3,
-  BarChart3, Download, Clock, Check, X, Star
+  BarChart3, Download, Clock, Check, X, Star, CheckCircle, AlertCircle, Plus
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import api, { 
@@ -114,6 +114,19 @@ export default function AdminDashboard() {
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'student' });
 
+  // Toast notification system
+  const [toasts, setToasts] = useState([]);
+  const addToast = useCallback((msg, type = 'success') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, msg, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
+  }, []);
+
+  // Confirm modal system
+  const [confirmModal, setConfirmModal] = useState({ show: false, msg: '', onConfirm: null });
+  const showConfirm = (msg, onConfirm) => setConfirmModal({ show: true, msg, onConfirm });
+  const closeConfirm = () => setConfirmModal({ show: false, msg: '', onConfirm: null });
+
   useEffect(() => {
     fetchDataForTab(activeTab);
   }, [activeTab]);
@@ -162,25 +175,29 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteUser = async (id, role) => {
-     if(!window.confirm("Are you sure you want to delete this user?")) return;
-     try {
-         if (role === 'student') await removeStudent(id);
-         else await removeMentor(id);
-         setUsers(users.filter(u => u._id !== id));
-     } catch(err) {
-         alert("Failed to delete: " + err.message);
-     }
+     showConfirm("Are you sure you want to delete this user?", async () => {
+         try {
+             if (role === 'student') await removeStudent(id);
+             else await removeMentor(id);
+             setUsers(users.filter(u => u._id !== id));
+             addToast('User deleted successfully.');
+         } catch(err) {
+             addToast("Failed to delete: " + err.message, 'error');
+         }
+     });
   };
 
   const handleDeleteExam = async (id) => {
-      if(!window.confirm("Delete this exam globally?")) return;
-      try {
-          await api.delete(`/api/exams/${id}`);
-          setExams(exams.filter(e => e._id !== id));
-      } catch (err) {
-          console.error(err);
-          alert('Failed to delete exam');
-      }
+      showConfirm("Delete this exam globally?", async () => {
+          try {
+              await api.delete(`/api/exams/${id}`);
+              setExams(exams.filter(e => e._id !== id));
+              addToast('Exam deleted successfully.');
+          } catch (err) {
+              console.error(err);
+              addToast('Failed to delete exam', 'error');
+          }
+      });
   };
 
   const handleCsvImport = async (e) => {
@@ -197,16 +214,16 @@ export default function AdminDashboard() {
          }).filter(u => u.email);
          
          if(usersToImport.length === 0) {
-             alert("No valid rows found in CSV. Format: name,email,role");
+             addToast("No valid rows found in CSV. Format: name,email,role", 'error');
              return;
          }
 
          try {
              const res = await bulkImportUsers(usersToImport);
-             alert(`${res.results?.length || 'Multiple'} users imported.`);
+             addToast(`${res.results?.length || 'Multiple'} users imported.`);
              fetchDataForTab('Users');
          } catch(err) {
-             alert('Import failed: ' + (err.message || "Unknown Error"));
+             addToast('Import failed: ' + (err.message || "Unknown Error"), 'error');
          }
      };
      reader.readAsText(file);
@@ -220,18 +237,19 @@ export default function AdminDashboard() {
           setShowAddUserModal(false);
           setNewUser({ name: '', email: '', password: '', role: 'student' });
           fetchDataForTab('Users');
+          addToast('User created successfully.');
       } catch (err) {
-          alert("Error creating user: " + err.message);
+          addToast("Error creating user: " + err.message, 'error');
       }
   };
 
   const handleSaveSettings = async () => {
       try {
           await saveSettings(settings);
-          alert('System settings saved successfully!');
+          addToast('System settings saved successfully!');
       } catch (err) {
           console.error(err);
-          alert('Failed to save settings.');
+          addToast('Failed to save settings.', 'error');
       }
   };
 
@@ -243,7 +261,7 @@ export default function AdminDashboard() {
       setEvalSessionData(data);
     } catch (err) {
       console.error('Failed to load session:', err);
-      alert('Failed to load session details.');
+      addToast('Failed to load session details.', 'error');
       setShowEvalModal(false);
     } finally {
       setEvalLoading(false);
@@ -255,13 +273,13 @@ export default function AdminDashboard() {
     setIsSubmitting(true);
     try {
       await evaluateSession(evalSessionData.sessionId, gradeArray);
-      alert('Session graded successfully!');
+      addToast('Session graded successfully!');
       setShowEvalModal(false);
       setEvalSessionData(null);
       fetchDataForTab('Results');
     } catch (err) {
       console.error('Failed to submit grades:', err);
-      alert('Failed to submit grades: ' + (err.message || 'Unknown error'));
+      addToast('Failed to submit grades: ' + (err.message || 'Unknown error'), 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -269,7 +287,7 @@ export default function AdminDashboard() {
 
   const handleExportCsv = () => {
     if (adminResults.length === 0) {
-      alert('No results to export.');
+      addToast('No results to export.', 'error');
       return;
     }
     const headers = 'Student,Email,Exam,Score,Percentage,Violations,Status,Submitted At\n';
@@ -443,6 +461,15 @@ export default function AdminDashboard() {
 
   const renderExams = () => (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-black text-zinc-900 tracking-tight">Exam Library</h2>
+        <button 
+          onClick={() => navigate('/mentor/create-exam')}
+          className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-all uppercase tracking-wider rounded-xl shadow-lg shadow-emerald-900/20 active:scale-95"
+        >
+          <Plus size={14} /> Create Exam
+        </button>
+      </div>
       <DataTable 
         loading={loading}
         headers={['Exam Title', 'Created By', 'Category', 'Status', 'Actions']}
@@ -459,10 +486,10 @@ export default function AdminDashboard() {
             </td>
             <td className="px-6 py-4">
               <div className="flex items-center gap-4">
-                <button onClick={() => navigate(`/examcockpit/${exam.id || exam._id}`)} className="text-xs font-bold text-zinc-500 hover:text-emerald-600 uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95">
+                <button onClick={() => navigate(`/mentor/create-exam?id=${exam.id || exam._id}&view=true`)} className="text-xs font-bold text-zinc-500 hover:text-emerald-600 uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95">
                   <Eye size={14} /> View
                 </button>
-                <button onClick={() => navigate(`/mentor/create-exam?edit=${exam.id || exam._id}`)} className="text-xs font-bold text-zinc-500 hover:text-amber-600 uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95">
+                <button onClick={() => navigate(`/mentor/create-exam?id=${exam.id || exam._id}`)} className="text-xs font-bold text-zinc-500 hover:text-amber-600 uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95">
                   <Edit3 size={14} /> Edit
                 </button>
                 <button onClick={() => handleDeleteExam(exam.id || exam._id)} className="text-xs font-bold text-zinc-400 hover:text-red-600 uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95">
@@ -797,6 +824,38 @@ export default function AdminDashboard() {
           </div>
         ) : null
       )}
+
+      {/* Confirm Modal */}
+      {confirmModal.show && (
+        <div className="fixed inset-0 bg-zinc-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-8 shadow-2xl w-full max-w-sm border border-zinc-200 animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto mb-5">
+              <AlertOctagon size={24} className="text-amber-500" />
+            </div>
+            <h3 className="text-sm font-black text-zinc-900 text-center uppercase tracking-wider mb-2">Confirm Action</h3>
+            <p className="text-xs text-zinc-500 text-center mb-8 font-medium">{confirmModal.msg}</p>
+            <div className="flex items-center gap-3">
+              <button onClick={closeConfirm} className="flex-1 h-12 rounded-xl border border-zinc-200 text-xs font-bold text-zinc-500 uppercase tracking-wider hover:bg-zinc-50 transition-all active:scale-95">Cancel</button>
+              <button onClick={() => { confirmModal.onConfirm?.(); closeConfirm(); }} className="flex-1 h-12 rounded-xl bg-red-600 text-white text-xs font-bold uppercase tracking-wider hover:bg-red-700 transition-all shadow-lg shadow-red-900/20 active:scale-95">Confirm</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notifications */}
+      <div className="fixed bottom-8 right-8 z-[200] space-y-3">
+        {toasts.map(t => (
+          <div key={t.id} className={`flex items-center gap-3 px-5 py-4 rounded-2xl border shadow-2xl animate-in slide-in-from-right-10 duration-500 ${t.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'}`}>
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${t.type === 'error' ? 'bg-red-100 text-red-500' : 'bg-emerald-100 text-emerald-500'}`}>
+               {t.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle size={16} />}
+            </div>
+            <div>
+               <p className="text-[10px] font-black uppercase tracking-widest mb-0.5 leading-none">{t.type === 'error' ? 'Error' : 'Success'}</p>
+               <p className="text-[11px] font-semibold">{t.msg}</p>
+            </div>
+          </div>
+        ))}
+      </div>
 
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }

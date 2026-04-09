@@ -84,13 +84,27 @@ exports.login = asyncHandler(async (req, res) => {
         user.currentDeviceId = deviceId;
     }
 
-    // ✨ MASTER FEATURE: Admin can impersonate any role!
+    // ✨ MASTER FEATURE: Role resolution logic
+    // Admin can impersonate any role. Super Mentor logs in via the "Mentor" tab.
     let finalRole = user.role;
+    const ROLE_FAMILY = {
+        'super_mentor': 'mentor',   // super_mentor is a mentor variant
+        'exam_admin': 'admin',      // exam_admin is an admin variant
+        'proctor_lead': 'mentor',   // proctor_lead is a mentor variant
+        'proctor': 'mentor',        // proctor is a mentor variant
+    };
+
     if (user.role === 'admin' && requestedRole) {
         finalRole = requestedRole;
     } else if (requestedRole && user.role !== requestedRole) {
-        res.status(403);
-        throw new Error(`Your account is registered as '${user.role}', but you selected '${requestedRole}'!`);
+        // Allow login if the user's role belongs to the same family as the requested role
+        const family = ROLE_FAMILY[user.role];
+        if (!family || family !== requestedRole) {
+            res.status(403);
+            throw new Error(`Your account is registered as '${user.role}', but you selected '${requestedRole}'!`);
+        }
+        // Keep the real role (e.g., super_mentor) for permission checks
+        finalRole = user.role;
     }
 
     const token = jwt.sign(
