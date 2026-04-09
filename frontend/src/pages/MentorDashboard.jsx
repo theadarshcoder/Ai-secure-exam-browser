@@ -337,6 +337,7 @@ export default function MentorDashboard() {
   const [results, setResults] = useState([]);
   const [resultFilter, setResultFilter] = useState('ALL');
   const [sessionDetail, setSessionDetail] = useState(null);
+  const [searchFilter, setSearchFilter] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
   // Evaluation Modal state
