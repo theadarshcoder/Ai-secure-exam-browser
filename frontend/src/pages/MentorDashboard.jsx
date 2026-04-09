@@ -655,7 +655,7 @@ export default function MentorDashboard() {
       <div className="flex items-center justify-between">
          <h2 className="text-lg font-black text-zinc-900 tracking-tight">Exam Library</h2>
          <button 
-           onClick={() => navigate('/create-exam')}
+           onClick={() => navigate('/mentor/create-exam')}
            className="flex items-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-emerald-700 transition-all active:scale-95 shadow-lg shadow-emerald-600/20"
          >
             <Plus size={16} /> Create New Exam
@@ -684,7 +684,7 @@ export default function MentorDashboard() {
                     <Eye size={14} /> View
                   </button>
                   <button 
-                    onClick={() => navigate(`/create-exam?edit=${exam.id || exam._id}`)}
+                    onClick={() => navigate(`/mentor/create-exam?edit=${exam.id || exam._id}`)}
                     className="text-xs font-bold text-zinc-500 hover:text-amber-600 uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95"
                   >
                     <Edit3 size={14} /> Edit
