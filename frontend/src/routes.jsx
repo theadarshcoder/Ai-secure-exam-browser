@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import MainLayout from './components/MainLayout';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
@@ -42,6 +42,38 @@ const DashboardRedirect = () => {
   return null;
 };
 
+const ProtectedRoute = ({ allowedRoles, children }) => {
+  const token = localStorage.getItem('vision_token');
+  const role = localStorage.getItem('vision_role')?.toLowerCase();
+
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (allowedRoles && !allowedRoles.includes(role)) {
+    const redirectMap = {
+      admin: '/admin',
+      mentor: '/mentor',
+      student: '/student'
+    };
+    return <Navigate to={redirectMap[role] || '/login'} replace />;
+  }
+
+  return children;
+};
+
+const LoginRedirect = () => {
+  const token = localStorage.getItem('vision_token');
+  const role = localStorage.getItem('vision_role')?.toLowerCase();
+  
+  if (token && role) {
+    const map = { admin: '/admin', mentor: '/mentor', student: '/student' };
+    return <Navigate to={map[role] || '/student'} replace />;
+  }
+  
+  return <LoginPage />;
+};
+
 const NotFound = () => (
   <div className="h-screen flex flex-col items-center justify-center bg-[#0a0c10] text-white">
     <h1 className="text-6xl font-black mb-4">404</h1>
@@ -58,19 +90,68 @@ export default function AppRouter() {
       <Routes>
         <Route element={<MainLayout />}>
           <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/session" element={<SessionMonitor />} />
-          <Route path="/mentor" element={<MentorDashboard />} />
-          <Route path="/mentor/create-exam" element={<CreateExam />} />
-          <Route path="/student" element={<StudentDashboard />} />
-          <Route path="/candidate" element={<StudentDashboard />} />
-          <Route path="/exam/:examId" element={<ExamCockpit />} />
-          <Route path="/exam/:examId/verify" element={<IDVerification />} />
-          <Route path="/exam/:examId/waiting" element={<ExamWaitingRoom />} />
+          <Route path="/login" element={<LoginRedirect />} />
+          
+          <Route path="/admin" element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/admin/session" element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <SessionMonitor />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/mentor" element={
+            <ProtectedRoute allowedRoles={['mentor', 'admin']}>
+              <MentorDashboard />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/mentor/create-exam" element={
+            <ProtectedRoute allowedRoles={['mentor', 'admin']}>
+              <CreateExam />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/student" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <StudentDashboard />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/candidate" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <StudentDashboard />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/exam/:examId" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <ExamCockpit />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/exam/:examId/verify" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <IDVerification />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/exam/:examId/waiting" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <ExamWaitingRoom />
+            </ProtectedRoute>
+          } />
           
           {/* Dashboard Redirect */}
-          <Route path="/dashboard" element={<DashboardRedirect />} />
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <DashboardRedirect />
+            </ProtectedRoute>
+          } />
 
           {/* Catch-all 404 */}
           <Route path="*" element={<NotFound />} />
