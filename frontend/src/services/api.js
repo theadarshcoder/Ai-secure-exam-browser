@@ -208,4 +208,38 @@ export const deleteExam = async (id) => {
     }
 };
 
+// ─────────────────────────────────────────────────────────
+// 🆕 Evaluation & Session Detail APIs
+// ─────────────────────────────────────────────────────────
+
+// Get full session detail (questions + answers + grading results)
+export const getSessionDetail = async (sessionId) => {
+    try {
+        const response = await api.get(`/api/exams/session-detail/${sessionId}`);
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
+// Mentor evaluates short answers 
+export const evaluateSession = async (sessionId, grades) => {
+    try {
+        const response = await api.put(`/api/exams/evaluate/${sessionId}`, { grades });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
+// Get admin-wide results (all submissions across exams)
+export const getAdminResults = async () => {
+    try {
+        const response = await api.get('/api/admin/results');
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
 export default api;

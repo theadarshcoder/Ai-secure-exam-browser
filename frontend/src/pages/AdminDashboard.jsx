@@ -4,7 +4,8 @@ import {
   LayoutDashboard, Users, FileText, Settings,
   Search, FileUp, UserPlus, Trash2, Eye,
   ShieldCheck, Activity, AlertOctagon,
-  ChevronRight, LogOut, Bell, RefreshCw, Edit3
+  ChevronRight, LogOut, Bell, RefreshCw, Edit3,
+  BarChart3, Download, Clock, Check, X, Star
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import api, { 
@@ -18,7 +19,10 @@ import api, {
   getSettings,
   saveSettings,
   getAdminExams,
-  getAuditLogs
+  getAuditLogs,
+  getAdminResults,
+  getSessionDetail,
+  evaluateSession
 } from '../services/api';
 
 // ─────────────────────────────────────────────────────────
@@ -94,6 +98,12 @@ export default function AdminDashboard() {
   const [auditLogs, setAuditLogs] = useState([]);
   const [users, setUsers] = useState([]);
   const [exams, setExams] = useState([]);
+  const [adminResults, setAdminResults] = useState([]);
+  // Evaluation Modal state
+  const [showEvalModal, setShowEvalModal] = useState(false);
+  const [evalSessionData, setEvalSessionData] = useState(null);
+  const [evalLoading, setEvalLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [settings, setSettingsState] = useState({
      maxTabSwitches: 5,
      forceFullscreen: true,
@@ -132,6 +142,9 @@ export default function AdminDashboard() {
           } else if (tab === 'Exams') {
               const res = await getAdminExams();
               setExams(res || []);
+          } else if (tab === 'Results') {
+              const res = await getAdminResults();
+              setAdminResults(res || []);
           } else if (tab === 'Settings') {
               const res = await getSettings();
               if (res) setSettingsState(res);
@@ -222,10 +235,61 @@ export default function AdminDashboard() {
       }
   };
 
+  const handleViewSession = async (sessionId) => {
+    setEvalLoading(true);
+    setShowEvalModal(true);
+    try {
+      const data = await getSessionDetail(sessionId);
+      setEvalSessionData(data);
+    } catch (err) {
+      console.error('Failed to load session:', err);
+      alert('Failed to load session details.');
+      setShowEvalModal(false);
+    } finally {
+      setEvalLoading(false);
+    }
+  };
+
+  const handleGradeSubmit = async (gradeArray) => {
+    if (!evalSessionData) return;
+    setIsSubmitting(true);
+    try {
+      await evaluateSession(evalSessionData.sessionId, gradeArray);
+      alert('Session graded successfully!');
+      setShowEvalModal(false);
+      setEvalSessionData(null);
+      fetchDataForTab('Results');
+    } catch (err) {
+      console.error('Failed to submit grades:', err);
+      alert('Failed to submit grades: ' + (err.message || 'Unknown error'));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleExportCsv = () => {
+    if (adminResults.length === 0) {
+      alert('No results to export.');
+      return;
+    }
+    const headers = 'Student,Email,Exam,Score,Percentage,Violations,Status,Submitted At\n';
+    const rows = adminResults.map(r =>
+      `"${r.studentName}","${r.studentEmail}","${r.examTitle}",${r.score || 0},${r.percentage || 0}%,${r.totalViolations || 0},${r.status},"${r.submittedAt || ''}"`
+    ).join('\n');
+    const blob = new Blob([headers + rows], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `vision_admin_results_${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const tabs = [
     { id: 'Overview', label: 'Overview', icon: LayoutDashboard, access: ['admin', 'super_mentor'] },
     { id: 'Users', label: 'User Management', icon: Users, access: ['admin', 'super_mentor'] },
     { id: 'Exams', label: 'Exam Library', icon: FileText, access: ['admin', 'super_mentor'] },
+    { id: 'Results', label: 'Results & Reports', icon: BarChart3, access: ['admin', 'super_mentor'] },
     { id: 'Settings', label: 'System Settings', icon: Settings, access: ['admin'] },
   ];
 
@@ -481,11 +545,90 @@ export default function AdminDashboard() {
     </div>
   );
 
+  const renderResults = () => (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+      <div className="flex items-center justify-between">
+         <h2 className="text-lg font-black text-zinc-900 tracking-tight">System-Wide Results & Reports</h2>
+         <div className="flex items-center gap-3">
+           <button 
+             onClick={handleExportCsv}
+             className="flex items-center gap-2 text-xs font-bold text-zinc-600 border border-zinc-200 px-4 py-2 rounded-xl hover:bg-white shadow-sm transition-all active:scale-95"
+           >
+              <Download size={14} /> Export CSV
+           </button>
+           <button 
+             onClick={() => fetchDataForTab('Results')}
+             className="p-2 border border-zinc-200 rounded-xl text-zinc-500 hover:bg-zinc-50 transition-all active:scale-95"
+           >
+             <RefreshCw size={14} />
+           </button>
+         </div>
+      </div>
+
+      <DataTable 
+        loading={loading}
+        headers={['Student', 'Exam', 'Score', 'Status', 'Violations', 'Submitted', 'Action']}
+        data={adminResults}
+        renderRow={(res, idx) => (
+          <tr key={res._id || idx} className="hover:bg-zinc-50/80 transition-colors">
+            <td className="px-6 py-4">
+              <div>
+                <p className="text-sm font-semibold text-zinc-800">{res.studentName || 'Student'}</p>
+                <p className="text-[10px] text-zinc-400">{res.studentEmail || ''}</p>
+              </div>
+            </td>
+            <td className="px-6 py-4 text-xs font-medium text-zinc-600">{res.examTitle || 'Exam'}</td>
+            <td className="px-6 py-4">
+               <div className="flex items-center gap-2">
+                 <div className="max-w-[100px] flex-1 h-1 bg-zinc-100 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${(res.percentage || 0) >= 80 ? 'bg-emerald-500' : 'bg-amber-400'}`} style={{ width: `${res.percentage || 0}%` }} />
+                 </div>
+                 <span className={`text-xs font-black tabular-nums ${(res.percentage || 0) >= 80 ? 'text-emerald-700' : 'text-amber-700'}`}>{res.percentage || 0}%</span>
+               </div>
+            </td>
+            <td className="px-6 py-4">
+               <Badge color={
+                 res.status === 'submitted' ? 'emerald' :
+                 res.status === 'pending_review' ? 'amber' :
+                 res.status === 'in_progress' ? 'zinc' : 'zinc'
+               }>
+                 {res.status === 'pending_review' ? '⏳ Needs Review' :
+                  res.status === 'submitted' ? '✅ Graded' :
+                  res.status}
+               </Badge>
+            </td>
+            <td className="px-6 py-4 text-xs font-bold text-red-500 tabular-nums">{res.totalViolations || 0} Flags</td>
+            <td className="px-6 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+               {res.submittedAt ? new Date(res.submittedAt).toLocaleString() : 'N/A'}
+            </td>
+            <td className="px-6 py-4">
+               <button 
+                 onClick={() => handleViewSession(res._id)}
+                 className={`font-bold text-[11px] uppercase tracking-widest flex items-center gap-1 active:scale-95 ${
+                   res.status === 'pending_review' 
+                     ? 'text-amber-600 hover:text-amber-700' 
+                     : 'text-emerald-600 hover:text-emerald-700'
+                 }`}
+               >
+                 {res.status === 'pending_review' ? (
+                   <><Edit3 size={12} /> Evaluate</>
+                 ) : (
+                   <><Eye size={12} /> View</>
+                 )}
+               </button>
+            </td>
+          </tr>
+        )}
+      />
+    </div>
+  );
+
   const renderContent = () => {
     switch (activeTab) {
       case 'Overview': return renderOverview();
       case 'Users': return renderUsers();
       case 'Exams': return renderExams();
+      case 'Results': return renderResults();
       case 'Settings': return renderSettings();
       default: return null;
     }
@@ -567,6 +710,93 @@ export default function AdminDashboard() {
            {renderContent()}
         </section>
       </main>
+
+      {/* Evaluation Modal (reused from MentorDashboard pattern) */}
+      {showEvalModal && (
+        evalLoading ? (
+          <div className="fixed inset-0 bg-zinc-900/70 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div className="bg-white rounded-2xl p-8 flex items-center gap-3 shadow-2xl">
+              <RefreshCw size={20} className="animate-spin text-emerald-600" />
+              <span className="text-sm font-bold text-zinc-700">Loading session details...</span>
+            </div>
+          </div>
+        ) : evalSessionData ? (
+          <div className="fixed inset-0 bg-zinc-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => { setShowEvalModal(false); setEvalSessionData(null); }}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-zinc-200" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-8 py-5 border-b border-zinc-200 bg-zinc-50">
+                <div>
+                  <h3 className="text-base font-black text-zinc-900 uppercase tracking-wider">{evalSessionData.exam?.title} — Detail</h3>
+                  <p className="text-xs text-zinc-500 mt-1">Student: <span className="font-bold text-zinc-700">{evalSessionData.student?.name}</span> ({evalSessionData.student?.email})</p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="text-xl font-black text-zinc-900">{evalSessionData.score}/{evalSessionData.totalMarks}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">{evalSessionData.percentage}%</p>
+                  </div>
+                  <button onClick={() => { setShowEvalModal(false); setEvalSessionData(null); }} className="p-2 hover:bg-zinc-100 rounded-xl">
+                    <X size={18} className="text-zinc-400" />
+                  </button>
+                </div>
+              </div>
+              <div className="overflow-y-auto max-h-[65vh] p-6 space-y-4 custom-scrollbar">
+                {evalSessionData.questions?.map((q, i) => (
+                  <div key={i} className={`rounded-xl border p-5 ${
+                    q.status === 'correct' ? 'border-emerald-200 bg-emerald-50/30' :
+                    q.status === 'incorrect' ? 'border-red-200 bg-red-50/30' :
+                    q.status === 'partial' ? 'border-amber-200 bg-amber-50/30' :
+                    'border-zinc-200 bg-white'
+                  }`}>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Q{q.index + 1}</span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                          q.type === 'mcq' ? 'bg-blue-100 text-blue-700' :
+                          q.type === 'coding' ? 'bg-purple-100 text-purple-700' :
+                          'bg-orange-100 text-orange-700'
+                        }`}>{q.type}</span>
+                        <Badge color={
+                          q.status === 'correct' ? 'emerald' :
+                          q.status === 'incorrect' ? 'red' :
+                          q.status === 'partial' ? 'amber' : 'zinc'
+                        }>{q.status}</Badge>
+                      </div>
+                      <span className="text-sm font-black tabular-nums text-zinc-700">{q.marksObtained}/{q.maxMarks}</span>
+                    </div>
+                    <p className="text-sm text-zinc-800 font-medium mb-2">{q.questionText}</p>
+                    {q.type === 'mcq' && q.options && (
+                      <div className="space-y-1">
+                        {q.options.map((opt, oi) => (
+                          <div key={oi} className={`px-3 py-1.5 rounded text-xs ${
+                            oi === q.correctChoice && oi === q.studentChoice ? 'bg-emerald-100 text-emerald-800 font-bold' :
+                            oi === q.correctChoice ? 'bg-emerald-100 text-emerald-700' :
+                            oi === q.studentChoice ? 'bg-red-100 text-red-700 font-bold' :
+                            'bg-zinc-50 text-zinc-600'
+                          }`}>{opt}</div>
+                        ))}
+                      </div>
+                    )}
+                    {q.type === 'coding' && q.studentAnswer && (
+                      <pre className="bg-zinc-900 text-zinc-100 p-3 rounded-lg text-xs overflow-x-auto max-h-32 mt-2">{q.studentAnswer}</pre>
+                    )}
+                    {q.type === 'short' && (
+                      <div className="grid grid-cols-2 gap-3 mt-2">
+                        <div className="bg-zinc-50 border rounded-lg p-3 text-xs">
+                          <p className="text-[10px] font-bold text-zinc-400 uppercase mb-1">Student's Answer</p>
+                          {q.studentAnswer || <span className="italic text-zinc-400">No answer</span>}
+                        </div>
+                        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-700">
+                          <p className="text-[10px] font-bold text-emerald-600 uppercase mb-1">Expected</p>
+                          {q.expectedAnswer || 'N/A'}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null
+      )}
 
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }

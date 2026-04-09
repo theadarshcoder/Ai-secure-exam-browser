@@ -7,14 +7,17 @@ import {
   LogOut, Clock, AlertTriangle, 
   CheckCircle2, ArrowUpRight, ArrowDownRight,
   Filter, Download, Eye, Power, Users, ShieldCheck, 
-  Edit3, RefreshCw, Trash2
+  Edit3, RefreshCw, Trash2, X, Check, AlertCircle,
+  Code, MessageSquare, Star
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import { 
   getMentorStats, 
   getMentorExamList, 
   getAllResults,
-  deleteExam 
+  deleteExam,
+  getSessionDetail,
+  evaluateSession
 } from '../services/api';
 
 /* ─────────────────────────────────────────────────────────
@@ -32,13 +35,25 @@ const StatusBadge = ({ status }) => {
     low: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     medium: 'bg-amber-50 text-amber-700 border-amber-200',
     high: 'bg-red-50 text-red-700 border-red-200',
+    submitted: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    pending_review: 'bg-amber-50 text-amber-700 border-amber-200',
+    correct: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    incorrect: 'bg-red-50 text-red-700 border-red-200',
+    partial: 'bg-amber-50 text-amber-700 border-amber-200',
+    manually_graded: 'bg-blue-50 text-blue-700 border-blue-200',
+  };
+
+  const labels = {
+    pending_review: '⏳ Needs Review',
+    submitted: '✅ Graded',
+    manually_graded: '📝 Mentor Graded',
   };
 
   const current = styles[status?.toLowerCase()] || styles.draft;
 
   return (
     <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border ${current} capitalize`}>
-      {status}
+      {labels[status] || status}
     </span>
   );
 };
@@ -82,6 +97,229 @@ const DataTable = ({ headers, data, renderRow, loading }) => (
 
 
 /* ─────────────────────────────────────────────────────────
+   Evaluation Modal Component
+   ───────────────────────────────────────────────────────── */
+
+const EvaluationModal = ({ sessionData, onClose, onGradeSubmit, isSubmitting }) => {
+  const [grades, setGrades] = useState({});
+
+  useEffect(() => {
+    if (sessionData?.questions) {
+      const initial = {};
+      sessionData.questions.forEach(q => {
+        if (q.type === 'short' && (q.status === 'pending_review')) {
+          initial[q.index] = {
+            marksObtained: q.aiSuggestedMarks ?? 0,
+            mentorFeedback: q.mentorFeedback || ''
+          };
+        }
+      });
+      setGrades(initial);
+    }
+  }, [sessionData]);
+
+  const handleSubmit = () => {
+    const gradeArray = Object.entries(grades).map(([idx, g]) => ({
+      questionIndex: Number(idx),
+      marksObtained: Number(g.marksObtained),
+      mentorFeedback: g.mentorFeedback
+    }));
+    onGradeSubmit(gradeArray);
+  };
+
+  if (!sessionData) return null;
+
+  const hasPendingReview = sessionData.questions?.some(q => q.status === 'pending_review');
+
+  return (
+    <div className="fixed inset-0 bg-zinc-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-zinc-200 animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+        
+        {/* Header */}
+        <div className="flex items-center justify-between px-8 py-5 border-b border-zinc-200 bg-zinc-50">
+          <div>
+            <h3 className="text-base font-black text-zinc-900 uppercase tracking-wider">{sessionData.exam?.title || 'Exam'} — Evaluation</h3>
+            <p className="text-xs text-zinc-500 mt-1">
+              Student: <span className="font-bold text-zinc-700">{sessionData.student?.name}</span> ({sessionData.student?.email})
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <p className="text-xl font-black text-zinc-900">{sessionData.score}/{sessionData.totalMarks}</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">{sessionData.percentage}% — {sessionData.passed ? 'Passed' : 'Failed'}</p>
+            </div>
+            <button onClick={onClose} className="p-2 hover:bg-zinc-100 rounded-xl transition-colors">
+              <X size={18} className="text-zinc-400" />
+            </button>
+          </div>
+        </div>
+
+        {/* Questions List */}
+        <div className="overflow-y-auto max-h-[60vh] p-6 space-y-4 custom-scrollbar">
+          {sessionData.questions?.map((q, i) => (
+            <div key={i} className={`rounded-xl border p-5 ${
+              q.status === 'correct' ? 'border-emerald-200 bg-emerald-50/30' :
+              q.status === 'incorrect' ? 'border-red-200 bg-red-50/30' :
+              q.status === 'partial' ? 'border-amber-200 bg-amber-50/30' :
+              q.status === 'manually_graded' ? 'border-blue-200 bg-blue-50/30' :
+              'border-zinc-200 bg-white'
+            }`}>
+              {/* Question Header */}
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Q{q.index + 1}</span>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                    q.type === 'mcq' ? 'bg-blue-100 text-blue-700' :
+                    q.type === 'coding' ? 'bg-purple-100 text-purple-700' :
+                    'bg-orange-100 text-orange-700'
+                  }`}>
+                    {q.type === 'mcq' && '🔘 MCQ'}
+                    {q.type === 'coding' && '💻 Coding'}
+                    {q.type === 'short' && '📝 Short Answer'}
+                  </span>
+                  <StatusBadge status={q.status} />
+                </div>
+                <span className="text-sm font-black tabular-nums text-zinc-700">{q.marksObtained}/{q.maxMarks}</span>
+              </div>
+
+              <p className="text-sm text-zinc-800 font-medium mb-3">{q.questionText}</p>
+
+              {/* MCQ Detail */}
+              {q.type === 'mcq' && (
+                <div className="space-y-1.5">
+                  {q.options?.map((opt, oi) => (
+                    <div key={oi} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs ${
+                      oi === q.correctChoice && oi === q.studentChoice ? 'bg-emerald-100 text-emerald-800 font-bold' :
+                      oi === q.correctChoice ? 'bg-emerald-100 text-emerald-800 font-bold' :
+                      oi === q.studentChoice ? 'bg-red-100 text-red-800 font-bold' :
+                      'bg-zinc-50 text-zinc-600'
+                    }`}>
+                      {oi === q.correctChoice && <Check size={12} />}
+                      {oi === q.studentChoice && oi !== q.correctChoice && <X size={12} />}
+                      <span>{opt}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Coding Detail */}
+              {q.type === 'coding' && (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
+                    Test Cases: {q.passedTestCases}/{q.totalTestCases} Passed
+                  </p>
+                  {q.studentAnswer && (
+                    <pre className="bg-zinc-900 text-zinc-100 p-3 rounded-lg text-xs overflow-x-auto max-h-40">{q.studentAnswer}</pre>
+                  )}
+                  {q.testCaseResults?.map((tc, ti) => (
+                    <div key={ti} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs ${
+                      tc.passed ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                    }`}>
+                      {tc.passed ? <Check size={12} /> : <X size={12} />}
+                      <span>Test #{tc.testCaseIndex + 1}: {tc.passed ? 'Passed' : (tc.error || `Expected "${tc.expectedOutput}", got "${tc.actualOutput}"`)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Short Answer Detail */}
+              {q.type === 'short' && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Student's Answer</p>
+                      <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-3 text-xs text-zinc-700 min-h-[60px]">
+                        {q.studentAnswer || <span className="italic text-zinc-400">No answer provided</span>}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Expected Answer</p>
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-700 min-h-[60px]">
+                        {q.expectedAnswer || <span className="italic text-zinc-400">Not configured</span>}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* AI Suggestion */}
+                  {q.aiSuggestedMarks != null && (
+                    <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Star size={12} className="text-indigo-600" />
+                        <p className="text-[10px] font-bold text-indigo-700 uppercase tracking-widest">AI Suggestion: {q.aiSuggestedMarks}/{q.maxMarks}</p>
+                      </div>
+                      <p className="text-xs text-indigo-600">{q.aiReasoning}</p>
+                    </div>
+                  )}
+
+                  {/* Mentor Grading Inputs (only for pending_review) */}
+                  {q.status === 'pending_review' && grades[q.index] !== undefined && (
+                    <div className="bg-white border-2 border-amber-300 rounded-xl p-4 space-y-3">
+                      <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest flex items-center gap-1.5">
+                        <Edit3 size={12} /> Mentor Evaluation
+                      </p>
+                      <div className="flex items-center gap-4">
+                        <label className="text-xs font-bold text-zinc-600">Marks:</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max={q.maxMarks}
+                          value={grades[q.index]?.marksObtained ?? 0}
+                          onChange={e => setGrades(prev => ({
+                            ...prev,
+                            [q.index]: { ...prev[q.index], marksObtained: Number(e.target.value) }
+                          }))}
+                          className="w-20 px-3 py-2 border border-zinc-200 text-sm text-center rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                        />
+                        <span className="text-xs text-zinc-400">/ {q.maxMarks}</span>
+                      </div>
+                      <textarea
+                        placeholder="Mentor feedback (optional)..."
+                        value={grades[q.index]?.mentorFeedback || ''}
+                        onChange={e => setGrades(prev => ({
+                          ...prev,
+                          [q.index]: { ...prev[q.index], mentorFeedback: e.target.value }
+                        }))}
+                        className="w-full px-3 py-2 border border-zinc-200 text-xs rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 min-h-[60px] resize-none"
+                      />
+                    </div>
+                  )}
+
+                  {/* Already graded feedback */}
+                  {q.status === 'manually_graded' && q.mentorFeedback && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <p className="text-[10px] font-bold text-blue-700 uppercase tracking-widest mb-1">Mentor Feedback</p>
+                      <p className="text-xs text-blue-600">{q.mentorFeedback}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Footer */}
+        {hasPendingReview && (
+          <div className="px-8 py-4 border-t border-zinc-200 bg-zinc-50 flex items-center justify-end gap-3">
+            <button onClick={onClose} className="px-5 py-2.5 text-xs font-bold text-zinc-500 uppercase hover:bg-zinc-100 rounded-xl transition-all active:scale-95">
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="px-5 py-2.5 bg-emerald-600 text-white text-xs font-bold uppercase hover:bg-emerald-700 rounded-xl transition-all shadow-lg shadow-emerald-900/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isSubmitting ? <RefreshCw size={14} className="animate-spin" /> : <Check size={14} />}
+              Submit Grades
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+
+/* ─────────────────────────────────────────────────────────
    Main Component
    ───────────────────────────────────────────────────────── */
 
@@ -99,6 +337,12 @@ export default function MentorDashboard() {
   const [results, setResults] = useState([]);
   const [searchFilter, setSearchFilter] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Evaluation Modal state
+  const [showEvalModal, setShowEvalModal] = useState(false);
+  const [evalSessionData, setEvalSessionData] = useState(null);
+  const [evalLoading, setEvalLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Real-time violation alerts state (via Socket.IO)
   const [violations, setViolations] = useState([]);
@@ -169,6 +413,39 @@ export default function MentorDashboard() {
     } catch (err) {
       console.error(err);
       alert('Failed to delete exam.');
+    }
+  };
+
+  const handleViewSession = async (sessionId) => {
+    setEvalLoading(true);
+    setShowEvalModal(true);
+    try {
+      const data = await getSessionDetail(sessionId);
+      setEvalSessionData(data);
+    } catch (err) {
+      console.error('Failed to load session:', err);
+      alert('Failed to load session details.');
+      setShowEvalModal(false);
+    } finally {
+      setEvalLoading(false);
+    }
+  };
+
+  const handleGradeSubmit = async (gradeArray) => {
+    if (!evalSessionData) return;
+    setIsSubmitting(true);
+    try {
+      await evaluateSession(evalSessionData.sessionId, gradeArray);
+      alert('Session graded successfully!');
+      setShowEvalModal(false);
+      setEvalSessionData(null);
+      // Refresh results
+      fetchDataForTab('Results & Reports');
+    } catch (err) {
+      console.error('Failed to submit grades:', err);
+      alert('Failed to submit grades: ' + (err.message || 'Unknown error'));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -430,17 +707,25 @@ export default function MentorDashboard() {
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="flex items-center justify-between">
          <h2 className="text-lg font-black text-zinc-900 tracking-tight">Post-Exam Analytics</h2>
-         <button 
-           onClick={handleExportCsv}
-           className="flex items-center gap-2 text-xs font-bold text-zinc-600 border border-zinc-200 px-4 py-2 rounded-xl hover:bg-white shadow-sm transition-all active:scale-95"
-         >
-            <Download size={14} /> Export CSV
-         </button>
+         <div className="flex items-center gap-3">
+           <button 
+             onClick={handleExportCsv}
+             className="flex items-center gap-2 text-xs font-bold text-zinc-600 border border-zinc-200 px-4 py-2 rounded-xl hover:bg-white shadow-sm transition-all active:scale-95"
+           >
+              <Download size={14} /> Export CSV
+           </button>
+           <button 
+             onClick={() => fetchDataForTab('Results & Reports')}
+             className="p-2 border border-zinc-200 rounded-xl text-zinc-500 hover:bg-zinc-50 transition-all active:scale-95"
+           >
+             <RefreshCw size={14} />
+           </button>
+         </div>
       </div>
 
       <DataTable 
         loading={loading}
-        headers={['Student', 'Exam Name', 'Result', 'Violations', 'Submitted', 'Action']}
+        headers={['Student', 'Exam Name', 'Result', 'Status', 'Violations', 'Submitted', 'Action']}
         data={results}
         renderRow={(res, idx) => (
           <tr key={res._id || idx} className="hover:bg-zinc-50 transition-colors">
@@ -459,16 +744,27 @@ export default function MentorDashboard() {
                  <span className={`text-xs font-black tabular-nums ${(res.percentage || 0) >= 80 ? 'text-emerald-700' : 'text-amber-700'}`}>{res.percentage || 0}%</span>
                </div>
             </td>
+            <td className="px-6 py-4">
+               <StatusBadge status={res.status || 'submitted'} />
+            </td>
             <td className="px-6 py-4 text-xs font-bold text-red-500 tabular-nums">{res.totalViolations || 0} Flags</td>
             <td className="px-6 py-4 text-[10px] font-bold text-zinc-400 flex items-center gap-1.5 uppercase tracking-wider">
                <Clock size={12} /> {res.submittedAt ? new Date(res.submittedAt).toLocaleString() : 'N/A'}
             </td>
             <td className="px-6 py-4">
                <button 
-                 onClick={() => alert(`Report for ${res.studentName}:\nExam: ${res.examTitle}\nScore: ${res.score}/${res.totalMarks}\nPercentage: ${res.percentage}%\nPassed: ${res.passed ? 'Yes' : 'No'}\nViolations: ${res.totalViolations}\nTab Switches: ${res.tabSwitches}`)}
-                 className="text-emerald-600 font-bold text-[11px] uppercase tracking-widest hover:underline flex items-center gap-1 active:scale-95"
+                 onClick={() => handleViewSession(res._id)}
+                 className={`font-bold text-[11px] uppercase tracking-widest flex items-center gap-1 active:scale-95 ${
+                   res.status === 'pending_review' 
+                     ? 'text-amber-600 hover:text-amber-700' 
+                     : 'text-emerald-600 hover:text-emerald-700'
+                 }`}
                >
-                 View Report <Eye size={12} />
+                 {res.status === 'pending_review' ? (
+                   <><Edit3 size={12} /> Evaluate</>
+                 ) : (
+                   <><Eye size={12} /> View Report</>
+                 )}
                </button>
             </td>
           </tr>
@@ -563,6 +859,25 @@ export default function MentorDashboard() {
            {renderContent()}
         </section>
       </main>
+
+      {/* Evaluation Modal */}
+      {showEvalModal && (
+        evalLoading ? (
+          <div className="fixed inset-0 bg-zinc-900/70 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div className="bg-white rounded-2xl p-8 flex items-center gap-3 shadow-2xl">
+              <RefreshCw size={20} className="animate-spin text-emerald-600" />
+              <span className="text-sm font-bold text-zinc-700">Loading session details...</span>
+            </div>
+          </div>
+        ) : (
+          <EvaluationModal
+            sessionData={evalSessionData}
+            onClose={() => { setShowEvalModal(false); setEvalSessionData(null); }}
+            onGradeSubmit={handleGradeSubmit}
+            isSubmitting={isSubmitting}
+          />
+        )
+      )}
 
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }

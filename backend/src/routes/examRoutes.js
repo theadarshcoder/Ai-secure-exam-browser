@@ -53,6 +53,12 @@ router.get('/resume/:examId', verifyToken, examController.resumeExam);
 // Exam submit karo — auto-scoring hogi, results milenge
 router.post('/submit', verifyToken, examController.submitExam);
 
+// 🆕 Session Detail — Mentor/Admin full view of a submission with per-question grading
+router.get('/session-detail/:sessionId', verifyToken, checkRole(['mentor', 'admin']), examController.getSessionDetail);
+
+// 🆕 Evaluate Session — Mentor manually grades short answers
+router.put('/evaluate/:sessionId', verifyToken, checkRole(['mentor', 'admin']), examController.evaluateSession);
+
 // Proctoring violation log karo (Tab Switch, Face Not Detected, etc.)
 router.post('/incident', verifyToken, examController.logIncident);
 

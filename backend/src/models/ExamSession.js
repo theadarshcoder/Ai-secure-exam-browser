@@ -13,6 +13,38 @@ const violationSchema = new mongoose.Schema({
     timestamp: { type: Date, default: Date.now }
 }, { _id: true });
 
+// ─── Per-Question Grading Result ─────────────────────────
+// Stores the evaluation outcome for each individual question
+const questionResultSchema = new mongoose.Schema({
+    questionIndex: { type: Number, required: true },
+    type: { type: String, enum: ['mcq', 'short', 'coding'] },
+    marksObtained: { type: Number, default: 0 },
+    maxMarks: { type: Number, default: 0 },
+    status: {
+        type: String,
+        enum: ['correct', 'incorrect', 'partial', 'pending_review', 'manually_graded'],
+        default: 'pending_review'
+    },
+    // For MCQ: What student chose vs correct
+    studentChoice: { type: mongoose.Schema.Types.Mixed, default: null },
+    correctChoice: { type: mongoose.Schema.Types.Mixed, default: null },
+    // For Coding: Test case results
+    testCaseResults: [{
+        testCaseIndex: { type: Number },
+        passed: { type: Boolean },
+        input: { type: String, default: '' },
+        expectedOutput: { type: String, default: '' },
+        actualOutput: { type: String, default: '' },
+        error: { type: String, default: '' }
+    }],
+    // For Short Answer: AI + Mentor grading
+    aiSuggestedMarks: { type: Number, default: null },
+    aiReasoning: { type: String, default: '' },
+    mentorFeedback: { type: String, default: '' },
+    gradedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    gradedAt: { type: Date }
+}, { _id: false });
+
 // ─── Exam Session Schema ─────────────────────────────────
 // Tracks every individual exam attempt by a student.
 // Includes answers, scoring, violation logs, and LIVE PROGRESS snapshots.
@@ -66,6 +98,10 @@ const examSessionSchema = new mongoose.Schema({
     totalMarks: { type: Number, default: 0 },
     percentage: { type: Number, default: 0 },
     passed: { type: Boolean, default: false },
+
+    // ─── 🆕 Per-Question Grading ─────────────────────
+    questionResults: [questionResultSchema],
+    requiresManualGrading: { type: Boolean, default: false },
     
     // ─── Timing ──────────────────────────────────────
     startedAt: { type: Date, default: Date.now },
@@ -76,14 +112,15 @@ const examSessionSchema = new mongoose.Schema({
     tabSwitchCount: { type: Number, default: 0 },
     
     // ─── Session Status ──────────────────────────────
-    // in_progress: Exam currently being taken
-    // submitted:   Exam successfully completed by the student
-    // flagged:     System-flagged due to suspicious activity (multiple violations)
-    // reviewed:    Manually reviewed and approved by a mentor
+    // in_progress:    Exam currently being taken
+    // submitted:      Exam fully graded and finalized
+    // pending_review: Auto-graded but short answers need mentor evaluation
+    // flagged:        System-flagged due to suspicious activity (multiple violations)
+    // reviewed:       Manually reviewed and approved by a mentor
     // auto_submitted: Submitted automatically upon timer expiration
     status: { 
         type: String, 
-        enum: ['in_progress', 'submitted', 'flagged', 'reviewed', 'auto_submitted'],
+        enum: ['in_progress', 'submitted', 'pending_review', 'flagged', 'reviewed', 'auto_submitted'],
         default: 'in_progress' 
     }
 }, { timestamps: true });

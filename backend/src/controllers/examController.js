@@ -580,8 +580,12 @@ exports.resumeExam = asyncHandler(async (req, res) => {
 
 
 // ─────────────── POST /api/exams/submit ───────────────
-// Submits the exam — calculates MCQ scores, saves answers, and finalizes results.
+// Submits the exam — evaluates all question types and saves detailed results.
+// MCQ: Auto-graded instantly
+// Coding: Evaluated against test cases via Judge0
+// Short Answer: AI suggestion generated, marked as pending_review
 exports.submitExam = asyncHandler(async (req, res) => {
+    const { gradeMCQ, gradeCoding, gradeShortAnswer } = require('../services/gradingService');
     const { examId, answers } = req.body;
     const studentId = req.user.id;
 
@@ -604,31 +608,88 @@ exports.submitExam = asyncHandler(async (req, res) => {
         await redisClient.del(cacheKey); // Clean up
     }
 
-    // --- Auto-Score MCQ ---
-    let score = 0;
-    exam.questions.forEach((q, index) => {
+    // ─── Evaluate Each Question ──────────────────────
+    const questionResults = [];
+    let autoScore = 0;
+    let hasShortAnswers = false;
+
+    for (let index = 0; index < exam.questions.length; index++) {
+        const q = exam.questions[index];
         const studentAnswer = finalAnswers[String(index)];
-        if (q.type === 'mcq' && studentAnswer !== undefined) {
-            if (Number(studentAnswer) === Number(q.correctOption)) {
-                score += (q.marks || 1);
+
+        if (q.type === 'mcq') {
+            const result = gradeMCQ(q, studentAnswer);
+            autoScore += result.marksObtained;
+            questionResults.push({
+                questionIndex: index,
+                type: 'mcq',
+                ...result
+            });
+
+        } else if (q.type === 'coding') {
+            try {
+                const result = await gradeCoding(q, studentAnswer);
+                autoScore += result.marksObtained;
+                questionResults.push({
+                    questionIndex: index,
+                    type: 'coding',
+                    ...result
+                });
+            } catch (err) {
+                console.error(`Coding grading failed for Q${index}:`, err.message);
+                questionResults.push({
+                    questionIndex: index,
+                    type: 'coding',
+                    marksObtained: 0,
+                    maxMarks: q.marks || 1,
+                    status: 'pending_review',
+                    testCaseResults: [],
+                    aiReasoning: 'Code execution service unavailable. Manual review required.'
+                });
+                hasShortAnswers = true; // Treat as needing review
+            }
+
+        } else if (q.type === 'short') {
+            hasShortAnswers = true;
+            try {
+                const result = await gradeShortAnswer(q, studentAnswer);
+                questionResults.push({
+                    questionIndex: index,
+                    type: 'short',
+                    ...result
+                });
+            } catch (err) {
+                console.error(`Short answer grading failed for Q${index}:`, err.message);
+                questionResults.push({
+                    questionIndex: index,
+                    type: 'short',
+                    marksObtained: 0,
+                    maxMarks: q.marks || 1,
+                    status: 'pending_review',
+                    aiSuggestedMarks: null,
+                    aiReasoning: 'AI evaluation unavailable. Manual review required.'
+                });
             }
         }
-        // Coding and Short answers aren't auto-scored for now
-    });
+    }
 
+    // ─── Calculate Score ─────────────────────────────
     const totalMarks = exam.totalMarks || 100;
-    const percentage = Math.round((score / totalMarks) * 100);
+    const finalStatus = hasShortAnswers ? 'pending_review' : 'submitted';
+    const percentage = Math.round((autoScore / totalMarks) * 100);
     const passed = percentage >= (exam.passingMarks || 40);
 
     const session = await ExamSession.findOneAndUpdate(
         { exam: examId, student: studentId },
         { 
             answers: finalAnswers,
-            score,
+            score: autoScore,
             totalMarks,
             percentage,
-            passed,
-            status: 'submitted',
+            passed: hasShortAnswers ? false : passed, // Don't finalize pass until fully graded
+            status: finalStatus,
+            requiresManualGrading: hasShortAnswers,
+            questionResults,
             submittedAt: new Date()
         },
         { new: true }
@@ -640,11 +701,183 @@ exports.submitExam = asyncHandler(async (req, res) => {
     }
 
     res.json({
-        message: 'Exam submitted successfully!',
+        message: hasShortAnswers 
+            ? 'Exam submitted! Some answers require mentor evaluation.'
+            : 'Exam submitted successfully!',
         score: session.score,
         totalMarks: session.totalMarks,
         percentage: session.percentage,
-        passed: session.passed
+        passed: session.passed,
+        status: session.status,
+        requiresManualGrading: session.requiresManualGrading,
+        questionResults: questionResults.map(qr => ({
+            questionIndex: qr.questionIndex,
+            type: qr.type,
+            marksObtained: qr.marksObtained,
+            maxMarks: qr.maxMarks,
+            status: qr.status
+        }))
+    });
+});
+
+
+// ─────────────── GET /api/exams/session-detail/:sessionId ───────────────
+// Full session detail for Mentor/Admin — includes questions, answers, and grading results
+exports.getSessionDetail = asyncHandler(async (req, res) => {
+    const session = await ExamSession.findById(req.params.sessionId)
+        .populate('student', 'name email')
+        .populate('exam');
+
+    if (!session) {
+        res.status(404);
+        throw new Error('Session not found');
+    }
+
+    const exam = session.exam;
+    if (!exam) {
+        res.status(404);
+        throw new Error('Associated exam not found');
+    }
+
+    // Build detailed question view with answers and grading results
+    const questionsWithResults = exam.questions.map((q, index) => {
+        const result = session.questionResults.find(r => r.questionIndex === index) || {};
+        const studentAnswer = session.answers?.[String(index)];
+
+        const detail = {
+            index,
+            type: q.type,
+            questionText: q.questionText,
+            marks: q.marks,
+            studentAnswer,
+            marksObtained: result.marksObtained || 0,
+            maxMarks: result.maxMarks || q.marks || 0,
+            status: result.status || 'pending_review',
+        };
+
+        if (q.type === 'mcq') {
+            detail.options = q.options;
+            detail.correctOption = q.correctOption;
+            detail.studentChoice = result.studentChoice;
+            detail.correctChoice = result.correctChoice;
+        }
+
+        if (q.type === 'coding') {
+            detail.language = q.language;
+            detail.testCaseResults = result.testCaseResults || [];
+            detail.totalTestCases = (q.testCases || []).length;
+            detail.passedTestCases = (result.testCaseResults || []).filter(t => t.passed).length;
+        }
+
+        if (q.type === 'short') {
+            detail.expectedAnswer = q.expectedAnswer;
+            detail.maxWords = q.maxWords;
+            detail.aiSuggestedMarks = result.aiSuggestedMarks;
+            detail.aiReasoning = result.aiReasoning;
+            detail.mentorFeedback = result.mentorFeedback || '';
+        }
+
+        return detail;
+    });
+
+    res.json({
+        sessionId: session._id,
+        student: {
+            id: session.student?._id,
+            name: session.student?.name || 'Unknown',
+            email: session.student?.email || ''
+        },
+        exam: {
+            id: exam._id,
+            title: exam.title,
+            category: exam.category,
+            duration: exam.duration,
+            totalMarks: exam.totalMarks,
+            passingMarks: exam.passingMarks
+        },
+        score: session.score,
+        totalMarks: session.totalMarks,
+        percentage: session.percentage,
+        passed: session.passed,
+        status: session.status,
+        requiresManualGrading: session.requiresManualGrading,
+        violations: session.violations.length,
+        tabSwitches: session.tabSwitchCount,
+        startedAt: session.startedAt,
+        submittedAt: session.submittedAt,
+        questions: questionsWithResults
+    });
+});
+
+
+// ─────────────── PUT /api/exams/evaluate/:sessionId ───────────────
+// Mentor manually grades short answers and finalizes the session
+exports.evaluateSession = asyncHandler(async (req, res) => {
+    const { sessionId } = req.params;
+    const { grades } = req.body;
+    // grades = [{ questionIndex, marksObtained, mentorFeedback }]
+
+    if (!grades || !Array.isArray(grades)) {
+        res.status(400);
+        throw new Error('grades array is required');
+    }
+
+    const session = await ExamSession.findById(sessionId).populate('exam');
+    if (!session) {
+        res.status(404);
+        throw new Error('Session not found');
+    }
+
+    const exam = session.exam;
+    if (!exam) {
+        res.status(404);
+        throw new Error('Associated exam not found');
+    }
+
+    // Apply mentor grades to questionResults
+    for (const grade of grades) {
+        const qrIndex = session.questionResults.findIndex(
+            r => r.questionIndex === grade.questionIndex
+        );
+        
+        if (qrIndex !== -1) {
+            const qr = session.questionResults[qrIndex];
+            const maxMarks = qr.maxMarks || 0;
+            const awarded = Math.min(Math.max(Number(grade.marksObtained) || 0, 0), maxMarks);
+            
+            session.questionResults[qrIndex].marksObtained = awarded;
+            session.questionResults[qrIndex].mentorFeedback = grade.mentorFeedback || '';
+            session.questionResults[qrIndex].status = 'manually_graded';
+            session.questionResults[qrIndex].gradedBy = req.user.id;
+            session.questionResults[qrIndex].gradedAt = new Date();
+        }
+    }
+
+    // Recalculate total score from all questionResults
+    let totalScore = 0;
+    session.questionResults.forEach(qr => {
+        totalScore += (qr.marksObtained || 0);
+    });
+
+    const totalMarks = exam.totalMarks || 100;
+    const percentage = Math.round((totalScore / totalMarks) * 100);
+    const passed = percentage >= (exam.passingMarks || 40);
+
+    session.score = totalScore;
+    session.percentage = percentage;
+    session.passed = passed;
+    session.status = 'submitted';
+    session.requiresManualGrading = false;
+
+    await session.save();
+
+    res.json({
+        message: 'Session evaluated and finalized!',
+        score: session.score,
+        totalMarks: session.totalMarks,
+        percentage: session.percentage,
+        passed: session.passed,
+        status: session.status
     });
 });
 
