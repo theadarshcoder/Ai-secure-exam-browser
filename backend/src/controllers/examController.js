@@ -599,13 +599,17 @@ exports.submitExam = asyncHandler(async (req, res) => {
     const redisClient = getRedisClient();
     let finalAnswers = answers || {};
     if (redisClient) {
-        const cacheKey = `exam_session:${examId}:${studentId}`;
-        const cacheStr = await redisClient.get(cacheKey);
-        if (cacheStr) {
-            const parsed = JSON.parse(cacheStr);
-            finalAnswers = { ...parsed.answers, ...finalAnswers };
+        try {
+            const cacheKey = `exam_session:${examId}:${studentId}`;
+            const cacheStr = await redisClient.get(cacheKey);
+            if (cacheStr) {
+                const parsed = JSON.parse(cacheStr);
+                finalAnswers = { ...parsed.answers, ...finalAnswers };
+            }
+            await redisClient.del(cacheKey); // Clean up
+        } catch (redisErr) {
+            console.warn('⚠️ Redis error during submission, ignoring cache:', redisErr.message);
         }
-        await redisClient.del(cacheKey); // Clean up
     }
 
     // ─── Evaluate Each Question ──────────────────────
