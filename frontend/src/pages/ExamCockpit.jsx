@@ -814,7 +814,6 @@ export default function ExamCockpit() {
           </div>
           
             {/* Right sidebar was proctoring, now empty or removed */}
-          </div>
         </main>
       </div>
 

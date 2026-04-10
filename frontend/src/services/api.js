@@ -200,7 +200,7 @@ export const getMentorExamList = async () => {
     }
 };
 
-export const getAllResults = async () => {
+export const getAdminResults = async () => {
     try {
         const response = await api.get('/api/admin/results');
         return response.data;
@@ -208,6 +208,8 @@ export const getAllResults = async () => {
         throw error.response?.data || error.message;
     }
 };
+
+export const getAllResults = getAdminResults;
 
 export const deleteExam = async (id) => {
     try {
