@@ -256,9 +256,18 @@ export default function ExamCockpit() {
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('Test Cases');
   const [editorHeight, setEditorHeight] = useState(55);
+  const [toasts, setToasts] = useState([]);
   const isResizing = useRef(false);
 
   const isTimeCritical = secondsLeft < 300 && secondsLeft > 0;
+
+  const addToast = useCallback((msg, type = 'info') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, msg, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 5000);
+  }, []);
 
   // 📡 Socket Connection & Broadcast Listener
   useEffect(() => {
@@ -293,9 +302,9 @@ export default function ExamCockpit() {
     try {
       setHelpLoading(true);
       await requestHelp("Student needs manual intervention or has a query.");
-      // In a real app we'd trigger a toast here
+      addToast("Support request sent to Mentors.", 'success');
     } catch (err) {
-      console.error("Help request failed");
+      addToast("Failed to send help request.", 'error');
     } finally {
       setHelpLoading(false);
     }
@@ -612,8 +621,13 @@ export default function ExamCockpit() {
             <span className="text-base font-bold tabular-nums">{fmtTime(secondsLeft)}</span>
           </div>
           <div className="flex items-center gap-3 pl-4 border-l border-slate-100 text-right">
-            <div><p className="text-[11px] font-bold leading-none">Candidate AM</p><p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">VSN-89241</p></div>
-            <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-black text-slate-500 shadow-sm">AM</div>
+            <div>
+              <p className="text-[11px] font-bold leading-none">{sessionStorage.getItem('vision_name') || 'Candidate'}</p>
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{sessionStorage.getItem('vision_email') || 'VSN-USER'}</p>
+            </div>
+            <div className="w-8 h-8 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-[10px] font-black text-indigo-600 shadow-sm">
+              {(sessionStorage.getItem('vision_name') || 'C').charAt(0)}
+            </div>
           </div>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-slate-50"><div className="h-full bg-indigo-600 transition-all duration-700" style={{ width: `${(answeredCount/Math.max(questions.length, 1))*100}%` }} /></div>
@@ -629,14 +643,20 @@ export default function ExamCockpit() {
                 if (originalIndex !== undefined) setVisited(v => ({ ...v, [originalIndex]: true })); 
              }} 
           />
-          <div className="p-4 border-t border-slate-100">
-             <button onClick={handleRequestHelp} disabled={helpLoading} className="w-full h-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-widest hover:bg-amber-100 transition-all">
+
+          <div className="px-5 py-2 border-t border-slate-100 flex-shrink-0">
+             <ProctoringSidebar cameraActive={cameraActive} videoRef={videoRef} faceActive={faceBoxes.length > 0} confidence={confidence} />
+          </div>
+
+          <div className="p-4 border-t border-slate-100 mt-auto">
+             <button onClick={handleRequestHelp} disabled={helpLoading} className="w-full h-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-widest hover:bg-amber-100 transition-all active:scale-95 disabled:opacity-50">
                 {helpLoading ? <Loader2 size={14} className="animate-spin" /> : <MessageSquare size={14} />} Need Help?
              </button>
           </div>
-          <div className="mt-auto p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/30">
+
+          <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
             <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1.5"><div className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse" /> Encrypted Session</span>
-            <button onClick={() => setShowExitPrompt(true)} className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors border border-red-100"><Power size={14} /></button>
+            <button onClick={() => setShowExitPrompt(true)} className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors border border-red-100 shadow-sm active:scale-95"><Power size={14} /></button>
           </div>
         </aside>
 
@@ -793,13 +813,8 @@ export default function ExamCockpit() {
             </div>
           </div>
           
-          <aside className="w-[240px] shrink-0 bg-white border-l border-slate-200 flex flex-col items-center pt-8 px-5 gap-7 overflow-y-auto scroll-thin">
-            <ProctoringSidebar cameraActive={cameraActive} videoRef={videoRef} faceActive={faceBoxes.length > 0} confidence={confidence} />
-            <div className="mt-auto pb-6 w-full opacity-40 hover:opacity-100 transition-opacity">
-                <VisionLogo className="w-6 h-6 text-slate-400 mx-auto grayscale" />
-                <p className="text-[7px] font-black text-slate-400 text-center mt-2 tracking-widest uppercase">Secured by Vision AI Engine</p>
-            </div>
-          </aside>
+            {/* Right sidebar was proctoring, now empty or removed */}
+          </div>
         </main>
       </div>
 
