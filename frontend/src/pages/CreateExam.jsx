@@ -96,8 +96,7 @@ const McqEditor = ({ question, updateQ }) => (
             options[oi] = e.target.value;
             updateQ(question.id, { options });
           }} 
-          placeholder={`Option ${String.fromCharCode(65 + oi)}`} 
-          className="flex-1 bg-[#0a0c10] border border-white/[0.04] rounded-lg px-3 py-2 text-sm text-zinc-300 placeholder:text-zinc-700 focus:outline-none focus:border-white/[0.1] transition-colors" 
+          className="flex-1 bg-white border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-emerald-500/50 transition-colors shadow-sm" 
         />
       </div>
     ))}
@@ -111,15 +110,15 @@ const ShortEditor = ({ question, updateQ }) => (
       onChange={e => updateQ(question.id, { expectedAnswer: e.target.value })} 
       placeholder="Expected keywords..." 
       rows={2} 
-      className="w-full bg-[#0a0c10] border border-white/[0.04] rounded-lg px-3 py-2.5 text-sm text-zinc-300 placeholder:text-zinc-700 focus:outline-none resize-none" 
+      className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-emerald-500/50 resize-none shadow-sm" 
     />
-    <div className="flex items-center gap-2 text-[9px] text-zinc-700">
+    <div className="flex items-center gap-2 text-[9px] text-zinc-500 font-bold uppercase tracking-widest">
       Word limit: 
       <input 
         type="number" 
         value={question.maxWords} 
         onChange={e => updateQ(question.id, { maxWords: parseInt(e.target.value) || 0 })} 
-        className="w-16 bg-[#0a0c10] border border-white/[0.04] rounded px-2 py-1 text-xs text-zinc-300 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-center" 
+        className="w-16 bg-white border border-zinc-200 rounded px-2 py-1 text-xs text-zinc-900 focus:outline-none focus:border-emerald-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-center shadow-sm" 
       />
     </div>
   </div>
@@ -127,12 +126,12 @@ const ShortEditor = ({ question, updateQ }) => (
 
 const CodingEditor = ({ question, updateQ }) => (
   <div className="space-y-3">
-    <div className="flex items-center gap-2 text-[9px] text-zinc-700">
+    <div className="flex items-center gap-2 text-[9px] text-zinc-500 font-bold uppercase tracking-widest">
       Language:
       <select 
         value={question.language} 
         onChange={e => updateQ(question.id, { language: e.target.value })} 
-        className="bg-[#0a0c10] border border-white/[0.04] rounded-lg px-2 py-1 text-xs text-zinc-300 focus:outline-none"
+        className="bg-white border border-zinc-200 rounded-lg px-2 py-1 text-xs text-zinc-900 focus:outline-none focus:border-emerald-500/50 shadow-sm"
       >
         {['javascript','python','java','cpp','c'].map(l => <option key={l} value={l}>{l}</option>)}
       </select>
@@ -142,10 +141,10 @@ const CodingEditor = ({ question, updateQ }) => (
       onChange={e => updateQ(question.id, { initialCode: e.target.value })} 
       placeholder="// Starter code..." 
       rows={5} 
-      className="w-full bg-[#060810] border border-emerald-500/10 rounded-xl px-4 py-3 text-xs text-emerald-300/80 placeholder:text-zinc-800 focus:outline-none font-mono resize-none" 
+      className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-xs text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-emerald-500/50 font-mono resize-none shadow-inner" 
     />
     <div className="space-y-1.5">
-      <p className="text-[9px] text-zinc-700 uppercase tracking-widest">Test Cases</p>
+      <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest">Test Cases</p>
       {question.testCases.map((tc, ti) => (
         <div key={ti} className="flex gap-1.5">
           <input 
@@ -156,7 +155,7 @@ const CodingEditor = ({ question, updateQ }) => (
               updateQ(question.id, { testCases });
             }} 
             placeholder="Input" 
-            className="flex-1 bg-[#060810] border border-white/[0.04] rounded-lg px-2.5 py-1.5 text-xs text-zinc-300 font-mono focus:outline-none" 
+            className="flex-1 bg-white border border-zinc-200 rounded-lg px-2.5 py-1.5 text-xs text-zinc-800 placeholder:text-zinc-400 font-mono focus:outline-none focus:border-emerald-500/50 shadow-sm" 
           />
           <input 
             value={tc.expectedOutput} 
@@ -166,7 +165,7 @@ const CodingEditor = ({ question, updateQ }) => (
               updateQ(question.id, { testCases });
             }} 
             placeholder="Output" 
-            className="flex-1 bg-[#060810] border border-white/[0.04] rounded-lg px-2.5 py-1.5 text-xs text-zinc-300 font-mono focus:outline-none" 
+            className="flex-1 bg-white border border-zinc-200 rounded-lg px-2.5 py-1.5 text-xs text-zinc-800 placeholder:text-zinc-400 font-mono focus:outline-none focus:border-emerald-500/50 shadow-sm" 
           />
           {question.testCases.length > 1 && (
             <button onClick={() => updateQ(question.id, { testCases: question.testCases.filter((_, i) => i !== ti) })} className="text-zinc-800 hover:text-red-400">

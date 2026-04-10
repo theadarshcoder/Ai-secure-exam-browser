@@ -41,7 +41,15 @@ async function gradeCoding(question, studentCode) {
     const maxMarks = question.marks || 1;
     const testCases = question.testCases || [];
     
-    if (!studentCode || !studentCode.trim()) {
+    let actualCode = studentCode;
+    let studentLanguage = null;
+
+    if (studentCode !== null && typeof studentCode === 'object' && studentCode.code !== undefined) {
+        actualCode = studentCode.code;
+        studentLanguage = studentCode.language;
+    }
+
+    if (!actualCode || !actualCode.trim()) {
         return {
             marksObtained: 0,
             maxMarks,
@@ -67,14 +75,14 @@ async function gradeCoding(question, studentCode) {
         };
     }
 
-    const language = question.language || 'javascript';
+    const language = studentLanguage || question.language || 'javascript';
     const testCaseResults = [];
     let passedCount = 0;
 
     for (let i = 0; i < testCases.length; i++) {
         const tc = testCases[i];
         try {
-            const result = await executeCode(studentCode, language, tc.input);
+            const result = await executeCode(actualCode, language, tc.input);
 
             if (result.success) {
                 const passed = result.output.trim() === tc.expectedOutput.trim();

@@ -393,6 +393,19 @@ export default function ExamCockpit() {
     fetchExam();
   }, [examId]);
 
+  // Sync language dropdown when navigating to a coding question
+  useEffect(() => {
+    const q = questions[currentQ];
+    if (q?.type === 'coding') {
+        const saved = answers[currentQ];
+        if (saved?.language && saved.language !== selectedLanguage) {
+            setSelectedLanguage(saved.language);
+        } else if (!saved?.language && q.language && q.language !== selectedLanguage) {
+            setSelectedLanguage(q.language);
+        }
+    }
+  }, [currentQ]);
+
   useEffect(() => {
     let localStream = null;
     const initCamera = async () => {
@@ -461,7 +474,8 @@ export default function ExamCockpit() {
     setIsExecuting(true);
     setExecutionResult(null);
     try {
-      const sourceCode = answers[currentQ] || q.initialCode || "";
+      const answer = answers[currentQ];
+      const sourceCode = typeof answer === 'object' && answer !== null ? answer.code : (answer || q.initialCode || "");
       const result = await runCodingQuestion(examId, q.id || q._id, sourceCode, selectedLanguage);
       setExecutionResult(result);
     } catch (err) { 
@@ -629,13 +643,17 @@ export default function ExamCockpit() {
                             </button>
                           </div>
                           
-                          <div className="border border-gray-100 rounded-xl overflow-hidden shadow-inner bg-zinc-900">
+                          <div className="border border-gray-200 rounded-xl overflow-hidden shadow-inner bg-white">
                              <Editor 
+                                key={`editor-${currentQ}`}
                                 height="400px" 
                                 language={selectedLanguage === 'cpp' ? 'cpp' : selectedLanguage} 
-                                theme="vs-dark"
-                                value={answers[currentQ] ?? q.initialCode}
-                                onChange={(value) => setAnswers(p => ({ ...p, [currentQ]: value }))}
+                                theme="light"
+                                defaultValue={typeof answers[currentQ] === 'object' ? answers[currentQ].code : (answers[currentQ] ?? q.initialCode)}
+                                onChange={(value) => setAnswers(p => ({ 
+                                  ...p, 
+                                  [currentQ]: { code: value, language: selectedLanguage } 
+                                }))}
                                 options={{
                                   fontSize: 14,
                                   minimap: { enabled: false },
@@ -647,9 +665,9 @@ export default function ExamCockpit() {
                           </div>
 
                           {executionResult && (
-                            <div className={`rounded-xl border overflow-hidden ${executionResult.allPassed ? 'border-green-100 bg-green-50/30' : 'border-zinc-800 bg-zinc-900'} transition-all`}>
-                              <div className={`px-4 py-2 border-b flex items-center justify-between ${executionResult.allPassed ? 'bg-green-100/50 border-green-100' : 'bg-zinc-800 border-zinc-700'}`}>
-                                <h4 className={`text-[11px] font-bold uppercase tracking-wider ${executionResult.allPassed ? 'text-green-700' : 'text-zinc-400'}`}>
+                            <div className={`rounded-xl border overflow-hidden ${executionResult.allPassed ? 'border-green-100 bg-green-50/30' : 'border-red-100 bg-red-50/10'} transition-all`}>
+                              <div className={`px-4 py-2 border-b flex items-center justify-between ${executionResult.allPassed ? 'bg-green-100/50 border-green-100' : 'bg-red-50/50 border-red-100'}`}>
+                                <h4 className={`text-[11px] font-bold uppercase tracking-wider ${executionResult.allPassed ? 'text-green-700' : 'text-red-700'}`}>
                                   {executionResult.allPassed ? 'Execution Results: All Passed ✅' : 'Execution Results: Breakdown'}
                                 </h4>
                                 {executionResult.results && (
@@ -712,12 +730,12 @@ export default function ExamCockpit() {
                     {currentQ < questions.length - 1 ? (
                       <button onClick={() => { setCurrentQ(currentQ + 1); setVisited(v => ({ ...v, [currentQ + 1]: true })); }} className="bg-[#0f766e] text-white px-8 py-2.5 rounded-xl text-[12px] font-bold flex items-center gap-2">Save & Next <ChevronRight size={16} /></button>
                     ) : (
-                      <button onClick={() => setShowConfirm(true)} className="bg-green-600 text-white px-8 py-2.5 rounded-xl text-[12px] font-bold flex items-center gap-2">Complete Exam <Send size={16} /></button>
+                      <div className="text-[11px] font-bold text-gray-400 py-2.5">End of Assessment</div>
                     )}
                   </div>
 
                   {/* ── Bottom Info Panel ── */}
-                  <div className="mt-6 bg-white rounded-xl border border-gray-100 shadow-[0_2px_4px_rgba(0,0,0,0.04)] overflow-hidden">
+                  <div className="mt-6 sticky bottom-0 z-10 bg-white rounded-xl border border-gray-200 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] overflow-hidden">
                     {/* Progress bar */}
                     <div className="h-1 bg-gray-100">
                       <div
@@ -759,19 +777,10 @@ export default function ExamCockpit() {
                         </div>
                       )}
 
-                      {/* Keyboard hint */}
-                      <div className="flex items-center gap-3 text-[10px] text-gray-400 font-medium">
-                        <div className="flex items-center gap-1">
-                          <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded text-[9px] font-mono text-gray-500">←</kbd>
-                          <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded text-[9px] font-mono text-gray-500">→</kbd>
-                          <span>Navigate</span>
-                        </div>
-                        <div className="w-px h-3 bg-gray-200" />
-                        <div className="flex items-center gap-1">
-                          <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded text-[9px] font-mono text-gray-500">M</kbd>
-                          <span>Mark review</span>
-                        </div>
-                      </div>
+                      {/* Final Action */}
+                      <button onClick={() => setShowConfirm(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-xl text-[12px] font-bold flex items-center gap-2 shadow-lg transition-colors ml-auto">
+                        Complete Assessment <Send size={14} />
+                      </button>
                     </div>
                   </div>
                 </Motion.div>
