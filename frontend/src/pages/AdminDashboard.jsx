@@ -22,6 +22,7 @@ import api, {
   getAdminExams,
   getAuditLogs,
   getAdminResults,
+  getAdmins,
   getSessionDetail,
   evaluateSession
 } from '../services/api';
@@ -98,6 +99,8 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState({ totalUsers: 0, activeExams: 0, systemHealth: '100%', totalViolations: 0 });
   const [auditLogs, setAuditLogs] = useState([]);
   const [users, setUsers] = useState([]);
+  const [userRoleFilter, setUserRoleFilter] = useState('ALL');
+  const [userSearchQuery, setUserSearchQuery] = useState('');
   const [exams, setExams] = useState([]);
   const [adminResults, setAdminResults] = useState([]);
   const [resultFilter, setResultFilter] = useState('ALL');
@@ -160,11 +163,12 @@ export default function AdminDashboard() {
               });
               setAuditLogs(logsRes || []);
           } else if (tab === 'Users') {
-              const [studentsRes, mentorsRes] = await Promise.all([
+              const [studentsRes, mentorsRes, adminsRes] = await Promise.all([
                   getStudents().catch(() => []),
-                  getMentors().catch(() => [])
+                  getMentors().catch(() => []),
+                  getAdmins().catch(() => [])
               ]);
-              setUsers([...mentorsRes, ...studentsRes]);
+              setUsers([...adminsRes, ...mentorsRes, ...studentsRes]);
           } else if (tab === 'Exams') {
               const res = await getAdminExams();
               setExams(res || []);
@@ -384,13 +388,33 @@ export default function AdminDashboard() {
   const renderUsers = () => (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={14} />
-          <input 
-            type="text" 
-            placeholder="Search users by name or email..."
-            className="pl-9 pr-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 w-72 transition-all bg-white shadow-sm"
-          />
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={14} />
+            <input 
+              type="text" 
+              placeholder="Search users..."
+              value={userSearchQuery}
+              onChange={(e) => setUserSearchQuery(e.target.value)}
+              className="pl-9 pr-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 w-64 transition-all bg-white shadow-sm"
+            />
+          </div>
+          <div className="hidden lg:flex bg-zinc-100 p-1 rounded-lg">
+            {[
+              { id: 'ALL', label: 'All' },
+              { id: 'student', label: 'Students' },
+              { id: 'mentor', label: 'Mentors' },
+              { id: 'admin', label: 'Admins' }
+            ].map(f => (
+              <button 
+                key={f.id}
+                onClick={() => setUserRoleFilter(f.id)}
+                className={`px-4 py-1.5 rounded-md text-[10px] font-bold tracking-widest uppercase transition-all ${userRoleFilter === f.id ? 'bg-white text-emerald-600 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <input type="file" accept=".csv" ref={fileInputRef} className="hidden" onChange={handleCsvImport} />
@@ -411,10 +435,41 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* Mobile filter bar */}
+      <div className="lg:hidden flex bg-zinc-100 p-1 rounded-lg w-full overflow-x-auto scroll-thin mb-4">
+        {[
+          { id: 'ALL', label: 'ALL' },
+          { id: 'student', label: 'STUDENTS' },
+          { id: 'mentor', label: 'MENTORS' },
+          { id: 'admin', label: 'ADMINS' }
+        ].map(f => (
+          <button 
+            key={f.id}
+            onClick={() => setUserRoleFilter(f.id)}
+            className={`px-4 py-1.5 rounded-md text-[10px] font-bold tracking-widest uppercase transition-all whitespace-nowrap ${userRoleFilter === f.id ? 'bg-white text-emerald-600 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
       <DataTable 
         loading={loading}
         headers={['Name', 'Email', 'Role', 'Date Added', 'Actions']}
-        data={users}
+        data={users.filter(u => {
+          // Role Filtering
+          const matchesRole = userRoleFilter === 'ALL' || 
+            (userRoleFilter === 'student' && u.role === 'student') ||
+            (userRoleFilter === 'mentor' && (u.role === 'mentor' || u.role === 'super_mentor')) ||
+            (userRoleFilter === 'admin' && u.role === 'admin');
+          
+          // Search Query Filtering
+          const matchesSearch = !userSearchQuery.trim() || 
+            u.name.toLowerCase().includes(userSearchQuery.toLowerCase()) || 
+            u.email.toLowerCase().includes(userSearchQuery.toLowerCase());
+            
+          return matchesRole && matchesSearch;
+        })}
         renderRow={(user) => (
           <tr key={user._id} className="hover:bg-zinc-50/80 transition-colors">
             <td className="px-6 py-4 text-sm font-semibold text-zinc-900">{user.name}</td>

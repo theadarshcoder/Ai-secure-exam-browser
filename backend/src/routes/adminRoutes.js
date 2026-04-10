@@ -26,6 +26,7 @@ router.post('/bulk-import', verifyToken, checkRole(['admin', 'super_mentor']), a
 
 // Mentors CRUD (Admin ONLY)
 router.get('/mentors', verifyToken, checkRole(['admin']), adminController.getAllMentors);
+router.get('/admins', verifyToken, checkRole(['admin']), adminController.getAllAdmins);
 router.delete('/mentors/:id', verifyToken, checkRole(['admin']), adminController.deleteMentor);
 
 // ─────────────────────────────────────────────────────────

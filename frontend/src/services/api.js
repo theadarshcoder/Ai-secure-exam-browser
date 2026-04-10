@@ -82,6 +82,15 @@ export const getMentors = async () => {
     }
 };
 
+export const getAdmins = async () => {
+    try {
+        const response = await api.get('/api/admin/admins');
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
 export const removeMentor = async (id) => {
     try {
         const response = await api.delete(`/api/admin/mentors/${id}`);
@@ -233,10 +242,10 @@ export const evaluateSession = async (sessionId, grades) => {
     }
 };
 
-// Get admin-wide results (all submissions across exams)
-export const getAdminResults = async () => {
+// Student requests help from mentor
+export const requestHelp = async (msg) => {
     try {
-        const response = await api.get('/api/admin/results');
+        const response = await api.post('/api/exams/help', { msg });
         return response.data;
     } catch (error) {
         throw error.response?.data || error.message;

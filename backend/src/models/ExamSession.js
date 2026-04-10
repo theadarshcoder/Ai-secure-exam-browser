@@ -1,13 +1,24 @@
 const mongoose = require('mongoose');
 
+// ─── Help Request Schema ──────────────────────────────────
+// Record of student help requests during exam
+const helpRequestSchema = new mongoose.Schema({
+    questionId: { type: String, default: '' },
+    message: { type: String, default: '' },
+    timestamp: { type: Date, default: Date.now },
+    resolved: { type: Boolean, default: false },
+    resolvedAt: { type: Date },
+    resolvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+}, { _id: true });
+
 // ─── Violation Schema ────────────────────────────────────
 // Record of each individual proctoring/cheating violation
 const violationSchema = new mongoose.Schema({
     type: { type: String, required: true },       // 'Tab Switch', 'Face Not Detected', etc.
-    severity: { 
-        type: String, 
-        enum: ['low', 'medium', 'high', 'critical'], 
-        default: 'medium' 
+    severity: {
+        type: String,
+        enum: ['low', 'medium', 'high', 'critical'],
+        default: 'medium'
     },
     details: { type: String, default: '' },
     timestamp: { type: Date, default: Date.now }
@@ -109,6 +120,7 @@ const examSessionSchema = new mongoose.Schema({
     
     // ─── Proctoring Data ─────────────────────────────
     violations: [violationSchema],
+    helpRequests: [helpRequestSchema],
     tabSwitchCount: { type: Number, default: 0 },
     
     // ─── Session Status ──────────────────────────────

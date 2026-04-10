@@ -7,7 +7,7 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true },
     role: { 
         type: String, 
-        enum: ['student', 'mentor', 'super_mentor', 'admin', 'super_admin', 'exam_admin', 'proctor_lead', 'proctor'],
+        enum: ['student', 'mentor', 'super_mentor', 'admin'],
         default: 'student' 
     },
     currentSessionToken: { type: String },
