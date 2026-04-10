@@ -445,7 +445,7 @@ export default function ExamCockpit() {
 
   useEffect(() => {
     if (!modelsLoaded || !cameraActive || submitted) return;
-    let frameId;
+    let timerId;
     const runDetection = async () => {
       if (videoRef.current?.readyState === 4) {
         const detections = await faceapi.detectAllFaces(
@@ -454,10 +454,11 @@ export default function ExamCockpit() {
         );
         setFaceBoxes(detections.map(d => d.box));
       }
-      frameId = requestAnimationFrame(runDetection);
+      // Throttle detection to 1 frame per second to save student's CPU
+      timerId = setTimeout(runDetection, 1000);
     };
     runDetection();
-    return () => cancelAnimationFrame(frameId);
+    return () => clearTimeout(timerId);
   }, [modelsLoaded, cameraActive, submitted, stream]);
 
   useEffect(() => {
@@ -468,6 +469,60 @@ export default function ExamCockpit() {
     socketService.connect();
     return () => socketService.disconnect();
   }, []);
+
+  // ⭐ State references to avoid resetting auto-save interval on every keypress
+  const progressRef = useRef({ answers, currentQ, visited, secondsLeft });
+  useEffect(() => {
+    progressRef.current = { answers, currentQ, visited, secondsLeft };
+  }, [answers, currentQ, visited, secondsLeft]);
+
+  // ⭐ Auto-Save Pipeline Connection: Calls Backend every 30 Seconds
+  useEffect(() => {
+    if (submitted || terminated || !examId) return;
+    
+    const saveTimer = setInterval(async () => {
+      try {
+        await api.post('/api/exams/save-progress', {
+          examId: examId,
+          answers: progressRef.current.answers,
+          currentQuestionIndex: progressRef.current.currentQ,
+          questionStates: progressRef.current.visited,
+          remainingTimeSeconds: progressRef.current.secondsLeft
+        });
+      } catch (err) {
+        console.warn('Silent Auto-save failed:', err.message);
+      }
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(saveTimer);
+  }, [examId, submitted, terminated]);
+
+  // ⭐ State references to avoid resetting auto-save interval on every keypress
+  const progressRef = useRef({ answers, currentQ, visited, secondsLeft });
+  useEffect(() => {
+    progressRef.current = { answers, currentQ, visited, secondsLeft };
+  }, [answers, currentQ, visited, secondsLeft]);
+
+  // ⭐ Auto-Save Pipeline Connection: Calls Backend every 30 Seconds
+  useEffect(() => {
+    if (submitted || terminated || !examId) return;
+    
+    const saveTimer = setInterval(async () => {
+      try {
+        await api.post('/api/exams/save-progress', {
+          examId: examId,
+          answers: progressRef.current.answers,
+          currentQuestionIndex: progressRef.current.currentQ,
+          questionStates: progressRef.current.visited,
+          remainingTimeSeconds: progressRef.current.secondsLeft
+        });
+      } catch (err) {
+        console.warn('Silent Auto-save failed:', err.message);
+      }
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(saveTimer);
+  }, [examId, submitted, terminated]);
 
   const handleRunCode = async () => {
     if (!q || q.type !== 'coding') return;
@@ -869,4 +924,3 @@ export default function ExamCockpit() {
     </div>
   );
 }
-

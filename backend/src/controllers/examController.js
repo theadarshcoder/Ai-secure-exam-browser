@@ -231,7 +231,8 @@ exports.getMentorExams = asyncHandler(async (req, res) => {
 // Load exam for student (STRIPS correct answers for security)
 exports.getExamById = asyncHandler(async (req, res) => {
     const exam = await Exam.findById(req.params.id)
-        .populate('creator', 'name');
+        .select('-questions.correctOption -questions.expectedAnswer -questions.testCases.expectedOutput') // Exclude sensitive fields directly from DB fetch
+        .populate('creator', 'name'); // Creator ka naam populate karo
 
     if (!exam) {
         res.status(404);
@@ -239,19 +240,29 @@ exports.getExamById = asyncHandler(async (req, res) => {
     }
 
     // Strip correct answers so student can't cheat via network tab
-    const safeQuestions = exam.questions.map((q, index) => {
+    const sanitizedQuestions = exam.questions.map((q, index) => {
+        const questionObject = q.toObject(); // Mongoose document ko plain object mein convert karo
         const safe = {
-            id: q._id,
+            id: questionObject._id,
             index,
-            type: q.type,
-            questionText: q.questionText,
-            marks: q.marks,
+            type: questionObject.type,
+            questionText: questionObject.questionText,
+            marks: questionObject.marks,
         };
-        if (q.type === 'mcq') safe.options = q.options;
-        if (q.type === 'short') safe.maxWords = q.maxWords;
-        if (q.type === 'coding') {
-            safe.language = q.language;
-            safe.initialCode = q.initialCode;
+        if (questionObject.type === 'mcq') {
+            safe.options = questionObject.options;
+        }
+        if (questionObject.type === 'short') {
+            safe.maxWords = questionObject.maxWords;
+        }
+        if (questionObject.type === 'coding') {
+            safe.language = questionObject.language;
+            safe.initialCode = questionObject.initialCode;
+            // Sirf input bhejo aur isHidden property ko respect karo
+            safe.testCases = (questionObject.testCases || []).map(tc => ({
+                input: tc.isHidden ? 'Hidden Test Case' : tc.input,
+                isHidden: tc.isHidden
+            }));
         }
         return safe;
     });
@@ -263,7 +274,7 @@ exports.getExamById = asyncHandler(async (req, res) => {
         duration: exam.duration,
         totalMarks: exam.totalMarks,
         creator: exam.creator?.name,
-        questions: safeQuestions
+        questions: sanitizedQuestions // Ab fully sanitized questions bhejo
     });
 });
 

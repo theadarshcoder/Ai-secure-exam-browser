@@ -101,8 +101,11 @@ const Sidebar = ({ currentTime, userName, userEmail, onSupport }) => (
 
 const ExamCard = ({ exam, now, onLaunch, index }) => {
   const startTime = new Date(exam.startTime);
+  const endTime = new Date(startTime.getTime() + exam.duration * 60000);
   const unlockTime = new Date(startTime.getTime() - 15 * 60000); 
-  const isLive = now >= startTime;
+  
+  const isLive = now >= startTime && now <= endTime;
+  const isExpired = now > endTime;
   const isPreOnboarding = now >= unlockTime && now < startTime;
   const isSubmitted = exam.alreadySubmitted;
 
@@ -121,6 +124,11 @@ const ExamCard = ({ exam, now, onLaunch, index }) => {
     btnText = "View Results";
     btnDisabled = false;
     btnSecondary = true;
+  } else if (isExpired) {
+    cardBg = "bg-[#0B0F14] opacity-40 border-white/[0.02]";
+    statusText = "Expired";
+    btnText = "Exam Over";
+    btnDisabled = true;
   } else if (isLive) {
     cardBg = "bg-[#111827] opacity-100 border-white/10 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.5)]"; 
     statusText = "Live Now";
@@ -267,13 +275,14 @@ export default function StudentDashboard() {
       // 2. Status Category Filter
       if (statusFilter !== 'All') {
         const startTime = new Date(exam.startTime);
+        const endTime = new Date(startTime.getTime() + exam.duration * 60000);
         const unlockTime = new Date(startTime.getTime() - 15 * 60000);
-        const isLiveOrPre = now >= unlockTime;
+        const isLiveOrPre = now >= unlockTime && now <= endTime;
         const isSubmitted = exam.alreadySubmitted;
 
         if (statusFilter === 'Completed' && !isSubmitted) return false;
         if (statusFilter === 'Live' && (isSubmitted || !isLiveOrPre)) return false;
-        if (statusFilter === 'Upcoming' && (isSubmitted || isLiveOrPre)) return false;
+        if (statusFilter === 'Upcoming' && (isSubmitted || now >= unlockTime)) return false;
       }
       
       return true;
