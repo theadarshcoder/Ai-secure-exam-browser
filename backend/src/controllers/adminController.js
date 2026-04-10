@@ -67,10 +67,17 @@ exports.getAllStudents = asyncHandler(async (req, res) => {
 });
 
 exports.getAllMentors = asyncHandler(async (req, res) => {
-    const mentors = await User.find({ role: 'mentor' })
+    const mentors = await User.find({ role: { $in: ['mentor', 'super_mentor'] } })
         .select('-password')
         .sort({ createdAt: -1 });
     res.json(mentors);
+});
+
+exports.getAllAdmins = asyncHandler(async (req, res) => {
+    const admins = await User.find({ role: 'admin' })
+        .select('-password')
+        .sort({ createdAt: -1 });
+    res.json(admins);
 });
 
 exports.deleteStudent = asyncHandler(async (req, res) => {

@@ -17,4 +17,8 @@ router.post('/login', authController.login);
 // Step 2: checkRole check karega ki logged-in user 'admin' hai
 router.post('/register', verifyToken, checkRole(['admin']), authController.register);
 
+// ─── Protected Route (any authenticated user) ───────────
+// POST /api/auth/logout — Clear current session token
+router.post('/logout', verifyToken, authController.logout);
+
 module.exports = router;

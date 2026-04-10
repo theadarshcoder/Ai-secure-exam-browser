@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import socketService from '../services/socket';
-import api, { runCodingQuestion } from '../services/api';
+import api, { runCodingQuestion, requestHelp } from '../services/api';
 import Editor from '@monaco-editor/react';
 import {
   Camera, CameraOff, Clock, Shield, CheckCircle,
@@ -9,7 +9,7 @@ import {
   Bookmark, Terminal, Eye, Fingerprint, AlertCircle, Power,
   Loader2, RotateCcw, Play, Monitor, ScanFace, ShieldAlert
 } from 'lucide-react';
-import { motion as Motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useTabVisibility, TabToast } from '../components/TabVisibility';
 import * as faceapi from '@vladmandic/face-api';
 import VisionLogo from '../components/VisionLogo';
@@ -22,17 +22,14 @@ const TOTAL_SECONDS = 45 * 60;
 
 const QuestionPalette = ({ questions, currentQ, answers, visited, markedForReview, navigateTo }) => {
   const answered = Object.keys(answers).length;
-  const visitedCount = Object.keys(visited).length;
-  const markedCount = Object.values(markedForReview).filter(Boolean).length;
-  const notVisitedCount = questions.length - visitedCount;
-  const visitedNotAnswered = Object.keys(visited).filter(k => answers[k] === undefined && !markedForReview[k]).length;
 
-  const getQState = (i) => {
-    if (i === currentQ) return 'current';
-    if (markedForReview[i] && answers[i] !== undefined) return 'marked-answered';
-    if (markedForReview[i]) return 'marked';
-    if (answers[i] !== undefined) return 'answered';
-    if (visited[i]) return 'visited';
+  const getQState = (shuffledIndex) => {
+    const originalIndex = questions[shuffledIndex]?.originalIndex;
+    if (shuffledIndex === currentQ) return 'current';
+    if (markedForReview[originalIndex] && answers[originalIndex] !== undefined) return 'marked-answered';
+    if (markedForReview[originalIndex]) return 'marked';
+    if (answers[originalIndex] !== undefined) return 'answered';
+    if (visited[originalIndex]) return 'visited';
     return 'not-visited';
   };
 
@@ -143,8 +140,8 @@ const SubmitModal = ({ isOpen, onClose, onConfirm, stats }) => (
             <button onClick={onClose} className="flex-1 py-3 px-4 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all text-sm font-semibold">Go Back</button>
             <button onClick={onConfirm} className="flex-1 py-3 px-4 rounded-xl bg-green-600 hover:bg-green-700 text-white transition-all text-sm font-semibold shadow-lg">Confirm Submit</button>
           </div>
-        </Motion.div>
-      </Motion.div>
+        </motion.div>
+      </motion.div>
     )}
   </AnimatePresence>
 );
@@ -152,8 +149,8 @@ const SubmitModal = ({ isOpen, onClose, onConfirm, stats }) => (
 const ExitModal = ({ isOpen, onClose, onExit, password, setPassword, error }) => (
   <AnimatePresence>
     {isOpen && (
-      <Motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[120] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6">
-        <Motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl border border-gray-200 text-center">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[120] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6">
+        <motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl border border-gray-200 text-center">
           <div className="w-12 h-12 rounded-xl bg-red-50 border border-red-200 text-red-600 mb-5 mx-auto flex items-center justify-center">
             <Power size={24} />
           </div>
@@ -173,8 +170,8 @@ const ExitModal = ({ isOpen, onClose, onExit, password, setPassword, error }) =>
             <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all text-sm font-semibold">Cancel</button>
             <button onClick={onExit} className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white transition-all text-sm font-semibold shadow-lg">Exit</button>
           </div>
-        </Motion.div>
-      </Motion.div>
+        </motion.div>
+      </motion.div>
     )}
   </AnimatePresence>
 );
@@ -195,7 +192,7 @@ export default function ExamCockpit() {
   const [currentQ, setCurrentQ] = useState(0);
   const [answers, setAnswers] = useState({});
   const [markedForReview, setMarkedForReview] = useState({});
-  const [visited, setVisited] = useState({ 0: true });
+  const [visited, setVisited] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [faceBoxes, setFaceBoxes] = useState([]);
@@ -209,8 +206,24 @@ export default function ExamCockpit() {
   const [terminateCountdown, setTerminateCountdown] = useState(8);
   const [isFullscreen, setIsFullscreen] = useState(true);
   const [selectedLanguage, setSelectedLanguage] = useState('javascript');
-  const [confidence, setConfidence] = useState(98);
+  const [confidence] = useState(98);
+  const [broadcastMessage, setBroadcastMessage] = useState(null);
+  const [helpLoading, setHelpLoading] = useState(false);
   const isTimeCritical = secondsLeft < 300 && secondsLeft > 0;
+
+  // Listen for Mentor Broadcasts
+  useEffect(() => {
+    socketService.connect();
+    socketService.onBroadcast((data) => {
+      // Only show broadcast if it's meant for this specific exam
+      if (!data.examId || data.examId === examId) {
+        setBroadcastMessage(data.message);
+        // Auto-dismiss after 10 seconds
+        setTimeout(() => setBroadcastMessage(null), 10000);
+      }
+    });
+    return () => socketService.disconnect();
+  }, [examId]);
 
   // We define logIncident first so it's available for effects
   const logIncident = useCallback(async (type, severity, details) => {
@@ -236,6 +249,18 @@ export default function ExamCockpit() {
     const existing = JSON.parse(localStorage.getItem('vision_incidents') || '[]');
     localStorage.setItem('vision_incidents', JSON.stringify([incident, ...existing]));
   }, [examId]);
+
+  const handleRequestHelp = async () => {
+    try {
+      setHelpLoading(true);
+      await requestHelp("Student needs manual intervention or has a query.");
+      setToasts(prev => [...prev, { id: Date.now(), msg: "Help request sent to Mentors.", type: 'success' }]);
+    } catch (err) {
+      setToasts(prev => [...prev, { id: Date.now(), msg: "Failed to send help request.", type: 'error' }]);
+    } finally {
+      setHelpLoading(false);
+    }
+  };
 
   // 1. Fullscreen Enforcement & Shortcut Blocking
   useEffect(() => {
@@ -338,14 +363,87 @@ export default function ExamCockpit() {
   useEffect(() => {
     const fetchExam = async () => {
       try {
-        const response = await api.get(`/api/exams/${examId}`);
-        const data = response.data;
+        // ⭐ FETCH RESUME DATA INSTEAD OF JUST EXAM TEMPLATE
+        const response = await api.get(`/api/exams/resume/${examId}`);
+        
+        if (response.data.isCompleted) {
+          setSubmitted(true);
+          return;
+        }
+
+        const data = response.data.exam;
+        const sessionProgress = response.data;
         setExam(data);
-        if (data.questions && data.questions.length > 0) {
-          setQuestions(data.questions);
-          if (data.duration) setSecondsLeft(data.duration * 60);
-          if (data.questions[0].type === 'coding') {
-            setSelectedLanguage(data.questions[0].language || 'javascript');
+        if (data.questions && data.questions.length > 0) {          
+          // ⭐ SHUFFLE LOGIC STARTS HERE
+          const studentId = sessionStorage.getItem('vision_email') || 'VSN-89241';
+          // Create a unique randomizer for this specific student and exam
+          const randomFunc = generateSeed(examId + studentId);
+
+          // Map original indices before shuffling
+          const processedQuestions = data.questions.map((q, qIndex) => {
+            const processedQ = { ...q, originalIndex: qIndex };
+            
+            // Shuffle MCQ options
+            if (processedQ.type === 'mcq' && processedQ.options) {
+              const optionsWithIndex = processedQ.options.map((optText, optIndex) => ({
+                text: optText,
+                originalIndex: optIndex
+              }));
+              processedQ.displayOptions = seededShuffle(optionsWithIndex, randomFunc);
+            }
+            return processedQ;
+          });
+
+          // Finally, shuffle the questions array
+          const finalShuffledQuestions = seededShuffle(processedQuestions, randomFunc);
+          
+          setQuestions(finalShuffledQuestions);
+          // ⭐ SHUFFLE LOGIC ENDS HERE
+          
+          // ⭐ RESTORE SESSION STATE
+          let restoredSecondsLeft = sessionProgress.remainingTimeSeconds !== undefined && sessionProgress.remainingTimeSeconds !== null 
+            ? sessionProgress.remainingTimeSeconds 
+            : (data.duration ? data.duration * 60 : TOTAL_SECONDS);
+          let restoredAnswers = sessionProgress.answers || {};
+          let startingQ = sessionProgress.currentQuestionIndex !== undefined ? sessionProgress.currentQuestionIndex : 0;
+          let restoredVisited = sessionProgress.questionStates || {};
+
+          // ⭐ OFFLINE RECOVERY: Check if there's a more recent backup in localStorage
+          try {
+            const offlineBackup = localStorage.getItem(`vision_offline_exam_${examId}`);
+            if (offlineBackup) {
+              const parsedOffline = JSON.parse(decodeURIComponent(atob(offlineBackup)));
+              // If offline data has less time remaining, it is more recent than server data
+              if (parsedOffline.remainingTimeSeconds < restoredSecondsLeft) {
+                restoredSecondsLeft = parsedOffline.remainingTimeSeconds;
+                restoredAnswers = parsedOffline.answers || {};
+                startingQ = parsedOffline.currentQuestionIndex || 0;
+                restoredVisited = parsedOffline.questionStates || {};
+                console.log("Restored more recent state from offline backup.");
+                
+                // Fire a background sync to update the server immediately
+                api.post('/api/exams/save-progress', parsedOffline).catch(e => console.warn('Background sync failed:', e));
+              }
+            }
+          } catch (e) {
+            console.warn('Failed to parse offline backup, ignoring:', e.message);
+          }
+
+          setSecondsLeft(restoredSecondsLeft);
+          setAnswers(restoredAnswers);
+          setCurrentQ(startingQ);
+          
+          // ⭐ FIX: Backend sends {"0": "not_visited"} which evaluates to true. We only extract actual visited states.
+          let cleanedVisited = {};
+          if (restoredVisited) {
+            Object.entries(restoredVisited).forEach(([k, v]) => {
+              if (v === true) cleanedVisited[k] = true;
+            });
+          }
+          setVisited(Object.keys(cleanedVisited).length > 0 ? cleanedVisited : { [finalShuffledQuestions[startingQ].originalIndex]: true });
+          if (finalShuffledQuestions[startingQ]?.type === 'coding') {
+            setSelectedLanguage(finalShuffledQuestions[startingQ].language || 'javascript');
           }
         }
       } catch (err) {
@@ -386,8 +484,24 @@ export default function ExamCockpit() {
             { id: 20, type: 'mcq', questionText: 'Which design pattern separates the construction of a complex object from its representation?', options: ['Factory', 'Builder', 'Prototype', 'Singleton'], marks: 4 }
           ]
         };
+        
+        // ⭐ FALLBACK EXAM SHUFFLE FIX
+        const studentId = sessionStorage.getItem('vision_email') || 'VSN-89241';
+        const randomFunc = generateSeed(examId + studentId);
+        const processedQuestions = fallbackExam.questions.map((q, qIndex) => {
+          const processedQ = { ...q, originalIndex: qIndex };
+          if (processedQ.type === 'mcq' && processedQ.options) {
+            const optionsWithIndex = processedQ.options.map((optText, optIndex) => ({ text: optText, originalIndex: optIndex }));
+            processedQ.displayOptions = seededShuffle(optionsWithIndex, randomFunc);
+          }
+          return processedQ;
+        });
+        const finalShuffledQuestions = seededShuffle(processedQuestions, randomFunc);
+
         setExam(fallbackExam);
-        setQuestions(fallbackExam.questions);
+        setQuestions(finalShuffledQuestions);
+        setSecondsLeft(fallbackExam.duration * 60);
+        setVisited(v => ({ ...v, [finalShuffledQuestions[0].originalIndex]: true }));
       }
     };
     fetchExam();
@@ -397,7 +511,7 @@ export default function ExamCockpit() {
   useEffect(() => {
     const q = questions[currentQ];
     if (q?.type === 'coding') {
-        const saved = answers[currentQ];
+        const saved = answers[q.originalIndex];
         if (saved?.language && saved.language !== selectedLanguage) {
             setSelectedLanguage(saved.language);
         } else if (!saved?.language && q.language && q.language !== selectedLanguage) {
@@ -481,43 +595,28 @@ export default function ExamCockpit() {
     if (submitted || terminated || !examId) return;
     
     const saveTimer = setInterval(async () => {
-      try {
-        await api.post('/api/exams/save-progress', {
-          examId: examId,
-          answers: progressRef.current.answers,
-          currentQuestionIndex: progressRef.current.currentQ,
-          questionStates: progressRef.current.visited,
-          remainingTimeSeconds: progressRef.current.secondsLeft
-        });
-      } catch (err) {
-        console.warn('Silent Auto-save failed:', err.message);
+      const payload = {
+        examId: examId,
+        answers: progressRef.current.answers,
+        currentQuestionIndex: progressRef.current.currentQ,
+        questionStates: progressRef.current.visited,
+        remainingTimeSeconds: progressRef.current.secondsLeft
+      };
+
+      if (!navigator.onLine) {
+        console.warn('Currently offline. Saving progress locally.');
+        localStorage.setItem(`vision_offline_exam_${examId}`, btoa(encodeURIComponent(JSON.stringify(payload))));
+        return;
       }
-    }, 30000); // 30 seconds
 
-    return () => clearInterval(saveTimer);
-  }, [examId, submitted, terminated]);
-
-  // ⭐ State references to avoid resetting auto-save interval on every keypress
-  const progressRef = useRef({ answers, currentQ, visited, secondsLeft });
-  useEffect(() => {
-    progressRef.current = { answers, currentQ, visited, secondsLeft };
-  }, [answers, currentQ, visited, secondsLeft]);
-
-  // ⭐ Auto-Save Pipeline Connection: Calls Backend every 30 Seconds
-  useEffect(() => {
-    if (submitted || terminated || !examId) return;
-    
-    const saveTimer = setInterval(async () => {
       try {
-        await api.post('/api/exams/save-progress', {
-          examId: examId,
-          answers: progressRef.current.answers,
-          currentQuestionIndex: progressRef.current.currentQ,
-          questionStates: progressRef.current.visited,
-          remainingTimeSeconds: progressRef.current.secondsLeft
-        });
+        await api.post('/api/exams/save-progress', payload);
+        // ⭐ If successful, remove any offline backup
+        localStorage.removeItem(`vision_offline_exam_${examId}`);
       } catch (err) {
-        console.warn('Silent Auto-save failed:', err.message);
+        console.warn('Silent Auto-save failed, saving locally:', err.message);
+        // ⭐ Fallback: save to localStorage if API fails despite being "online"
+        localStorage.setItem(`vision_offline_exam_${examId}`, btoa(encodeURIComponent(JSON.stringify(payload))));
       }
     }, 30000); // 30 seconds
 
@@ -529,7 +628,7 @@ export default function ExamCockpit() {
     setIsExecuting(true);
     setExecutionResult(null);
     try {
-      const answer = answers[currentQ];
+      const answer = answers[q.originalIndex];
       const sourceCode = typeof answer === 'object' && answer !== null ? answer.code : (answer || q.initialCode || "");
       const result = await runCodingQuestion(examId, q.id || q._id, sourceCode, selectedLanguage);
       setExecutionResult(result);
@@ -556,12 +655,24 @@ export default function ExamCockpit() {
         examId: examId || exam._id,
         answers: answers
       });
+      // Clear offline backup on successful submission
+      localStorage.removeItem(`vision_offline_exam_${examId}`);
       setTimeout(() => navigate('/student'), 2000);
     } catch (err) {
       console.error('Final Submit error:', err);
       setTimeout(() => navigate('/student'), 2000);
     }
   };
+
+  // ⭐ FIX: Auto-Submit Exam when the timer runs out
+  const hasAutoSubmitted = useRef(false);
+  useEffect(() => {
+    if (secondsLeft === 0 && !submitted && !terminated && !hasAutoSubmitted.current) {
+      hasAutoSubmitted.current = true;
+      logIncident('Time Expired', 'medium', 'Exam auto-submitted due to time limit.');
+      handleFinalSubmit();
+    }
+  }, [secondsLeft, submitted, terminated, logIncident]);
 
   if (terminated) {
     return (
@@ -628,15 +739,36 @@ export default function ExamCockpit() {
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <aside className="w-[240px] shrink-0 bg-white border-r border-gray-200 flex flex-col gap-[24px]">
-          <QuestionPalette 
-            questions={questions} currentQ={currentQ} answers={answers} visited={visited} markedForReview={markedForReview} 
-            navigateTo={(i) => { setCurrentQ(i); setVisited(v => ({ ...v, [i]: true })); }}
-          />
-          <div className="mt-auto p-4 border-t border-gray-100 flex items-center justify-between">
-            <span className="text-[8px] font-black text-emerald-600 tracking-wider">ENCRYPTED</span>
-            <button onClick={() => setShowExitPrompt(true)} className="p-2 rounded-lg bg-red-500/10 text-red-500"><Power size={14} /></button>
-          </div>
-        </aside>
+            <div className="flex-1 overflow-hidden">
+               <QuestionPalette 
+                  questions={questions} currentQ={currentQ} answers={answers} visited={visited} markedForReview={markedForReview} 
+                  navigateTo={(shuffledIndex) => { 
+                    setCurrentQ(shuffledIndex); 
+                    const originalIndex = questions[shuffledIndex]?.originalIndex;
+                    if (originalIndex !== undefined) {
+                      setVisited(v => ({ ...v, [originalIndex]: true })); 
+                    }
+                  }}
+               />
+            </div>
+
+            {/* Help Button Area */}
+            <div className="p-4 border-t border-gray-100 bg-white">
+               <button 
+                  onClick={handleRequestHelp}
+                  disabled={helpLoading}
+                  className="w-full flex items-center justify-center gap-2 py-3 bg-amber-50 text-amber-600 border border-amber-200 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-amber-100 transition-all active:scale-95 disabled:opacity-50"
+               >
+                  {helpLoading ? <Loader2 size={14} className="animate-spin" /> : <MessageSquare size={14} />}
+                  Need Help?
+               </button>
+            </div>
+
+            <div className="p-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
+               <span className="text-[8px] font-black text-emerald-600 tracking-wider">ENCRYPTED</span>
+               <button onClick={() => setShowExitPrompt(true)} className="p-2 rounded-lg bg-red-500/10 text-red-500"><Power size={14} /></button>
+            </div>
+          </aside>
 
         {/* Main Content Area */}
         <main className="flex-1 flex overflow-hidden bg-[#f8f9fa]">
@@ -644,7 +776,7 @@ export default function ExamCockpit() {
           <div className="flex-1 overflow-y-auto scroll-thin px-8 py-6">
             <div className="w-full">
               <AnimatePresence mode="wait">
-                <Motion.div key={currentQ} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                <motion.div key={currentQ} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
                   <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)]">
                     <div className="px-8 py-4 flex items-center justify-between bg-gray-50/50 border-b border-gray-100">
                       <div className="flex items-center gap-3">
@@ -656,8 +788,8 @@ export default function ExamCockpit() {
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        {markedForReview[currentQ] && <span className="text-[9px] font-black text-violet-600 bg-violet-50 px-2 py-0.5 rounded border border-violet-100 uppercase tracking-widest">Review</span>}
-                        {answers[currentQ] !== undefined && <span className="text-[9px] font-black text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-100 uppercase tracking-widest">Saved</span>}
+                        {markedForReview[q?.originalIndex] && <span className="text-[9px] font-black text-violet-600 bg-violet-50 px-2 py-0.5 rounded border border-violet-100 uppercase tracking-widest">Review</span>}
+                        {answers[q?.originalIndex] !== undefined && <span className="text-[9px] font-black text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-100 uppercase tracking-widest">Saved</span>}
                       </div>
                     </div>
                     
@@ -669,12 +801,19 @@ export default function ExamCockpit() {
                     <div className="p-8">
                       {q?.type === 'mcq' && (
                         <div className="grid gap-3">
-                          {q?.options?.map((opt, i) => (
-                            <button key={i} onClick={() => setAnswers(p => ({ ...p, [currentQ]: i }))} className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${answers[currentQ] === i ? 'border-teal-600 bg-teal-50' : 'border-gray-100 hover:border-gray-200'}`}>
-                              <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${answers[currentQ] === i ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-400'}`}>{String.fromCharCode(65 + i)}</span>
-                              <span className={`text-[15px] flex-1 text-left ${answers[currentQ] === i ? 'text-gray-900 font-semibold' : 'text-gray-600'}`}>{opt}</span>
-                            </button>
-                          ))}
+                          {q?.displayOptions?.map((opt, i) => {
+                            const isSelected = answers[q.originalIndex] === opt.originalIndex;
+                            return (
+                              <button 
+                                key={i} 
+                                onClick={() => setAnswers(p => ({ ...p, [q.originalIndex]: opt.originalIndex }))} 
+                                className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${isSelected ? 'border-teal-600 bg-teal-50' : 'border-gray-100 hover:border-gray-200'}`}
+                              >
+                                <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${isSelected ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-400'}`}>{String.fromCharCode(65 + i)}</span>
+                                <span className={`text-[15px] flex-1 text-left ${isSelected ? 'text-gray-900 font-semibold' : 'text-gray-600'}`}>{opt.text}</span>
+                              </button>
+                            );
+                          })}
                         </div>
                       )}
                       {q?.type === 'coding' && (
@@ -698,23 +837,33 @@ export default function ExamCockpit() {
                             </button>
                           </div>
                           
-                          <div className="border border-gray-200 rounded-xl overflow-hidden shadow-inner bg-white">
+                          <div 
+                            className="border border-gray-200 rounded-xl overflow-hidden shadow-inner bg-white"
+                            onPaste={(e) => {
+                              e.preventDefault();
+                              logIncident('Paste Blocked', 'high', 'Attempted to paste content into the code editor.');
+                              return false;
+                            }}
+                            onCopy={(e) => e.preventDefault()}
+                            onCut={(e) => e.preventDefault()}
+                          >
                              <Editor 
-                                key={`editor-${currentQ}`}
+                                key={`editor-${q.originalIndex}`}
                                 height="400px" 
                                 language={selectedLanguage === 'cpp' ? 'cpp' : selectedLanguage} 
                                 theme="light"
-                                defaultValue={typeof answers[currentQ] === 'object' ? answers[currentQ].code : (answers[currentQ] ?? q.initialCode)}
+                                defaultValue={typeof answers[q.originalIndex] === 'object' ? answers[q.originalIndex].code : (answers[q.originalIndex] ?? q.initialCode)}
                                 onChange={(value) => setAnswers(p => ({ 
                                   ...p, 
-                                  [currentQ]: { code: value, language: selectedLanguage } 
+                                  [q.originalIndex]: { code: value, language: selectedLanguage } 
                                 }))}
                                 options={{
                                   fontSize: 14,
                                   minimap: { enabled: false },
                                   scrollBeyondLastLine: false,
                                   automaticLayout: true,
-                                  padding: { top: 20, bottom: 20 }
+                                  padding: { top: 20, bottom: 20 },
+                                  contextmenu: false
                                 }}
                             />
                           </div>
@@ -768,8 +917,8 @@ export default function ExamCockpit() {
                       )}
                       {q?.type === 'short' && (
                         <textarea
-                          value={answers[currentQ] || ''}
-                          onChange={(e) => setAnswers(p => ({ ...p, [currentQ]: e.target.value }))}
+                          value={answers[q.originalIndex] || ''}
+                          onChange={(e) => setAnswers(p => ({ ...p, [q.originalIndex]: e.target.value }))}
                           placeholder="Type your response here..."
                           className="w-full h-64 bg-slate-50 border border-gray-100 rounded-lg p-6 text-gray-800 text-[15px] focus:outline-none focus:border-teal-200 transition-all resize-none"
                         />
@@ -779,11 +928,24 @@ export default function ExamCockpit() {
 
                   <div className="mt-8 flex items-center justify-between">
                     <div className="flex gap-3">
-                      <button onClick={() => setCurrentQ(p => Math.max(0, p - 1))} disabled={currentQ === 0} className="px-6 py-2.5 rounded-xl text-[12px] font-bold text-gray-600 border border-gray-200 bg-white hover:bg-gray-50 flex items-center gap-2 disabled:opacity-30"><ChevronLeft size={16} /> Previous</button>
-                      <button onClick={() => setMarkedForReview(p => ({ ...p, [currentQ]: !p[currentQ] }))} className={`px-6 py-2.5 rounded-xl text-[12px] font-bold border transition-all ${markedForReview[currentQ] ? 'bg-violet-600 text-white' : 'bg-white text-gray-600'}`}>Review Later</button>
+                      <button onClick={() => {
+                        const prevQIndex = Math.max(0, currentQ - 1);
+                        setCurrentQ(prevQIndex);
+                        const originalIndex = questions[prevQIndex]?.originalIndex;
+                        if (originalIndex !== undefined) setVisited(v => ({ ...v, [originalIndex]: true }));
+                      }} disabled={currentQ === 0} className="px-6 py-2.5 rounded-xl text-[12px] font-bold text-gray-600 border border-gray-200 bg-white hover:bg-gray-50 flex items-center gap-2 disabled:opacity-30"><ChevronLeft size={16} /> Previous</button>                      
+                      <button onClick={() => {
+                        const originalIndex = questions[currentQ]?.originalIndex;
+                        if (originalIndex !== undefined) setMarkedForReview(p => ({ ...p, [originalIndex]: !p[originalIndex] }));
+                      }} className={`px-6 py-2.5 rounded-xl text-[12px] font-bold border transition-all ${markedForReview[q?.originalIndex] ? 'bg-violet-600 text-white' : 'bg-white text-gray-600'}`}>Review Later</button>
                     </div>
-                    {currentQ < questions.length - 1 ? (
-                      <button onClick={() => { setCurrentQ(currentQ + 1); setVisited(v => ({ ...v, [currentQ + 1]: true })); }} className="bg-[#0f766e] text-white px-8 py-2.5 rounded-xl text-[12px] font-bold flex items-center gap-2">Save & Next <ChevronRight size={16} /></button>
+                    {currentQ < questions.length - 1 ? (                      
+                      <button onClick={() => { 
+                        const nextQIndex = currentQ + 1;
+                        setCurrentQ(nextQIndex); 
+                        const originalIndex = questions[nextQIndex]?.originalIndex;
+                        if (originalIndex !== undefined) setVisited(v => ({ ...v, [originalIndex]: true })); 
+                      }} className="bg-[#0f766e] text-white px-8 py-2.5 rounded-xl text-[12px] font-bold flex items-center gap-2">Save & Next <ChevronRight size={16} /></button>
                     ) : (
                       <div className="text-[11px] font-bold text-gray-400 py-2.5">End of Assessment</div>
                     )}
@@ -838,7 +1000,7 @@ export default function ExamCockpit() {
                       </button>
                     </div>
                   </div>
-                </Motion.div>
+                </motion.div>
               </AnimatePresence>
             </div>
           </div>
@@ -900,6 +1062,34 @@ export default function ExamCockpit() {
       <ExitModal isOpen={showExitPrompt} onClose={() => { setShowExitPrompt(false); setExitError(''); setExitPassword(''); }} password={exitPassword} setPassword={e => { setExitPassword(e); setExitError(''); }} error={exitError} onExit={() => { if (exitPassword === '12345') { handleFinalSubmit(); } else { setExitError('Incorrect Pass'); setExitPassword(''); } }} />
       <TabToast toast={tabToast} />
 
+      {/* Broadcast Alert Overlay */}
+      <AnimatePresence>
+        {broadcastMessage && (
+          <motion.div 
+            initial={{ opacity: 0, y: -50 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            exit={{ opacity: 0, y: -50 }} 
+            className="fixed top-16 left-1/2 -translate-x-1/2 z-[250] pointer-events-none"
+          >
+            <div className="bg-blue-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-start gap-4 max-w-xl">
+              <div className="bg-white/20 p-2 rounded-xl shrink-0 mt-0.5">
+                <Radio size={20} className="animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-200 mb-1">Live Announcement</h3>
+                <p className="text-sm font-medium leading-snug">{broadcastMessage}</p>
+              </div>
+              <button 
+                onClick={() => setBroadcastMessage(null)}
+                className="pointer-events-auto ml-2 p-1 hover:bg-white/10 rounded-lg transition-colors text-blue-200 hover:text-white"
+              >
+                <XCircle size={16} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Fullscreen Overlay */}
       {!isFullscreen && !submitted && !terminated && (
         <div className="fixed inset-0 z-[200] bg-zinc-950/90 backdrop-blur-md flex items-center justify-center p-8">
@@ -923,4 +1113,36 @@ export default function ExamCockpit() {
       )}
     </div>
   );
+}
+
+/**
+ * 🎲 SEEDED RANDOMIZER HOOK (LCG)
+ * Seeded by a unique string (examId + studentId) so the student
+ * always gets the same sequence even on page refresh.
+ */
+function generateSeed(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  let seed = Math.abs(hash) || 1;
+  return function() {
+    seed = (seed * 1664525 + 1013904223) % 4294967296;
+    return seed / 4294967296;
+  };
+}
+
+/**
+ * 🔀 SEEDED FISHER-YATES SHUFFLE
+ * Standard shuffle algorithm but uses our seeded randomFunc
+ * to ensure consistency.
+ */
+function seededShuffle(array, randomFunc) {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(randomFunc() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
 }

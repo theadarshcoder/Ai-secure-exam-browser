@@ -9,6 +9,7 @@ import {
   Mouse, Keyboard, Globe, FileWarning, Brain, Cpu
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
+import socketService from '../services/socket';
 
 /* ─────────────── Simulated Activity Log Generator ─────────────── */
 
@@ -21,6 +22,7 @@ const ACTIVITY_TYPES = [
   { type: 'noise', icon: Volume2, label: 'Audio spike detected', color: 'text-amber-400', bg: 'bg-amber-500/10', severity: 'medium' },
   { type: 'multi_face', icon: AlertTriangle, label: 'Multiple faces detected', color: 'text-red-400', bg: 'bg-red-500/10', severity: 'high' },
   { type: 'phone', icon: FileWarning, label: 'Phone detected in frame', color: 'text-red-400', bg: 'bg-red-500/10', severity: 'high' },
+  { type: 'help', icon: MessageSquare, label: 'Support requested', color: 'text-emerald-400', bg: 'bg-emerald-500/10', severity: 'high' },
 ];
 
 const generateInitialLogs = () => {
@@ -376,6 +378,7 @@ export default function SessionMonitor() {
     id: searchParams.get('id') || 'VSN-89241',
     name: searchParams.get('name') || 'Unknown Student',
     exam: searchParams.get('exam') || 'General Exam',
+    examId: searchParams.get('examId') || searchParams.get('id') || 'default_exam',
     risk: searchParams.get('risk') || 'Low',
     score: parseInt(searchParams.get('score') || '90'),
     time: searchParams.get('time') || '30m rem',
@@ -390,6 +393,8 @@ export default function SessionMonitor() {
   const [messageInput, setMessageInput] = useState('');
   const [messages, setMessages] = useState([]);
   const [showTerminateConfirm, setShowTerminateConfirm] = useState(false);
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+  const [broadcastMessage, setBroadcastMessage] = useState('');
 
   // Risk metrics with sparkline data
   const [metrics, setMetrics] = useState({
@@ -440,6 +445,30 @@ export default function SessionMonitor() {
     return () => clearInterval(interval);
   }, []);
 
+  // REAL-TIME HELP LISTENER
+  useEffect(() => {
+    socketService.connect();
+    socketService.onStudentHelp((data) => {
+      // Only show if it's for this specific student/exam
+      if (data.studentId === sessionData.id || data.studentEmail === sessionData.email) {
+        const helpLog = {
+          id: `help-${Date.now()}`,
+          type: 'help',
+          icon: MessageSquare,
+          label: 'Student Help Requested',
+          color: 'text-emerald-400',
+          bg: 'bg-emerald-500/10',
+          severity: 'high',
+          timestamp: new Date().toISOString(),
+          detail: data.message || 'Needs intervention',
+        };
+        setActivityLogs(prev => [helpLog, ...prev.slice(0, 49)]);
+      }
+    });
+
+    return () => { /* socket service disconnect handled globally or by context if needed */ };
+  }, [sessionData.id, sessionData.email]);
+
   // Connection flicker simulation
   useEffect(() => {
     const flicker = setInterval(() => {
@@ -455,7 +484,7 @@ export default function SessionMonitor() {
     const existing = JSON.parse(localStorage.getItem('vision_terminated_sessions') || '[]');
     const entry = {
       studentId: sessionData.id,
-      examId: sessionData.id,
+      examId: sessionData.examId,
       reason: 'Terminated by Admin via Session Monitor',
       terminatedBy: 'admin',
       timestamp: new Date().toISOString(),
@@ -468,6 +497,13 @@ export default function SessionMonitor() {
     if (!messageInput.trim()) return;
     setMessages(prev => [...prev, { text: messageInput, from: 'admin', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
     setMessageInput('');
+  };
+
+  const handleBroadcast = () => {
+    if (!broadcastMessage.trim()) return;
+    socketService.emitBroadcast(broadcastMessage, sessionData.id);
+    setShowBroadcastModal(false);
+    setBroadcastMessage('');
   };
 
   const handleFlagSession = () => {
@@ -568,6 +604,12 @@ export default function SessionMonitor() {
               <Shield size={11} />
               {sessionData.risk} Risk
             </div>
+            <button
+              onClick={() => setShowBroadcastModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider text-indigo-400 border border-indigo-500/20 bg-indigo-500/5 hover:bg-indigo-500/10 transition-all active:scale-95"
+            >
+              <Radio size={11} /> Broadcast
+            </button>
             <button
               onClick={handleFlagSession}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider text-amber-400 border border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 transition-all active:scale-95"
@@ -776,6 +818,36 @@ export default function SessionMonitor() {
                 <button onClick={() => setShowTerminateConfirm(false)} className="flex-1 py-3 rounded-xl border border-white/10 text-zinc-400 hover:text-white hover:bg-white/5 transition-all text-sm font-semibold">Cancel</button>
                 <button onClick={handleTerminate} className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white transition-all text-sm font-bold shadow-lg active:scale-95">
                   Terminate Exam
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ──── Broadcast Modal ──── */}
+      {showBroadcastModal && (
+        <>
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[150]" onClick={() => setShowBroadcastModal(false)} />
+          <div className="fixed inset-0 z-[151] flex items-center justify-center p-8 pointer-events-none">
+            <div className="bg-[#13151b] border border-blue-500/30 rounded-2xl w-full max-w-md p-8 shadow-2xl pointer-events-auto">
+              <div className="w-14 h-14 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-500 mb-6 mx-auto flex items-center justify-center">
+                <Radio size={28} />
+              </div>
+              <h3 className="text-xl font-bold text-white text-center mb-2">Live Broadcast</h3>
+              <p className="text-zinc-400 text-sm text-center mb-6">
+                Send an important announcement to all students currently taking the exam.
+              </p>
+              <textarea
+                value={broadcastMessage}
+                onChange={e => setBroadcastMessage(e.target.value)}
+                placeholder="E.g., Correction in Question 4: Use array instead of list."
+                className="w-full bg-[#0f1117] border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-zinc-600 focus:border-blue-500/50 outline-none mb-6 resize-none h-24"
+              />
+              <div className="flex gap-3">
+                <button onClick={() => setShowBroadcastModal(false)} className="flex-1 py-3 rounded-xl border border-white/10 text-zinc-400 hover:text-white hover:bg-white/5 transition-all text-sm font-semibold">Cancel</button>
+                <button onClick={handleBroadcast} className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white transition-all text-sm font-bold shadow-lg active:scale-95 flex items-center justify-center gap-2">
+                  <Radio size={14} /> Send Broadcast
                 </button>
               </div>
             </div>

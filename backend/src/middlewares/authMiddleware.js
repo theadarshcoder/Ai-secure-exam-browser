@@ -2,19 +2,44 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User'); 
 
 const verifyToken = async (req, res, next) => {
-    const token = req.headers.authorization?.split(" ")[1]; 
+    const token = req.headers.authorization?.split(" ")[1];
     if (!token) return res.status(401).json({ message: "Access Denied!" });
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const user = await User.findById(decoded.id);
-        if (!user || user.currentSessionToken !== token) {
-            return res.status(403).json({ message: "Session invalid or logged in elsewhere" });
+        
+        if (!user) {
+            return res.status(403).json({ message: "User account not found" });
         }
+
+        // ✨ SINGLE-SESSION ENFORCEMENT: Anti-Login Sharing
+        // If currentSessionToken is set but doesn't match this request token, reject it.
+        if (user.currentSessionToken && user.currentSessionToken !== token) {
+            return res.status(401).json({ 
+                message: "Security Alert: This session has been terminated because you logged in from another device.",
+                code: "SESSION_COLLISION" 
+            });
+        }
+        
         req.user = decoded;
         next();
     } catch (error) {
-        res.status(403).json({ message: "Invalid Token!" });
+        if (error.name === 'TokenExpiredError') {
+            return res.status(403).json({
+                message: "Session expired. Please login again.",
+                code: "TOKEN_EXPIRED"
+            });
+        } else if (error.name === 'JsonWebTokenError') {
+            return res.status(403).json({
+                message: "Invalid authentication token",
+                code: "INVALID_TOKEN"
+            });
+        }
+        res.status(403).json({
+            message: "Authentication failed",
+            code: "AUTH_FAILED"
+        });
     }
 };
 

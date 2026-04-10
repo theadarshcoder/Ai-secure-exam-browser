@@ -150,8 +150,8 @@ io.use(async (socket, next) => {
         // Database mein check karo ki ye token abhi bhi active hai
         // (agar user ne doosri jagah login kiya toh purana token invalid hoga)
         const user = await User.findById(decoded.id);
-        if (!user || user.currentSessionToken !== token) {
-            return next(new Error('🚫 Session expired! Please login again.'));
+        if (!user || (user.currentSessionToken && user.currentSessionToken !== token)) {
+            return next(new Error('🚫 Session terminated! You logged in from another device.'));
         }
 
         // User info socket object mein attach karo — baad mein use hoga
@@ -254,6 +254,61 @@ io.on('connection', (socket) => {
         } catch (err) {
             console.error('Socket violation DB save failed:', err.message);
         }
+    });
+
+    socket.on('student_need_help', async (data) => {
+        // Only students can request help
+        if (socket.user.role !== 'student') {
+            return socket.emit('error', { message: 'Only students can request help.' });
+        }
+
+        console.log(`🆘 Help request from ${socket.user.email}:`, data);
+        
+        // Broadcast to all mentors and admins
+        io.to('role_mentor').to('role_admin').emit('student_need_help', {
+            studentId: socket.user.id,
+            studentEmail: socket.user.email,
+            examId: data.examId,
+            questionId: data.questionId,
+            message: data.message || 'Student needs assistance',
+            timestamp: new Date()
+        });
+        
+        // Save help request to database for tracking
+        try {
+            if (data.examId) {
+                await ExamSession.findOneAndUpdate(
+                    { exam: data.examId, student: socket.user.id },
+                    {
+                        $push: { helpRequests: {
+                            questionId: data.questionId,
+                            message: data.message || 'Student needs assistance',
+                            timestamp: new Date(),
+                            resolved: false
+                        }}
+                    },
+                    { upsert: false }
+                );
+            }
+        } catch (err) {
+            console.error('Help request DB save failed:', err.message);
+        }
+    });
+
+    socket.on('mentor_broadcast', (data) => {
+        // Mentors or admins can broadcast to students
+        if (socket.user.role !== 'mentor' && socket.user.role !== 'admin') {
+            return socket.emit('error', { message: 'Only mentors/admins can broadcast.' });
+        }
+        console.log(`Broadcast from ${socket.user.email}:`, data);
+        
+        // Broadcast to all students
+        io.to('role_student').emit('exam_broadcast', {
+            message: data.message,
+            examId: data.examId,
+            sender: socket.user.name || socket.user.email,
+            timestamp: new Date()
+        });
     });
     
     socket.on('disconnect', () => {

@@ -19,10 +19,10 @@ exports.register = asyncHandler(async (req, res) => {
     }
 
     const rolePermissions = {
-        'mentor':     ['create_exam', 'view_live_grid'],
-        'admin':      ['create_exam', 'view_live_grid', 'manage_users', 'view_reports'],
-        'exam_admin': ['create_exam', 'manage_exams'],
-        'student':    []
+        'student':      [],
+        'mentor':       ['create_exam', 'view_live_grid'],
+        'super_mentor': ['create_exam', 'view_live_grid', 'manage_users'],
+        'admin':        ['create_exam', 'view_live_grid', 'manage_users', 'view_reports']
     };
 
     const user = new User({
@@ -88,10 +88,7 @@ exports.login = asyncHandler(async (req, res) => {
     // Admin can impersonate any role. Super Mentor logs in via the "Mentor" tab.
     let finalRole = user.role;
     const ROLE_FAMILY = {
-        'super_mentor': 'mentor',   // super_mentor is a mentor variant
-        'exam_admin': 'admin',      // exam_admin is an admin variant
-        'proctor_lead': 'mentor',   // proctor_lead is a mentor variant
-        'proctor': 'mentor',        // proctor is a mentor variant
+        'super_mentor': 'mentor'
     };
 
     if (user.role === 'admin' && requestedRole) {
@@ -126,5 +123,26 @@ exports.login = asyncHandler(async (req, res) => {
             role: finalRole,
             permissions: user.permissions
         }
+    });
+});
+
+// ─── POST /api/auth/logout ────────────────────────────────
+// User logout - clears currentSessionToken
+exports.logout = asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+    
+    const user = await User.findById(userId);
+    if (!user) {
+        res.status(404);
+        throw new Error('User not found');
+    }
+    
+    // Clear the session token
+    user.currentSessionToken = null;
+    await user.save();
+    
+    res.json({
+        message: 'Logout successful',
+        timestamp: new Date()
     });
 });
