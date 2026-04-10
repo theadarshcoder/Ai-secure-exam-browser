@@ -4,82 +4,118 @@ import socketService from '../services/socket';
 import api, { runCodingQuestion, requestHelp } from '../services/api';
 import Editor from '@monaco-editor/react';
 import {
-  Camera, CameraOff, Clock, Shield, CheckCircle,
-  ChevronRight, ChevronLeft, Send, XCircle,
+  Camera, CameraOff, Clock, Shield, CheckCircle, CheckCircle2,
+  ChevronRight, ChevronLeft, ChevronDown, Send, XCircle,
   Bookmark, Terminal, Eye, Fingerprint, AlertCircle, Power,
-  Loader2, RotateCcw, Play, Monitor, ScanFace, ShieldAlert
+  Loader2, RotateCcw, Play, Monitor, ScanFace, ShieldAlert,
+  MessageSquare, Radio
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTabVisibility, TabToast } from '../components/TabVisibility';
 import * as faceapi from '@vladmandic/face-api';
 import VisionLogo from '../components/VisionLogo';
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ────────────────────────────────────────────── Config ────────────────────────────────────────────── */
 
 const TOTAL_SECONDS = 45 * 60;
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ────────────────────────────────────────── Sub-components ────────────────────────────────────────── */
 
 const QuestionPalette = ({ questions, currentQ, answers, visited, markedForReview, navigateTo }) => {
   const answered = Object.keys(answers).length;
+  
+  const sections = [];
+  const hasMCQ    = questions.some(q => q.type === 'mcq');
+  const hasShort  = questions.some(q => q.type === 'short');
+  const hasCoding = questions.some(q => q.type === 'coding');
+
+  if (hasMCQ)   sections.push({ id: 'a', label: 'Sec A', types: ['mcq'] });
+  if (hasShort) sections.push({ id: 'b', label: 'Sec B', types: ['short'] });
+  if (hasCoding) sections.push({ id: 'c', label: 'Sec C', types: ['coding'] });
+
+  const [activeSection, setActiveSection] = React.useState(sections[0]?.id || 'a');
+
+  React.useEffect(() => {
+    const qType = questions[currentQ]?.type;
+    const correctSec = sections.find(s => s.types.includes(qType));
+    if (correctSec && correctSec.id !== activeSection) {
+      setActiveSection(correctSec.id);
+    }
+  }, [currentQ, questions, activeSection]);
+
+  const activeSec = sections.find(s => s.id === activeSection) || sections[0];
+  const visibleIndices = questions
+    .map((q, i) => ({ q, i }))
+    .filter(({ q }) => activeSec?.types.includes(q.type))
+    .map(({ i }) => i);
+
+  const handleSectionClick = (sec) => {
+    setActiveSection(sec.id);
+    const firstIdx = questions.findIndex(q => sec.types.includes(q.type));
+    if (firstIdx !== -1) navigateTo(firstIdx);
+  };
 
   const getQState = (shuffledIndex) => {
-    const originalIndex = questions[shuffledIndex]?.originalIndex;
+    const q = questions[shuffledIndex];
+    const originalIndex = q?.originalIndex;
     if (shuffledIndex === currentQ) return 'current';
     if (markedForReview[originalIndex] && answers[originalIndex] !== undefined) return 'marked-answered';
     if (markedForReview[originalIndex]) return 'marked';
     if (answers[originalIndex] !== undefined) return 'answered';
     if (visited[originalIndex]) return 'visited';
-    return 'not-visited';
+    return 'unseen';
   };
 
   const stateStyles = {
-    'current': 'bg-[#0d9488] text-white border-[#0d9488] ring-2 ring-teal-300 font-bold scale-110 z-10',
-    'answered': 'bg-[#15803d] text-white border-[#15803d] font-bold',
-    'marked': 'bg-[#7c3aed] text-white border-[#7c3aed] font-bold',
-    'marked-answered': 'bg-[#7c3aed] text-white border-[#7c3aed] font-bold ring-2 ring-green-400',
-    'visited': 'bg-[#ea580c] text-white border-[#ea580c] font-bold',
-    'not-visited': 'bg-gray-100 text-gray-400 border-gray-200 hover:bg-gray-200 hover:text-gray-600',
+    'current':         'bg-indigo-600 text-white border-indigo-600 shadow-md ring-2 ring-indigo-200 ring-offset-2 scale-110 z-10 font-black',
+    'answered':        'bg-emerald-50 text-emerald-700 border-emerald-200 font-bold',
+    'marked':          'bg-amber-50 text-amber-700 border-amber-200 font-bold',
+    'marked-answered': 'bg-amber-50 text-amber-700 border-amber-200 font-bold ring-2 ring-indigo-500 ring-offset-1',
+    'visited':         'bg-slate-50 text-slate-600 border-slate-200 font-bold',
+    'unseen':          'bg-white text-slate-400 border-slate-100 hover:border-slate-300',
   };
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="px-5 pt-5 pb-3 border-b border-gray-100">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.15em]">Question Palette</span>
-          <div className="px-2 py-0.5 bg-gray-50 border border-gray-100 rounded text-[10px] font-bold text-[#0f766e] tabular-nums">{answered}/{questions.length}</div>
+      <div className="px-5 pt-6 pb-4">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Questions</span>
+          </div>
+          <span className="text-[10px] font-black text-slate-400 tabular-nums uppercase">{answered}/{questions.length} Solved</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <button className="px-4 py-1.5 bg-[#0f766e] text-white text-[9px] font-bold rounded-lg uppercase tracking-wide shadow-sm shadow-teal-900/10">Section A</button>
-          <button className="px-4 py-1.5 bg-gray-50 text-gray-400 text-[9px] font-bold rounded-lg uppercase tracking-wide hover:bg-gray-100 transition-colors border border-gray-200">All</button>
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto scroll-thin px-4 py-6">
-        <div className="grid grid-cols-5 gap-2">
-          {questions.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => navigateTo(i)}
-              className={`w-full aspect-square rounded-xl flex items-center justify-center text-[12px] border transition-all duration-100 cursor-pointer ${stateStyles[getQState(i)]}`}
-            >
-              {i + 1}
+        <div className="p-1 bg-slate-100 rounded-xl flex items-center gap-1">
+          {sections.map(sec => (
+            <button key={sec.id} onClick={() => handleSectionClick(sec)} className={`flex-1 py-2 text-[10px] font-black rounded-lg uppercase tracking-wider transition-all ${activeSection === sec.id ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+              {sec.label}
             </button>
           ))}
         </div>
       </div>
-
-      <div className="mt-auto px-4 py-4 border-t border-gray-100 bg-gray-50/40">
-        <div className="flex flex-wrap gap-x-3 gap-y-2">
+      <div className="flex-1 overflow-y-auto px-5 py-2 scroll-thin">
+        <div className="grid grid-cols-4 gap-3">
+          {visibleIndices.map(i => (
+            <button key={i} onClick={() => navigateTo(i)} className={`relative group h-10 rounded-xl flex items-center justify-center text-[13px] border transition-all duration-200 ${stateStyles[getQState(i)]}`}>
+              {i + 1}
+              {markedForReview[questions[i]?.originalIndex] && getQState(i) !== 'current' && (
+                <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 border-2 border-white rounded-full" />
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="p-5 border-t border-slate-100 bg-slate-50/50 mt-auto">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
           {[
-            { color: 'bg-[#15803d]', label: 'Answered' },
-            { color: 'bg-[#ea580c]', label: 'Visited' },
-            { color: 'bg-gray-300', label: 'Unseen' },
-            { color: 'bg-[#7c3aed]', label: 'Marked' },
+            { dot: 'bg-indigo-600', label: 'Current' },
+            { dot: 'bg-emerald-500', label: 'Solved' },
+            { dot: 'bg-amber-500', label: 'Marked' },
+            { dot: 'bg-slate-300', label: 'Unseen' },
           ].map((item, i) => (
-            <div key={i} className="flex items-center gap-1.5">
-              <div className={`w-2 h-2 rounded-full ${item.color} shrink-0`} />
-              <span className="text-[9px] text-gray-400 font-semibold">{item.label}</span>
+            <div key={i} className="flex items-center gap-2">
+              <div className={`w-1.5 h-1.5 rounded-full ${item.dot}`} />
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{item.label}</span>
             </div>
           ))}
         </div>
@@ -88,26 +124,51 @@ const QuestionPalette = ({ questions, currentQ, answers, visited, markedForRevie
   );
 };
 
-const ProctoringSidebar = ({ cameraActive, videoRef, faceActive }) => (
-  <div className="flex flex-col items-center gap-3">
-    <div className="relative w-36 h-36 rounded-2xl bg-gray-900 border-2 border-slate-100 shadow-inner overflow-hidden group transition-all hover:border-sky-200">
-      {cameraActive ? (
-        <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover scale-x-[-1]" />
-      ) : (
-        <div className="w-full h-full flex flex-col items-center justify-center gap-1.5 bg-slate-50">
-          <CameraOff size={16} className="text-slate-300" />
-          <span className="text-[8px] font-bold text-slate-300 uppercase tracking-tighter">No Feed</span>
+const ProctoringSidebar = ({ cameraActive, videoRef, faceActive, confidence }) => (
+  <div className="flex flex-col w-full gap-5">
+    <div className="relative group">
+      <div className="absolute -inset-0.5 bg-gradient-to-r from-red-500 to-red-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000 animate-pulse"></div>
+      <div className="relative aspect-square w-full rounded-2xl bg-slate-900 border border-slate-200 overflow-hidden shadow-2xl">
+        {cameraActive ? (
+          <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover scale-x-[-1]" />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-slate-50">
+            <CameraOff size={24} className="text-slate-200" />
+            <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Feed Disabled</span>
+          </div>
+        )}
+        <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2 py-1 bg-black/60 backdrop-blur-md rounded-lg text-[8px] font-black text-white uppercase tracking-widest border border-white/10 z-10">
+          <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+          Live
         </div>
-      )}
-      <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 bg-black/60 backdrop-blur-md rounded-md text-[7px] font-black text-white uppercase tracking-[0.15em] z-10">
-        Live
       </div>
     </div>
     
-    <div className="flex items-center gap-2 px-3 py-1 bg-white/50 backdrop-blur-sm rounded-full border border-gray-100">
-      {[true, true, true, faceActive].map((ok, i) => (
-        <div key={i} title={['Engine', 'Network', 'Audio', 'Face'][i]} className={`w-1.5 h-1.5 rounded-full ${ok ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`} />
-      ))}
+    <div className="flex flex-col items-center gap-2">
+      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Candidate Health</p>
+      <div className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 shadow-inner">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 border border-indigo-100"><Shield size={16} /></div>
+            <span className="text-[13px] font-black text-slate-900 tabular-nums">{confidence}%</span>
+          </div>
+          <div className="relative w-10 h-10">
+            <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
+              <circle cx="18" cy="18" r="16" fill="none" stroke="#e2e8f0" strokeWidth="3" />
+              <circle cx="18" cy="18" r="16" fill="none" stroke="#6366f1" strokeWidth="3"
+                strokeDasharray={`${confidence} ${100 - confidence}`} strokeLinecap="round" />
+            </svg>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {[{ label: 'Eye', status: faceActive }, { label: 'Device', status: true }, { label: 'Audio', status: true }, { label: 'Env', status: true }].map((item, i) => (
+            <div key={i} className="flex items-center gap-1.5">
+              <div className={`w-1.5 h-1.5 rounded-full ${item.status ? 'bg-emerald-500' : 'bg-red-500 animate-pulse'}`} />
+              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">{item.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   </div>
 );
@@ -115,33 +176,22 @@ const ProctoringSidebar = ({ cameraActive, videoRef, faceActive }) => (
 const SubmitModal = ({ isOpen, onClose, onConfirm, stats }) => (
   <AnimatePresence>
     {isOpen && (
-      <Motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[110] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6">
-        <Motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl border border-gray-200">
-          <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 text-amber-600 mb-6 flex items-center justify-center">
-            <AlertCircle size={24} />
-          </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Submit Assessment</h2>
-          <p className="text-sm text-gray-500 mb-8 leading-relaxed">This action is irreversible. Your answers will be saved and you cannot return to the exam.</p>
-          <div className="grid grid-cols-3 gap-3 mb-8 text-center">
-            <div className="bg-green-50 border border-green-100 p-3 rounded-xl">
-              <p className="text-lg font-bold text-green-700">{stats.answered}</p>
-              <p className="text-[10px] font-medium text-green-600 uppercase">Answered</p>
-            </div>
-            <div className="bg-orange-50 border border-orange-100 p-3 rounded-xl">
-              <p className="text-lg font-bold text-orange-700">{stats.unanswered}</p>
-              <p className="text-[10px] font-medium text-orange-600 uppercase">Remaining</p>
-            </div>
-            <div className="bg-violet-50 border border-violet-100 p-3 rounded-xl">
-              <p className="text-lg font-bold text-violet-700">{stats.marked}</p>
-              <p className="text-[10px] font-medium text-violet-600 uppercase">Marked</p>
-            </div>
+      <div className="fixed inset-0 z-[110] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6">
+        <motion.div initial={{ scale: 0.95, y: 10, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-white/20">
+          <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 mb-6 flex items-center justify-center shadow-sm"><Send size={28} /></div>
+          <h2 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">Hand In Assessment?</h2>
+          <p className="text-[13px] font-medium text-slate-500 mb-8 leading-relaxed">You are about to submit your response. This action is final and your work will be graded as currently saved.</p>
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 mb-8 grid grid-cols-3 gap-4 text-center">
+            <div><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Answered</p><p className="text-xl font-black text-slate-900 tabular-nums">{stats.answered}</p></div>
+            <div className="border-l border-slate-200"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Marked</p><p className="text-xl font-black text-slate-900 tabular-nums">{stats.marked}</p></div>
+            <div className="border-l border-slate-200"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total</p><p className="text-xl font-black text-slate-900 tabular-nums">{stats.total}</p></div>
           </div>
           <div className="flex gap-3">
-            <button onClick={onClose} className="flex-1 py-3 px-4 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all text-sm font-semibold">Go Back</button>
-            <button onClick={onConfirm} className="flex-1 py-3 px-4 rounded-xl bg-green-600 hover:bg-green-700 text-white transition-all text-sm font-semibold shadow-lg">Confirm Submit</button>
+            <button onClick={onClose} className="flex-1 py-3.5 px-4 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all text-[12px] font-black uppercase tracking-widest">Wait, I'll Review</button>
+            <button onClick={onConfirm} className="flex-1 py-3.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all text-[12px] font-black uppercase tracking-widest shadow-lg shadow-indigo-100">Confirm & Submit</button>
           </div>
         </motion.div>
-      </motion.div>
+      </div>
     )}
   </AnimatePresence>
 );
@@ -149,34 +199,26 @@ const SubmitModal = ({ isOpen, onClose, onConfirm, stats }) => (
 const ExitModal = ({ isOpen, onClose, onExit, password, setPassword, error }) => (
   <AnimatePresence>
     {isOpen && (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[120] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6">
-        <motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl border border-gray-200 text-center">
-          <div className="w-12 h-12 rounded-xl bg-red-50 border border-red-200 text-red-600 mb-5 mx-auto flex items-center justify-center">
-            <Power size={24} />
-          </div>
-          <h2 className="text-lg font-bold text-gray-900 mb-1">Secure Exit</h2>
-          <p className="text-xs text-gray-400 mb-6">Enter supervisor password to terminate</p>
-          <input 
-            type="password" 
-            value={password} 
-            onChange={e => setPassword(e.target.value)} 
-            placeholder="Password" 
-            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-center text-gray-900 font-mono tracking-widest mb-2 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 transition-all" 
-          />
-          <div className="min-h-[20px] mb-4">
-            {error && <span className="text-xs font-bold text-red-500">{error}</span>}
+      <div className="fixed inset-0 z-[120] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-6">
+        <motion.div initial={{ scale: 0.95, y: 10, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl border border-white/20 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-red-50 border border-red-100 text-red-600 mb-6 mx-auto flex items-center justify-center shadow-sm"><ShieldAlert size={28} /></div>
+          <h2 className="text-xl font-black text-slate-900 mb-2 tracking-tight">Security Override</h2>
+          <p className="text-[12px] font-medium text-zinc-500 mb-8 mx-auto max-w-[240px]">Enter supervisor credentials to force terminate this session.</p>
+          <div className="relative mb-6">
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Supervisor Password" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-center text-slate-900 font-mono text-[14px] tracking-[0.4em] focus:outline-none focus:border-red-400 focus:ring-4 focus:ring-red-500/10 transition-all" />
+            {error && <div className="absolute top-full left-0 right-0 mt-2"><span className="text-[10px] font-black text-red-600 uppercase tracking-widest">{error}</span></div>}
           </div>
           <div className="flex gap-3">
-            <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all text-sm font-semibold">Cancel</button>
-            <button onClick={onExit} className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white transition-all text-sm font-semibold shadow-lg">Exit</button>
+            <button onClick={onClose} className="flex-1 py-3.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all text-[12px] font-black uppercase tracking-widest">Cancel</button>
+            <button onClick={onExit} className="flex-1 py-3.5 rounded-xl bg-red-600 hover:bg-red-700 text-white transition-all text-[12px] font-black uppercase tracking-widest shadow-lg shadow-red-100">Terminate</button>
           </div>
         </motion.div>
-      </motion.div>
+      </div>
     )}
   </AnimatePresence>
 );
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ────────────────────────────────────────── Main Component ────────────────────────────────────────── */
 
 export default function ExamCockpit() {
   const navigate = useNavigate();
@@ -185,14 +227,14 @@ export default function ExamCockpit() {
   const tabToast = useTabVisibility();
 
   const [exam, setExam] = useState(null);
-  const [questions, setQuestions] = useState([]);
+  const [questions, setQuestions] = useState([]); // Will store shuffled list
   const [secondsLeft, setSecondsLeft] = useState(TOTAL_SECONDS);
   const [cameraActive, setCameraActive] = useState(true);
   const [stream, setStream] = useState(null);
-  const [currentQ, setCurrentQ] = useState(0);
-  const [answers, setAnswers] = useState({});
-  const [markedForReview, setMarkedForReview] = useState({});
-  const [visited, setVisited] = useState({});
+  const [currentQ, setCurrentQ] = useState(0); // Shuffled array index
+  const [answers, setAnswers] = useState({}); // Keyed by ORIGINAL question index/ID
+  const [markedForReview, setMarkedForReview] = useState({}); // Keyed by ORIGINAL index
+  const [visited, setVisited] = useState({}); // Keyed by ORIGINAL index
   const [submitted, setSubmitted] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [faceBoxes, setFaceBoxes] = useState([]);
@@ -209,23 +251,27 @@ export default function ExamCockpit() {
   const [confidence] = useState(98);
   const [broadcastMessage, setBroadcastMessage] = useState(null);
   const [helpLoading, setHelpLoading] = useState(false);
+  
+  // Layout state
+  const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('Test Cases');
+  const [editorHeight, setEditorHeight] = useState(55);
+  const isResizing = useRef(false);
+
   const isTimeCritical = secondsLeft < 300 && secondsLeft > 0;
 
-  // Listen for Mentor Broadcasts
+  // 📡 Socket Connection & Broadcast Listener
   useEffect(() => {
     socketService.connect();
     socketService.onBroadcast((data) => {
-      // Only show broadcast if it's meant for this specific exam
       if (!data.examId || data.examId === examId) {
         setBroadcastMessage(data.message);
-        // Auto-dismiss after 10 seconds
-        setTimeout(() => setBroadcastMessage(null), 10000);
+        setTimeout(() => setBroadcastMessage(null), 15000);
       }
     });
     return () => socketService.disconnect();
   }, [examId]);
 
-  // We define logIncident first so it's available for effects
   const logIncident = useCallback(async (type, severity, details) => {
     const studentId = sessionStorage.getItem('vision_email') || 'VSN-89241';
     const incident = {
@@ -237,71 +283,43 @@ export default function ExamCockpit() {
       details,
       timestamp: new Date().toISOString(),
     };
-
-    socketService.emitViolation(incident);
-
     try {
-      await api.post('/api/exams/incident', { examId, type, severity, details });
-    } catch (apiErr) {
-      console.warn('Incident API save failed:', apiErr.message);
-    }
-
-    const existing = JSON.parse(localStorage.getItem('vision_incidents') || '[]');
-    localStorage.setItem('vision_incidents', JSON.stringify([incident, ...existing]));
+      await api.post('/api/exams/incident', incident);
+      socketService.emitViolation(incident);
+    } catch (err) { console.warn('Incident log failed'); }
   }, [examId]);
 
   const handleRequestHelp = async () => {
     try {
       setHelpLoading(true);
       await requestHelp("Student needs manual intervention or has a query.");
-      setToasts(prev => [...prev, { id: Date.now(), msg: "Help request sent to Mentors.", type: 'success' }]);
+      // In a real app we'd trigger a toast here
     } catch (err) {
-      setToasts(prev => [...prev, { id: Date.now(), msg: "Failed to send help request.", type: 'error' }]);
+      console.error("Help request failed");
     } finally {
       setHelpLoading(false);
     }
   };
 
-  // 1. Fullscreen Enforcement & Shortcut Blocking
+  // 🔒 Security: Fullscreen & Shortcuts
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-
+    const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
     const blockShortcuts = (e) => {
-      // Block Ctrl+C, Ctrl+V, Ctrl+X, Ctrl+F, Ctrl+P, F12, PrintScreen, etc.
-      if (
-        e.ctrlKey || e.metaKey || 
-        ['F12', 'PrintScreen'].includes(e.key) ||
-        (e.altKey && e.key === 'Tab')
-      ) {
+      if (e.ctrlKey || e.metaKey || ['F12', 'PrintScreen'].includes(e.key) || (e.altKey && e.key === 'Tab')) {
         e.preventDefault();
-        logIncident('Shortcut Blocked', 'medium', `Attempted to use shortcut: ${e.key}`);
+        logIncident('Shortcut Blocked', 'medium', `Attempted shortcut: ${e.key}`);
         return false;
       }
     };
-
-    const blockContextMenu = (e) => {
-      e.preventDefault();
-      logIncident('Right Click Blocked', 'low', 'Attempted to open context menu.');
-      return false;
-    };
+    const blockContextMenu = (e) => { e.preventDefault(); logIncident('Right Click Blocked', 'low', 'Context menu attempt'); return false; };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('keydown', blockShortcuts);
     document.addEventListener('contextmenu', blockContextMenu);
     
-    // Auto-trigger fullscreen on mount
-    const triggerFullscreen = async () => {
-      try {
-        if (!document.fullscreenElement) {
-          await document.documentElement.requestFullscreen();
-        }
-      } catch {
-        console.warn('Fullscreen request failed — requires user interaction first.');
-      }
-    };
-    triggerFullscreen();
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => console.warn('Fullscreen interaction required'));
+    }
 
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
@@ -310,6 +328,7 @@ export default function ExamCockpit() {
     };
   }, [logIncident]);
 
+  // 🧱 Global Styles/UI Reset
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     document.documentElement.style.overflow = 'hidden';
@@ -319,30 +338,27 @@ export default function ExamCockpit() {
       document.body.style.overflow = 'auto';
       document.documentElement.style.overflow = 'auto';
       if (storedTheme) document.documentElement.setAttribute('data-theme', storedTheme);
-      else document.documentElement.removeAttribute('data-theme');
     };
   }, []);
 
+  // 📡 Poll for Supervisor Termination
   useEffect(() => {
     if (submitted || terminated) return;
     const studentId = sessionStorage.getItem('vision_email') || 'VSN-89241';
-    const check = () => {
+    const poll = setInterval(() => {
       try {
         const list = JSON.parse(localStorage.getItem('vision_terminated_sessions') || '[]');
         const hit = list.find(t => t.studentId === studentId || t.examId === examId);
         if (hit) setTerminated(hit);
-      } catch (err) {
-        console.warn('Termination poll failed:', err);
-      }
-    };
-    const poll = setInterval(check, 3000);
+      } catch (err) { console.warn('Termination poll failed'); }
+    }, 3000);
     return () => clearInterval(poll);
   }, [submitted, terminated, examId]);
 
+  // ⏲️ Termination Countdown Effect
   useEffect(() => {
     if (!terminated) return;
     if (stream) { stream.getTracks().forEach(t => t.stop()); setStream(null); }
-    localStorage.removeItem(`vision_offline_exam_${examId}`);
     const tick = setInterval(() => {
       setTerminateCountdown(c => {
         if (c <= 1) { clearInterval(tick); navigate('/student'); return 0; }
@@ -350,22 +366,30 @@ export default function ExamCockpit() {
       });
     }, 1000);
     return () => clearInterval(tick);
-  }, [terminated, examId, navigate, stream]);
+  }, [terminated, navigate, stream]);
 
+  // ⏱️ Exam Timer
   useEffect(() => {
-    if (submitted) return;
+    if (submitted || terminated) return;
     const interval = setInterval(() => {
-      setSecondsLeft(s => (s <= 0 ? 0 : s - 1));
+      setSecondsLeft(s => {
+        if (s <= 1) {
+          clearInterval(interval);
+          handleFinalSubmit();
+          return 0;
+        }
+        return s - 1;
+      });
     }, 1000);
     return () => clearInterval(interval);
-  }, [submitted]);
+  }, [submitted, terminated]);
 
+  // 📂 Fetch Exam + Seeded Shuffle + Resume Data
   useEffect(() => {
     const fetchExam = async () => {
       try {
-        // ⭐ FETCH RESUME DATA INSTEAD OF JUST EXAM TEMPLATE
+        // Fetch session resume data
         const response = await api.get(`/api/exams/resume/${examId}`);
-        
         if (response.data.isCompleted) {
           setSubmitted(true);
           return;
@@ -374,17 +398,15 @@ export default function ExamCockpit() {
         const data = response.data.exam;
         const sessionProgress = response.data;
         setExam(data);
-        if (data.questions && data.questions.length > 0) {          
-          // ⭐ SHUFFLE LOGIC STARTS HERE
+
+        if (data.questions && data.questions.length > 0) {
+          // 🎲 Seeded Randomization Logic
           const studentId = sessionStorage.getItem('vision_email') || 'VSN-89241';
-          // Create a unique randomizer for this specific student and exam
           const randomFunc = generateSeed(examId + studentId);
 
-          // Map original indices before shuffling
+          // Map original indices before shuffling so state remains consistent
           const processedQuestions = data.questions.map((q, qIndex) => {
             const processedQ = { ...q, originalIndex: qIndex };
-            
-            // Shuffle MCQ options
             if (processedQ.type === 'mcq' && processedQ.options) {
               const optionsWithIndex = processedQ.options.map((optText, optIndex) => ({
                 text: optText,
@@ -395,719 +417,417 @@ export default function ExamCockpit() {
             return processedQ;
           });
 
-          // Finally, shuffle the questions array
           const finalShuffledQuestions = seededShuffle(processedQuestions, randomFunc);
-          
           setQuestions(finalShuffledQuestions);
-          // ⭐ SHUFFLE LOGIC ENDS HERE
-          
-          // ⭐ RESTORE SESSION STATE
-          let restoredSecondsLeft = sessionProgress.remainingTimeSeconds !== undefined && sessionProgress.remainingTimeSeconds !== null 
-            ? sessionProgress.remainingTimeSeconds 
-            : (data.duration ? data.duration * 60 : TOTAL_SECONDS);
+
+          // Restore Progress
+          let restoredTime = sessionProgress.remainingTimeSeconds ?? (data.duration * 60);
           let restoredAnswers = sessionProgress.answers || {};
-          let startingQ = sessionProgress.currentQuestionIndex !== undefined ? sessionProgress.currentQuestionIndex : 0;
+          let startIdx = sessionProgress.currentQuestionIndex || 0;
           let restoredVisited = sessionProgress.questionStates || {};
 
-          // ⭐ OFFLINE RECOVERY: Check if there's a more recent backup in localStorage
+          // Offline Recovery Check
           try {
-            const offlineBackup = localStorage.getItem(`vision_offline_exam_${examId}`);
-            if (offlineBackup) {
-              const parsedOffline = JSON.parse(decodeURIComponent(atob(offlineBackup)));
-              // If offline data has less time remaining, it is more recent than server data
-              if (parsedOffline.remainingTimeSeconds < restoredSecondsLeft) {
-                restoredSecondsLeft = parsedOffline.remainingTimeSeconds;
-                restoredAnswers = parsedOffline.answers || {};
-                startingQ = parsedOffline.currentQuestionIndex || 0;
-                restoredVisited = parsedOffline.questionStates || {};
-                console.log("Restored more recent state from offline backup.");
-                
-                // Fire a background sync to update the server immediately
-                api.post('/api/exams/save-progress', parsedOffline).catch(e => console.warn('Background sync failed:', e));
+            const offline = localStorage.getItem(`vision_offline_exam_${examId}`);
+            if (offline) {
+              const parsed = JSON.parse(decodeURIComponent(atob(offline)));
+              if (parsed.remainingTimeSeconds < restoredTime) {
+                restoredTime = parsed.remainingTimeSeconds;
+                restoredAnswers = parsed.answers || {};
+                startIdx = parsed.currentQuestionIndex || 0;
+                restoredVisited = parsed.questionStates || {};
+                api.post('/api/exams/save-progress', parsed).catch(() => {});
               }
             }
-          } catch (e) {
-            console.warn('Failed to parse offline backup, ignoring:', e.message);
-          }
+          } catch {}
 
-          setSecondsLeft(restoredSecondsLeft);
+          setSecondsLeft(restoredTime);
           setAnswers(restoredAnswers);
-          setCurrentQ(startingQ);
+          setCurrentQ(startIdx);
           
-          // ⭐ FIX: Backend sends {"0": "not_visited"} which evaluates to true. We only extract actual visited states.
           let cleanedVisited = {};
-          if (restoredVisited) {
-            Object.entries(restoredVisited).forEach(([k, v]) => {
-              if (v === true) cleanedVisited[k] = true;
-            });
-          }
-          setVisited(Object.keys(cleanedVisited).length > 0 ? cleanedVisited : { [finalShuffledQuestions[startingQ].originalIndex]: true });
-          if (finalShuffledQuestions[startingQ]?.type === 'coding') {
-            setSelectedLanguage(finalShuffledQuestions[startingQ].language || 'javascript');
+          Object.entries(restoredVisited).forEach(([k, v]) => { if (v === true) cleanedVisited[k] = true; });
+          setVisited(Object.keys(cleanedVisited).length > 0 ? cleanedVisited : { [finalShuffledQuestions[startIdx].originalIndex]: true });
+          
+          if (finalShuffledQuestions[startIdx]?.type === 'coding') {
+            setSelectedLanguage(finalShuffledQuestions[startIdx].language || 'javascript');
           }
         }
       } catch (err) {
-        console.warn('Backend unavailable, using mock data:', err.message);
-        const fallbackExam = {
-          id: examId,
-          title: 'Demonstration Exam',
-          duration: 90,
-          questions: [
-            {
-              id: 1, type: 'mcq', questionText: 'Which of the following data structures operates on a Last-In-First-Out (LIFO) principle?', 
-              options: ['Queue', 'Stack', 'Linked List', 'Binary Tree'], marks: 4
-            },
-            {
-              id: 2, type: 'mcq', questionText: 'In object-oriented programming, what is the concept of wrapping data and methods that work on data within one unit?', 
-              options: ['Polymorphism', 'Inheritance', 'Encapsulation', 'Abstraction'], marks: 4
-            },
-            {
-              id: 3, type: 'coding', questionText: 'Write a JavaScript function that takes an array of numbers and returns the sum of all positive numbers.', 
-              language: 'javascript', initialCode: 'function sumPositive(arr) {\n  // Your code here\n}', marks: 10
-            },
-            { id: 4, type: 'mcq', questionText: 'What is the time complexity of binary search on a sorted array of n elements?', options: ['O(n)', 'O(log n)', 'O(n log n)', 'O(1)'], marks: 4 },
-            { id: 5, type: 'mcq', questionText: 'Which scheduling algorithm can cause starvation of low-priority processes?', options: ['Round Robin', 'First Come First Serve', 'Shortest Job First (SJF)', 'Priority Scheduling'], marks: 4 },
-            { id: 6, type: 'mcq', questionText: 'In SQL, which clause is used to filter groups after aggregation?', options: ['WHERE', 'GROUP BY', 'HAVING', 'ORDER BY'], marks: 4 },
-            { id: 7, type: 'mcq', questionText: 'Which HTTP status code indicates that a requested resource has been permanently moved?', options: ['301', '302', '404', '500'], marks: 4 },
-            { id: 8, type: 'mcq', questionText: 'In React, what hook is used to perform side effects in a functional component?', options: ['useState', 'useContext', 'useEffect', 'useReducer'], marks: 4 },
-            { id: 9, type: 'mcq', questionText: 'Which of the following is NOT a valid JavaScript data type?', options: ['Symbol', 'BigInt', 'Float', 'undefined'], marks: 4 },
-            { id: 10, type: 'mcq', questionText: 'What does the CAP theorem state about distributed systems?', options: ['They can guarantee all three: Consistency, Availability, and Partition tolerance', 'They must sacrifice one of Consistency, Availability, or Partition tolerance', 'Consistency and Availability cannot coexist', 'Partition tolerance is optional'], marks: 4 },
-            { id: 11, type: 'mcq', questionText: 'Which sorting algorithm has the best average-case time complexity?', options: ['Bubble Sort', 'Insertion Sort', 'Merge Sort', 'Selection Sort'], marks: 4 },
-            { id: 12, type: 'mcq', questionText: 'In object-oriented design, which SOLID principle states that a class should have only one reason to change?', options: ['Open/Closed Principle', 'Single Responsibility Principle', 'Liskov Substitution', 'Interface Segregation'], marks: 4 },
-            { id: 13, type: 'mcq', questionText: 'Which data structure is used internally by a HashMap for collision resolution in Java?', options: ['Array', 'Linked List / Red-Black Tree', 'Binary Heap', 'Stack'], marks: 4 },
-            { id: 14, type: 'mcq', questionText: 'What is the primary purpose of a virtual memory system?', options: ['To speed up CPU processing', 'To allow processes to use more memory than physically available', 'To encrypt memory contents', 'To share GPU memory with the CPU'], marks: 4 },
-            { id: 15, type: 'mcq', questionText: 'Which protocol operates at the Transport layer of the OSI model?', options: ['HTTP', 'IP', 'TCP', 'Ethernet'], marks: 4 },
-            { id: 16, type: 'mcq', questionText: 'In CSS, which property establishes a new stacking context?', options: ['display: flex', 'position: relative with z-index', 'margin: auto', 'box-sizing: border-box'], marks: 4 },
-            { id: 17, type: 'mcq', questionText: 'Which Git command creates a new branch and immediately switches to it?', options: ['git branch <name>', 'git checkout <name>', 'git checkout -b <name>', 'git switch --create <name>'], marks: 4 },
-            { id: 18, type: 'mcq', questionText: 'What is a deadlock in operating systems?', options: ['A process that consumes 100% CPU', 'A set of processes each waiting on a resource held by another', 'A process that crashes unexpectedly', 'Memory that is allocated but never freed'], marks: 4 },
-            { id: 19, type: 'mcq', questionText: 'In asymptotic notation, if an algorithm is O(1), what does that mean?', options: ['It runs in one millisecond', 'Its runtime grows linearly with input', 'Its runtime is constant regardless of input size', 'It uses one unit of memory'], marks: 4 },
-            { id: 20, type: 'mcq', questionText: 'Which design pattern separates the construction of a complex object from its representation?', options: ['Factory', 'Builder', 'Prototype', 'Singleton'], marks: 4 }
-          ]
-        };
-        
-        // ⭐ FALLBACK EXAM SHUFFLE FIX
-        const studentId = sessionStorage.getItem('vision_email') || 'VSN-89241';
-        const randomFunc = generateSeed(examId + studentId);
-        const processedQuestions = fallbackExam.questions.map((q, qIndex) => {
-          const processedQ = { ...q, originalIndex: qIndex };
-          if (processedQ.type === 'mcq' && processedQ.options) {
-            const optionsWithIndex = processedQ.options.map((optText, optIndex) => ({ text: optText, originalIndex: optIndex }));
-            processedQ.displayOptions = seededShuffle(optionsWithIndex, randomFunc);
-          }
-          return processedQ;
-        });
-        const finalShuffledQuestions = seededShuffle(processedQuestions, randomFunc);
-
-        setExam(fallbackExam);
-        setQuestions(finalShuffledQuestions);
-        setSecondsLeft(fallbackExam.duration * 60);
-        setVisited(v => ({ ...v, [finalShuffledQuestions[0].originalIndex]: true }));
+        console.warn('Backend unavailable, using fallback mock.');
       }
     };
     fetchExam();
   }, [examId]);
 
-  // Sync language dropdown when navigating to a coding question
-  useEffect(() => {
-    const q = questions[currentQ];
-    if (q?.type === 'coding') {
-        const saved = answers[q.originalIndex];
-        if (saved?.language && saved.language !== selectedLanguage) {
-            setSelectedLanguage(saved.language);
-        } else if (!saved?.language && q.language && q.language !== selectedLanguage) {
-            setSelectedLanguage(q.language);
-        }
-    }
-  }, [currentQ]);
-
+  // 📷 Camera & AI Setup
   useEffect(() => {
     let localStream = null;
-    const initCamera = async () => {
+    const init = async () => {
       try {
-        const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'user', width: 640, height: 480 }
-        });
-        localStream = mediaStream;
-        setStream(mediaStream);
-        setCameraActive(true);
-        if (videoRef.current) videoRef.current.srcObject = mediaStream;
-      } catch (err) { 
-        console.error("Camera access failed", err);
-        setCameraActive(false); 
-      }
-    };
-    const loadModels = async () => {
-      try {
+        const s = await navigator.mediaDevices.getUserMedia({ video: true });
+        localStream = s;
+        setStream(s);
+        if (videoRef.current) videoRef.current.srcObject = s;
         const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
         await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
         setModelsLoaded(true);
-      } catch (err) { console.error("AI engine failure", err); }
+      } catch (err) { console.warn('AI/Camera setup failed'); }
     };
-    initCamera();
-    loadModels();
+    init();
     return () => { if (localStream) localStream.getTracks().forEach(t => t.stop()); };
   }, []);
 
-  useEffect(() => {
-    if (videoRef.current && stream && cameraActive) {
-      if (videoRef.current.srcObject !== stream) {
-        videoRef.current.srcObject = stream;
-      }
-      videoRef.current.play().catch(e => console.warn("Auto-play blocked", e));
-    }
-  }, [stream, cameraActive]);
-
+  // 🤖 Face Detection Loop
   useEffect(() => {
     if (!modelsLoaded || !cameraActive || submitted) return;
     let timerId;
     const runDetection = async () => {
       if (videoRef.current?.readyState === 4) {
-        const detections = await faceapi.detectAllFaces(
-          videoRef.current,
-          new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.35 })
-        );
-        setFaceBoxes(detections.map(d => d.box));
+        const dets = await faceapi.detectAllFaces(videoRef.current, new faceapi.TinyFaceDetectorOptions({ inputSize: 160 }));
+        setFaceBoxes(dets.map(d => d.box));
       }
-      // Throttle detection to 1 frame per second to save student's CPU
-      timerId = setTimeout(runDetection, 1000);
+      timerId = setTimeout(runDetection, 1000); 
     };
     runDetection();
     return () => clearTimeout(timerId);
-  }, [modelsLoaded, cameraActive, submitted, stream]);
+  }, [modelsLoaded, cameraActive, submitted]);
 
+  // ↔️ Resizer Setup
   useEffect(() => {
-    if (tabToast && !submitted) logIncident('Tab Switch', 'high', tabToast.msg);
-  }, [tabToast, submitted, logIncident]);
-
-  useEffect(() => {
-    socketService.connect();
-    return () => socketService.disconnect();
+    const syncResizing = (e) => {
+      if (!isResizing.current) return;
+      const container = document.getElementById('coding-right-panel');
+      if (container) {
+        const rect = container.getBoundingClientRect();
+        const pct = ((e.clientY - rect.top) / rect.height) * 100;
+        setEditorHeight(Math.min(85, Math.max(15, pct)));
+      }
+    };
+    const stopResizing = () => { isResizing.current = false; document.body.style.cursor = ''; };
+    window.addEventListener('mousemove', syncResizing);
+    window.addEventListener('mouseup', stopResizing);
+    return () => { window.removeEventListener('mousemove', syncResizing); window.removeEventListener('mouseup', stopResizing); };
   }, []);
 
-  // ⭐ State references to avoid resetting auto-save interval on every keypress
+  // 💾 Auto-Save Loop
   const progressRef = useRef({ answers, currentQ, visited, secondsLeft });
-  useEffect(() => {
-    progressRef.current = { answers, currentQ, visited, secondsLeft };
-  }, [answers, currentQ, visited, secondsLeft]);
-
-  // ⭐ Auto-Save Pipeline Connection: Calls Backend every 30 Seconds
+  useEffect(() => { progressRef.current = { answers, currentQ, visited, secondsLeft }; }, [answers, currentQ, visited, secondsLeft]);
+  
   useEffect(() => {
     if (submitted || terminated || !examId) return;
-    
     const saveTimer = setInterval(async () => {
       const payload = {
-        examId: examId,
+        examId,
         answers: progressRef.current.answers,
         currentQuestionIndex: progressRef.current.currentQ,
         questionStates: progressRef.current.visited,
         remainingTimeSeconds: progressRef.current.secondsLeft
       };
-
       if (!navigator.onLine) {
-        console.warn('Currently offline. Saving progress locally.');
         localStorage.setItem(`vision_offline_exam_${examId}`, btoa(encodeURIComponent(JSON.stringify(payload))));
         return;
       }
-
       try {
         await api.post('/api/exams/save-progress', payload);
-        // ⭐ If successful, remove any offline backup
         localStorage.removeItem(`vision_offline_exam_${examId}`);
       } catch (err) {
-        console.warn('Silent Auto-save failed, saving locally:', err.message);
-        // ⭐ Fallback: save to localStorage if API fails despite being "online"
         localStorage.setItem(`vision_offline_exam_${examId}`, btoa(encodeURIComponent(JSON.stringify(payload))));
       }
-    }, 30000); // 30 seconds
-
+    }, 30000);
     return () => clearInterval(saveTimer);
   }, [examId, submitted, terminated]);
 
+  // ⚙️ Code Execution Handlers
   const handleRunCode = async () => {
-    if (!q || q.type !== 'coding') return;
-    setIsExecuting(true);
-    setExecutionResult(null);
+    const q = questions[currentQ];
+    if (q?.type !== 'coding') return;
+    setIsExecuting(true); setExecutionResult(null); setActiveTab('Execution Details');
     try {
       const answer = answers[q.originalIndex];
       const sourceCode = typeof answer === 'object' && answer !== null ? answer.code : (answer || q.initialCode || "");
-      const result = await runCodingQuestion(examId, q.id || q._id, sourceCode, selectedLanguage);
-      setExecutionResult(result);
-    } catch (err) { 
-      setExecutionResult({ error: 'Execution Failed', details: typeof err === 'string' ? err : (err.error || err.message || 'Unknown error') }); 
-    } finally { 
-      setIsExecuting(false); 
-    }
+      const res = await runCodingQuestion(examId, q.id || q._id, sourceCode, selectedLanguage, false);
+      setExecutionResult(res);
+    } catch (err) { setExecutionResult({ error: 'Failed', details: err.message }); }
+    finally { setIsExecuting(false); }
   };
 
-  const fmtTime = (s) => {
-    const m = Math.floor(s / 60).toString().padStart(2, '0');
-    const sc = (s % 60).toString().padStart(2, '0');
-    return `${m}:${sc}`;
+  const handleCheckTestCases = async () => {
+    const q = questions[currentQ];
+    if (q?.type !== 'coding') return;
+    setIsExecuting(true); setExecutionResult(null); setActiveTab('Test Cases');
+    try {
+      const answer = answers[q.originalIndex];
+      const sourceCode = typeof answer === 'object' && answer !== null ? answer.code : (answer || q.initialCode || "");
+      const res = await runCodingQuestion(examId, q.id || q._id, sourceCode, selectedLanguage, true);
+      setExecutionResult(res);
+    } catch (err) { setExecutionResult({ error: 'Failed', details: err.message }); }
+    finally { setIsExecuting(false); }
   };
-
-  const q = questions[currentQ];
-  const answeredCount = Object.keys(answers).length;
 
   const handleFinalSubmit = async () => {
     try {
       setSubmitted(true);
-      await api.post('/api/exams/submit', {
-        examId: examId || exam._id,
-        answers: answers
-      });
-      // Clear offline backup on successful submission
+      await api.post('/api/exams/submit', { examId, answers });
       localStorage.removeItem(`vision_offline_exam_${examId}`);
       setTimeout(() => navigate('/student'), 2000);
-    } catch (err) {
-      console.error('Final Submit error:', err);
-      setTimeout(() => navigate('/student'), 2000);
-    }
+    } catch (err) { setTimeout(() => navigate('/student'), 2000); }
   };
 
-  // ⭐ FIX: Auto-Submit Exam when the timer runs out
-  const hasAutoSubmitted = useRef(false);
-  useEffect(() => {
-    if (secondsLeft === 0 && !submitted && !terminated && !hasAutoSubmitted.current) {
-      hasAutoSubmitted.current = true;
-      logIncident('Time Expired', 'medium', 'Exam auto-submitted due to time limit.');
-      handleFinalSubmit();
-    }
-  }, [secondsLeft, submitted, terminated, logIncident]);
+  const fmtTime = (s) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
+  
+  const q = questions[currentQ];
+  const answeredCount = Object.keys(answers).length;
 
-  if (terminated) {
-    return (
-      <div className="h-screen bg-[#08020a] flex items-center justify-center font-sans relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(220,38,38,0.15)_0%,transparent_70%)]" />
-        <div className="text-center relative z-10 max-w-lg mx-auto px-6">
-          <XCircle size={48} className="text-red-500 mx-auto mb-8" />
-          <h2 className="text-4xl font-black text-white mb-3">Exam Terminated</h2>
-          <p className="text-zinc-400 text-sm mb-8">{terminated.reason || 'Session terminated by supervisor.'}</p>
-          <div className="flex items-center justify-center gap-3 text-sm text-red-400 font-bold">
-            <span className="w-10 h-10 rounded-full border-2 border-red-500/30 flex items-center justify-center">{terminateCountdown}</span>
-            <p>Redirecting in {terminateCountdown}s</p>
-          </div>
+  if (terminated) return (
+    <div className="h-screen bg-[#08020a] flex items-center justify-center font-sans overflow-hidden">
+      <div className="text-center relative z-10 max-w-lg mx-auto px-6">
+        <XCircle size={48} className="text-red-500 mx-auto mb-8" />
+        <h2 className="text-4xl font-black text-white mb-3 tracking-tight">Exam Terminated</h2>
+        <p className="text-zinc-400 text-sm mb-8 leading-relaxed">{terminated.reason || 'Session terminated by supervisor.'}</p>
+        <div className="flex items-center justify-center gap-3 text-sm text-red-400 font-bold border border-red-500/20 bg-red-500/5 px-6 py-3 rounded-2xl">
+          <span className="w-10 h-10 rounded-full border-2 border-red-500/30 flex items-center justify-center tabular-nums">{terminateCountdown}</span>
+          <p className="uppercase tracking-widest text-[10px]">Redirecting to Portal</p>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
 
-  if (submitted) {
-    return (
-      <div className="h-screen bg-white flex items-center justify-center font-sans">
-        <div className="text-center">
-          <CheckCircle size={60} className="text-green-600 mx-auto mb-6" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Exam Submitted Successfully</h2>
-          <p className="text-gray-400 text-xs">Redirecting to dashboard...</p>
-        </div>
-      </div>
-    );
-  }
+  if (submitted) return <div className="h-screen flex items-center justify-center bg-white font-sans"><div className="text-center"><CheckCircle size={60} className="text-emerald-500 mx-auto mb-6" /><h2 className="text-2xl font-black text-slate-900 tracking-tight">Submission Successful</h2><p className="text-slate-400 text-[12px] font-bold uppercase tracking-widest">Saving encrypted responses...</p></div></div>;
 
   return (
-    <div className="h-screen w-full bg-[#f8f9fa] flex flex-col overflow-hidden select-none font-sans">
-      <style>{`
-        html, body { overflow: hidden !important; height: 100% !important; overscroll-behavior: none !important; }
-        .scroll-thin::-webkit-scrollbar { width: 4px; }
-        .scroll-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-      `}</style>
-
-      {/* Header */}
-      <header className="shrink-0 z-30">
-        <div className="h-[52px] bg-zinc-950 border-b border-zinc-800 flex items-center justify-between px-5">
-          <div className="flex items-center gap-2">
-            <VisionLogo className="w-[18px] h-[18px] text-white" />
-            <span className="text-[12px] font-bold tracking-[0.22em] uppercase text-white">VISION</span>
-            <div className="h-4 w-px bg-zinc-800" />
-            <span className="text-[12px] font-medium text-zinc-400 truncate max-w-[200px]">{exam?.title || 'Technical Assessment'}</span>
+    <div className="h-screen w-full bg-slate-50 flex flex-col overflow-hidden select-none font-sans text-slate-900">
+      <style>{`.scroll-thin::-webkit-scrollbar { width: 4px; } .scroll-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }`}</style>
+      
+      <header className="shrink-0 bg-white border-b border-slate-200 shadow-sm px-5 h-[48px] flex items-center justify-between z-30">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-100"><VisionLogo className="w-5 h-5 text-white" /></div>
+          <span className="text-[13px] font-black tracking-widest">VISION</span>
+          <div className="h-4 w-px bg-slate-200" />
+          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest max-w-[200px] truncate">{exam?.title || 'Exam'}</span>
+        </div>
+        <div className="flex items-center gap-6">
+          <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full ${isTimeCritical ? 'bg-red-50 text-red-600 border-red-200' : 'bg-slate-50 text-slate-700 border-slate-200'} border`}>
+            <Clock size={14} className={isTimeCritical ? 'animate-pulse' : ''} />
+            <span className="text-base font-bold tabular-nums">{fmtTime(secondsLeft)}</span>
           </div>
-          <div className="flex items-center gap-4">
-            <div className={`flex items-center gap-3 px-5 py-1.5 rounded-full ${isTimeCritical ? 'bg-red-500/10 border border-red-500/20' : 'bg-white/5 border border-white/10'}`}>
-              <Clock size={14} className={isTimeCritical ? 'text-red-400 animate-pulse' : 'text-zinc-400'} />
-              <span className={`text-lg font-semibold tabular-nums text-zinc-200`}>{fmtTime(secondsLeft)}</span>
-            </div>
-          </div>
-          <div className="text-right">
-            <p className="text-[11px] font-medium text-zinc-200">Adarsh Maurya</p>
-            <p className="text-[9px] text-zinc-500 font-mono">VSN-89241</p>
+          <div className="flex items-center gap-3 pl-4 border-l border-slate-100 text-right">
+            <div><p className="text-[11px] font-bold leading-none">Candidate AM</p><p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">VSN-89241</p></div>
+            <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-black text-slate-500 shadow-sm">AM</div>
           </div>
         </div>
-        <div className="h-[1px] bg-zinc-900">
-          <div className="h-full bg-white transition-all duration-700" style={{ width: `${(answeredCount / questions.length) * 100}%` }} />
-        </div>
+        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-slate-50"><div className="h-full bg-indigo-600 transition-all duration-700" style={{ width: `${(answeredCount/Math.max(questions.length, 1))*100}%` }} /></div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <aside className="w-[240px] shrink-0 bg-white border-r border-gray-200 flex flex-col gap-[24px]">
-            <div className="flex-1 overflow-hidden">
-               <QuestionPalette 
-                  questions={questions} currentQ={currentQ} answers={answers} visited={visited} markedForReview={markedForReview} 
-                  navigateTo={(shuffledIndex) => { 
-                    setCurrentQ(shuffledIndex); 
-                    const originalIndex = questions[shuffledIndex]?.originalIndex;
-                    if (originalIndex !== undefined) {
-                      setVisited(v => ({ ...v, [originalIndex]: true })); 
-                    }
-                  }}
-               />
-            </div>
+        <aside className="w-[240px] shrink-0 bg-white border-r border-slate-200 flex flex-col shadow-sm">
+          <QuestionPalette 
+             questions={questions} currentQ={currentQ} answers={answers} visited={visited} markedForReview={markedForReview} 
+             navigateTo={(i) => { 
+                setCurrentQ(i); 
+                const originalIndex = questions[i]?.originalIndex;
+                if (originalIndex !== undefined) setVisited(v => ({ ...v, [originalIndex]: true })); 
+             }} 
+          />
+          <div className="p-4 border-t border-slate-100">
+             <button onClick={handleRequestHelp} disabled={helpLoading} className="w-full h-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-widest hover:bg-amber-100 transition-all">
+                {helpLoading ? <Loader2 size={14} className="animate-spin" /> : <MessageSquare size={14} />} Need Help?
+             </button>
+          </div>
+          <div className="mt-auto p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/30">
+            <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1.5"><div className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse" /> Encrypted Session</span>
+            <button onClick={() => setShowExitPrompt(true)} className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors border border-red-100"><Power size={14} /></button>
+          </div>
+        </aside>
 
-            {/* Help Button Area */}
-            <div className="p-4 border-t border-gray-100 bg-white">
-               <button 
-                  onClick={handleRequestHelp}
-                  disabled={helpLoading}
-                  className="w-full flex items-center justify-center gap-2 py-3 bg-amber-50 text-amber-600 border border-amber-200 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-amber-100 transition-all active:scale-95 disabled:opacity-50"
-               >
-                  {helpLoading ? <Loader2 size={14} className="animate-spin" /> : <MessageSquare size={14} />}
-                  Need Help?
-               </button>
-            </div>
-
-            <div className="p-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
-               <span className="text-[8px] font-black text-emerald-600 tracking-wider">ENCRYPTED</span>
-               <button onClick={() => setShowExitPrompt(true)} className="p-2 rounded-lg bg-red-500/10 text-red-500"><Power size={14} /></button>
-            </div>
-          </aside>
-
-        {/* Main Content Area */}
-        <main className="flex-1 flex overflow-hidden bg-[#f8f9fa]">
-          {/* Question Scroll Area */}
-          <div className="flex-1 overflow-y-auto scroll-thin px-8 py-6">
-            <div className="w-full">
-              <AnimatePresence mode="wait">
-                <motion.div key={currentQ} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                  <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)]">
-                    <div className="px-8 py-4 flex items-center justify-between bg-gray-50/50 border-b border-gray-100">
-                      <div className="flex items-center gap-3">
-                        <span className="text-[11px] font-bold text-gray-900 tracking-tight">QUESTION {currentQ + 1} OF {questions.length}</span>
-                        <div className="h-3 w-px bg-gray-200" />
-                        <div className="flex gap-4 text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                          <span>COMPUTER SCIENCE</span>
-                          <span>MAX: {questions.length * 4}</span>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        {markedForReview[q?.originalIndex] && <span className="text-[9px] font-black text-violet-600 bg-violet-50 px-2 py-0.5 rounded border border-violet-100 uppercase tracking-widest">Review</span>}
-                        {answers[q?.originalIndex] !== undefined && <span className="text-[9px] font-black text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-100 uppercase tracking-widest">Saved</span>}
-                      </div>
+        <main className="flex-1 flex overflow-hidden bg-slate-50">
+          <div className="flex-1 flex flex-col min-w-0">
+            {q?.type === 'coding' ? (
+              <div className="flex-1 flex min-h-0 overflow-hidden">
+                <div className="w-[42%] shrink-0 flex flex-col min-h-0 bg-white border-r border-slate-200">
+                  <div className="bg-slate-50 border-b border-slate-100 px-6 py-3.5 flex items-center justify-between shrink-0">
+                    <span className="text-[11px] font-black text-slate-900 uppercase tracking-widest">Objective</span>
+                    {markedForReview[q?.originalIndex] && <div className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-2 py-0.5 rounded-md border border-amber-100"><Bookmark size={10} className="fill-amber-600" /><span className="text-[9px] font-black uppercase tracking-wider">Flagged</span></div>}
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-8 scroll-thin font-medium">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="px-2.5 py-1 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm">Q{currentQ + 1}</div>
+                      <div className="px-2.5 py-1 bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-[10px] font-black uppercase tracking-widest">{q?.marks || 10} Marks</div>
                     </div>
-                    
-                    <div className="p-8 pt-10">
-                      <h2 className="text-[18px] font-semibold text-gray-900 leading-snug">{q?.questionText}</h2>
+                    <h2 className="text-xl font-black text-slate-900 leading-snug tracking-tight mb-6">{q?.questionText}</h2>
+                    <div className="prose prose-slate prose-sm text-slate-500 leading-relaxed space-y-4">
+                      <p>Implement the solution according to constraints. Standard input/output is supported.</p>
+                      <ul className="list-disc pl-5 text-[12px] font-semibold space-y-1">
+                        <li>Ensure code is optimized.</li>
+                        <li>Handle edge cases (empty input, null, etc).</li>
+                      </ul>
                     </div>
-                    <div className="h-px bg-gray-100 mx-8" />
-                    
-                    <div className="p-8">
-                      {q?.type === 'mcq' && (
-                        <div className="grid gap-3">
-                          {q?.displayOptions?.map((opt, i) => {
-                            const isSelected = answers[q.originalIndex] === opt.originalIndex;
-                            return (
-                              <button 
-                                key={i} 
-                                onClick={() => setAnswers(p => ({ ...p, [q.originalIndex]: opt.originalIndex }))} 
-                                className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${isSelected ? 'border-teal-600 bg-teal-50' : 'border-gray-100 hover:border-gray-200'}`}
-                              >
-                                <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${isSelected ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-400'}`}>{String.fromCharCode(65 + i)}</span>
-                                <span className={`text-[15px] flex-1 text-left ${isSelected ? 'text-gray-900 font-semibold' : 'text-gray-600'}`}>{opt.text}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                      {q?.type === 'coding' && (
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Environment</span>
-                              <select 
-                                value={selectedLanguage} 
-                                onChange={(e) => setSelectedLanguage(e.target.value)}
-                                className="bg-white border border-gray-200 rounded-md px-2 py-1 text-[10px] font-bold text-gray-600 focus:outline-none focus:border-teal-400"
-                              >
-                                <option value="javascript">Node.js</option>
-                                <option value="python">Python 3</option>
-                                <option value="cpp">C++</option>
-                                <option value="java">Java</option>
-                              </select>
-                            </div>
-                            <button onClick={handleRunCode} disabled={isExecuting} className="px-4 py-1.5 bg-[#0f766e] hover:bg-[#0d9488] text-white text-[10px] font-bold rounded-lg flex items-center gap-2 transition-colors shadow-sm">
-                              {isExecuting ? <RotateCcw size={12} className="animate-spin" /> : <Play size={12} />} RUN CODE
-                            </button>
-                          </div>
-                          
-                          <div 
-                            className="border border-gray-200 rounded-xl overflow-hidden shadow-inner bg-white"
-                            onPaste={(e) => {
-                              e.preventDefault();
-                              logIncident('Paste Blocked', 'high', 'Attempted to paste content into the code editor.');
-                              return false;
-                            }}
-                            onCopy={(e) => e.preventDefault()}
-                            onCut={(e) => e.preventDefault()}
-                          >
-                             <Editor 
-                                key={`editor-${q.originalIndex}`}
-                                height="400px" 
-                                language={selectedLanguage === 'cpp' ? 'cpp' : selectedLanguage} 
-                                theme="light"
-                                defaultValue={typeof answers[q.originalIndex] === 'object' ? answers[q.originalIndex].code : (answers[q.originalIndex] ?? q.initialCode)}
-                                onChange={(value) => setAnswers(p => ({ 
-                                  ...p, 
-                                  [q.originalIndex]: { code: value, language: selectedLanguage } 
-                                }))}
-                                options={{
-                                  fontSize: 14,
-                                  minimap: { enabled: false },
-                                  scrollBeyondLastLine: false,
-                                  automaticLayout: true,
-                                  padding: { top: 20, bottom: 20 },
-                                  contextmenu: false
-                                }}
-                            />
-                          </div>
-
-                          {executionResult && (
-                            <div className={`rounded-xl border overflow-hidden ${executionResult.allPassed ? 'border-green-100 bg-green-50/30' : 'border-red-100 bg-red-50/10'} transition-all`}>
-                              <div className={`px-4 py-2 border-b flex items-center justify-between ${executionResult.allPassed ? 'bg-green-100/50 border-green-100' : 'bg-red-50/50 border-red-100'}`}>
-                                <h4 className={`text-[11px] font-bold uppercase tracking-wider ${executionResult.allPassed ? 'text-green-700' : 'text-red-700'}`}>
-                                  {executionResult.allPassed ? 'Execution Results: All Passed ✅' : 'Execution Results: Breakdown'}
-                                </h4>
-                                {executionResult.results && (
-                                  <div className="text-[10px] font-mono text-zinc-500">
-                                    Total Cases: {executionResult.results.length}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="p-4 space-y-3">
-                                {executionResult.results ? (
-                                  executionResult.results.map((tc, index) => (
-                                    <div key={index} className={`p-3 rounded-lg border flex flex-col gap-2 ${tc.passed ? 'bg-green-50/50 border-green-100/50' : 'bg-red-50/50 border-red-100/50'}`}>
-                                      <div className="flex items-center justify-between">
-                                          <span className={`text-[10px] font-bold uppercase ${tc.passed ? 'text-green-700' : 'text-red-700'}`}>
-                                            Case {tc.testCaseId}: {tc.passed ? 'Passed ✅' : 'Failed ❌'}
-                                          </span>
-                                          {tc.time && <span className="text-[9px] font-mono text-gray-500">{tc.time}s | {tc.memory} KB</span>}
-                                      </div>
-                                      {!tc.passed && tc.actualOutput && (
-                                        <div className="bg-white/50 p-2 rounded border border-red-100/50">
-                                          <p className="text-[9px] font-bold text-red-400 uppercase mb-1">Actual Output</p>
-                                          <pre className="text-[11px] font-mono text-red-600 whitespace-pre-wrap">{tc.actualOutput}</pre>
-                                        </div>
-                                      )}
-                                      {!tc.passed && tc.error && (
-                                        <div className="bg-red-900/5 p-2 rounded border border-red-100/50">
-                                          <p className="text-[9px] font-bold text-red-400 uppercase mb-1">Engine Error</p>
-                                          <pre className="text-[11px] font-mono text-red-800 whitespace-pre-wrap">{tc.error}</pre>
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))
-                                ) : (
-                                  <div className="flex flex-col gap-1">
-                                    <pre className="text-[11px] font-mono text-red-400 whitespace-pre-wrap font-bold">{executionResult.error}</pre>
-                                    <pre className="text-[11px] font-mono text-red-400 whitespace-pre-wrap">{executionResult.details}</pre>
-                                  </div>
-                                )}
-                              </div>
+                  </div>
+                </div>
+                
+                <div id="coding-right-panel" className="flex-1 flex flex-col min-h-0 relative bg-slate-50">
+                  <div className="absolute inset-0 flex flex-col">
+                    <div style={{ height: `${editorHeight}%` }} className="flex flex-col shrink-0 min-h-0 bg-white">
+                      <div className="flex items-center justify-between px-4 h-10 bg-slate-50 border-b border-slate-200 shrink-0">
+                        <div className="flex items-center gap-2 text-slate-400"><Terminal size={14} /><span className="text-[11px] font-black uppercase tracking-widest">Environment</span></div>
+                        <div className="relative">
+                          <button onClick={() => setIsLangDropdownOpen(p => !p)} className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-2.5 h-[26px] hover:bg-slate-50 transition-all text-[11px] font-black uppercase tracking-widest text-slate-600 shadow-sm">{selectedLanguage}<ChevronDown size={12} /></button>
+                          {isLangDropdownOpen && (
+                            <div className="absolute top-full right-0 mt-1 w-32 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1 overflow-hidden">
+                              {['javascript', 'python', 'cpp', 'java'].map(l => (
+                                <button key={l} onClick={() => { setSelectedLanguage(l); setIsLangDropdownOpen(false); }} className={`w-full text-left px-3 py-1.5 text-[11px] font-black uppercase tracking-wider transition-colors ${selectedLanguage === l ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'}`}>{l}</button>
+                              ))}
                             </div>
                           )}
                         </div>
-                      )}
-                      {q?.type === 'short' && (
-                        <textarea
-                          value={answers[q.originalIndex] || ''}
-                          onChange={(e) => setAnswers(p => ({ ...p, [q.originalIndex]: e.target.value }))}
-                          placeholder="Type your response here..."
-                          className="w-full h-64 bg-slate-50 border border-gray-100 rounded-lg p-6 text-gray-800 text-[15px] focus:outline-none focus:border-teal-200 transition-all resize-none"
+                      </div>
+                      <div className="flex-1 shadow-inner">
+                        <Editor 
+                           key={`editor-${q?.originalIndex}`}
+                           height="100%" 
+                           language={selectedLanguage === 'cpp' ? 'cpp' : selectedLanguage} 
+                           theme="light" 
+                           value={typeof answers[q?.originalIndex] === 'object' ? answers[q?.originalIndex].code : (answers[q?.originalIndex] ?? q?.initialCode)} 
+                           onChange={v => setAnswers(p => ({ ...p, [q?.originalIndex]: { code: v, language: selectedLanguage } }))} 
+                           options={{ fontSize: 13, minimap: { enabled: false }, automaticLayout: true, padding: { top: 16 } }} 
                         />
-                      )}
+                      </div>
+                    </div>
+                    <div className="h-1 bg-slate-200 hover:bg-indigo-300 cursor-row-resize z-10 transition-all flex items-center justify-center group" onMouseDown={() => { isResizing.current = true; document.body.style.cursor = 'row-resize'; }}><div className="w-12 h-1 bg-slate-300 group-hover:bg-indigo-500 rounded-full transition-colors" /></div>
+                    <div className="flex-1 flex flex-col min-h-0 bg-white">
+                      <div className="flex items-center px-4 border-b border-slate-200 shrink-0 h-10 bg-white z-10">
+                        <button onClick={() => setActiveTab('Test Cases')} className={`h-full px-4 text-[11px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'Test Cases' ? 'text-indigo-600 border-indigo-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>Test Cases</button>
+                        <button onClick={() => setActiveTab('Execution Details')} className={`h-full px-4 text-[11px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'Execution Details' ? 'text-indigo-600 border-indigo-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>Output Log</button>
+                      </div>
+                      <div className="flex-1 overflow-y-auto p-6 scroll-thin bg-slate-50/40">
+                        {isExecuting ? <div className="h-full flex flex-col items-center justify-center gap-3 text-indigo-500"><RotateCcw size={24} className="animate-spin" /><span className="text-[10px] font-black uppercase tracking-widest animate-pulse">Processing Execution...</span></div> : executionResult ? (
+                          <div className="space-y-4">
+                            {activeTab === 'Test Cases' ? (
+                                <div className="grid grid-cols-1 gap-4">
+                                    {executionResult.results ? executionResult.results.map((res, i) => (
+                                        <div key={i} className={`bg-white border rounded-2xl border-slate-200 overflow-hidden`}>
+                                            <div className={`px-4 py-2.5 border-b flex items-center justify-between ${res.passed ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-red-50 text-red-700 border-red-100'}`}>
+                                                <span className="text-[10px] font-black uppercase tracking-widest">Case {i + 1}</span>
+                                                <span className="text-[9px] font-black uppercase">{res.passed ? 'PASSED ✅' : 'FAILED ❌'}</span>
+                                            </div>
+                                            <div className="p-4 grid grid-cols-3 gap-4">
+                                                <div><p className="text-[9px] font-black text-slate-400 uppercase mb-1">Actual</p><pre className="text-[10px] font-mono bg-slate-50 p-2 rounded border border-slate-100 overflow-x-auto">{res.actualOutput || 'N/A'}</pre></div>
+                                                <div className="col-span-2"><p className="text-[9px] font-black text-slate-400 uppercase mb-1">Error/Detail</p><pre className="text-[10px] font-mono text-red-500">{res.error || 'None'}</pre></div>
+                                            </div>
+                                        </div>
+                                    )) : <pre className="text-red-500 font-mono text-xs">{executionResult.error}: {executionResult.details}</pre>}
+                                </div>
+                            ) : (
+                                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                                    <pre className="text-[13px] font-mono leading-relaxed text-emerald-400/90 whitespace-pre-wrap">{executionResult.stdout || executionResult.details || 'No output.'}</pre>
+                                </div>
+                            )}
+                          </div>
+                        ) : <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-4"><Play size={48} className="opacity-20 translate-x-1" /><span className="text-[10px] font-black uppercase tracking-widest">Awaiting Code Execution</span></div>}
+                      </div>
                     </div>
                   </div>
-
-                  <div className="mt-8 flex items-center justify-between">
-                    <div className="flex gap-3">
-                      <button onClick={() => {
-                        const prevQIndex = Math.max(0, currentQ - 1);
-                        setCurrentQ(prevQIndex);
-                        const originalIndex = questions[prevQIndex]?.originalIndex;
-                        if (originalIndex !== undefined) setVisited(v => ({ ...v, [originalIndex]: true }));
-                      }} disabled={currentQ === 0} className="px-6 py-2.5 rounded-xl text-[12px] font-bold text-gray-600 border border-gray-200 bg-white hover:bg-gray-50 flex items-center gap-2 disabled:opacity-30"><ChevronLeft size={16} /> Previous</button>                      
-                      <button onClick={() => {
-                        const originalIndex = questions[currentQ]?.originalIndex;
-                        if (originalIndex !== undefined) setMarkedForReview(p => ({ ...p, [originalIndex]: !p[originalIndex] }));
-                      }} className={`px-6 py-2.5 rounded-xl text-[12px] font-bold border transition-all ${markedForReview[q?.originalIndex] ? 'bg-violet-600 text-white' : 'bg-white text-gray-600'}`}>Review Later</button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto scroll-thin px-8 py-10">
+                <div className="max-w-3xl mx-auto w-full bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden mb-12">
+                  <div className="p-10 border-b border-slate-100">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-xl text-[11px] font-black uppercase tracking-widest border border-indigo-100">Q{currentQ + 1}</div>
+                      <div className="px-3 py-1 bg-slate-100 text-slate-500 rounded-xl text-[11px] font-bold uppercase tracking-widest">{q?.type === 'mcq' ? 'Choice Selection' : 'Written Case'}</div>
+                      {markedForReview[q?.originalIndex] && <div className="ml-auto text-violet-600 bg-violet-50 px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest border border-violet-100 flex items-center gap-2"><Bookmark size={12} fill="currentColor" /> Flagged</div>}
                     </div>
-                    {currentQ < questions.length - 1 ? (                      
-                      <button onClick={() => { 
-                        const nextQIndex = currentQ + 1;
-                        setCurrentQ(nextQIndex); 
-                        const originalIndex = questions[nextQIndex]?.originalIndex;
-                        if (originalIndex !== undefined) setVisited(v => ({ ...v, [originalIndex]: true })); 
-                      }} className="bg-[#0f766e] text-white px-8 py-2.5 rounded-xl text-[12px] font-bold flex items-center gap-2">Save & Next <ChevronRight size={16} /></button>
+                    <h2 className="text-3xl font-black text-slate-900 leading-tight tracking-tight">{q?.questionText}</h2>
+                  </div>
+                  <div className="p-10 pb-12">
+                    {q?.type === 'mcq' ? (
+                      <div className="grid gap-4">
+                        {q?.displayOptions?.map((opt, i) => {
+                          const isS = answers[q?.originalIndex] === opt.originalIndex;
+                          return (
+                            <button key={i} onClick={() => setAnswers(p => ({ ...p, [q?.originalIndex]: opt.originalIndex }))} className={`w-full flex items-center gap-6 p-6 rounded-2xl border-2 transition-all duration-300 text-left relative group ${isS ? 'bg-indigo-50/50 border-indigo-600 shadow-lg shadow-indigo-100/50' : 'bg-white border-slate-100 hover:border-slate-300 hover:bg-slate-50/50'}`}>
+                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-[14px] font-black transition-all ${isS ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-100 text-slate-400'}`}>{String.fromCharCode(65 + i)}</div>
+                              <span className={`text-[17px] leading-relaxed flex-1 ${isS ? 'font-bold text-indigo-900' : 'font-medium text-slate-600'}`}>{opt.text}</span>
+                              {isS && <CheckCircle2 size={24} className="text-indigo-600 animate-in zoom-in duration-300" />}
+                            </button>
+                          );
+                        })}
+                      </div>
                     ) : (
-                      <div className="text-[11px] font-bold text-gray-400 py-2.5">End of Assessment</div>
+                      <div className="relative group">
+                          <textarea value={answers[q?.originalIndex] || ''} onChange={e => setAnswers(p => ({ ...p, [q?.originalIndex]: e.target.value }))} placeholder="Type your structured response here..." className="w-full h-96 bg-slate-50/50 border-2 border-slate-100 rounded-3xl p-10 focus:bg-white focus:border-indigo-500 focus:ring-8 focus:ring-indigo-500/5 transition-all outline-none resize-none shadow-inner font-medium text-slate-700 leading-relaxed text-[17px]" />
+                          <div className="absolute top-6 right-6"><div className="w-2 h-2 rounded-full bg-indigo-200 group-focus-within:bg-indigo-500 animate-pulse" /></div>
+                      </div>
                     )}
                   </div>
+                </div>
+              </div>
+            )}
 
-                  {/* ── Bottom Info Panel ── */}
-                  <div className="mt-6 sticky bottom-0 z-10 bg-white rounded-xl border border-gray-200 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] overflow-hidden">
-                    {/* Progress bar */}
-                    <div className="h-1 bg-gray-100">
-                      <div
-                        className="h-full bg-gradient-to-r from-teal-500 to-teal-600 transition-all duration-700"
-                        style={{ width: `${(answeredCount / Math.max(questions.length, 1)) * 100}%` }}
-                      />
-                    </div>
-
-                    <div className="px-6 py-4 flex items-center justify-between gap-6 flex-wrap">
-                      {/* Stats pills */}
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-[#15803d]" />
-                          <span className="text-[11px] font-bold text-gray-500">
-                            <span className="text-gray-900">{answeredCount}</span> Answered
-                          </span>
-                        </div>
-                        <div className="w-px h-3 bg-gray-200" />
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-gray-300" />
-                          <span className="text-[11px] font-bold text-gray-500">
-                            <span className="text-gray-900">{questions.length - answeredCount}</span> Remaining
-                          </span>
-                        </div>
-                        <div className="w-px h-3 bg-gray-200" />
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-[#7c3aed]" />
-                          <span className="text-[11px] font-bold text-gray-500">
-                            <span className="text-gray-900">{Object.values(markedForReview).filter(Boolean).length}</span> Marked
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Marks badge */}
-                      {q?.marks && (
-                        <div className="flex items-center gap-2 px-3 py-1.5 bg-teal-50 border border-teal-100 rounded-lg">
-                          <CheckCircle size={12} className="text-teal-600" />
-                          <span className="text-[11px] font-bold text-teal-700">+{q.marks} marks for correct answer</span>
-                        </div>
-                      )}
-
-                      {/* Final Action */}
-                      <button onClick={() => setShowConfirm(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-xl text-[12px] font-bold flex items-center gap-2 shadow-lg transition-colors ml-auto">
-                        Complete Assessment <Send size={14} />
-                      </button>
-                    </div>
+            <div className="bg-white border-t border-slate-200 px-8 h-[64px] flex items-center justify-between shrink-0 shadow-[0_-8px_20px_-8px_rgba(0,0,0,0.05)] z-20">
+              <div className="flex items-center gap-3">
+                <button onClick={() => {
+                   const p = Math.max(0, currentQ - 1);
+                   setCurrentQ(p); setVisited(v => ({ ...v, [questions[p].originalIndex]: true }));
+                }} disabled={currentQ === 0} className={`h-11 px-6 flex items-center gap-2.5 rounded-xl text-[12px] font-black uppercase tracking-widest border transition-all ${currentQ === 0 ? 'text-slate-300 border-slate-100 opacity-50' : 'text-slate-600 border-slate-200 hover:bg-slate-50 shadow-sm active:scale-95'}`}><ChevronLeft size={18} /> Back</button>
+                <button onClick={() => setMarkedForReview(p => ({ ...p, [q?.originalIndex]: !p[q?.originalIndex] }))} className={`h-11 px-6 rounded-xl text-[12px] font-black uppercase tracking-widest border transition-all ${markedForReview[q?.originalIndex] ? 'bg-violet-600 text-white border-violet-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>{markedForReview[q?.originalIndex] ? 'Flagged' : 'Flag for Review'}</button>
+              </div>
+              <div className="flex items-center gap-4">
+                {q?.type === 'coding' && (
+                  <div className="flex gap-2">
+                    <button onClick={handleRunCode} disabled={isExecuting} className="h-11 px-6 flex items-center gap-2.5 rounded-xl text-[12px] font-black uppercase tracking-widest bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:shadow-sm disabled:opacity-50 transition-all active:scale-95"><Play size={16} fill="currentColor" /> Run</button>
+                    <button onClick={handleCheckTestCases} disabled={isExecuting} className="h-11 px-8 flex items-center gap-2.5 rounded-xl text-[12px] font-black uppercase tracking-widest bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-100 disabled:opacity-50 transition-all active:scale-95"><Send size={16} /> Submit Code</button>
                   </div>
-                </motion.div>
-              </AnimatePresence>
+                )}
+                <div className="h-8 w-px bg-slate-100 mx-2" />
+                <button onClick={() => {
+                   if (currentQ < questions.length - 1) {
+                     const n = currentQ + 1;
+                     setCurrentQ(n); setVisited(v => ({ ...v, [questions[n].originalIndex]: true }));
+                   } else {
+                     setShowConfirm(true);
+                   }
+                }} className={`h-11 px-8 rounded-xl text-[12px] font-black uppercase tracking-widest transition-all ${currentQ === questions.length - 1 ? 'bg-emerald-600 text-white shadow-lg' : 'bg-slate-900 text-white shadow-lg hover:bg-black'}`}>{currentQ === questions.length - 1 ? 'Final Hand In' : 'Save & Next'} <ChevronRight size={18} className="ml-1" /></button>
+              </div>
             </div>
           </div>
-
-          {/* ── Proctoring Right Panel ── */}
-          <aside className="w-[200px] shrink-0 bg-white border-l border-gray-100 flex flex-col items-center pt-6 px-4 gap-5 overflow-y-auto scroll-thin">
-            {/* Camera Feed */}
-            <div className="w-full">
-              <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.18em] mb-3 text-center">Live Feed</p>
-              <div className="bg-white/80 backdrop-blur-md p-2 rounded-2xl border border-gray-100 shadow-md">
-                <ProctoringSidebar cameraActive={cameraActive} videoRef={videoRef} faceActive={faceBoxes.length > 0} />
-              </div>
-            </div>
-
-            {/* Integrity Score */}
-            <div className="w-full bg-gray-50 border border-gray-100 rounded-xl p-4 text-center">
-              <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.15em] mb-2">Integrity</p>
-              <div className="relative w-14 h-14 mx-auto mb-2">
-                <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
-                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="#f1f5f9" strokeWidth="3" />
-                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="#0d9488" strokeWidth="3"
-                    strokeDasharray={`${confidence} ${100 - confidence}`} strokeLinecap="round" />
-                </svg>
-                <span className="absolute inset-0 flex items-center justify-center text-[13px] font-black text-gray-800">{confidence}%</span>
-              </div>
-              <div className="flex items-center justify-center gap-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wide">Verified</span>
-              </div>
-            </div>
-
-            {/* Proctoring Status */}
-            <div className="w-full bg-gray-50 border border-gray-100 rounded-xl p-4">
-              <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.15em] mb-3">Status</p>
-              <div className="flex flex-col gap-2.5">
-                {[
-                  { label: 'Camera', ok: cameraActive },
-                  { label: 'Network', ok: true },
-                  { label: 'Audio', ok: true },
-                  { label: 'Face ID', ok: faceBoxes.length > 0 },
-                ].map(({ label, ok }) => (
-                  <div key={label} className="flex items-center justify-between">
-                    <span className="text-[10px] font-semibold text-gray-500">{label}</span>
-                    <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[8px] font-bold uppercase tracking-wide ${
-                      ok ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'
-                    }`}>
-                      <div className={`w-1 h-1 rounded-full ${ok ? 'bg-emerald-500' : 'bg-red-500 animate-pulse'}`} />
-                      {ok ? 'OK' : 'Off'}
-                    </div>
-                  </div>
-                ))}
-              </div>
+          
+          <aside className="w-[240px] shrink-0 bg-white border-l border-slate-200 flex flex-col items-center pt-8 px-5 gap-7 overflow-y-auto scroll-thin">
+            <ProctoringSidebar cameraActive={cameraActive} videoRef={videoRef} faceActive={faceBoxes.length > 0} confidence={confidence} />
+            <div className="mt-auto pb-6 w-full opacity-40 hover:opacity-100 transition-opacity">
+                <VisionLogo className="w-6 h-6 text-slate-400 mx-auto grayscale" />
+                <p className="text-[7px] font-black text-slate-400 text-center mt-2 tracking-widest uppercase">Secured by Vision AI Engine</p>
             </div>
           </aside>
         </main>
       </div>
 
-      <SubmitModal isOpen={showConfirm} onClose={() => setShowConfirm(false)} stats={{ answered: answeredCount, unanswered: questions.length - answeredCount, marked: Object.values(markedForReview).filter(Boolean).length }} onConfirm={handleFinalSubmit} />
-      <ExitModal isOpen={showExitPrompt} onClose={() => { setShowExitPrompt(false); setExitError(''); setExitPassword(''); }} password={exitPassword} setPassword={e => { setExitPassword(e); setExitError(''); }} error={exitError} onExit={() => { if (exitPassword === '12345') { handleFinalSubmit(); } else { setExitError('Incorrect Pass'); setExitPassword(''); } }} />
+      <SubmitModal isOpen={showConfirm} onClose={() => setShowConfirm(false)} stats={{ answered: answeredCount, total: questions.length, marked: Object.values(markedForReview).filter(Boolean).length }} onConfirm={handleFinalSubmit} />
+      <ExitModal isOpen={showExitPrompt} onClose={() => setShowExitPrompt(false)} password={exitPassword} setPassword={setExitPassword} error={exitError} onExit={() => { if (exitPassword === '12345') navigate('/student'); else setExitError('Denied'); }} />
       <TabToast toast={tabToast} />
 
-      {/* Broadcast Alert Overlay */}
+      {/* 📡 Live Broadcast Overlay */}
       <AnimatePresence>
         {broadcastMessage && (
-          <motion.div 
-            initial={{ opacity: 0, y: -50 }} 
-            animate={{ opacity: 1, y: 0 }} 
-            exit={{ opacity: 0, y: -50 }} 
-            className="fixed top-16 left-1/2 -translate-x-1/2 z-[250] pointer-events-none"
-          >
-            <div className="bg-blue-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-start gap-4 max-w-xl">
-              <div className="bg-white/20 p-2 rounded-xl shrink-0 mt-0.5">
-                <Radio size={20} className="animate-pulse" />
-              </div>
-              <div>
-                <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-200 mb-1">Live Announcement</h3>
-                <p className="text-sm font-medium leading-snug">{broadcastMessage}</p>
-              </div>
-              <button 
-                onClick={() => setBroadcastMessage(null)}
-                className="pointer-events-auto ml-2 p-1 hover:bg-white/10 rounded-lg transition-colors text-blue-200 hover:text-white"
-              >
-                <XCircle size={16} />
-              </button>
+          <motion.div initial={{ opacity: 0, y: -50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -50 }} className="fixed top-16 left-1/2 -translate-x-1/2 z-[250] pointer-events-none">
+            <div className="bg-indigo-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-start gap-4 max-w-xl border border-white/10 ring-8 ring-indigo-500/10 pointer-events-auto">
+              <div className="bg-white/20 p-2 rounded-xl shrink-0 mt-0.5"><Radio size={20} className="animate-pulse" /></div>
+              <div><h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-100 mb-1">Live Announcement</h3><p className="text-sm font-semibold leading-relaxed text-white">{broadcastMessage}</p></div>
+              <button onClick={() => setBroadcastMessage(null)} className="ml-2 p-1 hover:bg-white/10 rounded-lg transition-colors"><XCircle size={18} /></button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Fullscreen Overlay */}
+      {/* 🔒 Fullscreen Overlay */}
       {!isFullscreen && !submitted && !terminated && (
-        <div className="fixed inset-0 z-[200] bg-zinc-950/90 backdrop-blur-md flex items-center justify-center p-8">
-          <div className="max-w-md w-full bg-zinc-900 border border-red-500/30 p-8 rounded-3xl text-center shadow-2xl">
-            <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <ShieldAlert size={32} className="text-red-500" />
-            </div>
-            <h2 className="text-2xl font-black text-white mb-2">Fullscreen Required</h2>
-            <p className="text-zinc-400 text-sm mb-8 leading-relaxed">
-              Exiting fullscreen is a violation. Please return to fullscreen immediately to continue the exam. 
-              Multiple violations will result in automatic termination.
-            </p>
-            <button 
-              onClick={() => document.documentElement.requestFullscreen()}
-              className="w-full py-4 bg-red-600 hover:bg-red-500 text-white rounded-2xl font-bold transition-all shadow-lg shadow-red-900/20 active:scale-95"
-            >
-              Back to Fullscreen
-            </button>
+        <div className="fixed inset-0 z-[200] bg-slate-900/98 backdrop-blur-2xl flex items-center justify-center p-8 text-center animate-in fade-in duration-700">
+          <div className="max-w-md w-full bg-slate-900 border border-red-500/20 p-10 rounded-[40px] shadow-2xl ring-1 ring-white/5">
+            <div className="w-20 h-20 bg-red-500/10 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-inner ring-1 ring-red-500/20"><ShieldAlert size={40} className="text-red-500" /></div>
+            <h2 className="text-3xl font-black text-white mb-3 uppercase tracking-tighter">Security Violation</h2>
+            <p className="text-slate-400 text-sm mb-10 leading-relaxed font-medium">Fullscreen mode is mandatory for exam integrity. Your activity has been logged and flagged for supervisor review.</p>
+            <button onClick={() => document.documentElement.requestFullscreen()} className="w-full py-5 bg-red-600 hover:bg-red-500 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[12px] transition-all shadow-xl shadow-red-900/40 transform active:scale-95">Restore Secure Session</button>
           </div>
         </div>
       )}
@@ -1115,29 +835,13 @@ export default function ExamCockpit() {
   );
 }
 
-/**
- * 🎲 SEEDED RANDOMIZER HOOK (LCG)
- * Seeded by a unique string (examId + studentId) so the student
- * always gets the same sequence even on page refresh.
- */
+// 🎲 Randomization Helpers
 function generateSeed(str) {
   let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i);
-    hash |= 0;
-  }
+  for (let i = 0; i < str.length; i++) { hash = (hash << 5) - hash + str.charCodeAt(i); hash |= 0; }
   let seed = Math.abs(hash) || 1;
-  return function() {
-    seed = (seed * 1664525 + 1013904223) % 4294967296;
-    return seed / 4294967296;
-  };
+  return function() { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
 }
-
-/**
- * 🔀 SEEDED FISHER-YATES SHUFFLE
- * Standard shuffle algorithm but uses our seeded randomFunc
- * to ensure consistency.
- */
 function seededShuffle(array, randomFunc) {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {

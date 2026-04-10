@@ -1091,9 +1091,9 @@ exports.getAdminStats = asyncHandler(async (req, res) => {
 
 
 // ─────────────── POST /api/exams/run-code ───────────────
-// Run Coding Question against Test Cases
+// Run Coding Question against Test Cases or Raw execution
 exports.runCode = asyncHandler(async (req, res) => {
-    const { examId, questionId, sourceCode, language } = req.body;
+    const { examId, questionId, sourceCode, language, isSubmit } = req.body;
 
     const exam = await Exam.findById(examId);
     if (!exam) {
@@ -1107,6 +1107,19 @@ exports.runCode = asyncHandler(async (req, res) => {
         throw new Error('Invalid coding question');
     }
 
+    // RAW EXECUTION - Just return output
+    if (!isSubmit) {
+        // We can pass a sample input if one exists, else empty
+        const sampleInput = question.testCases && question.testCases.length > 0 ? question.testCases[0].input : "";
+        const executionResult = await executeCode(sourceCode, language, sampleInput);
+
+        if (!executionResult.success) {
+            return res.json({ allPassed: false, error: 'Execution Error', details: executionResult.error, isRawExecution: true });
+        }
+        return res.json({ allPassed: true, rawOutput: executionResult.output, isRawExecution: true });
+    }
+
+    // FORMAL SUBMISSION - Evaluate against all test cases
     const results = [];
     let allPassed = true;
 
@@ -1136,7 +1149,7 @@ exports.runCode = asyncHandler(async (req, res) => {
         }
     }
 
-    res.json({ allPassed, results });
+    res.json({ allPassed, results, isRawExecution: false });
 });
 
 // ─────────────── POST /api/exams/help ───────────────

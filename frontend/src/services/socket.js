@@ -1,6 +1,6 @@
 import { io } from 'socket.io-client';
 
-const SOCKET_URL = import.meta.env.VITE_API_URL || 'https://vision-o16g.onrender.com';
+const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 
 class SocketService {
   constructor() {
@@ -34,6 +34,7 @@ class SocketService {
     this.socket.on('connect_error', (err) => {
       console.error('🚫 Socket connection failed:', err.message);
       if (err.message.includes('Authentication') || err.message.includes('token') || err.message.includes('Session')) {
+        alert(`Debug Error: Socket connection rejected!\nMessage: ${err.message}\nRedirecting to login...`);
         console.warn('🔑 Token expired/invalid — redirecting to login');
         sessionStorage.removeItem('vision_token');
         sessionStorage.removeItem('vision_role');
