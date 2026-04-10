@@ -34,13 +34,14 @@ api.interceptors.response.use(
 );
 
 // Run Coding Question via Judge0
-export const runCodingQuestion = async (examId, questionId, sourceCode, language) => {
+export const runCodingQuestion = async (examId, questionId, sourceCode, language, isSubmit = false) => {
   try {
     const response = await api.post('/api/exams/run-code', {
       examId,
       questionId,
       sourceCode,
-      language
+      language,
+      isSubmit
     });
     return response.data;
   } catch (error) {

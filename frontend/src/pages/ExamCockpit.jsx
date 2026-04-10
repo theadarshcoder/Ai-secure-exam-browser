@@ -4,8 +4,8 @@ import socketService from '../services/socket';
 import api, { runCodingQuestion } from '../services/api';
 import Editor from '@monaco-editor/react';
 import {
-  Camera, CameraOff, Clock, Shield, CheckCircle,
-  ChevronRight, ChevronLeft, Send, XCircle,
+  Camera, CameraOff, Clock, Shield, CheckCircle, CheckCircle2,
+  ChevronRight, ChevronLeft, ChevronDown, Send, XCircle,
   Bookmark, Terminal, Eye, Fingerprint, AlertCircle, Power,
   Loader2, RotateCcw, Play, Monitor, ScanFace, ShieldAlert
 } from 'lucide-react';
@@ -14,75 +14,106 @@ import { useTabVisibility, TabToast } from '../components/TabVisibility';
 import * as faceapi from '@vladmandic/face-api';
 import VisionLogo from '../components/VisionLogo';
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ────────────────────────────────────────────── Config ────────────────────────────────────────────── */
 
 const TOTAL_SECONDS = 45 * 60;
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ────────────────────────────────────────── Sub-components ────────────────────────────────────────── */
 
 const QuestionPalette = ({ questions, currentQ, answers, visited, markedForReview, navigateTo }) => {
   const answered = Object.keys(answers).length;
   const visitedCount = Object.keys(visited).length;
   const markedCount = Object.values(markedForReview).filter(Boolean).length;
   const notVisitedCount = questions.length - visitedCount;
-  const visitedNotAnswered = Object.keys(visited).filter(k => answers[k] === undefined && !markedForReview[k]).length;
 
-  const getQState = (i) => {
-    if (i === currentQ) return 'current';
-    if (markedForReview[i] && answers[i] !== undefined) return 'marked-answered';
-    if (markedForReview[i]) return 'marked';
-    if (answers[i] !== undefined) return 'answered';
-    if (visited[i]) return 'visited';
-    return 'not-visited';
+  const sections = [];
+  const hasMCQ    = questions.some(q => q.type === 'mcq');
+  const hasShort  = questions.some(q => q.type === 'short');
+  const hasCoding = questions.some(q => q.type === 'coding');
+
+  if (hasMCQ)   sections.push({ id: 'a', label: 'Sec A', types: ['mcq'] });
+  if (hasShort) sections.push({ id: 'b', label: 'Sec B', types: ['short'] });
+  if (hasCoding) sections.push({ id: 'c', label: 'Sec C', types: ['coding'] });
+
+  const [activeSection, setActiveSection] = React.useState(sections[0]?.id || 'a');
+
+  React.useEffect(() => {
+    const qType = questions[currentQ]?.type;
+    const correctSec = sections.find(s => s.types.includes(qType));
+    if (correctSec && correctSec.id !== activeSection) {
+      setActiveSection(correctSec.id);
+    }
+  }, [currentQ, questions, activeSection]);
+
+  const activeSec = sections.find(s => s.id === activeSection) || sections[0];
+  const visibleIndices = questions
+    .map((q, i) => ({ q, i }))
+    .filter(({ q }) => activeSec?.types.includes(q.type))
+    .map(({ i }) => i);
+
+  const handleSectionClick = (sec) => {
+    setActiveSection(sec.id);
+    const firstIdx = questions.findIndex(q => sec.types.includes(q.type));
+    if (firstIdx !== -1) navigateTo(firstIdx);
   };
 
   const stateStyles = {
-    'current': 'bg-[#0d9488] text-white border-[#0d9488] ring-2 ring-teal-300 font-bold scale-110 z-10',
-    'answered': 'bg-[#15803d] text-white border-[#15803d] font-bold',
-    'marked': 'bg-[#7c3aed] text-white border-[#7c3aed] font-bold',
-    'marked-answered': 'bg-[#7c3aed] text-white border-[#7c3aed] font-bold ring-2 ring-green-400',
-    'visited': 'bg-[#ea580c] text-white border-[#ea580c] font-bold',
-    'not-visited': 'bg-gray-100 text-gray-400 border-gray-200 hover:bg-gray-200 hover:text-gray-600',
+    'current':  'bg-indigo-600 text-white border-indigo-600 shadow-md ring-2 ring-indigo-200 ring-offset-2 scale-110 z-10 font-black',
+    'answered': 'bg-emerald-50 text-emerald-700 border-emerald-200 font-bold',
+    'marked':   'bg-amber-50 text-amber-700 border-amber-200 font-bold',
+    'visited':  'bg-slate-50 text-slate-600 border-slate-200 font-bold',
+    'unseen':   'bg-white text-slate-400 border-slate-100 hover:border-slate-300',
+  };
+
+  const getQState = (i) => {
+    if (i === currentQ) return 'current';
+    if (markedForReview[i]) return 'marked';
+    if (answers[i] !== undefined) return 'answered';
+    if (visited[i]) return 'visited';
+    return 'unseen';
   };
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="px-5 pt-5 pb-3 border-b border-gray-100">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.15em]">Question Palette</span>
-          <div className="px-2 py-0.5 bg-gray-50 border border-gray-100 rounded text-[10px] font-bold text-[#0f766e] tabular-nums">{answered}/{questions.length}</div>
+      <div className="px-5 pt-6 pb-4">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Questions</span>
+          </div>
+          <span className="text-[10px] font-black text-slate-400 tabular-nums uppercase">{answered}/{questions.length} Solved</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <button className="px-4 py-1.5 bg-[#0f766e] text-white text-[9px] font-bold rounded-lg uppercase tracking-wide shadow-sm shadow-teal-900/10">Section A</button>
-          <button className="px-4 py-1.5 bg-gray-50 text-gray-400 text-[9px] font-bold rounded-lg uppercase tracking-wide hover:bg-gray-100 transition-colors border border-gray-200">All</button>
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto scroll-thin px-4 py-6">
-        <div className="grid grid-cols-5 gap-2">
-          {questions.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => navigateTo(i)}
-              className={`w-full aspect-square rounded-xl flex items-center justify-center text-[12px] border transition-all duration-100 cursor-pointer ${stateStyles[getQState(i)]}`}
-            >
-              {i + 1}
+        <div className="p-1 bg-slate-100 rounded-xl flex items-center gap-1">
+          {sections.map(sec => (
+            <button key={sec.id} onClick={() => handleSectionClick(sec)} className={`flex-1 py-2 text-[10px] font-black rounded-lg uppercase tracking-wider transition-all ${activeSection === sec.id ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+              {sec.label}
             </button>
           ))}
         </div>
       </div>
-
-      <div className="mt-auto px-4 py-4 border-t border-gray-100 bg-gray-50/40">
-        <div className="flex flex-wrap gap-x-3 gap-y-2">
+      <div className="flex-1 overflow-y-auto px-5 py-2 scroll-thin">
+        <div className="grid grid-cols-4 gap-3">
+          {visibleIndices.map(i => (
+            <button key={i} onClick={() => navigateTo(i)} className={`relative group h-10 rounded-xl flex items-center justify-center text-[13px] border transition-all duration-200 ${stateStyles[getQState(i)]}`}>
+              {i + 1}
+              {markedForReview[i] && getQState(i) !== 'current' && (
+                <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 border-2 border-white rounded-full" />
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="p-5 border-t border-slate-100 bg-slate-50/50 mt-auto">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
           {[
-            { color: 'bg-[#15803d]', label: 'Answered' },
-            { color: 'bg-[#ea580c]', label: 'Visited' },
-            { color: 'bg-gray-300', label: 'Unseen' },
-            { color: 'bg-[#7c3aed]', label: 'Marked' },
+            { dot: 'bg-indigo-600', label: 'Current' },
+            { dot: 'bg-emerald-500', label: 'Solved' },
+            { dot: 'bg-amber-500', label: 'Marked' },
+            { dot: 'bg-slate-300', label: 'Unseen' },
           ].map((item, i) => (
-            <div key={i} className="flex items-center gap-1.5">
-              <div className={`w-2 h-2 rounded-full ${item.color} shrink-0`} />
-              <span className="text-[9px] text-gray-400 font-semibold">{item.label}</span>
+            <div key={i} className="flex items-center gap-2">
+              <div className={`w-1.5 h-1.5 rounded-full ${item.dot}`} />
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{item.label}</span>
             </div>
           ))}
         </div>
@@ -91,26 +122,47 @@ const QuestionPalette = ({ questions, currentQ, answers, visited, markedForRevie
   );
 };
 
-const ProctoringSidebar = ({ cameraActive, videoRef, faceActive }) => (
-  <div className="flex flex-col items-center gap-3">
-    <div className="relative w-36 h-36 rounded-2xl bg-gray-900 border-2 border-slate-100 shadow-inner overflow-hidden group transition-all hover:border-sky-200">
-      {cameraActive ? (
-        <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover scale-x-[-1]" />
-      ) : (
-        <div className="w-full h-full flex flex-col items-center justify-center gap-1.5 bg-slate-50">
-          <CameraOff size={16} className="text-slate-300" />
-          <span className="text-[8px] font-bold text-slate-300 uppercase tracking-tighter">No Feed</span>
+const ProctoringSidebar = ({ cameraActive, videoRef, faceActive, confidence }) => (
+  <div className="flex flex-col w-full gap-5">
+    <div className="relative group">
+      <div className="absolute -inset-0.5 bg-gradient-to-r from-red-500 to-red-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000 animate-pulse"></div>
+      <div className="relative aspect-square w-full rounded-2xl bg-slate-900 border border-slate-200 overflow-hidden shadow-2xl">
+        {cameraActive ? (
+          <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover scale-x-[-1]" />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-slate-50">
+            <CameraOff size={24} className="text-slate-200" />
+            <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Feed Disabled</span>
+          </div>
+        )}
+        <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2 py-1 bg-black/60 backdrop-blur-md rounded-lg text-[8px] font-black text-white uppercase tracking-widest border border-white/10 z-10">
+          <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+          Live
         </div>
-      )}
-      <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 bg-black/60 backdrop-blur-md rounded-md text-[7px] font-black text-white uppercase tracking-[0.15em] z-10">
-        Live
       </div>
     </div>
-    
-    <div className="flex items-center gap-2 px-3 py-1 bg-white/50 backdrop-blur-sm rounded-full border border-gray-100">
-      {[true, true, true, faceActive].map((ok, i) => (
-        <div key={i} title={['Engine', 'Network', 'Audio', 'Face'][i]} className={`w-1.5 h-1.5 rounded-full ${ok ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`} />
-      ))}
+    <div className="grid grid-cols-1 gap-2.5">
+      <div className="p-3 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-sm border border-indigo-100"><Shield size={16} /></div>
+          <div>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Integrity</p>
+            <p className="text-[14px] font-black text-slate-900 tabular-nums">{confidence}%</p>
+          </div>
+        </div>
+        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+      </div>
+      <div className="p-3 bg-white border border-slate-100 rounded-2xl shadow-sm">
+        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Compliance</p>
+        <div className="grid grid-cols-2 gap-2">
+          {[{ label: 'Eye', status: faceActive }, { label: 'Device', status: true }, { label: 'Network', status: true }, { label: 'Env', status: true }].map((item, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <div className={`w-1 h-1 rounded-full ${item.status ? 'bg-emerald-500' : 'bg-red-500'}`} />
+              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">{item.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   </div>
 );
@@ -118,30 +170,18 @@ const ProctoringSidebar = ({ cameraActive, videoRef, faceActive }) => (
 const SubmitModal = ({ isOpen, onClose, onConfirm, stats }) => (
   <AnimatePresence>
     {isOpen && (
-      <Motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[110] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6">
-        <Motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl border border-gray-200">
-          <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 text-amber-600 mb-6 flex items-center justify-center">
-            <AlertCircle size={24} />
-          </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Submit Assessment</h2>
-          <p className="text-sm text-gray-500 mb-8 leading-relaxed">This action is irreversible. Your answers will be saved and you cannot return to the exam.</p>
-          <div className="grid grid-cols-3 gap-3 mb-8 text-center">
-            <div className="bg-green-50 border border-green-100 p-3 rounded-xl">
-              <p className="text-lg font-bold text-green-700">{stats.answered}</p>
-              <p className="text-[10px] font-medium text-green-600 uppercase">Answered</p>
-            </div>
-            <div className="bg-orange-50 border border-orange-100 p-3 rounded-xl">
-              <p className="text-lg font-bold text-orange-700">{stats.unanswered}</p>
-              <p className="text-[10px] font-medium text-orange-600 uppercase">Remaining</p>
-            </div>
-            <div className="bg-violet-50 border border-violet-100 p-3 rounded-xl">
-              <p className="text-lg font-bold text-violet-700">{stats.marked}</p>
-              <p className="text-[10px] font-medium text-violet-600 uppercase">Marked</p>
-            </div>
+      <Motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[110] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6">
+        <Motion.div initial={{ scale: 0.95, y: 10, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-white/20">
+          <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 mb-6 flex items-center justify-center shadow-sm"><Send size={28} /></div>
+          <h2 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">Hand In Assessment?</h2>
+          <p className="text-[13px] font-medium text-slate-500 mb-8 leading-relaxed">You are about to submit your response. This action is final and your work will be graded as currently saved.</p>
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 mb-8 grid grid-cols-2 gap-4 text-center">
+            <div><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Answered</p><p className="text-2xl font-black text-slate-900 tabular-nums">{stats.answered}</p></div>
+            <div className="border-l border-slate-200"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Unsolved</p><p className="text-2xl font-black text-slate-900 tabular-nums">{stats.unanswered}</p></div>
           </div>
           <div className="flex gap-3">
-            <button onClick={onClose} className="flex-1 py-3 px-4 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all text-sm font-semibold">Go Back</button>
-            <button onClick={onConfirm} className="flex-1 py-3 px-4 rounded-xl bg-green-600 hover:bg-green-700 text-white transition-all text-sm font-semibold shadow-lg">Confirm Submit</button>
+            <button onClick={onClose} className="flex-1 py-3.5 px-4 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all text-[12px] font-black uppercase tracking-widest">Wait, I'll Review</button>
+            <button onClick={onConfirm} className="flex-1 py-3.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all text-[12px] font-black uppercase tracking-widest shadow-lg shadow-indigo-100">Confirm & Submit</button>
           </div>
         </Motion.div>
       </Motion.div>
@@ -152,26 +192,18 @@ const SubmitModal = ({ isOpen, onClose, onConfirm, stats }) => (
 const ExitModal = ({ isOpen, onClose, onExit, password, setPassword, error }) => (
   <AnimatePresence>
     {isOpen && (
-      <Motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[120] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6">
-        <Motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl border border-gray-200 text-center">
-          <div className="w-12 h-12 rounded-xl bg-red-50 border border-red-200 text-red-600 mb-5 mx-auto flex items-center justify-center">
-            <Power size={24} />
+      <Motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[120] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-6">
+        <Motion.div initial={{ scale: 0.95, y: 10, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} className="bg-white rounded-3xl p-8 max-sm-w-full shadow-2xl border border-white/20 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-red-50 border border-red-100 text-red-600 mb-6 mx-auto flex items-center justify-center shadow-sm"><ShieldAlert size={28} /></div>
+          <h2 className="text-xl font-black text-slate-900 mb-2 tracking-tight">Security Override</h2>
+          <p className="text-[12px] font-medium text-zinc-500 mb-8 mx-auto max-w-[240px]">Enter supervisor credentials to force terminate this session.</p>
+          <div className="relative mb-6">
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Supervisor Password" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-center text-slate-900 font-mono text-[14px] tracking-[0.4em] focus:outline-none focus:border-red-400 focus:ring-4 focus:ring-red-500/10 transition-all" />
+            {error && <div className="absolute top-full left-0 right-0 mt-2"><span className="text-[10px] font-black text-red-600 uppercase tracking-widest">{error}</span></div>}
           </div>
-          <h2 className="text-lg font-bold text-gray-900 mb-1">Secure Exit</h2>
-          <p className="text-xs text-gray-400 mb-6">Enter supervisor password to terminate</p>
-          <input 
-            type="password" 
-            value={password} 
-            onChange={e => setPassword(e.target.value)} 
-            placeholder="Password" 
-            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-center text-gray-900 font-mono tracking-widest mb-2 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 transition-all" 
-          />
-          <div className="min-h-[20px] mb-4">
-            {error && <span className="text-xs font-bold text-red-500">{error}</span>}
-          </div>
-          <div className="flex gap-3">
-            <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all text-sm font-semibold">Cancel</button>
-            <button onClick={onExit} className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white transition-all text-sm font-semibold shadow-lg">Exit</button>
+          <div className="flex gap-3 mt-8">
+            <button onClick={onClose} className="flex-1 py-3.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all text-[12px] font-black uppercase tracking-widest">Cancel</button>
+            <button onClick={onExit} className="flex-1 py-3.5 rounded-xl bg-red-600 hover:bg-red-700 text-white transition-all text-[12px] font-black uppercase tracking-widest shadow-lg shadow-red-100">Terminate</button>
           </div>
         </Motion.div>
       </Motion.div>
@@ -179,7 +211,7 @@ const ExitModal = ({ isOpen, onClose, onExit, password, setPassword, error }) =>
   </AnimatePresence>
 );
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ────────────────────────────────────────── Main Component ────────────────────────────────────────── */
 
 export default function ExamCockpit() {
   const navigate = useNavigate();
@@ -210,9 +242,13 @@ export default function ExamCockpit() {
   const [isFullscreen, setIsFullscreen] = useState(true);
   const [selectedLanguage, setSelectedLanguage] = useState('javascript');
   const [confidence, setConfidence] = useState(98);
+  const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('Test Cases');
+  const [editorHeight, setEditorHeight] = useState(55);
+  const isResizing = useRef(false);
+
   const isTimeCritical = secondsLeft < 300 && secondsLeft > 0;
 
-  // We define logIncident first so it's available for effects
   const logIncident = useCallback(async (type, severity, details) => {
     const studentId = sessionStorage.getItem('vision_email') || 'VSN-89241';
     const incident = {
@@ -224,59 +260,31 @@ export default function ExamCockpit() {
       details,
       timestamp: new Date().toISOString(),
     };
-
-    socketService.emitViolation(incident);
-
     try {
-      await api.post('/api/exams/incident', { examId, type, severity, details });
-    } catch (apiErr) {
-      console.warn('Incident API save failed:', apiErr.message);
-    }
-
-    const existing = JSON.parse(localStorage.getItem('vision_incidents') || '[]');
-    localStorage.setItem('vision_incidents', JSON.stringify([incident, ...existing]));
+      await api.post('/api/exams/incident', incident);
+      socketService.emitViolation(incident);
+    } catch (err) { console.warn('Incident log failed'); }
   }, [examId]);
 
   // 1. Fullscreen Enforcement & Shortcut Blocking
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-
+    const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
     const blockShortcuts = (e) => {
-      // Block Ctrl+C, Ctrl+V, Ctrl+X, Ctrl+F, Ctrl+P, F12, PrintScreen, etc.
-      if (
-        e.ctrlKey || e.metaKey || 
-        ['F12', 'PrintScreen'].includes(e.key) ||
-        (e.altKey && e.key === 'Tab')
-      ) {
+      if (e.ctrlKey || e.metaKey || ['F12', 'PrintScreen'].includes(e.key) || (e.altKey && e.key === 'Tab')) {
         e.preventDefault();
-        logIncident('Shortcut Blocked', 'medium', `Attempted to use shortcut: ${e.key}`);
+        logIncident('Shortcut Blocked', 'medium', `Attempted shortcut: ${e.key}`);
         return false;
       }
     };
-
-    const blockContextMenu = (e) => {
-      e.preventDefault();
-      logIncident('Right Click Blocked', 'low', 'Attempted to open context menu.');
-      return false;
-    };
+    const blockContextMenu = (e) => { e.preventDefault(); logIncident('Right Click Blocked', 'low', 'Context menu attempt'); return false; };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('keydown', blockShortcuts);
     document.addEventListener('contextmenu', blockContextMenu);
     
-    // Auto-trigger fullscreen on mount
-    const triggerFullscreen = async () => {
-      try {
-        if (!document.fullscreenElement) {
-          await document.documentElement.requestFullscreen();
-        }
-      } catch {
-        console.warn('Fullscreen request failed — requires user interaction first.');
-      }
-    };
-    triggerFullscreen();
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => console.warn('Fullscreen interaction required'));
+    }
 
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
@@ -294,30 +302,25 @@ export default function ExamCockpit() {
       document.body.style.overflow = 'auto';
       document.documentElement.style.overflow = 'auto';
       if (storedTheme) document.documentElement.setAttribute('data-theme', storedTheme);
-      else document.documentElement.removeAttribute('data-theme');
     };
   }, []);
 
   useEffect(() => {
     if (submitted || terminated) return;
     const studentId = sessionStorage.getItem('vision_email') || 'VSN-89241';
-    const check = () => {
+    const poll = setInterval(async () => {
       try {
         const list = JSON.parse(localStorage.getItem('vision_terminated_sessions') || '[]');
         const hit = list.find(t => t.studentId === studentId || t.examId === examId);
         if (hit) setTerminated(hit);
-      } catch (err) {
-        console.warn('Termination poll failed:', err);
-      }
-    };
-    const poll = setInterval(check, 3000);
+      } catch (err) { console.warn('Termination poll failed'); }
+    }, 3000);
     return () => clearInterval(poll);
   }, [submitted, terminated, examId]);
 
   useEffect(() => {
     if (!terminated) return;
     if (stream) { stream.getTracks().forEach(t => t.stop()); setStream(null); }
-    localStorage.removeItem(`vision_offline_exam_${examId}`);
     const tick = setInterval(() => {
       setTerminateCountdown(c => {
         if (c <= 1) { clearInterval(tick); navigate('/student'); return 0; }
@@ -325,599 +328,355 @@ export default function ExamCockpit() {
       });
     }, 1000);
     return () => clearInterval(tick);
-  }, [terminated, examId, navigate, stream]);
+  }, [terminated, navigate, stream]);
 
   useEffect(() => {
     if (submitted) return;
-    const interval = setInterval(() => {
-      setSecondsLeft(s => (s <= 0 ? 0 : s - 1));
-    }, 1000);
+    const interval = setInterval(() => setSecondsLeft(s => (s <= 0 ? 0 : s - 1)), 1000);
     return () => clearInterval(interval);
   }, [submitted]);
 
   useEffect(() => {
     const fetchExam = async () => {
       try {
-        const response = await api.get(`/api/exams/${examId}`);
-        const data = response.data;
-        setExam(data);
-        if (data.questions && data.questions.length > 0) {
-          setQuestions(data.questions);
-          if (data.duration) setSecondsLeft(data.duration * 60);
-          if (data.questions[0].type === 'coding') {
-            setSelectedLanguage(data.questions[0].language || 'javascript');
-          }
-        }
-      } catch (err) {
-        console.warn('Backend unavailable, using mock data:', err.message);
-        const fallbackExam = {
-          id: examId,
-          title: 'Demonstration Exam',
-          duration: 90,
-          questions: [
-            {
-              id: 1, type: 'mcq', questionText: 'Which of the following data structures operates on a Last-In-First-Out (LIFO) principle?', 
-              options: ['Queue', 'Stack', 'Linked List', 'Binary Tree'], marks: 4
-            },
-            {
-              id: 2, type: 'mcq', questionText: 'In object-oriented programming, what is the concept of wrapping data and methods that work on data within one unit?', 
-              options: ['Polymorphism', 'Inheritance', 'Encapsulation', 'Abstraction'], marks: 4
-            },
-            {
-              id: 3, type: 'coding', questionText: 'Write a JavaScript function that takes an array of numbers and returns the sum of all positive numbers.', 
-              language: 'javascript', initialCode: 'function sumPositive(arr) {\n  // Your code here\n}', marks: 10
-            },
-            { id: 4, type: 'mcq', questionText: 'What is the time complexity of binary search on a sorted array of n elements?', options: ['O(n)', 'O(log n)', 'O(n log n)', 'O(1)'], marks: 4 },
-            { id: 5, type: 'mcq', questionText: 'Which scheduling algorithm can cause starvation of low-priority processes?', options: ['Round Robin', 'First Come First Serve', 'Shortest Job First (SJF)', 'Priority Scheduling'], marks: 4 },
-            { id: 6, type: 'mcq', questionText: 'In SQL, which clause is used to filter groups after aggregation?', options: ['WHERE', 'GROUP BY', 'HAVING', 'ORDER BY'], marks: 4 },
-            { id: 7, type: 'mcq', questionText: 'Which HTTP status code indicates that a requested resource has been permanently moved?', options: ['301', '302', '404', '500'], marks: 4 },
-            { id: 8, type: 'mcq', questionText: 'In React, what hook is used to perform side effects in a functional component?', options: ['useState', 'useContext', 'useEffect', 'useReducer'], marks: 4 },
-            { id: 9, type: 'mcq', questionText: 'Which of the following is NOT a valid JavaScript data type?', options: ['Symbol', 'BigInt', 'Float', 'undefined'], marks: 4 },
-            { id: 10, type: 'mcq', questionText: 'What does the CAP theorem state about distributed systems?', options: ['They can guarantee all three: Consistency, Availability, and Partition tolerance', 'They must sacrifice one of Consistency, Availability, or Partition tolerance', 'Consistency and Availability cannot coexist', 'Partition tolerance is optional'], marks: 4 },
-            { id: 11, type: 'mcq', questionText: 'Which sorting algorithm has the best average-case time complexity?', options: ['Bubble Sort', 'Insertion Sort', 'Merge Sort', 'Selection Sort'], marks: 4 },
-            { id: 12, type: 'mcq', questionText: 'In object-oriented design, which SOLID principle states that a class should have only one reason to change?', options: ['Open/Closed Principle', 'Single Responsibility Principle', 'Liskov Substitution', 'Interface Segregation'], marks: 4 },
-            { id: 13, type: 'mcq', questionText: 'Which data structure is used internally by a HashMap for collision resolution in Java?', options: ['Array', 'Linked List / Red-Black Tree', 'Binary Heap', 'Stack'], marks: 4 },
-            { id: 14, type: 'mcq', questionText: 'What is the primary purpose of a virtual memory system?', options: ['To speed up CPU processing', 'To allow processes to use more memory than physically available', 'To encrypt memory contents', 'To share GPU memory with the CPU'], marks: 4 },
-            { id: 15, type: 'mcq', questionText: 'Which protocol operates at the Transport layer of the OSI model?', options: ['HTTP', 'IP', 'TCP', 'Ethernet'], marks: 4 },
-            { id: 16, type: 'mcq', questionText: 'In CSS, which property establishes a new stacking context?', options: ['display: flex', 'position: relative with z-index', 'margin: auto', 'box-sizing: border-box'], marks: 4 },
-            { id: 17, type: 'mcq', questionText: 'Which Git command creates a new branch and immediately switches to it?', options: ['git branch <name>', 'git checkout <name>', 'git checkout -b <name>', 'git switch --create <name>'], marks: 4 },
-            { id: 18, type: 'mcq', questionText: 'What is a deadlock in operating systems?', options: ['A process that consumes 100% CPU', 'A set of processes each waiting on a resource held by another', 'A process that crashes unexpectedly', 'Memory that is allocated but never freed'], marks: 4 },
-            { id: 19, type: 'mcq', questionText: 'In asymptotic notation, if an algorithm is O(1), what does that mean?', options: ['It runs in one millisecond', 'Its runtime grows linearly with input', 'Its runtime is constant regardless of input size', 'It uses one unit of memory'], marks: 4 },
-            { id: 20, type: 'mcq', questionText: 'Which design pattern separates the construction of a complex object from its representation?', options: ['Factory', 'Builder', 'Prototype', 'Singleton'], marks: 4 }
-          ]
-        };
-        setExam(fallbackExam);
-        setQuestions(fallbackExam.questions);
-      }
+        const res = await api.get(`/api/exams/${examId}`);
+        setExam(res.data);
+        setQuestions(res.data.questions || []);
+        if (res.data.duration) setSecondsLeft(res.data.duration * 60);
+      } catch (err) { console.warn('Exam fetch failed'); }
     };
     fetchExam();
   }, [examId]);
 
-  // Sync language dropdown when navigating to a coding question
-  useEffect(() => {
-    const q = questions[currentQ];
-    if (q?.type === 'coding') {
-        const saved = answers[currentQ];
-        if (saved?.language && saved.language !== selectedLanguage) {
-            setSelectedLanguage(saved.language);
-        } else if (!saved?.language && q.language && q.language !== selectedLanguage) {
-            setSelectedLanguage(q.language);
-        }
-    }
-  }, [currentQ]);
-
   useEffect(() => {
     let localStream = null;
-    const initCamera = async () => {
+    const init = async () => {
       try {
-        const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'user', width: 640, height: 480 }
-        });
-        localStream = mediaStream;
-        setStream(mediaStream);
-        setCameraActive(true);
-        if (videoRef.current) videoRef.current.srcObject = mediaStream;
-      } catch (err) { 
-        console.error("Camera access failed", err);
-        setCameraActive(false); 
-      }
-    };
-    const loadModels = async () => {
-      try {
+        const s = await navigator.mediaDevices.getUserMedia({ video: true });
+        localStream = s;
+        setStream(s);
+        if (videoRef.current) videoRef.current.srcObject = s;
         const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
         await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
         setModelsLoaded(true);
-      } catch (err) { console.error("AI engine failure", err); }
+      } catch (err) { console.warn('AI/Camera setup failed'); }
     };
-    initCamera();
-    loadModels();
+    init();
     return () => { if (localStream) localStream.getTracks().forEach(t => t.stop()); };
   }, []);
-
-  useEffect(() => {
-    if (videoRef.current && stream && cameraActive) {
-      if (videoRef.current.srcObject !== stream) {
-        videoRef.current.srcObject = stream;
-      }
-      videoRef.current.play().catch(e => console.warn("Auto-play blocked", e));
-    }
-  }, [stream, cameraActive]);
 
   useEffect(() => {
     if (!modelsLoaded || !cameraActive || submitted) return;
     let timerId;
     const runDetection = async () => {
       if (videoRef.current?.readyState === 4) {
-        const detections = await faceapi.detectAllFaces(
-          videoRef.current,
-          new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.35 })
-        );
-        setFaceBoxes(detections.map(d => d.box));
+        const dets = await faceapi.detectAllFaces(videoRef.current, new faceapi.TinyFaceDetectorOptions({ inputSize: 160 }));
+        setFaceBoxes(dets.map(d => d.box));
       }
-      // Throttle detection to 1 frame per second to save student's CPU
-      timerId = setTimeout(runDetection, 1000);
+      timerId = setTimeout(runDetection, 1000); // 1 FPS to save CPU
     };
     runDetection();
     return () => clearTimeout(timerId);
-  }, [modelsLoaded, cameraActive, submitted, stream]);
+  }, [modelsLoaded, cameraActive, submitted]);
 
   useEffect(() => {
-    if (tabToast && !submitted) logIncident('Tab Switch', 'high', tabToast.msg);
-  }, [tabToast, submitted, logIncident]);
-
-  useEffect(() => {
-    socketService.connect();
-    return () => socketService.disconnect();
+    const syncResizing = (e) => {
+      if (!isResizing.current) return;
+      const container = document.getElementById('coding-right-panel');
+      if (container) {
+        const rect = container.getBoundingClientRect();
+        const pct = ((e.clientY - rect.top) / rect.height) * 100;
+        setEditorHeight(Math.min(85, Math.max(15, pct)));
+      }
+    };
+    const stopResizing = () => { isResizing.current = false; document.body.style.cursor = ''; };
+    window.addEventListener('mousemove', syncResizing);
+    window.addEventListener('mouseup', stopResizing);
+    return () => { window.removeEventListener('mousemove', syncResizing); window.removeEventListener('mouseup', stopResizing); };
   }, []);
 
-  // ⭐ State references to avoid resetting auto-save interval on every keypress
+  // Auto-Save Pipeline
   const progressRef = useRef({ answers, currentQ, visited, secondsLeft });
-  useEffect(() => {
-    progressRef.current = { answers, currentQ, visited, secondsLeft };
-  }, [answers, currentQ, visited, secondsLeft]);
-
-  // ⭐ Auto-Save Pipeline Connection: Calls Backend every 30 Seconds
+  useEffect(() => { progressRef.current = { answers, currentQ, visited, secondsLeft }; }, [answers, currentQ, visited, secondsLeft]);
   useEffect(() => {
     if (submitted || terminated || !examId) return;
-    
     const saveTimer = setInterval(async () => {
       try {
         await api.post('/api/exams/save-progress', {
-          examId: examId,
+          examId,
           answers: progressRef.current.answers,
           currentQuestionIndex: progressRef.current.currentQ,
           questionStates: progressRef.current.visited,
           remainingTimeSeconds: progressRef.current.secondsLeft
         });
-      } catch (err) {
-        console.warn('Silent Auto-save failed:', err.message);
-      }
-    }, 30000); // 30 seconds
-
-    return () => clearInterval(saveTimer);
-  }, [examId, submitted, terminated]);
-
-  // ⭐ State references to avoid resetting auto-save interval on every keypress
-  const progressRef = useRef({ answers, currentQ, visited, secondsLeft });
-  useEffect(() => {
-    progressRef.current = { answers, currentQ, visited, secondsLeft };
-  }, [answers, currentQ, visited, secondsLeft]);
-
-  // ⭐ Auto-Save Pipeline Connection: Calls Backend every 30 Seconds
-  useEffect(() => {
-    if (submitted || terminated || !examId) return;
-    
-    const saveTimer = setInterval(async () => {
-      try {
-        await api.post('/api/exams/save-progress', {
-          examId: examId,
-          answers: progressRef.current.answers,
-          currentQuestionIndex: progressRef.current.currentQ,
-          questionStates: progressRef.current.visited,
-          remainingTimeSeconds: progressRef.current.secondsLeft
-        });
-      } catch (err) {
-        console.warn('Silent Auto-save failed:', err.message);
-      }
-    }, 30000); // 30 seconds
-
+      } catch (err) { console.warn('Auto-save failed'); }
+    }, 30000);
     return () => clearInterval(saveTimer);
   }, [examId, submitted, terminated]);
 
   const handleRunCode = async () => {
-    if (!q || q.type !== 'coding') return;
-    setIsExecuting(true);
-    setExecutionResult(null);
+    if (questions[currentQ]?.type !== 'coding') return;
+    setIsExecuting(true); setExecutionResult(null); setActiveTab('Execution Details');
     try {
+      const q = questions[currentQ];
       const answer = answers[currentQ];
-      const sourceCode = typeof answer === 'object' && answer !== null ? answer.code : (answer || q.initialCode || "");
-      const result = await runCodingQuestion(examId, q.id || q._id, sourceCode, selectedLanguage);
-      setExecutionResult(result);
-    } catch (err) { 
-      setExecutionResult({ error: 'Execution Failed', details: typeof err === 'string' ? err : (err.error || err.message || 'Unknown error') }); 
-    } finally { 
-      setIsExecuting(false); 
-    }
+      const sourceCode = typeof answer === 'object' ? (answer.code || "") : (answer || q.initialCode || "");
+      const res = await runCodingQuestion(examId, q.id || q._id, sourceCode, selectedLanguage, false);
+      setExecutionResult(res);
+    } catch (err) { setExecutionResult({ error: 'Failed' }); }
+    finally { setIsExecuting(false); }
   };
 
-  const fmtTime = (s) => {
-    const m = Math.floor(s / 60).toString().padStart(2, '0');
-    const sc = (s % 60).toString().padStart(2, '0');
-    return `${m}:${sc}`;
+  const handleCheckTestCases = async () => {
+    if (questions[currentQ]?.type !== 'coding') return;
+    setIsExecuting(true); setExecutionResult(null); setActiveTab('Test Cases');
+    try {
+      const q = questions[currentQ];
+      const answer = answers[currentQ];
+      const sourceCode = typeof answer === 'object' ? (answer.code || "") : (answer || q.initialCode || "");
+      const res = await runCodingQuestion(examId, q.id || q._id, sourceCode, selectedLanguage, true);
+      setExecutionResult(res);
+    } catch (err) { setExecutionResult({ error: 'Failed' }); }
+    finally { setIsExecuting(false); }
   };
-
-  const q = questions[currentQ];
-  const answeredCount = Object.keys(answers).length;
 
   const handleFinalSubmit = async () => {
     try {
       setSubmitted(true);
-      await api.post('/api/exams/submit', {
-        examId: examId || exam._id,
-        answers: answers
-      });
+      await api.post('/api/exams/submit', { examId: examId || exam._id, answers });
       setTimeout(() => navigate('/student'), 2000);
-    } catch (err) {
-      console.error('Final Submit error:', err);
-      setTimeout(() => navigate('/student'), 2000);
-    }
+    } catch (err) { setTimeout(() => navigate('/student'), 2000); }
   };
 
-  if (terminated) {
-    return (
-      <div className="h-screen bg-[#08020a] flex items-center justify-center font-sans relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(220,38,38,0.15)_0%,transparent_70%)]" />
-        <div className="text-center relative z-10 max-w-lg mx-auto px-6">
-          <XCircle size={48} className="text-red-500 mx-auto mb-8" />
-          <h2 className="text-4xl font-black text-white mb-3">Exam Terminated</h2>
-          <p className="text-zinc-400 text-sm mb-8">{terminated.reason || 'Session terminated by supervisor.'}</p>
-          <div className="flex items-center justify-center gap-3 text-sm text-red-400 font-bold">
-            <span className="w-10 h-10 rounded-full border-2 border-red-500/30 flex items-center justify-center">{terminateCountdown}</span>
-            <p>Redirecting in {terminateCountdown}s</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const fmtTime = (s) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
+  const q = questions[currentQ];
+  const answeredCount = Object.keys(answers).length;
 
-  if (submitted) {
-    return (
-      <div className="h-screen bg-white flex items-center justify-center font-sans">
-        <div className="text-center">
-          <CheckCircle size={60} className="text-green-600 mx-auto mb-6" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Exam Submitted Successfully</h2>
-          <p className="text-gray-400 text-xs">Redirecting to dashboard...</p>
+  if (terminated) return (
+    <div className="h-screen bg-[#08020a] flex items-center justify-center font-sans overflow-hidden">
+      <div className="text-center relative z-10 max-w-lg mx-auto px-6">
+        <XCircle size={48} className="text-red-500 mx-auto mb-8" />
+        <h2 className="text-4xl font-black text-white mb-3 tracking-tight">Exam Terminated</h2>
+        <p className="text-zinc-400 text-sm mb-8 leading-relaxed">{terminated.reason || 'Session terminated by supervisor.'}</p>
+        <div className="flex items-center justify-center gap-3 text-sm text-red-400 font-bold border border-red-500/20 bg-red-500/5 px-6 py-3 rounded-2xl">
+          <span className="w-10 h-10 rounded-full border-2 border-red-500/30 flex items-center justify-center tabular-nums">{terminateCountdown}</span>
+          <p className="uppercase tracking-widest text-[10px]">Redirecting to Portal</p>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
+
+  if (submitted) return <div className="h-screen flex items-center justify-center bg-white font-sans"><div className="text-center"><CheckCircle size={60} className="text-emerald-500 mx-auto mb-6" /><h2 className="text-2xl font-black text-slate-900 tracking-tight">Submission Successful</h2><p className="text-slate-400 text-[12px] font-bold uppercase tracking-widest">Saving encrypted responses...</p></div></div>;
 
   return (
-    <div className="h-screen w-full bg-[#f8f9fa] flex flex-col overflow-hidden select-none font-sans">
-      <style>{`
-        html, body { overflow: hidden !important; height: 100% !important; overscroll-behavior: none !important; }
-        .scroll-thin::-webkit-scrollbar { width: 4px; }
-        .scroll-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-      `}</style>
-
-      {/* Header */}
-      <header className="shrink-0 z-30">
-        <div className="h-[52px] bg-zinc-950 border-b border-zinc-800 flex items-center justify-between px-5">
-          <div className="flex items-center gap-2">
-            <VisionLogo className="w-[18px] h-[18px] text-white" />
-            <span className="text-[12px] font-bold tracking-[0.22em] uppercase text-white">VISION</span>
-            <div className="h-4 w-px bg-zinc-800" />
-            <span className="text-[12px] font-medium text-zinc-400 truncate max-w-[200px]">{exam?.title || 'Technical Assessment'}</span>
+    <div className="h-screen w-full bg-slate-50 flex flex-col overflow-hidden select-none font-sans text-slate-900">
+      <style>{`.scroll-thin::-webkit-scrollbar { width: 4px; } .scroll-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }`}</style>
+      
+      <header className="shrink-0 bg-white border-b border-slate-200 shadow-sm px-5 h-[48px] flex items-center justify-between z-30">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-100"><VisionLogo className="w-5 h-5 text-white" /></div>
+          <span className="text-[13px] font-black tracking-widest">VISION</span>
+          <div className="h-4 w-px bg-slate-200" />
+          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest max-w-[200px] truncate">{exam?.title || 'Exam'}</span>
+        </div>
+        <div className="flex items-center gap-6">
+          <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full ${isTimeCritical ? 'bg-red-50 text-red-600 border-red-200' : 'bg-slate-50 text-slate-700 border-slate-200'} border`}>
+            <Clock size={14} className={isTimeCritical ? 'animate-pulse' : ''} />
+            <span className="text-base font-bold tabular-nums">{fmtTime(secondsLeft)}</span>
           </div>
-          <div className="flex items-center gap-4">
-            <div className={`flex items-center gap-3 px-5 py-1.5 rounded-full ${isTimeCritical ? 'bg-red-500/10 border border-red-500/20' : 'bg-white/5 border border-white/10'}`}>
-              <Clock size={14} className={isTimeCritical ? 'text-red-400 animate-pulse' : 'text-zinc-400'} />
-              <span className={`text-lg font-semibold tabular-nums text-zinc-200`}>{fmtTime(secondsLeft)}</span>
-            </div>
-          </div>
-          <div className="text-right">
-            <p className="text-[11px] font-medium text-zinc-200">Adarsh Maurya</p>
-            <p className="text-[9px] text-zinc-500 font-mono">VSN-89241</p>
+          <div className="flex items-center gap-3 pl-4 border-l border-slate-100 text-right">
+            <div><p className="text-[11px] font-bold leading-none">Candidate AM</p><p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">VSN-89241</p></div>
+            <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-black text-slate-500 shadow-sm">AM</div>
           </div>
         </div>
-        <div className="h-[1px] bg-zinc-900">
-          <div className="h-full bg-white transition-all duration-700" style={{ width: `${(answeredCount / questions.length) * 100}%` }} />
-        </div>
+        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-slate-50"><div className="h-full bg-indigo-600 transition-all duration-700" style={{ width: `${(answeredCount/questions.length)*100}%` }} /></div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <aside className="w-[240px] shrink-0 bg-white border-r border-gray-200 flex flex-col gap-[24px]">
-          <QuestionPalette 
-            questions={questions} currentQ={currentQ} answers={answers} visited={visited} markedForReview={markedForReview} 
-            navigateTo={(i) => { setCurrentQ(i); setVisited(v => ({ ...v, [i]: true })); }}
-          />
-          <div className="mt-auto p-4 border-t border-gray-100 flex items-center justify-between">
-            <span className="text-[8px] font-black text-emerald-600 tracking-wider">ENCRYPTED</span>
-            <button onClick={() => setShowExitPrompt(true)} className="p-2 rounded-lg bg-red-500/10 text-red-500"><Power size={14} /></button>
+        <aside className="w-[240px] shrink-0 bg-white border-r border-slate-200 flex flex-col shadow-sm">
+          <QuestionPalette questions={questions} currentQ={currentQ} answers={answers} visited={visited} markedForReview={markedForReview} navigateTo={(i) => { setCurrentQ(i); setVisited(v => ({ ...v, [i]: true })); }} />
+          <div className="mt-auto p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/30">
+            <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1.5"><div className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse" /> Encrypted Session</span>
+            <button onClick={() => setShowExitPrompt(true)} className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors border border-red-100"><Power size={14} /></button>
           </div>
         </aside>
 
-        {/* Main Content Area */}
-        <main className="flex-1 flex overflow-hidden bg-[#f8f9fa]">
-          {/* Question Scroll Area */}
-          <div className="flex-1 overflow-y-auto scroll-thin px-8 py-6">
-            <div className="w-full">
-              <AnimatePresence mode="wait">
-                <Motion.div key={currentQ} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                  <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)]">
-                    <div className="px-8 py-4 flex items-center justify-between bg-gray-50/50 border-b border-gray-100">
-                      <div className="flex items-center gap-3">
-                        <span className="text-[11px] font-bold text-gray-900 tracking-tight">QUESTION {currentQ + 1} OF {questions.length}</span>
-                        <div className="h-3 w-px bg-gray-200" />
-                        <div className="flex gap-4 text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                          <span>COMPUTER SCIENCE</span>
-                          <span>MAX: {questions.length * 4}</span>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        {markedForReview[currentQ] && <span className="text-[9px] font-black text-violet-600 bg-violet-50 px-2 py-0.5 rounded border border-violet-100 uppercase tracking-widest">Review</span>}
-                        {answers[currentQ] !== undefined && <span className="text-[9px] font-black text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-100 uppercase tracking-widest">Saved</span>}
-                      </div>
+        <main className="flex-1 flex overflow-hidden bg-slate-50">
+          <div className="flex-1 flex flex-col min-w-0">
+            {q?.type === 'coding' ? (
+              <div className="flex-1 flex min-h-0 overflow-hidden">
+                <div className="w-[42%] shrink-0 flex flex-col min-h-0 bg-white border-r border-slate-200">
+                  <div className="bg-slate-50 border-b border-slate-100 px-6 py-3.5 flex items-center justify-between shrink-0">
+                    <span className="text-[11px] font-black text-slate-900 uppercase tracking-widest">Objective</span>
+                    {markedForReview[currentQ] && <div className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-2 py-0.5 rounded-md border border-amber-100"><Bookmark size={10} className="fill-amber-600" /><span className="text-[9px] font-black uppercase tracking-wider">Flagged</span></div>}
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-8 scroll-thin font-medium">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="px-2.5 py-1 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm">Sec C ΓÇó Q{currentQ + 1}</div>
+                      <div className="px-2.5 py-1 bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-[10px] font-black uppercase tracking-widest">{q?.marks || 10} Marks</div>
                     </div>
-                    
-                    <div className="p-8 pt-10">
-                      <h2 className="text-[18px] font-semibold text-gray-900 leading-snug">{q?.questionText}</h2>
+                    <h1 className="text-2xl font-black text-slate-900 mb-6 leading-tight tracking-tight">{q?.questionText}</h1>
+                    <div className="prose prose-slate prose-sm max-w-none text-slate-600 leading-relaxed space-y-4">
+                        <p>Implement the solution according to the problem constraints. Ensure your code is optimized and handles edge cases.</p>
+                        <ul className="list-disc pl-5 mt-4 space-y-2 text-[13px] font-semibold text-slate-500">
+                            <li>All test cases must pass for full marks.</li>
+                            <li>Standard input/output is supported.</li>
+                            <li>Time and memory limits apply.</li>
+                        </ul>
                     </div>
-                    <div className="h-px bg-gray-100 mx-8" />
-                    
-                    <div className="p-8">
-                      {q?.type === 'mcq' && (
-                        <div className="grid gap-3">
-                          {q?.options?.map((opt, i) => (
-                            <button key={i} onClick={() => setAnswers(p => ({ ...p, [currentQ]: i }))} className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${answers[currentQ] === i ? 'border-teal-600 bg-teal-50' : 'border-gray-100 hover:border-gray-200'}`}>
-                              <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${answers[currentQ] === i ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-400'}`}>{String.fromCharCode(65 + i)}</span>
-                              <span className={`text-[15px] flex-1 text-left ${answers[currentQ] === i ? 'text-gray-900 font-semibold' : 'text-gray-600'}`}>{opt}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      {q?.type === 'coding' && (
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Environment</span>
-                              <select 
-                                value={selectedLanguage} 
-                                onChange={(e) => setSelectedLanguage(e.target.value)}
-                                className="bg-white border border-gray-200 rounded-md px-2 py-1 text-[10px] font-bold text-gray-600 focus:outline-none focus:border-teal-400"
-                              >
-                                <option value="javascript">Node.js</option>
-                                <option value="python">Python 3</option>
-                                <option value="cpp">C++</option>
-                                <option value="java">Java</option>
-                              </select>
-                            </div>
-                            <button onClick={handleRunCode} disabled={isExecuting} className="px-4 py-1.5 bg-[#0f766e] hover:bg-[#0d9488] text-white text-[10px] font-bold rounded-lg flex items-center gap-2 transition-colors shadow-sm">
-                              {isExecuting ? <RotateCcw size={12} className="animate-spin" /> : <Play size={12} />} RUN CODE
-                            </button>
-                          </div>
-                          
-                          <div className="border border-gray-200 rounded-xl overflow-hidden shadow-inner bg-white">
-                             <Editor 
-                                key={`editor-${currentQ}`}
-                                height="400px" 
-                                language={selectedLanguage === 'cpp' ? 'cpp' : selectedLanguage} 
-                                theme="light"
-                                defaultValue={typeof answers[currentQ] === 'object' ? answers[currentQ].code : (answers[currentQ] ?? q.initialCode)}
-                                onChange={(value) => setAnswers(p => ({ 
-                                  ...p, 
-                                  [currentQ]: { code: value, language: selectedLanguage } 
-                                }))}
-                                options={{
-                                  fontSize: 14,
-                                  minimap: { enabled: false },
-                                  scrollBeyondLastLine: false,
-                                  automaticLayout: true,
-                                  padding: { top: 20, bottom: 20 }
-                                }}
-                            />
-                          </div>
-
-                          {executionResult && (
-                            <div className={`rounded-xl border overflow-hidden ${executionResult.allPassed ? 'border-green-100 bg-green-50/30' : 'border-red-100 bg-red-50/10'} transition-all`}>
-                              <div className={`px-4 py-2 border-b flex items-center justify-between ${executionResult.allPassed ? 'bg-green-100/50 border-green-100' : 'bg-red-50/50 border-red-100'}`}>
-                                <h4 className={`text-[11px] font-bold uppercase tracking-wider ${executionResult.allPassed ? 'text-green-700' : 'text-red-700'}`}>
-                                  {executionResult.allPassed ? 'Execution Results: All Passed ✅' : 'Execution Results: Breakdown'}
-                                </h4>
-                                {executionResult.results && (
-                                  <div className="text-[10px] font-mono text-zinc-500">
-                                    Total Cases: {executionResult.results.length}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="p-4 space-y-3">
-                                {executionResult.results ? (
-                                  executionResult.results.map((tc, index) => (
-                                    <div key={index} className={`p-3 rounded-lg border flex flex-col gap-2 ${tc.passed ? 'bg-green-50/50 border-green-100/50' : 'bg-red-50/50 border-red-100/50'}`}>
-                                      <div className="flex items-center justify-between">
-                                          <span className={`text-[10px] font-bold uppercase ${tc.passed ? 'text-green-700' : 'text-red-700'}`}>
-                                            Case {tc.testCaseId}: {tc.passed ? 'Passed ✅' : 'Failed ❌'}
-                                          </span>
-                                          {tc.time && <span className="text-[9px] font-mono text-gray-500">{tc.time}s | {tc.memory} KB</span>}
-                                      </div>
-                                      {!tc.passed && tc.actualOutput && (
-                                        <div className="bg-white/50 p-2 rounded border border-red-100/50">
-                                          <p className="text-[9px] font-bold text-red-400 uppercase mb-1">Actual Output</p>
-                                          <pre className="text-[11px] font-mono text-red-600 whitespace-pre-wrap">{tc.actualOutput}</pre>
-                                        </div>
-                                      )}
-                                      {!tc.passed && tc.error && (
-                                        <div className="bg-red-900/5 p-2 rounded border border-red-100/50">
-                                          <p className="text-[9px] font-bold text-red-400 uppercase mb-1">Engine Error</p>
-                                          <pre className="text-[11px] font-mono text-red-800 whitespace-pre-wrap">{tc.error}</pre>
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))
-                                ) : (
-                                  <div className="flex flex-col gap-1">
-                                    <pre className="text-[11px] font-mono text-red-400 whitespace-pre-wrap font-bold">{executionResult.error}</pre>
-                                    <pre className="text-[11px] font-mono text-red-400 whitespace-pre-wrap">{executionResult.details}</pre>
-                                  </div>
-                                )}
-                              </div>
+                  </div>
+                </div>
+                <div id="coding-right-panel" className="flex-1 flex flex-col min-h-0 relative bg-slate-50">
+                  <div className="absolute inset-0 flex flex-col">
+                    <div style={{ height: `${editorHeight}%` }} className="flex flex-col shrink-0 min-h-0 bg-white">
+                      <div className="flex items-center justify-between px-4 h-10 bg-slate-50 border-b border-slate-200 shrink-0">
+                        <div className="flex items-center gap-2 text-slate-400"><Terminal size={14} /><span className="text-[11px] font-black uppercase tracking-widest">Environment</span></div>
+                        <div className="relative">
+                          <button onClick={() => setIsLangDropdownOpen(p => !p)} className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-2.5 h-[26px] hover:bg-slate-50 transition-all text-[11px] font-black uppercase tracking-widest text-slate-600 shadow-sm">{selectedLanguage}<ChevronDown size={12} /></button>
+                          {isLangDropdownOpen && (
+                            <div className="absolute top-full right-0 mt-1 w-32 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1 overflow-hidden border-t-0 ring-1 ring-slate-200 ring-offset-0">
+                              {['javascript', 'python', 'cpp', 'java'].map(l => (
+                                <button key={l} onClick={() => { setSelectedLanguage(l); setIsLangDropdownOpen(false); }} className={`w-full text-left px-3 py-1.5 text-[11px] font-black uppercase tracking-wider transition-colors ${selectedLanguage === l ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'}`}>{l}</button>
+                              ))}
                             </div>
                           )}
                         </div>
-                      )}
-                      {q?.type === 'short' && (
-                        <textarea
-                          value={answers[currentQ] || ''}
-                          onChange={(e) => setAnswers(p => ({ ...p, [currentQ]: e.target.value }))}
-                          placeholder="Type your response here..."
-                          className="w-full h-64 bg-slate-50 border border-gray-100 rounded-lg p-6 text-gray-800 text-[15px] focus:outline-none focus:border-teal-200 transition-all resize-none"
-                        />
-                      )}
+                      </div>
+                      <div className="flex-1 shadow-inner"><Editor height="100%" language={selectedLanguage === 'cpp' ? 'cpp' : selectedLanguage} theme="light" value={typeof answers[currentQ] === 'object' ? answers[currentQ].code : (answers[currentQ] ?? q.initialCode)} onChange={v => setAnswers(p => ({ ...p, [currentQ]: { code: v, language: selectedLanguage } }))} options={{ fontSize: 13, minimap: { enabled: false }, automaticLayout: true, padding: { top: 16 } }} /></div>
+                    </div>
+                    <div className="h-1 bg-slate-200 hover:bg-indigo-300 cursor-row-resize z-10 transition-all flex items-center justify-center group" onMouseDown={() => { isResizing.current = true; document.body.style.cursor = 'row-resize'; }}><div className="w-12 h-1 bg-slate-300 group-hover:bg-indigo-500 rounded-full transition-colors" /></div>
+                    <div className="flex-1 flex flex-col min-h-0 bg-white">
+                      <div className="flex items-center px-4 border-b border-slate-200 shrink-0 h-10 bg-white z-10">
+                        <button onClick={() => setActiveTab('Test Cases')} className={`h-full px-4 text-[11px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'Test Cases' ? 'text-indigo-600 border-indigo-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>Test Cases</button>
+                        <button onClick={() => setActiveTab('Execution Details')} className={`h-full px-4 text-[11px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'Execution Details' ? 'text-indigo-600 border-indigo-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>Output Log</button>
+                      </div>
+                      <div className="flex-1 overflow-y-auto p-6 scroll-thin bg-slate-50/40">
+                        {isExecuting ? <div className="h-full flex flex-col items-center justify-center gap-3 text-indigo-500"><RotateCcw size={24} className="animate-spin" /><span className="text-[10px] font-black uppercase tracking-widest animate-pulse">Processing Execution...</span></div> : executionResult ? (
+                          <div className="space-y-4 animate-in fade-in duration-500">
+                            {activeTab === 'Test Cases' ? (
+                                <div className="grid grid-cols-1 gap-4">
+                                    {executionResult.results ? executionResult.results.map((res, i) => (
+                                        <div key={i} className={`bg-white border rounded-2xl overflow-hidden shadow-sm transition-all border-slate-200`}>
+                                            <div className={`px-4 py-2.5 border-b flex items-center justify-between ${res.passed ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-red-50 text-red-700 border-red-100'}`}>
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className={`w-1.5 h-1.5 rounded-full ${res.passed ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'}`} />
+                                                    <span className="text-[10px] font-black uppercase tracking-widest">Case {res.testCaseId || i + 1}</span>
+                                                </div>
+                                                <span className="text-[9px] font-black uppercase tracking-tighter">{res.passed ? 'Passed ✅' : 'Failed ❌'}</span>
+                                            </div>
+                                            <div className="p-5 grid grid-cols-3 gap-8">
+                                                <div><p className="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Input</p><pre className="text-[11px] font-mono bg-slate-50 p-2.5 rounded-lg border border-slate-100 text-slate-600 overflow-x-auto">{res.input || 'N/A'}</pre></div>
+                                                <div><p className="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Expected</p><pre className="text-[11px] font-mono bg-slate-50 p-2.5 rounded-lg border border-slate-100 text-slate-600 overflow-x-auto">{res.expectedOutput || 'Success'}</pre></div>
+                                                <div className="relative group">
+                                                    <p className="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Actual</p>
+                                                    <pre className={`text-[11px] font-mono p-2.5 rounded-lg border transition-all ${res.passed ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-red-50 text-red-700 border-red-100 shadow-sm'} overflow-x-auto`}>{res.actualOutput || res.error || 'N/A'}</pre>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )) : <div className="text-center py-8"><pre className="text-red-500 font-mono text-sm">{executionResult.error}: {executionResult.details}</pre></div>}
+                                </div>
+                            ) : (
+                                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl relative group">
+                                    <div className="flex items-center gap-2 mb-4 pb-4 border-b border-slate-800/50">
+                                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                        <span className="font-mono text-[10px] font-black text-slate-400 uppercase">Process Log</span>
+                                    </div>
+                                    <pre className="text-[13px] font-mono whitespace-pre-wrap leading-relaxed transition-all text-emerald-400/90">{executionResult.stdout || executionResult.details || 'Execution finished with no output.'}</pre>
+                                    {executionResult.stderr && <div className="mt-4 pt-4 border-t border-slate-800"><pre className="text-red-400 font-mono text-[12px]">{executionResult.stderr}</pre></div>}
+                                </div>
+                            )}
+                          </div>
+                        ) : <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-4"><div className="w-16 h-16 rounded-3xl bg-slate-100 flex items-center justify-center border border-slate-200"><Play size={32} className="text-slate-300 ml-1" /></div><span className="text-[10px] font-black uppercase tracking-widest animate-pulse">Ready for Compile & Execution</span></div>}
+                      </div>
                     </div>
                   </div>
-
-                  <div className="mt-8 flex items-center justify-between">
-                    <div className="flex gap-3">
-                      <button onClick={() => setCurrentQ(p => Math.max(0, p - 1))} disabled={currentQ === 0} className="px-6 py-2.5 rounded-xl text-[12px] font-bold text-gray-600 border border-gray-200 bg-white hover:bg-gray-50 flex items-center gap-2 disabled:opacity-30"><ChevronLeft size={16} /> Previous</button>
-                      <button onClick={() => setMarkedForReview(p => ({ ...p, [currentQ]: !p[currentQ] }))} className={`px-6 py-2.5 rounded-xl text-[12px] font-bold border transition-all ${markedForReview[currentQ] ? 'bg-violet-600 text-white' : 'bg-white text-gray-600'}`}>Review Later</button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col overflow-y-auto scroll-thin px-8 py-10 bg-slate-50/50">
+                <div className="max-w-3xl mx-auto w-full bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden mb-12">
+                  <div className="p-8 border-b border-slate-100 bg-white">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-lg text-[11px] font-black uppercase tracking-widest border border-indigo-100 shadow-sm">Sec A ΓÇó Q{currentQ + 1}</div>
+                      <div className="px-3 py-1 bg-slate-100 text-slate-500 rounded-lg text-[11px] font-bold uppercase tracking-widest border border-slate-200">{q?.type === 'mcq' ? 'Choice Selection' : 'Written Response'}</div>
+                      <div className="ml-auto text-[11px] font-black text-slate-400 uppercase tracking-widest tabular-nums">{q?.marks || 4} Weightage</div>
                     </div>
-                    {currentQ < questions.length - 1 ? (
-                      <button onClick={() => { setCurrentQ(currentQ + 1); setVisited(v => ({ ...v, [currentQ + 1]: true })); }} className="bg-[#0f766e] text-white px-8 py-2.5 rounded-xl text-[12px] font-bold flex items-center gap-2">Save & Next <ChevronRight size={16} /></button>
+                    <h2 className="text-2xl font-black text-slate-900 leading-snug tracking-tight">{q?.questionText}</h2>
+                  </div>
+                  <div className="p-8 pb-10">
+                    {q?.type === 'mcq' ? (
+                      <div className="space-y-4">
+                        {q?.options?.map((opt, idx) => {
+                          const isS = answers[currentQ] === idx;
+                          return (
+                            <button key={idx} onClick={() => setAnswers(p => ({ ...p, [currentQ]: idx }))} className={`w-full flex items-start gap-5 p-6 rounded-2xl border-2 transition-all duration-300 text-left relative group ${isS ? 'bg-indigo-50/50 border-indigo-600 shadow-md shadow-indigo-100/50 ring-4 ring-indigo-500/5' : 'bg-white border-slate-100 hover:border-slate-300 hover:shadow-lg hover:bg-slate-50/50'}`}>
+                              <div className={`mt-0.5 w-7 h-7 rounded-xl flex items-center justify-center text-[12px] font-black transition-all ${isS ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-100 text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-400'}`}>{String.fromCharCode(65 + idx)}</div>
+                              <span className={`text-[16px] leading-relaxed flex-1 pt-0.5 ${isS ? 'font-bold text-indigo-900' : 'font-medium text-slate-600 group-hover:text-slate-900'}`}>{opt}</span>
+                              {isS && <div className="w-6 h-6 rounded-full bg-indigo-600 flex items-center justify-center text-white scale-110 shadow-lg animate-in zoom-in duration-300"><CheckCircle2 size={14} strokeWidth={3} /></div>}
+                            </button>
+                          );
+                        })}
+                      </div>
                     ) : (
-                      <div className="text-[11px] font-bold text-gray-400 py-2.5">End of Assessment</div>
+                      <div className="relative group">
+                          <textarea value={answers[currentQ] || ''} onChange={e => setAnswers(p => ({ ...p, [currentQ]: e.target.value }))} placeholder="Type your structured response here..." className="w-full h-96 bg-slate-50/50 border-2 border-slate-100 rounded-3xl p-10 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 transition-all outline-none resize-none shadow-inner font-medium text-slate-700 leading-relaxed text-[15px]" />
+                          <div className="absolute top-4 right-4"><div className="w-1.5 h-1.5 rounded-full bg-indigo-200 group-focus-within:bg-indigo-500 animate-pulse" /></div>
+                      </div>
                     )}
                   </div>
+                </div>
+              </div>
+            )}
 
-                  {/* ── Bottom Info Panel ── */}
-                  <div className="mt-6 sticky bottom-0 z-10 bg-white rounded-xl border border-gray-200 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] overflow-hidden">
-                    {/* Progress bar */}
-                    <div className="h-1 bg-gray-100">
-                      <div
-                        className="h-full bg-gradient-to-r from-teal-500 to-teal-600 transition-all duration-700"
-                        style={{ width: `${(answeredCount / Math.max(questions.length, 1)) * 100}%` }}
-                      />
-                    </div>
-
-                    <div className="px-6 py-4 flex items-center justify-between gap-6 flex-wrap">
-                      {/* Stats pills */}
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-[#15803d]" />
-                          <span className="text-[11px] font-bold text-gray-500">
-                            <span className="text-gray-900">{answeredCount}</span> Answered
-                          </span>
-                        </div>
-                        <div className="w-px h-3 bg-gray-200" />
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-gray-300" />
-                          <span className="text-[11px] font-bold text-gray-500">
-                            <span className="text-gray-900">{questions.length - answeredCount}</span> Remaining
-                          </span>
-                        </div>
-                        <div className="w-px h-3 bg-gray-200" />
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-[#7c3aed]" />
-                          <span className="text-[11px] font-bold text-gray-500">
-                            <span className="text-gray-900">{Object.values(markedForReview).filter(Boolean).length}</span> Marked
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Marks badge */}
-                      {q?.marks && (
-                        <div className="flex items-center gap-2 px-3 py-1.5 bg-teal-50 border border-teal-100 rounded-lg">
-                          <CheckCircle size={12} className="text-teal-600" />
-                          <span className="text-[11px] font-bold text-teal-700">+{q.marks} marks for correct answer</span>
-                        </div>
-                      )}
-
-                      {/* Final Action */}
-                      <button onClick={() => setShowConfirm(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-xl text-[12px] font-bold flex items-center gap-2 shadow-lg transition-colors ml-auto">
-                        Complete Assessment <Send size={14} />
-                      </button>
-                    </div>
-                  </div>
-                </Motion.div>
-              </AnimatePresence>
+            <div className="bg-white border-t border-slate-200 px-8 py-3.5 flex items-center justify-between shrink-0 shadow-[0_-8px_20px_-8px_rgba(0,0,0,0.08)] z-20">
+              <div className="flex items-center gap-3">
+                <button onClick={() => setCurrentQ(p => Math.max(0, p - 1))} disabled={currentQ === 0} className={`px-5 py-2.5 flex items-center gap-2.5 rounded-xl text-[12px] font-bold border transition-all ${currentQ === 0 ? 'text-slate-300 border-slate-100 cursor-not-allowed' : 'text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300 active:scale-95 shadow-sm'}`}><ChevronLeft size={18} /> Previous</button>
+                <button onClick={() => setCurrentQ(p => Math.min(questions.length-1, p + 1))} disabled={currentQ === questions.length-1} className={`px-5 py-2.5 flex items-center gap-2.5 rounded-xl text-[12px] font-bold border transition-all ${currentQ === questions.length-1 ? 'text-slate-300 border-slate-100 cursor-not-allowed' : 'text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300 active:scale-95 shadow-sm'}`}>Next <ChevronRight size={18} /></button>
+              </div>
+              <div className="flex items-center gap-4">
+                {q?.type === 'coding' && (
+                  <>
+                    <button onClick={handleRunCode} disabled={isExecuting} className="px-5 py-2.5 flex items-center gap-2.5 rounded-xl text-[12px] font-black uppercase tracking-wider border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:shadow-sm disabled:opacity-50 transition-all active:scale-95"><Play size={16} fill="currentColor" /> Run</button>
+                    <button onClick={handleCheckTestCases} disabled={isExecuting} className="px-8 py-2.5 flex items-center gap-2.5 rounded-xl text-[12px] font-black uppercase tracking-wider bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-100 disabled:opacity-50 transition-all active:scale-95 transform"><Send size={16} /> Submit Code</button>
+                  </>
+                )}
+                <div className="h-8 w-px bg-slate-100 mx-2" />
+                <button onClick={() => setShowConfirm(true)} className={`px-6 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] transition-all border ${answeredCount === questions.length ? 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-100' : 'text-slate-400 border-slate-100 hover:text-slate-600 hover:border-slate-200 bg-slate-50/50'}`}>{answeredCount === questions.length ? 'Final Review' : 'Incomplete'}</button>
+              </div>
             </div>
           </div>
-
-          {/* ── Proctoring Right Panel ── */}
-          <aside className="w-[200px] shrink-0 bg-white border-l border-gray-100 flex flex-col items-center pt-6 px-4 gap-5 overflow-y-auto scroll-thin">
-            {/* Camera Feed */}
-            <div className="w-full">
-              <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.18em] mb-3 text-center">Live Feed</p>
-              <div className="bg-white/80 backdrop-blur-md p-2 rounded-2xl border border-gray-100 shadow-md">
-                <ProctoringSidebar cameraActive={cameraActive} videoRef={videoRef} faceActive={faceBoxes.length > 0} />
-              </div>
-            </div>
-
-            {/* Integrity Score */}
-            <div className="w-full bg-gray-50 border border-gray-100 rounded-xl p-4 text-center">
-              <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.15em] mb-2">Integrity</p>
-              <div className="relative w-14 h-14 mx-auto mb-2">
-                <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
-                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="#f1f5f9" strokeWidth="3" />
-                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="#0d9488" strokeWidth="3"
-                    strokeDasharray={`${confidence} ${100 - confidence}`} strokeLinecap="round" />
-                </svg>
-                <span className="absolute inset-0 flex items-center justify-center text-[13px] font-black text-gray-800">{confidence}%</span>
-              </div>
-              <div className="flex items-center justify-center gap-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wide">Verified</span>
-              </div>
-            </div>
-
-            {/* Proctoring Status */}
-            <div className="w-full bg-gray-50 border border-gray-100 rounded-xl p-4">
-              <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.15em] mb-3">Status</p>
-              <div className="flex flex-col gap-2.5">
-                {[
-                  { label: 'Camera', ok: cameraActive },
-                  { label: 'Network', ok: true },
-                  { label: 'Audio', ok: true },
-                  { label: 'Face ID', ok: faceBoxes.length > 0 },
-                ].map(({ label, ok }) => (
-                  <div key={label} className="flex items-center justify-between">
-                    <span className="text-[10px] font-semibold text-gray-500">{label}</span>
-                    <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[8px] font-bold uppercase tracking-wide ${
-                      ok ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'
-                    }`}>
-                      <div className={`w-1 h-1 rounded-full ${ok ? 'bg-emerald-500' : 'bg-red-500 animate-pulse'}`} />
-                      {ok ? 'OK' : 'Off'}
+          
+          <aside className="w-[240px] shrink-0 bg-white border-l border-slate-200 flex flex-col items-center pt-8 px-5 gap-7 overflow-y-auto scroll-thin shadow-[inset_1px_0_0_0_rgba(0,0,0,0.02)]">
+            <ProctoringSidebar cameraActive={cameraActive} videoRef={videoRef} faceActive={faceBoxes.length > 0} confidence={confidence} />
+            <div className="w-full space-y-3 mt-4">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Candidate Health</p>
+                <div className="w-full bg-slate-50 rounded-2xl border border-slate-100 p-5 shadow-inner">
+                    <div className="flex items-center gap-2.5 mb-5"><Monitor size={14} className="text-slate-400" /><span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Network Telemetry</span></div>
+                    <div className="space-y-3.5 text-[9px] font-bold text-slate-500">
+                        <div className="flex items-center justify-between"><span>Session Uptime</span><span className="text-slate-800 font-bold tabular-nums">00:44:12</span></div>
+                        <div className="flex items-center justify-between"><span>Latencies</span><span className="text-emerald-500 font-bold tabular-nums">12ms</span></div>
+                        <div className="flex items-center justify-between"><span>Proctor Warnings</span><span className="text-red-500 font-bold tabular-nums">0</span></div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                </div>
+            </div>
+            <div className="mt-auto pb-6 w-full opacity-60">
+                <VisionLogo className="w-6 h-6 text-slate-200 mx-auto grayscale" />
             </div>
           </aside>
         </main>
       </div>
 
-      <SubmitModal isOpen={showConfirm} onClose={() => setShowConfirm(false)} stats={{ answered: answeredCount, unanswered: questions.length - answeredCount, marked: Object.values(markedForReview).filter(Boolean).length }} onConfirm={handleFinalSubmit} />
-      <ExitModal isOpen={showExitPrompt} onClose={() => { setShowExitPrompt(false); setExitError(''); setExitPassword(''); }} password={exitPassword} setPassword={e => { setExitPassword(e); setExitError(''); }} error={exitError} onExit={() => { if (exitPassword === '12345') { handleFinalSubmit(); } else { setExitError('Incorrect Pass'); setExitPassword(''); } }} />
+      <SubmitModal isOpen={showConfirm} onClose={() => setShowConfirm(false)} stats={{ answered: answeredCount, unanswered: questions.length - answeredCount }} onConfirm={handleFinalSubmit} />
+      <ExitModal isOpen={showExitPrompt} onClose={() => { setShowExitPrompt(false); setExitError(''); setExitPassword(''); }} password={exitPassword} setPassword={setExitPassword} error={exitError} onExit={() => { if (exitPassword === '12345') navigate('/student'); else { setExitError('Incorrect Override Path'); setExitPassword(''); } }} />
       <TabToast toast={tabToast} />
 
-      {/* Fullscreen Overlay */}
       {!isFullscreen && !submitted && !terminated && (
-        <div className="fixed inset-0 z-[200] bg-zinc-950/90 backdrop-blur-md flex items-center justify-center p-8">
-          <div className="max-w-md w-full bg-zinc-900 border border-red-500/30 p-8 rounded-3xl text-center shadow-2xl">
-            <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <ShieldAlert size={32} className="text-red-500" />
-            </div>
-            <h2 className="text-2xl font-black text-white mb-2">Fullscreen Required</h2>
-            <p className="text-zinc-400 text-sm mb-8 leading-relaxed">
-              Exiting fullscreen is a violation. Please return to fullscreen immediately to continue the exam. 
-              Multiple violations will result in automatic termination.
-            </p>
-            <button 
-              onClick={() => document.documentElement.requestFullscreen()}
-              className="w-full py-4 bg-red-600 hover:bg-red-500 text-white rounded-2xl font-bold transition-all shadow-lg shadow-red-900/20 active:scale-95"
-            >
-              Back to Fullscreen
-            </button>
+        <div className="fixed inset-0 z-[200] bg-slate-900/98 backdrop-blur-2xl flex items-center justify-center p-8 text-center animate-in fade-in duration-700">
+          <div className="max-w-md w-full bg-slate-900 border border-red-500/20 p-10 rounded-[32px] shadow-2xl ring-1 ring-white/5">
+            <div className="w-20 h-20 bg-red-500/10 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-inner ring-1 ring-red-500/20"><ShieldAlert size={40} className="text-red-500" /></div>
+            <h2 className="text-3xl font-black text-white mb-3 uppercase tracking-tight">Security Violation</h2>
+            <p className="text-slate-400 text-sm mb-10 leading-relaxed font-medium">Exam integrity check failed. Fullscreen mode is mandatory. Your departure has been recorded and encrypted locally for post-exam evaluation.</p>
+            <button onClick={() => document.documentElement.requestFullscreen()} className="w-full py-5 bg-red-600 hover:bg-red-500 text-white rounded-2xl font-black uppercase tracking-[0.1em] text-[12px] transition-all shadow-xl shadow-red-900/40 transform active:scale-95">Restore Secure View</button>
           </div>
         </div>
       )}
