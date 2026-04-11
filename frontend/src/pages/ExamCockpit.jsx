@@ -47,7 +47,7 @@ const QuestionPalette = React.memo(({ questions, currentQ, answers, visited, mar
   const activeSec = sections.find(s => s.id === activeSection) || sections[0];
   const visibleIndices = questions
     .map((q, i) => ({ q, i }))
-    .filter(({ q }) => activeSec?.types.includes(q.type))
+    .filter(({ q }) => activeSec?.types?.includes(q.type))
     .map(({ i }) => i);
 
   const handleSectionClick = (sec) => {
