@@ -538,25 +538,7 @@ export default function ExamCockpit() {
 
   // 🛡️ Advanced Security: DevTools Trap & Keyboard Lock
   useEffect(() => {
-    // 🪤 Trap 1: Debugger loop (Freezes browser if DevTools is open)
-    const trap = setInterval(() => {
-      (function() {
-        (function a() {
-          try {
-            (function b(i) {
-              if (('' + (i / i)).length !== 1 || i % 20 === 0) {
-                (function() {}).constructor('debugger')();
-              } else {
-                debugger;
-              }
-              b(++i);
-            }(0));
-          } catch (_e) {}
-        }());
-      }());
-    }, 500);
-
-    // 🔒 Trap 2: Event Blocking
+    // 🔒 Trap 1: Event Blocking
     const handleKeydown = (e) => {
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
       const cmdOrCtrl = isMac ? e.metaKey : e.ctrlKey;
@@ -583,7 +565,6 @@ export default function ExamCockpit() {
     window.addEventListener('contextmenu', handleContextMenu);
 
     return () => {
-      clearInterval(trap);
       window.removeEventListener('keydown', handleKeydown);
       window.removeEventListener('contextmenu', handleContextMenu);
     };
