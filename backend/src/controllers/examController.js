@@ -291,6 +291,7 @@ exports.getExamById = asyncHandler(async (req, res) => {
         category: exam.category,
         duration: exam.duration,
         totalMarks: exam.totalMarks,
+        startTime: exam.scheduledDate,
         creator: exam.creator?.name,
         questions: sanitizedQuestions // Ab fully sanitized questions bhejo
     });
@@ -626,6 +627,7 @@ exports.resumeExam = asyncHandler(async (req, res) => {
             category: exam.category,
             duration: exam.duration,
             totalMarks: exam.totalMarks,
+            startTime: exam.scheduledDate,
             creator: exam.creator?.name,
             questions: safeQuestions
         },
