@@ -4,10 +4,10 @@ import socketService from '../services/socket';
 import api, { runCodingQuestion, requestHelp } from '../services/api';
 import Editor from '@monaco-editor/react';
 import {
-  Camera, CameraOff, Clock, Shield, CheckCircle, CheckCircle2,
+  CameraOff, Clock, Shield, CheckCircle, CheckCircle2, Lock,
   ChevronRight, ChevronLeft, ChevronDown, Send, XCircle,
-  Bookmark, Terminal, Eye, Fingerprint, AlertCircle, Power,
-  Loader2, RotateCcw, Play, Monitor, ScanFace, ShieldAlert,
+  Bookmark, Terminal, Power,
+  Loader2, RotateCcw, Play, Monitor, ShieldAlert,
   MessageSquare, Radio
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
