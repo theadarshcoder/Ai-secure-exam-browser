@@ -402,7 +402,10 @@ export default function ExamCockpit() {
   useEffect(() => {
     socketService.connect();
     socketService.onBroadcast((data) => {
-      if (!data.examId || data.examId === examId) {
+      // Bug 6: Real-time socket-based termination
+      if (data.type === 'TERMINATE' && (data.studentId === sessionStorage.getItem('vision_email') || data.examId === examId)) {
+        setTerminated({ reason: data.reason || 'Terminated by supervisor' });
+      } else if (!data.examId || data.examId === examId) {
         setBroadcastMessage(data.message);
         setTimeout(() => setBroadcastMessage(null), 15000);
       }
@@ -462,10 +465,19 @@ export default function ExamCockpit() {
       }
     };
     const blockContextMenu = (e) => { e.preventDefault(); logIncident('Right Click Blocked', 'low', 'Context menu attempt'); return false; };
+    
+    // Bug 8: Tab Switch Incident Logging
+    const handleVisibilityChange = () => {
+      if (document.hidden && !submitted && !terminated) {
+        logIncident('Tab Switch', 'high', 'Student switched tabs or minimized window');
+        toast.error("SECURITY ALERT: Tab switching recorded as violation!", { id: 'tab-switch-warning' });
+      }
+    };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('keydown', blockShortcuts);
     document.addEventListener('contextmenu', blockContextMenu);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     
     // Auto-check initially (though it will stay blocked, the overlay handles the reset)
     if (!document.fullscreenElement) {
@@ -476,6 +488,7 @@ export default function ExamCockpit() {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('keydown', blockShortcuts);
       document.removeEventListener('contextmenu', blockContextMenu);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [logIncident]);
 
@@ -662,20 +675,44 @@ export default function ExamCockpit() {
   // 📷 Camera & AI Setup
   useEffect(() => {
     let localStream = null;
+    let detectionInterval = null;
+    
     const init = async () => {
       try {
         const s = await navigator.mediaDevices.getUserMedia({ video: true });
         localStream = s;
         setStream(s);
         if (videoRef.current) videoRef.current.srcObject = s;
+        
         const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
         await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
         setModelsLoaded(true);
+
+        // Bug 1: Active AI Face Monitoring Loop
+        detectionInterval = setInterval(async () => {
+          if (videoRef.current && !submitted && !terminated) {
+            try {
+              const detections = await faceapi.detectAllFaces(videoRef.current, new faceapi.TinyFaceDetectorOptions());
+              setFaceBoxes(detections);
+              
+              if (detections.length === 0) {
+                logIncident('No Face Detected', 'high', 'Student missing from frame');
+              } else if (detections.length > 1) {
+                logIncident('Multiple Faces', 'critical', 'Extra person detected in frame');
+              }
+            } catch (dErr) { console.warn('Detection failed frame'); }
+          }
+        }, 3000);
+
       } catch (err) { console.warn('AI/Camera setup failed'); }
     };
     init();
-    return () => { if (localStream) localStream.getTracks().forEach(t => t.stop()); };
-  }, []);
+    
+    return () => { 
+      if (localStream) localStream.getTracks().forEach(t => t.stop()); 
+      if (detectionInterval) clearInterval(detectionInterval);
+    };
+  }, [logIncident, submitted, terminated]);
 
   useEffect(() => {
     if (submitted || terminated || !examId) return;
@@ -746,11 +783,14 @@ export default function ExamCockpit() {
 
   const handleSecureEntry = async () => {
     try {
-      if (!document.documentElement.requestFullscreen) return; // Guard
+      if (!document.documentElement.requestFullscreen) return; 
       await document.documentElement.requestFullscreen();
       setNeedsInteraction(false);
       setIsFullscreen(true);
-    } catch (_err) { console.error("Fullscreen failed"); }
+    } catch (_err) { 
+      console.error("Fullscreen failed");
+      toast.error("Please allow Fullscreen permission to start the exam!", { id: 'fullscreen-error' });
+    }
   };
   
   const q = questions[currentQ];

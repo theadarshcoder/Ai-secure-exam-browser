@@ -223,6 +223,7 @@ export default function StudentDashboard() {
             alreadySubmitted: exam?.alreadySubmitted || false
           }));
           setExams(liveExams);
+          localStorage.setItem('published_exams', JSON.stringify(liveExams)); // Bug 9: Save for offline fallback
           setIsLiveData(true);
         }
       } catch (error) {

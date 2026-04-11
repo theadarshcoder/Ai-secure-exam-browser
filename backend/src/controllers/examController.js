@@ -384,11 +384,15 @@ exports.startExam = asyncHandler(async (req, res) => {
             const cacheKey = `exam_session:${examId}:${studentId}`;
             const cacheStr = await redisClient.get(cacheKey);
             if (cacheStr) {
-                const parsed = JSON.parse(cacheStr);
-                liveAnswers = parsed.answers;
-                liveQuestionStates = parsed.questionStates;
-                liveRemainingTime = parsed.remainingTimeSeconds;
-                liveIndex = parsed.currentQuestionIndex;
+                try {
+                    const parsed = JSON.parse(cacheStr);
+                    liveAnswers = parsed.answers || liveAnswers;
+                    liveQuestionStates = parsed.questionStates || liveQuestionStates;
+                    liveRemainingTime = parsed.remainingTimeSeconds || liveRemainingTime;
+                    liveIndex = parsed.currentQuestionIndex || liveIndex;
+                } catch (parseErr) {
+                    console.error('⚠️ Redis Cache Corrupted in startExam, falling back to DB:', parseErr.message);
+                }
             } else {
                 await redisClient.setEx(cacheKey, 86400, JSON.stringify({
                     answers: liveAnswers,
@@ -558,7 +562,14 @@ exports.saveProgress = asyncHandler(async (req, res) => {
         
         // Fetch existing cache to avoid overwriting missing fields
         const cacheStr = await redisClient.get(cacheKey);
-        let sessionData = cacheStr ? JSON.parse(cacheStr) : {};
+        let sessionData = {};
+        if (cacheStr) {
+            try {
+                sessionData = JSON.parse(cacheStr);
+            } catch (pErr) {
+                console.error('⚠️ Redis Cache Corrupted in saveProgress:', pErr.message);
+            }
+        }
         
         if (answers !== undefined)              sessionData.answers = answers;
         if (currentQuestionIndex !== undefined) sessionData.currentQuestionIndex = currentQuestionIndex;
@@ -651,11 +662,15 @@ exports.resumeExam = asyncHandler(async (req, res) => {
         const cacheKey = `exam_session:${examId}:${studentId}`;
         const cacheStr = await redisClient.get(cacheKey);
         if (cacheStr) {
-            const parsed = JSON.parse(cacheStr);
-            liveAnswers = parsed.answers;
-            liveQuestionStates = parsed.questionStates;
-            liveRemainingTime = parsed.remainingTimeSeconds;
-            liveIndex = parsed.currentQuestionIndex;
+            try {
+                const parsed = JSON.parse(cacheStr);
+                liveAnswers = parsed.answers || liveAnswers;
+                liveQuestionStates = parsed.questionStates || liveQuestionStates;
+                liveRemainingTime = parsed.remainingTimeSeconds || liveRemainingTime;
+                liveIndex = parsed.currentQuestionIndex || liveIndex;
+            } catch (pErr) {
+                console.error('⚠️ Redis Cache Corrupted in resumeExam, falling back to DB:', pErr.message);
+            }
         } else {
             await redisClient.setEx(cacheKey, 86400, JSON.stringify({
                 answers: liveAnswers,

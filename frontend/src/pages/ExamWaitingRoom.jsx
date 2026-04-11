@@ -235,10 +235,11 @@ export default function ExamWaitingRoom() {
                 if (document.documentElement.requestFullscreen) {
                   await document.documentElement.requestFullscreen();
                 }
+                navigate(`/exam/${exam.id}`);
               } catch (err) {
                 console.warn('Fullscreen request failed:', err);
+                alert("Please allow Fullscreen permission to start the exam!");
               }
-              navigate(`/exam/${exam.id}`);
             }} 
           />
         </motion.div>
