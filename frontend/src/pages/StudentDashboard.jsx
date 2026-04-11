@@ -104,6 +104,7 @@ const ExamCard = ({ exam, now, onLaunch, onViewResults, index }) => {
 
   // Derive visual states
   let cardBg = index === 0 ? "bg-[#111827] opacity-100 shadow-xl" : "bg-[#111827] opacity-90 hover:opacity-100"; 
+  let statusColor = "text-slate-500";
   let statusText = "Upcoming";
   let btnText = "Not Available";
   let btnDisabled = true;
@@ -111,22 +112,26 @@ const ExamCard = ({ exam, now, onLaunch, onViewResults, index }) => {
 
   if (isSubmitted) {
     cardBg = "bg-[#0B0F14] opacity-50 grayscale hover:grayscale-0 border-white/[0.02]";
+    statusColor = "text-slate-500";
     statusText = "Completed";
     btnText = "View Results";
     btnDisabled = false;
     btnSecondary = true;
   } else if (isExpired) {
     cardBg = "bg-[#0B0F14] opacity-40 border-white/[0.02]";
+    statusColor = "text-red-400";
     statusText = "Expired";
     btnText = "Exam Over";
     btnDisabled = true;
   } else if (isLive) {
     cardBg = "bg-[#111827] opacity-100 border-white/10 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.5)]"; 
+    statusColor = "text-emerald-400";
     statusText = "Live Now";
     btnText = "Start Exam";
     btnDisabled = false;
   } else if (isPreOnboarding) {
     cardBg = "bg-[#111827] opacity-100";
+    statusColor = "text-blue-400";
     statusText = "Final Checks";
     btnText = "Enter Waiting Room";
     btnDisabled = false;
@@ -151,7 +156,7 @@ const ExamCard = ({ exam, now, onLaunch, onViewResults, index }) => {
                 {statusText}
               </span>
             ) : (
-              <span className="text-[11px] font-medium text-slate-500">{statusText}</span>
+              <span className={`text-[11px] font-medium ${statusColor}`}>{statusText}</span>
             )}
           </div>
           
