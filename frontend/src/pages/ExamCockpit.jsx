@@ -57,12 +57,13 @@ const QuestionPalette = ({ questions, currentQ, answers, visited, markedForRevie
 
   const getQState = (shuffledIndex) => {
     const q = questions[shuffledIndex];
-    const originalIndex = q?.originalIndex;
+    if (!q) return 'unseen';
+    const qId = q.originalId || q._id;
     if (shuffledIndex === currentQ) return 'current';
-    if (markedForReview[originalIndex] && answers[originalIndex] !== undefined) return 'marked-answered';
-    if (markedForReview[originalIndex]) return 'marked';
-    if (answers[originalIndex] !== undefined) return 'answered';
-    if (visited[originalIndex]) return 'visited';
+    if (markedForReview[qId] && answers[qId] !== undefined) return 'marked-answered';
+    if (markedForReview[qId]) return 'marked';
+    if (answers[qId] !== undefined) return 'answered';
+    if (visited[qId]) return 'visited';
     return 'unseen';
   };
 
@@ -98,7 +99,7 @@ const QuestionPalette = ({ questions, currentQ, answers, visited, markedForRevie
           {visibleIndices.map(i => (
             <button key={i} onClick={() => navigateTo(i)} className={`relative group h-10 rounded-xl flex items-center justify-center text-[13px] border transition-all duration-200 ${stateStyles[getQState(i)]}`}>
               {i + 1}
-              {markedForReview[questions[i]?.originalIndex] && getQState(i) !== 'current' && (
+              {markedForReview[questions[i]?.originalId || questions[i]?._id] && getQState(i) !== 'current' && (
                 <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 border-2 border-white rounded-full" />
               )}
             </button>
@@ -410,30 +411,38 @@ export default function ExamCockpit() {
 
         if (data.questions && data.questions.length > 0) {
           // 🎲 Seeded Randomization Logic
-          const studentId = sessionStorage.getItem('vision_email') || 'VSN-89241';
-          const randomFunc = generateSeed(examId + studentId);
+          // Use sessionId to ensure the seed is strictly tied to the backend session
+          // and cannot be spoofed via client-side sessionStorage.
+          const mainSeedStr = (examId + sessionProgress.sessionId);
+          
+          // Helper for localized shuffling (independent of other questions)
+          const getRNG = (salt) => generateSeed(mainSeedStr + salt);
 
           // Map original indices before shuffling so state remains consistent
           const processedQuestions = data.questions.map((q, qIndex) => {
-            const processedQ = { ...q, originalIndex: qIndex };
+            const questionId = q.id || q._id;
+            const processedQ = { ...q, originalId: questionId }; // Use ID instead of index
+            
             if (processedQ.type === 'mcq' && processedQ.options) {
               const optionsWithIndex = processedQ.options.map((optText, optIndex) => ({
                 text: optText,
                 originalIndex: optIndex
               }));
-              processedQ.displayOptions = seededShuffle(optionsWithIndex, randomFunc);
+              // Use a derivative seed for matching options so it's stable
+              processedQ.displayOptions = seededShuffle(optionsWithIndex, getRNG(questionId));
             }
             return processedQ;
           });
 
-          const finalShuffledQuestions = seededShuffle(processedQuestions, randomFunc);
+          // Shuffle the main question list using the base seed
+          const finalShuffledQuestions = seededShuffle(processedQuestions, getRNG('main_questions'));
           setQuestions(finalShuffledQuestions);
 
           // Restore Progress
           let restoredTime = sessionProgress.remainingTimeSeconds ?? (data.duration * 60);
-          let restoredAnswers = sessionProgress.answers || {};
+          let rawAnswers = sessionProgress.answers || {};
           let startIdx = sessionProgress.currentQuestionIndex || 0;
-          let restoredVisited = sessionProgress.questionStates || {};
+          let rawVisited = sessionProgress.questionStates || {};
 
           // Offline Recovery Check
           try {
@@ -442,21 +451,46 @@ export default function ExamCockpit() {
               const parsed = JSON.parse(decodeURIComponent(atob(offline)));
               if (parsed.remainingTimeSeconds < restoredTime) {
                 restoredTime = parsed.remainingTimeSeconds;
-                restoredAnswers = parsed.answers || {};
+                rawAnswers = parsed.answers || {};
                 startIdx = parsed.currentQuestionIndex || 0;
-                restoredVisited = parsed.questionStates || {};
+                rawVisited = parsed.questionStates || {};
                 api.post('/api/exams/save-progress', parsed).catch(() => {});
               }
             }
           } catch {}
 
+          // 🌉 BRIDGE: Support legacy index-based answers by mapping them to IDs
+          const restoredAnswers = {};
+          const restoredVisited = {};
+          
+          Object.entries(rawAnswers).forEach(([key, val]) => {
+            // If key is a small number string (index), find the Q at that index
+            if (!isNaN(key) && Number(key) < data.questions.length) {
+              const qForIndex = data.questions[Number(key)];
+              if (qForIndex) restoredAnswers[qForIndex.id || qForIndex._id] = val;
+            } else {
+              restoredAnswers[key] = val; // Already an ID
+            }
+          });
+
+          Object.entries(rawVisited).forEach(([key, val]) => {
+            if (val !== true && val !== 'answered' && val !== 'visited') return;
+            if (!isNaN(key) && Number(key) < data.questions.length) {
+              const qForIndex = data.questions[Number(key)];
+              if (qForIndex) restoredVisited[qForIndex.id || qForIndex._id] = true;
+            } else {
+              restoredVisited[key] = true;
+            }
+          });
+
           setSecondsLeft(restoredTime);
           setAnswers(restoredAnswers);
           setCurrentQ(startIdx);
           
-          let cleanedVisited = {};
-          Object.entries(restoredVisited).forEach(([k, v]) => { if (v === true) cleanedVisited[k] = true; });
-          setVisited(Object.keys(cleanedVisited).length > 0 ? cleanedVisited : { [finalShuffledQuestions[startIdx].originalIndex]: true });
+          // Ensure at least the current question is marked as visited
+          const currentId = finalShuffledQuestions[startIdx]?.originalId;
+          if (currentId) restoredVisited[currentId] = true;
+          setVisited(restoredVisited);
           
           if (finalShuffledQuestions[startIdx]?.type === 'coding') {
             setSelectedLanguage(finalShuffledQuestions[startIdx].language || 'javascript');
@@ -553,7 +587,8 @@ export default function ExamCockpit() {
     if (q?.type !== 'coding') return;
     setIsExecuting(true); setExecutionResult(null); setActiveTab('Execution Details');
     try {
-      const answer = answers[q.originalIndex];
+      const qId = q.originalId || q._id;
+      const answer = answers[qId];
       const sourceCode = typeof answer === 'object' && answer !== null ? answer.code : (answer || q.initialCode || "");
       const res = await runCodingQuestion(examId, q.id || q._id, sourceCode, selectedLanguage, false);
       setExecutionResult(res);
@@ -566,7 +601,8 @@ export default function ExamCockpit() {
     if (q?.type !== 'coding') return;
     setIsExecuting(true); setExecutionResult(null); setActiveTab('Test Cases');
     try {
-      const answer = answers[q.originalIndex];
+      const qId = q.originalId || q._id;
+      const answer = answers[qId];
       const sourceCode = typeof answer === 'object' && answer !== null ? answer.code : (answer || q.initialCode || "");
       const res = await runCodingQuestion(examId, q.id || q._id, sourceCode, selectedLanguage, true);
       setExecutionResult(res);
@@ -639,8 +675,8 @@ export default function ExamCockpit() {
              questions={questions} currentQ={currentQ} answers={answers} visited={visited} markedForReview={markedForReview} 
              navigateTo={(i) => { 
                 setCurrentQ(i); 
-                const originalIndex = questions[i]?.originalIndex;
-                if (originalIndex !== undefined) setVisited(v => ({ ...v, [originalIndex]: true })); 
+                const qId = questions[i]?.originalId || questions[i]?._id;
+                if (qId) setVisited(v => ({ ...v, [qId]: true })); 
              }} 
           />
 
@@ -667,7 +703,7 @@ export default function ExamCockpit() {
                 <div className="w-[42%] shrink-0 flex flex-col min-h-0 bg-white border-r border-slate-200">
                   <div className="bg-slate-50 border-b border-slate-100 px-6 py-3.5 flex items-center justify-between shrink-0">
                     <span className="text-[11px] font-black text-slate-900 uppercase tracking-widest">Objective</span>
-                    {markedForReview[q?.originalIndex] && <div className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-2 py-0.5 rounded-md border border-amber-100"><Bookmark size={10} className="fill-amber-600" /><span className="text-[9px] font-black uppercase tracking-wider">Flagged</span></div>}
+                    {markedForReview[q?.originalId || q?._id] && <div className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-2 py-0.5 rounded-md border border-amber-100"><Bookmark size={10} className="fill-amber-600" /><span className="text-[9px] font-black uppercase tracking-wider">Flagged</span></div>}
                   </div>
                   <div className="flex-1 overflow-y-auto p-8 scroll-thin font-medium">
                     <div className="flex items-center gap-3 mb-6">
@@ -703,12 +739,12 @@ export default function ExamCockpit() {
                       </div>
                       <div className="flex-1 shadow-inner">
                         <Editor 
-                           key={`editor-${q?.originalIndex}`}
+                           key={`editor-${q?.originalId || q?._id}`}
                            height="100%" 
                            language={selectedLanguage === 'cpp' ? 'cpp' : selectedLanguage} 
                            theme="light" 
-                           value={typeof answers[q?.originalIndex] === 'object' ? answers[q?.originalIndex].code : (answers[q?.originalIndex] ?? q?.initialCode)} 
-                           onChange={v => setAnswers(p => ({ ...p, [q?.originalIndex]: { code: v, language: selectedLanguage } }))} 
+                           value={typeof answers[q?.originalId || q?._id] === 'object' ? answers[q?.originalId || q?._id].code : (answers[q?.originalId || q?._id] ?? q?.initialCode)} 
+                           onChange={v => setAnswers(p => ({ ...p, [q?.originalId || q?._id]: { code: v, language: selectedLanguage } }))} 
                            options={{ fontSize: 13, minimap: { enabled: false }, automaticLayout: true, padding: { top: 16 } }} 
                         />
                       </div>
@@ -756,7 +792,7 @@ export default function ExamCockpit() {
                     <div className="flex items-center gap-3 mb-6">
                       <div className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-xl text-[11px] font-black uppercase tracking-widest border border-indigo-100">Q{currentQ + 1}</div>
                       <div className="px-3 py-1 bg-slate-100 text-slate-500 rounded-xl text-[11px] font-bold uppercase tracking-widest">{q?.type === 'mcq' ? 'Choice Selection' : 'Written Case'}</div>
-                      {markedForReview[q?.originalIndex] && <div className="ml-auto text-violet-600 bg-violet-50 px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest border border-violet-100 flex items-center gap-2"><Bookmark size={12} fill="currentColor" /> Flagged</div>}
+                      {markedForReview[q?.originalId || q?._id] && <div className="ml-auto text-violet-600 bg-violet-50 px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest border border-violet-100 flex items-center gap-2"><Bookmark size={12} fill="currentColor" /> Flagged</div>}
                     </div>
                     <h2 className="text-3xl font-black text-slate-900 leading-tight tracking-tight">{q?.questionText}</h2>
                   </div>
@@ -764,9 +800,9 @@ export default function ExamCockpit() {
                     {q?.type === 'mcq' ? (
                       <div className="grid gap-4">
                         {q?.displayOptions?.map((opt, i) => {
-                          const isS = answers[q?.originalIndex] === opt.originalIndex;
+                          const isS = answers[q?.originalId || q?._id] === opt.originalIndex;
                           return (
-                            <button key={i} onClick={() => setAnswers(p => ({ ...p, [q?.originalIndex]: opt.originalIndex }))} className={`w-full flex items-center gap-6 p-6 rounded-2xl border-2 transition-all duration-300 text-left relative group ${isS ? 'bg-indigo-50/50 border-indigo-600 shadow-lg shadow-indigo-100/50' : 'bg-white border-slate-100 hover:border-slate-300 hover:bg-slate-50/50'}`}>
+                            <button key={i} onClick={() => setAnswers(p => ({ ...p, [q?.originalId || q?._id]: opt.originalIndex }))} className={`w-full flex items-center gap-6 p-6 rounded-2xl border-2 transition-all duration-300 text-left relative group ${isS ? 'bg-indigo-50/50 border-indigo-600 shadow-lg shadow-indigo-100/50' : 'bg-white border-slate-100 hover:border-slate-300 hover:bg-slate-50/50'}`}>
                               <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-[14px] font-black transition-all ${isS ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-100 text-slate-400'}`}>{String.fromCharCode(65 + i)}</div>
                               <span className={`text-[17px] leading-relaxed flex-1 ${isS ? 'font-bold text-indigo-900' : 'font-medium text-slate-600'}`}>{opt.text}</span>
                               {isS && <CheckCircle2 size={24} className="text-indigo-600 animate-in zoom-in duration-300" />}
@@ -776,7 +812,7 @@ export default function ExamCockpit() {
                       </div>
                     ) : (
                       <div className="relative group">
-                          <textarea value={answers[q?.originalIndex] || ''} onChange={e => setAnswers(p => ({ ...p, [q?.originalIndex]: e.target.value }))} placeholder="Type your structured response here..." className="w-full h-96 bg-slate-50/50 border-2 border-slate-100 rounded-3xl p-10 focus:bg-white focus:border-indigo-500 focus:ring-8 focus:ring-indigo-500/5 transition-all outline-none resize-none shadow-inner font-medium text-slate-700 leading-relaxed text-[17px]" />
+                          <textarea value={answers[q?.originalId || q?._id] || ''} onChange={e => setAnswers(p => ({ ...p, [q?.originalId || q?._id]: e.target.value }))} placeholder="Type your structured response here..." className="w-full h-96 bg-slate-50/50 border-2 border-slate-100 rounded-3xl p-10 focus:bg-white focus:border-indigo-500 focus:ring-8 focus:ring-indigo-500/5 transition-all outline-none resize-none shadow-inner font-medium text-slate-700 leading-relaxed text-[17px]" />
                           <div className="absolute top-6 right-6"><div className="w-2 h-2 rounded-full bg-indigo-200 group-focus-within:bg-indigo-500 animate-pulse" /></div>
                       </div>
                     )}
@@ -789,9 +825,11 @@ export default function ExamCockpit() {
               <div className="flex items-center gap-3">
                 <button onClick={() => {
                    const p = Math.max(0, currentQ - 1);
-                   setCurrentQ(p); setVisited(v => ({ ...v, [questions[p].originalIndex]: true }));
+                   setCurrentQ(p); 
+                   const qId = questions[p]?.originalId || questions[p]?._id;
+                   if (qId) setVisited(v => ({ ...v, [qId]: true }));
                 }} disabled={currentQ === 0} className={`h-11 px-6 flex items-center gap-2.5 rounded-xl text-[12px] font-black uppercase tracking-widest border transition-all ${currentQ === 0 ? 'text-slate-300 border-slate-100 opacity-50' : 'text-slate-600 border-slate-200 hover:bg-slate-50 shadow-sm active:scale-95'}`}><ChevronLeft size={18} /> Back</button>
-                <button onClick={() => setMarkedForReview(p => ({ ...p, [q?.originalIndex]: !p[q?.originalIndex] }))} className={`h-11 px-6 rounded-xl text-[12px] font-black uppercase tracking-widest border transition-all ${markedForReview[q?.originalIndex] ? 'bg-violet-600 text-white border-violet-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>{markedForReview[q?.originalIndex] ? 'Flagged' : 'Flag for Review'}</button>
+                <button onClick={() => setMarkedForReview(p => ({ ...p, [q?.originalId || q?._id]: !p[q?.originalId || q?._id] }))} className={`h-11 px-6 rounded-xl text-[12px] font-black uppercase tracking-widest border transition-all ${markedForReview[q?.originalId || q?._id] ? 'bg-violet-600 text-white border-violet-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>{markedForReview[q?.originalId || q?._id] ? 'Flagged' : 'Flag for Review'}</button>
               </div>
               <div className="flex items-center gap-4">
                 {q?.type === 'coding' && (
@@ -804,7 +842,9 @@ export default function ExamCockpit() {
                 <button onClick={() => {
                    if (currentQ < questions.length - 1) {
                      const n = currentQ + 1;
-                     setCurrentQ(n); setVisited(v => ({ ...v, [questions[n].originalIndex]: true }));
+                     setCurrentQ(n); 
+                     const qId = questions[n]?.originalId || questions[n]?._id;
+                     if (qId) setVisited(v => ({ ...v, [qId]: true }));
                    } else {
                      setShowConfirm(true);
                    }

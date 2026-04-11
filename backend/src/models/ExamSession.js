@@ -28,6 +28,7 @@ const violationSchema = new mongoose.Schema({
 // Stores the evaluation outcome for each individual question
 const questionResultSchema = new mongoose.Schema({
     questionIndex: { type: Number, required: true },
+    questionId: { type: String, default: '' },
     type: { type: String, enum: ['mcq', 'short', 'coding'] },
     marksObtained: { type: Number, default: 0 },
     maxMarks: { type: Number, default: 0 },

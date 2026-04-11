@@ -630,13 +630,16 @@ exports.submitExam = asyncHandler(async (req, res) => {
 
     for (let index = 0; index < exam.questions.length; index++) {
         const q = exam.questions[index];
-        const studentAnswer = finalAnswers[String(index)];
+        const qId = q._id.toString();
+        // Support lookup by ID (modern) or Index (legacy)
+        const studentAnswer = finalAnswers[qId] !== undefined ? finalAnswers[qId] : finalAnswers[String(index)];
 
         if (q.type === 'mcq') {
             const result = gradeMCQ(q, studentAnswer);
             autoScore += result.marksObtained;
             questionResults.push({
                 questionIndex: index,
+                questionId: qId,
                 type: 'mcq',
                 ...result
             });
@@ -647,6 +650,7 @@ exports.submitExam = asyncHandler(async (req, res) => {
                 autoScore += result.marksObtained;
                 questionResults.push({
                     questionIndex: index,
+                    questionId: qId,
                     type: 'coding',
                     ...result
                 });
@@ -654,6 +658,7 @@ exports.submitExam = asyncHandler(async (req, res) => {
                 console.error(`Coding grading failed for Q${index}:`, err.message);
                 questionResults.push({
                     questionIndex: index,
+                    questionId: qId,
                     type: 'coding',
                     marksObtained: 0,
                     maxMarks: q.marks || 1,
@@ -670,6 +675,7 @@ exports.submitExam = asyncHandler(async (req, res) => {
                 const result = await gradeShortAnswer(q, studentAnswer);
                 questionResults.push({
                     questionIndex: index,
+                    questionId: qId,
                     type: 'short',
                     ...result
                 });
@@ -677,6 +683,7 @@ exports.submitExam = asyncHandler(async (req, res) => {
                 console.error(`Short answer grading failed for Q${index}:`, err.message);
                 questionResults.push({
                     questionIndex: index,
+                    questionId: qId,
                     type: 'short',
                     marksObtained: 0,
                     maxMarks: q.marks || 1,
@@ -756,8 +763,13 @@ exports.getSessionDetail = asyncHandler(async (req, res) => {
 
     // Build detailed question view with answers and grading results
     const questionsWithResults = exam.questions.map((q, index) => {
-        const result = session.questionResults.find(r => r.questionIndex === index) || {};
-        const studentAnswer = session.answers?.[String(index)];
+        const qId = q._id.toString();
+        // Lookup result by ID (new) then index (legacy)
+        const result = session.questionResults.find(r => r.questionId === qId) || 
+                       session.questionResults.find(r => r.questionIndex === index) || {};
+                       
+        // Lookup answer by ID (new) then index (legacy)
+        const studentAnswer = session.answers?.[qId] !== undefined ? session.answers[qId] : session.answers?.[String(index)];
 
         const detail = {
             index,
