@@ -852,6 +852,10 @@ export default function ExamCockpit() {
   if (submitted) return <div className="h-screen flex items-center justify-center bg-white font-sans"><div className="text-center"><CheckCircle size={60} className="text-emerald-500 mx-auto mb-6" /><h2 className="text-2xl font-black text-slate-900 tracking-tight">Submission Successful</h2><p className="text-slate-400 text-[12px] font-bold uppercase tracking-widest">Saving encrypted responses...</p></div></div>;
 
   return (
+    <div style={{ position: 'fixed', top: 0, left: 0, zIndex: 9999, background: 'red', color: 'white', padding: '10px' }}>DEBUG: Cockpit Loaded</div>
+  );
+
+  return (
     <div className="h-screen w-full bg-slate-50 flex flex-col overflow-hidden select-none font-sans text-slate-900 relative">
       <AnimatePresence>
         {needsInteraction && (
