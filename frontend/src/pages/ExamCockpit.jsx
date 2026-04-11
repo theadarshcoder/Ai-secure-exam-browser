@@ -42,7 +42,7 @@ const QuestionPalette = React.memo(({ questions, currentQ, answers, visited, mar
     if (correctSec && correctSec.id !== activeSection) {
       setActiveSection(correctSec.id);
     }
-  }, [currentQ, questions, activeSection]);
+  }, [currentQ, questions, activeSection, sections]);
 
   const activeSec = sections.find(s => s.id === activeSection) || sections[0];
   const visibleIndices = questions
@@ -375,18 +375,10 @@ export default function ExamCockpit() {
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('Test Cases');
   const [editorHeight, setEditorHeight] = useState(55);
-  const [toasts, setToasts] = useState([]);
   const isResizing = useRef(false);
 
   const isTimeCritical = secondsLeft < 300 && secondsLeft > 0;
 
-  const addToast = useCallback((msg, type = 'info') => {
-    const id = Date.now();
-    setToasts(prev => [...prev, { id, msg, type }]);
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 5000);
-  }, []);
 
   // 🛡️ Global Session Guard
   useEffect(() => {
@@ -408,7 +400,7 @@ export default function ExamCockpit() {
       }
     });
     return () => socketService.disconnect();
-  }, [examId, socketService]);
+  }, [examId]);
 
   const logIncident = useCallback(async (type, severity, details) => {
     const studentId = sessionStorage.getItem('vision_email');
@@ -425,16 +417,16 @@ export default function ExamCockpit() {
     try {
       await api.post('/api/exams/incident', incident);
       socketService.emitViolation(incident);
-    } catch (err) { console.warn('Incident log failed'); }
+    } catch (_err) { console.warn('Incident log failed'); }
   }, [examId]);
 
   const handleRequestHelp = async () => {
     try {
       setHelpLoading(true);
       await requestHelp("Student needs manual intervention or has a query.");
-      addToast("Support request sent to Mentors.", 'success');
-    } catch (err) {
-      addToast("Failed to send help request.", 'error');
+      // Support request sent
+    } catch (_err) {
+      console.error("Failed to send help request.");
     } finally {
       setHelpLoading(false);
     }
@@ -497,7 +489,7 @@ export default function ExamCockpit() {
         const list = JSON.parse(localStorage.getItem('vision_terminated_sessions') || '[]');
         const hit = list.find(t => t.studentId === studentId || t.examId === examId);
         if (hit) setTerminated(hit);
-      } catch (err) { console.warn('Termination poll failed'); }
+      } catch (_err) { console.warn('Termination poll failed'); }
     }, 3000);
     return () => clearInterval(poll);
   }, [submitted, terminated, examId]);
@@ -542,7 +534,7 @@ export default function ExamCockpit() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [submitted, terminated, endTime]);
+  }, [submitted, terminated, endTime, handleFinalSubmit]);
 
   // 🛡️ Advanced Security: DevTools Trap & Keyboard Lock
   useEffect(() => {
@@ -559,7 +551,7 @@ export default function ExamCockpit() {
               }
               b(++i);
             }(0));
-          } catch (e) {}
+          } catch (_e) {}
         }());
       }());
     }, 500);
@@ -578,13 +570,13 @@ export default function ExamCockpit() {
         (cmdOrCtrl && (e.keyCode === 67 || e.keyCode === 86 || e.keyCode === 88)) // C, V, X (Copy, Paste, Cut)
       ) {
         e.preventDefault();
-        addToast("Action Blocked: Security Policy Enforcement", "error");
+        // Action Blocked: Security Policy Enforcement
       }
     };
 
     const handleContextMenu = (e) => {
       e.preventDefault();
-      addToast("Right-click is restricted during the session", "warning");
+      // Right-click is restricted during the session
     };
 
     window.addEventListener('keydown', handleKeydown);
@@ -595,7 +587,7 @@ export default function ExamCockpit() {
       window.removeEventListener('keydown', handleKeydown);
       window.removeEventListener('contextmenu', handleContextMenu);
     };
-  }, [addToast]);
+  }, []);
 
   // 📂 Fetch Exam + Seeded Shuffle + Resume Data
   useEffect(() => {
@@ -622,7 +614,7 @@ export default function ExamCockpit() {
           const getRNG = (salt) => generateSeed(mainSeedStr + salt);
 
           // Map original indices before shuffling so state remains consistent
-          const processedQuestions = data.questions.map((q, qIndex) => {
+          const processedQuestions = data.questions.map((q) => {
             const questionId = q.id || q._id;
             const processedQ = { ...q, originalId: questionId }; // Use ID instead of index
             
@@ -827,8 +819,14 @@ export default function ExamCockpit() {
       await api.post('/api/exams/submit', { examId, answers });
       await storageService.deleteProgress(examId);
       setTimeout(() => navigate('/student'), 2000);
-    } catch (err) { setTimeout(() => navigate('/student'), 2000); }
+    } catch (_err) { setTimeout(() => navigate('/student'), 2000); }
   };
+
+  const navigateTo = useCallback((i) => { 
+     setCurrentQ(i); 
+     const qId = questions[i]?.originalId || questions[i]?._id;
+     if (qId) setVisited(v => ({ ...v, [qId]: true })); 
+  }, [questions]);
 
   const handleSecureEntry = async () => {
     try {
@@ -837,16 +835,24 @@ export default function ExamCockpit() {
       }
       setNeedsInteraction(false);
       setIsFullscreen(true);
-    } catch (err) {
-      console.error("Fullscreen initiation failed:", err);
+    } catch (_err) {
+      console.error("Fullscreen initiation failed:");
       // Even if it fails, we let them try, but usually it works on click
     }
   };
-
-  const fmtTime = (s) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
   
   const q = questions[currentQ];
   const answeredCount = Object.keys(answers).length;
+
+  const onCodeChange = useCallback(v => {
+    const qId = q?.originalId || q?._id;
+    if (qId) setAnswers(p => ({ ...p, [qId]: { code: v, language: selectedLanguage } }));
+  }, [q?.originalId, q?._id, selectedLanguage]);
+
+  const onMouseDown = useCallback(() => { 
+    isResizing.current = true; 
+    document.body.style.cursor = 'row-resize'; 
+  }, []);
 
   if (terminated) return (
     <div className="h-screen bg-[#08020a] flex items-center justify-center font-sans overflow-hidden">
@@ -925,11 +931,7 @@ export default function ExamCockpit() {
         <aside className="w-[240px] shrink-0 bg-white border-r border-slate-200 flex flex-col shadow-sm">
           <QuestionPalette 
              questions={questions} currentQ={currentQ} answers={answers} visited={visited} markedForReview={markedForReview} 
-             navigateTo={useCallback((i) => { 
-                setCurrentQ(i); 
-                const qId = questions[i]?.originalId || questions[i]?._id;
-                if (qId) setVisited(v => ({ ...v, [qId]: true })); 
-             }, [questions])} 
+             navigateTo={navigateTo} 
           />
 
           <div className="px-5 py-2 border-t border-slate-100 flex-shrink-0">
@@ -956,7 +958,7 @@ export default function ExamCockpit() {
                 <CodingEnvironment 
                   question={q}
                   answer={answers[q?.originalId || q?._id]}
-                  onCodeChange={useCallback(v => setAnswers(p => ({ ...p, [q?.originalId || q?._id]: { code: v, language: selectedLanguage } })), [q?.originalId, q?._id, selectedLanguage])}
+                  onCodeChange={onCodeChange}
                   selectedLanguage={selectedLanguage}
                   setSelectedLanguage={setSelectedLanguage}
                   isLangDropdownOpen={isLangDropdownOpen}
@@ -967,7 +969,7 @@ export default function ExamCockpit() {
                   executionResult={executionResult}
                   activeTab={activeTab}
                   setActiveTab={setActiveTab}
-                  onMouseDown={useCallback(() => { isResizing.current = true; document.body.style.cursor = 'row-resize'; }, [])}
+                  onMouseDown={onMouseDown}
                 />
               </div>
             ) : (
