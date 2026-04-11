@@ -12,7 +12,9 @@ require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const { verifyToken, checkRole } = require('./middlewares/authMiddleware');
 const User = require('./models/User');
-const { connectRedis } = require('./config/redis');
+const { connectRedis, getRedisClient } = require('./config/redis');
+const { RedisStore } = require('rate-limit-redis');
+const cacheService = require('./services/cacheService');
 const morgan = require('morgan');
 const validateEnv = require('./utils/envValidator');
 
@@ -78,7 +80,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(express.json());
+app.use(express.json({ limit: '100kb' }));
 
 
 // ═══════════════════════════════════════════════════════════
@@ -86,11 +88,24 @@ app.use(express.json());
 // ═══════════════════════════════════════════════════════════
 // Mitigate brute-force and DDoS attacks by limiting request rates.
 
+// ⚡ SHARED STORE HELPER: Cluster-Safe Rate Limiting
+const createRedisStore = (label) => {
+    const client = getRedisClient();
+    if (!client) {
+        console.warn(`⚠️  [SCALING] Redis not ready. Using In-Memory fallback for ${label} rate limiter.`);
+        return undefined; 
+    }
+    return new RedisStore({
+        sendCommand: (...args) => client.sendCommand(args),
+        prefix: `vision_rl:${label}:`,
+    });
+};
+
 // Global Rate Limiter — Saari APIs ke liye
-// 100 requests per 15 minutes per IP (normal usage ke liye kaafi hai)
 const globalLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,    // 15 minute ka window
-    max: 1000,                    // 100 se 1000 kar diya (dashboards hit limits fast)
+    windowMs: 15 * 60 * 1000,
+    max: 1000,
+    store: createRedisStore('global'),
     message: {
         error: 'Too many requests! Please try again in 15 minutes.',
         retryAfter: '15 minutes'
@@ -101,8 +116,9 @@ const globalLimiter = rateLimit({
 
 // Auth Rate Limiter — Strict limits for Login/Register endpoints
 const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,    // 15 minute ka window
-    max: 2000,                   // 1000 se 2000 kar diya (Doubled per user request)
+    windowMs: 15 * 60 * 1000,
+    max: 2000,
+    store: createRedisStore('auth'),
     message: {
         error: 'Too many login attempts! Please try again in 15 minutes.',
         retryAfter: '15 minutes'
@@ -147,11 +163,23 @@ io.use(async (socket, next) => {
         // JWT verify karo
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-        // Database mein check karo ki ye token abhi bhi active hai
-        // (agar user ne doosri jagah login kiya toh purana token invalid hoga)
-        const user = await User.findById(decoded.id);
-        if (!user || (user.currentSessionToken && user.currentSessionToken !== token)) {
-            return next(new Error('🚫 Session terminated! You logged in from another device.'));
+        // ⚡ SCALING GUARD: Check Redis first (Cache Hit = 0 DB Hits)
+        const cachedToken = await cacheService.getUserSession(decoded.id);
+
+        if (cachedToken) {
+            if (cachedToken !== token) {
+                return next(new Error('🚫 Session terminated! You logged in from another device.'));
+            }
+            console.log(`📡 [SCALING] Socket Auth: Redis Cache Hit for ${decoded.email}`);
+        } else {
+            // 🔄 CACHE MISS: Fallback to MongoDB & Backfill
+            console.log(`🔄 [SCALING] Socket Auth: Redis Cache Miss for ${decoded.email}. Fetching from DB.`);
+            const user = await User.findById(decoded.id);
+            if (!user || (user.currentSessionToken && user.currentSessionToken !== token)) {
+                return next(new Error('🚫 Session terminated! You logged in from another device.'));
+            }
+            // Backfill cache for next time
+            await cacheService.saveUserSession(decoded.id, token);
         }
 
         // User info socket object mein attach karo — baad mein use hoga
@@ -160,9 +188,10 @@ io.use(async (socket, next) => {
             email: decoded.email,
             role: decoded.role
         };
+        socket.expiresAt = decoded.exp * 1000;
 
         console.log(`🔑 Socket authenticated: ${decoded.email} (${decoded.role})`);
-        next();  // ✅ Connection allowed!
+        next();
 
     } catch (error) {
         console.warn(`🚫 Socket auth failed: ${error.message}`);
@@ -217,6 +246,21 @@ io.on('connection', (socket) => {
     // Join role-specific and user-specific rooms for targeted broadcasting
     socket.join(`role_${socket.user.role}`);
     socket.join(`user_${socket.user.id}`);
+
+    // --- 🛡️ Session Watchdog (Token Expiry Check) ---
+    const remainingTime = socket.expiresAt - Date.now();
+    let watchdogTimer = null;
+
+    if (remainingTime > 0) {
+        watchdogTimer = setTimeout(() => {
+            console.warn(`🚦 Socket Session Expired: ${socket.user.email}. Force disconnecting.`);
+            socket.emit('session_expired', { message: 'Security: Your session has expired. Please login again to continue.' });
+            socket.disconnect(true);
+        }, remainingTime);
+    } else {
+        // Technically this shouldn't happen as io.use should catch it, but as a fail-safe:
+        socket.disconnect(true);
+    }
 
     socket.on('student_violation', async (data) => {
         // Validation: Only students should report violations
@@ -312,6 +356,7 @@ io.on('connection', (socket) => {
     });
     
     socket.on('disconnect', () => {
+        if (watchdogTimer) clearTimeout(watchdogTimer);
         console.log(`❌ Disconnected: ${socket.id} | User: ${socket.user.email}`);
     });
 });

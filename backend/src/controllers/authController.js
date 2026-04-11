@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const { asyncHandler } = require('../middlewares/errorMiddleware');
+const cacheService = require('../services/cacheService');
 
 // ─── POST /api/auth/register ─────────────────────────────
 // Creates a new user (Restricted to Admin)
@@ -113,6 +114,9 @@ exports.login = asyncHandler(async (req, res) => {
     user.currentSessionToken = token;
     await user.save();
 
+    // ⚡ SYNC TO CACHE: Scalability guard
+    await cacheService.saveUserSession(user._id, token);
+
     res.json({
         message: 'Login Successful!',
         token,
@@ -140,6 +144,9 @@ exports.logout = asyncHandler(async (req, res) => {
     // Clear the session token
     user.currentSessionToken = null;
     await user.save();
+
+    // ⚡ SYNC TO CACHE: Scalability guard
+    await cacheService.removeUserSession(userId);
     
     res.json({
         message: 'Logout successful',

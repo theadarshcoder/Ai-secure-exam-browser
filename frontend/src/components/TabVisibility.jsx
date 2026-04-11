@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 
 export const useTabVisibility = () => {
   const [toast, setToast] = useState(null);
+  const blurTimeoutRef = useRef(null);
 
   useEffect(() => {
     const originalTitle = document.title;
@@ -21,23 +22,41 @@ export const useTabVisibility = () => {
         link.rel = 'icon';
         link.href = '/favicon.ico';
         document.head.appendChild(link);
+        
+        // Immediate toast for actual tab switch
         setToast({ id: Date.now(), msg: 'Tab switch logged. Please remain on this screen.' });
         setTimeout(() => setToast(null), 4500);
       }
     };
 
     const handleBlur = () => {
-      setToast({ id: Date.now(), msg: 'Window focus lost. This event has been recorded.' });
-      setTimeout(() => setToast(null), 4500);
+      // Don't toast immediately; set a 2-second grace period (buffer)
+      if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
+      
+      blurTimeoutRef.current = setTimeout(() => {
+        setToast({ id: Date.now(), msg: 'Window focus lost. This event has been recorded.' });
+        setTimeout(() => setToast(null), 4500);
+      }, 2000); // 2s Grace Period
+    };
+
+    const handleFocus = () => {
+      // If student focuses back within 2s, cancel the violation
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current);
+        blurTimeoutRef.current = null;
+      }
     };
 
     document.addEventListener('visibilitychange', handleVisibility);
     window.addEventListener('blur', handleBlur);
+    window.addEventListener('focus', handleFocus);
     
     return () => {
       document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('focus', handleFocus);
       document.title = originalTitle;
+      if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
     };
   }, []);
 

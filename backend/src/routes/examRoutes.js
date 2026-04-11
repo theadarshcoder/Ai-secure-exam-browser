@@ -6,6 +6,7 @@ const express = require('express');
 const router = express.Router();
 const { verifyToken, checkRole } = require('../middlewares/authMiddleware');
 const examController = require('../controllers/examController');
+const { codeExecutionLimiter } = require('../middlewares/rateLimiter');
 
 // ═══════════════════════════════════════════════════════════
 //  🧑‍🏫 Mentor / Admin Endpoints
@@ -74,7 +75,7 @@ router.get('/:id', verifyToken, examController.getExamById);
 // Legacy endpoint for backward compatibility
 router.get('/live-grid', verifyToken, checkRole(['mentor', 'admin']), examController.getMentorExams);
 
-// 4. Run Code API
-router.post('/run-code', verifyToken, examController.runCode);
+// 4. Run Code API (Rate Limited to protect Judge0)
+router.post('/run-code', verifyToken, codeExecutionLimiter, examController.runCode);
 
 module.exports = router;

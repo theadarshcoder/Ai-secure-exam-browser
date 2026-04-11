@@ -46,6 +46,13 @@ class SocketService {
       console.log('❌ Socket disconnected:', reason);
     });
 
+    this.socket.on('session_expired', (data) => {
+      console.warn('🚦 Session Expired:', data.message);
+      alert(data.message || 'Your session has expired. Redirecting to login.');
+      sessionStorage.clear();
+      window.location.href = '/login';
+    });
+
     return this.socket;
   }
 

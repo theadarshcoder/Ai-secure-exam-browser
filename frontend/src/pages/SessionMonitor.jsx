@@ -375,10 +375,10 @@ export default function SessionMonitor() {
 
   // Get session data from URL params
   const sessionData = {
-    id: searchParams.get('id') || 'VSN-89241',
+    id: searchParams.get('id') || '',
     name: searchParams.get('name') || 'Unknown Student',
     exam: searchParams.get('exam') || 'General Exam',
-    examId: searchParams.get('examId') || searchParams.get('id') || 'default_exam',
+    examId: searchParams.get('examId') || searchParams.get('id') || '',
     risk: searchParams.get('risk') || 'Low',
     score: parseInt(searchParams.get('score') || '90'),
     time: searchParams.get('time') || '30m rem',

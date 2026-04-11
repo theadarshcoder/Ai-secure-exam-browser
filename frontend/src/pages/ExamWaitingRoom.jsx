@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { 
+  ShieldCheck, Clock, CalendarDays, AlertCircle, Radio, 
+  Lock, BookOpen, Power, Fingerprint, CheckCircle2 
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import VisionLogo from '../components/VisionLogo';
-import { Clock, AlertCircle, ShieldCheck, Radio, Fingerprint, CalendarDays, Lock, BookOpen, Power } from 'lucide-react';
-import { Navbar } from '../components/Navbar';
+import * as faceapi from '@vladmandic/face-api';
+import Navbar from '../components/Navbar';
+import api from '../services/api';
 
 /* ─────────────── Sub-components ─────────────── */
 
@@ -12,7 +16,7 @@ const ExamMeta = ({ exam }) => (
     {[
       { icon: <Fingerprint size={14} className="text-indigo-400" />, label: exam.id },
       { icon: <Clock size={14} className="text-amber-400" />, label: `${exam.duration} MINS` },
-      { icon: <CalendarDays size={14} className="text-emerald-400" />, label: `${exam.questionsCount} QUESTIONS` }
+      { icon: <CalendarDays size={14} className="text-emerald-400" />, label: `${exam.questionsCount || (exam.questions?.length || 0)} QUESTIONS` }
     ].map((m, i) => (
       <div key={i} className="flex items-center gap-2.5 bg-[#12141a] px-3 py-1.5 rounded-lg border border-white/5 active:scale-95 transition-all">
         {m.icon}
@@ -34,7 +38,7 @@ const InstructionCard = ({ rules = defaultRules }) => (
       <AlertCircle size={16} className="text-red-400" /> Operational Protocols
     </h3>
     <ul className="space-y-4 text-sm text-slate-400">
-      {(rules || []).map((rule, idx) => (
+      {(rules || defaultRules).map((rule, idx) => (
         <li key={idx} className="flex items-start gap-4 group">
           <div className="w-1.5 h-1.5 rounded-full bg-red-500/20 mt-1.5 shrink-0 flex items-center justify-center group-hover:scale-125 transition-transform">
             <div className="w-1 h-1 bg-red-400 rounded-full" />
@@ -81,15 +85,31 @@ const CountdownTimer = ({ hours, minutes, seconds, isStarted, onStart }) => (
         ))}
       </div>
 
-      {isStarted ? (
-        <button onClick={onStart} className="w-full bg-emerald-500 hover:bg-emerald-400 text-[#0a0c10] py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 shadow-[0_0_40px_rgba(16,185,129,0.3)] transition-all active:scale-95">
-          <BookOpen size={20} className="fill-transparent stroke-[#0a0c10] stroke-[2.5px]" /> Unseal Test Environment
-        </button>
-      ) : (
-        <button disabled className="w-full bg-[#0a0c10]/50 border border-white/5 text-slate-700 py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] cursor-not-allowed flex items-center justify-center gap-3">
-          <Lock size={18} /> Packet Encrypted
-        </button>
-      )}
+      <AnimatePresence mode="wait">
+        {isStarted ? (
+          <motion.button 
+            key="unseal-btn"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            onClick={onStart} 
+            className="w-full bg-emerald-500 hover:bg-emerald-400 text-[#0a0c10] py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 shadow-[0_0_40px_rgba(16,185,129,0.3)] transition-all active:scale-95"
+          >
+            <BookOpen size={20} className="fill-transparent stroke-[#0a0c10] stroke-[2.5px]" /> Unseal Test Environment
+          </motion.button>
+        ) : (
+          <motion.div 
+            key="locked-msg"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="w-full py-5 text-center"
+          >
+             <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] flex items-center justify-center gap-3">
+               <Lock size={14} /> Intelligence Packet Locked Until T-Zero
+             </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   </div>
 );
@@ -101,29 +121,47 @@ export default function ExamWaitingRoom() {
   const navigate = useNavigate();
 
   const [exam, setExam] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(new Date());
   const [showExitPrompt, setShowExitPrompt] = useState(false);
   const [exitPassword, setExitPassword] = useState('');
+  
+  const [aiReady, setAiReady] = useState(false);
   
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     const timer = setInterval(() => setNow(new Date()), 1000);
     
-    // Load exam data
-    const exams = JSON.parse(localStorage.getItem('published_exams') || '[]');
-    const found = exams.find(e => e.id === examId) || {
-      id: examId?.toUpperCase() || 'EXM-PROTO',
-      title: 'Advanced Computer Architecture',
-      duration: 90,
-      questionsCount: 50,
-      startTime: new Date(Date.now() + 10000).toISOString(),
-      rules: [
-        "Biometric tracking must remain active throughout.",
-        "Tab switching triggers immediate session lock.",
-        "Environment isolated via secure sandbox protocols."
-      ]
+    // 🧠 AI Pre-flight: Load models in background
+    const preLoadModels = async () => {
+      try {
+        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+        console.log("🧠 Face-API models cached in Waiting Room");
+        setAiReady(true);
+      } catch (err) {
+        console.warn("AI pre-load failed, will retry in Cockpit");
+      }
     };
-    setExam(found);
+
+    // Load live exam data from API
+    const fetchExam = async () => {
+      try {
+        const response = await api.get(`/api/exams/${examId}`);
+        setExam(response.data);
+      } catch (err) {
+        console.error("Failed to load live exam data:", err);
+        // Resilient fallback only if API fails (offline mode)
+        const exams = JSON.parse(localStorage.getItem('published_exams') || '[]');
+        const found = exams.find(e => e.id === examId);
+        if (found) setExam(found);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchExam();
+    preLoadModels();
 
     return () => {
       document.body.style.overflow = 'auto';
@@ -131,7 +169,25 @@ export default function ExamWaitingRoom() {
     };
   }, [examId]);
 
-  if (!exam) return null;
+  if (loading) return (
+    <div className="h-screen w-full bg-[#0a0c10] flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-12 h-12 border-2 border-t-emerald-500 border-white/5 rounded-full animate-spin" />
+        <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Syncing with Server...</span>
+      </div>
+    </div>
+  );
+
+  if (!exam) return (
+    <div className="h-screen w-full bg-[#0a0c10] flex items-center justify-center p-6 text-center">
+      <div>
+        <AlertCircle size={48} className="text-red-500 mx-auto mb-4" />
+        <h2 className="text-2xl font-black text-white uppercase mb-2">Sync Error</h2>
+        <p className="text-slate-500 text-sm mb-6 max-w-xs mx-auto">Communication with the assessment node failed. Please return to the dashboard.</p>
+        <button onClick={() => navigate('/student')} className="px-8 py-3 bg-white text-black rounded-xl font-bold text-xs uppercase">Dashboard</button>
+      </div>
+    </div>
+  );
 
   const startTime = new Date(exam.startTime);
   const isStarted = now >= startTime;
@@ -156,7 +212,13 @@ export default function ExamWaitingRoom() {
               <span className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em]">Secure Pre-Flight Lobby</span>
             </div>
             <h1 className="text-4xl lg:text-6xl font-black text-white tracking-tighter mb-6 leading-tight uppercase">{exam.title}</h1>
-            <ExamMeta exam={exam} />
+            <div className="flex items-center gap-4 mb-6">
+                <ExamMeta exam={exam} />
+                <div className={`flex items-center gap-2 px-3 py-1 bg-[#12141a] rounded-lg border transition-all ${aiReady ? 'text-emerald-400 border-emerald-500/20' : 'text-amber-400 border-amber-500/20'}`}>
+                    <div className={`w-1.5 h-1.5 rounded-full ${aiReady ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,1)]' : 'bg-amber-500 animate-pulse'}`} />
+                    <span className="text-[9px] font-black uppercase tracking-widest">{aiReady ? 'Systems Ready' : 'Calibrating AI...'}</span>
+                </div>
+            </div>
           </div>
           <InstructionCard rules={exam.rules} />
         </motion.div>

@@ -474,6 +474,33 @@ exports.saveProgress = asyncHandler(async (req, res) => {
         throw new Error('examId is required!');
     }
 
+    // 🛡️ GRANULAR VALIDATION: Payload Exhaustion Guard
+    if (answers && typeof answers === 'object') {
+        const keys = Object.keys(answers);
+        if (keys.length > 200) { // Abnormal number of questions
+            res.status(400);
+            throw new Error('Malformed payload: Excessive answer keys.');
+        }
+        for (const qId of keys) {
+            if (typeof answers[qId] === 'string' && answers[qId].length > 30000) {
+                res.status(400);
+                throw new Error(`Payload too large: Answer for question ${qId} exceeds 30KB limit.`);
+            }
+        }
+    }
+
+    if (questionStates && typeof questionStates === 'object') {
+        if (Object.keys(questionStates).length > 200) {
+            res.status(400);
+            throw new Error('Malformed payload: Excessive state keys.');
+        }
+    }
+
+    if (remainingTimeSeconds !== undefined && (typeof remainingTimeSeconds !== 'number' || remainingTimeSeconds < -600)) {
+        res.status(400);
+        throw new Error('Invalid remaining time value.');
+    }
+
     // --- Update Redis Cache (High performance) ---
     const redisClient = getRedisClient();
     if (redisClient) {
@@ -492,8 +519,8 @@ exports.saveProgress = asyncHandler(async (req, res) => {
         await redisClient.setEx(cacheKey, 86400, JSON.stringify(sessionData));
     }
 
-    // --- Async DB Sync (Background) ---
-    await ExamSession.findOneAndUpdate(
+    // --- Async DB Sync (Background - Safe) ---
+    ExamSession.findOneAndUpdate(
         { exam: examId, student: studentId },
         { 
             answers, 
@@ -503,7 +530,9 @@ exports.saveProgress = asyncHandler(async (req, res) => {
             lastSavedAt: new Date() 
         },
         { upsert: false } 
-    );
+    ).catch(err => {
+        console.error(`⚠️ [Background DB Sync Failed]: ${err.message}`);
+    });
 
     res.json({ success: true, message: 'Progress synchronized successfully.' });
 });

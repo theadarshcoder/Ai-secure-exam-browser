@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User'); 
+const cacheService = require('../services/cacheService');
 
 const verifyToken = async (req, res, next) => {
     const token = req.headers.authorization?.split(" ")[1];
@@ -7,19 +8,30 @@ const verifyToken = async (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const user = await User.findById(decoded.id);
-        
-        if (!user) {
-            return res.status(403).json({ message: "User account not found" });
-        }
+        // ⚡ SCALING GUARD: Check Redis first
+        const cachedToken = await cacheService.getUserSession(decoded.id);
 
-        // ✨ SINGLE-SESSION ENFORCEMENT: Anti-Login Sharing
-        // If currentSessionToken is set but doesn't match this request token, reject it.
-        if (user.currentSessionToken && user.currentSessionToken !== token) {
-            return res.status(401).json({ 
-                message: "Security Alert: This session has been terminated because you logged in from another device.",
-                code: "SESSION_COLLISION" 
-            });
+        if (cachedToken) {
+            if (cachedToken !== token) {
+                return res.status(401).json({ 
+                    message: "Security Alert: This session has been terminated because you logged in from another device.",
+                    code: "SESSION_COLLISION" 
+                });
+            }
+        } else {
+            // 🔄 CACHE MISS: Fetch from DB & Backfill
+            const user = await User.findById(decoded.id);
+            if (!user) {
+                return res.status(403).json({ message: "User account not found" });
+            }
+            if (user.currentSessionToken && user.currentSessionToken !== token) {
+                return res.status(401).json({ 
+                    message: "Security Alert: This session has been terminated because you logged in from another device.",
+                    code: "SESSION_COLLISION" 
+                });
+            }
+            // Backfill cache
+            await cacheService.saveUserSession(decoded.id, token);
         }
         
         req.user = decoded;
