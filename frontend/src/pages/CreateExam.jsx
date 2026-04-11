@@ -321,17 +321,13 @@ export default function CreateExam() {
       duration: exam.duration,
       totalMarks: exam.totalMarks,
       passingMarks: exam.passingMarks,
-      questions: questions.map(q => ({
-        type: q.type,
-        questionText: q.questionText,
-        marks: q.marks,
-        options: q.options,
-        correctOption: q.correctOption,
-        expectedAnswer: q.expectedAnswer,
-        language: q.language,
-        initialCode: q.initialCode,
-        testCases: q.testCases
-      })),
+      questions: questions.map(q => {
+        const { id, ...cleanQ } = q;
+        return {
+          ...cleanQ,
+          type: q.type || 'short' // Safety fallback
+        };
+      }),
       scheduledDate: exam.scheduledDate ? new Date(exam.scheduledDate).toISOString() : new Date().toISOString()
     };
 
@@ -440,7 +436,10 @@ export default function CreateExam() {
       status: 'draft',
       questions: questions.map(q => {
         const { id, ...cleanQ } = q;
-        return cleanQ;
+        return {
+          ...cleanQ,
+          type: q.type || 'short'
+        };
       })
     };
 

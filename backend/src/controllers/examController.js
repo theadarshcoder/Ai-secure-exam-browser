@@ -29,6 +29,15 @@ exports.createExam = asyncHandler(async (req, res) => {
         throw new Error('At least 1 question is required to publish an exam.');
     }
 
+    // Question Type Validation
+    const allowedTypes = ['mcq', 'short', 'coding'];
+    for (const q of validQuestions) {
+        if (!q.type || !allowedTypes.includes(q.type)) {
+            res.status(400);
+            throw new Error(`Invalid question type: ${q.type || 'missing'}. Allowed types: ${allowedTypes.join(', ')}`);
+        }
+    }
+
     const exam = new Exam({
         title,
         category: category || 'General',
@@ -92,6 +101,15 @@ exports.updateExam = asyncHandler(async (req, res) => {
     if (!isDraft && (!validQuestions || validQuestions.length === 0)) {
         res.status(400);
         throw new Error('At least 1 question is required to publish an exam.');
+    }
+
+    // Question Type Validation
+    const allowedTypes = ['mcq', 'short', 'coding'];
+    for (const q of validQuestions) {
+        if (!q.type || !allowedTypes.includes(q.type)) {
+            res.status(400);
+            throw new Error(`Invalid question type: ${q.type || 'missing'}. Allowed types: ${allowedTypes.join(', ')}`);
+        }
     }
 
     exam.title = title;
