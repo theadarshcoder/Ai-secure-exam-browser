@@ -185,6 +185,12 @@ const CodingEditor = ({ question, updateQ }) => (
 );
 
 // --- Helpers ---
+const formatDateForInput = (dateStr) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  const tzoffset = date.getTimezoneOffset() * 60000;
+  return new Date(date - tzoffset).toISOString().slice(0, 16);
+};
 
 const parseCSVRow = (row) => {
   const result = [];
@@ -285,7 +291,7 @@ export default function CreateExam() {
           duration: data.duration || 60,
           totalMarks: data.totalMarks || 100,
           passingMarks: data.passingMarks || 40,
-          scheduledDate: data.scheduledDate ? new Date(data.scheduledDate).toISOString().slice(0, 16) : ''
+          scheduledDate: data.scheduledDate ? formatDateForInput(data.scheduledDate) : ''
         });
         
         if (data.questions && data.questions.length > 0) {
@@ -326,7 +332,7 @@ export default function CreateExam() {
         initialCode: q.initialCode,
         testCases: q.testCases
       })),
-      scheduledDate: exam.scheduledDate || new Date().toISOString()
+      scheduledDate: exam.scheduledDate ? new Date(exam.scheduledDate).toISOString() : new Date().toISOString()
     };
 
     // --- Frontend Validation ---
@@ -430,6 +436,7 @@ export default function CreateExam() {
 
     const payload = {
       ...exam,
+      scheduledDate: exam.scheduledDate ? new Date(exam.scheduledDate).toISOString() : new Date().toISOString(),
       status: 'draft',
       questions: questions.map(q => {
         const { id, ...cleanQ } = q;
