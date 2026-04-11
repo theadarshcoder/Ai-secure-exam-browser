@@ -63,3 +63,5 @@ export function Navbar({ role, hideSignOut }) {
     </nav>
   );
 }
+
+export default Navbar;
