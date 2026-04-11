@@ -189,10 +189,11 @@ export default function ExamWaitingRoom() {
     </div>
   );
 
-  const startTime = exam.startTime ? new Date(exam.startTime) : new Date();
-  const isStarted = now >= startTime;
-  const timeDiff = Math.max(0, (startTime.getTime() || now.getTime()) - now.getTime());
-  const sTotal = Math.round(timeDiff / 1000);
+  const startTime = exam.startTime ? new Date(exam.startTime) : null;
+  const timeDiff = startTime ? Math.max(0, startTime.getTime() - now.getTime()) : 0;
+  const sTotal = Math.ceil(timeDiff / 1000);
+  const isStarted = startTime ? (now >= startTime || sTotal <= 0) : false;
+
   const h = Math.floor(sTotal / 3600);
   const m = Math.floor((sTotal % 3600) / 60);
   const s = sTotal % 60;
