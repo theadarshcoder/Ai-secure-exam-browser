@@ -173,7 +173,7 @@ const ProctoringSidebar = React.memo(({ cameraActive, videoRef, faceActive, conf
       </div>
     </div>
   </div>
-);
+));
 
 const SubmitModal = React.memo(({ isOpen, onClose, onConfirm, stats }) => (
   <AnimatePresence>
@@ -196,7 +196,7 @@ const SubmitModal = React.memo(({ isOpen, onClose, onConfirm, stats }) => (
       </div>
     )}
   </AnimatePresence>
-);
+));
 
 const ExitModal = React.memo(({ isOpen, onClose, onExit, password, setPassword, error }) => (
   <AnimatePresence>
@@ -218,7 +218,7 @@ const ExitModal = React.memo(({ isOpen, onClose, onExit, password, setPassword, 
       </div>
     )}
   </AnimatePresence>
-);
+));
 
 const ObjectivePanel = React.memo(({ question, index, markedForReview }) => (
   <div className="w-[42%] shrink-0 flex flex-col min-h-0 bg-white border-r border-slate-200">
@@ -970,7 +970,6 @@ export default function ExamCockpit() {
                   onMouseDown={useCallback(() => { isResizing.current = true; document.body.style.cursor = 'row-resize'; }, [])}
                 />
               </div>
-            ) : (
             ) : (
               <div className="flex-1 overflow-y-auto scroll-thin px-8 py-10">
                 <div className="max-w-3xl mx-auto w-full bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden mb-12">
