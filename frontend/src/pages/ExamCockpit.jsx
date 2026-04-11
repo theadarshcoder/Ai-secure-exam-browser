@@ -42,7 +42,7 @@ const QuestionPalette = React.memo(({ questions, currentQ, answers, visited, mar
     if (correctSec && correctSec.id !== activeSection) {
       setActiveSection(correctSec.id);
     }
-  }, [currentQ, questions, activeSection, sections]);
+  }, [currentQ, questions, activeSection]);
 
   const activeSec = sections.find(s => s.id === activeSection) || sections[0];
   const visibleIndices = questions
@@ -813,14 +813,14 @@ export default function ExamCockpit() {
     finally { setIsExecuting(false); }
   };
 
-  const handleFinalSubmit = async () => {
+  const handleFinalSubmit = useCallback(async () => {
     try {
       setSubmitted(true);
       await api.post('/api/exams/submit', { examId, answers });
       await storageService.deleteProgress(examId);
       setTimeout(() => navigate('/student'), 2000);
     } catch (_err) { setTimeout(() => navigate('/student'), 2000); }
-  };
+  }, [examId, answers, navigate]);
 
   const navigateTo = useCallback((i) => { 
      setCurrentQ(i); 
