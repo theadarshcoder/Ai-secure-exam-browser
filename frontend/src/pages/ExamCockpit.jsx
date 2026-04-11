@@ -8,7 +8,7 @@ import {
   CameraOff, Clock, Shield, CheckCircle, CheckCircle2, Lock,
   ChevronRight, ChevronLeft, ChevronDown, Send, XCircle,
   Bookmark, Terminal, Power,
-  Loader2, RotateCcw, Play, Monitor, ShieldAlert,
+  Loader2, RotateCcw, Play, Monitor, ShieldAlert, AlertCircle,
   MessageSquare, Radio
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -199,6 +199,37 @@ const SubmitModal = React.memo(({ isOpen, onClose, onConfirm, stats }) => (
   </AnimatePresence>
 ));
 
+const TabViolationOverlay = React.memo(({ isOpen, onResume }) => (
+  <AnimatePresence>
+    {isOpen && (
+      <div className="fixed inset-0 z-[200] bg-slate-900/40 backdrop-blur-2xl flex items-center justify-center p-6">
+        <motion.div 
+          initial={{ scale: 0.9, opacity: 0 }} 
+          animate={{ scale: 1, opacity: 1 }} 
+          className="bg-white rounded-3xl p-10 max-w-sm w-full shadow-[0_0_50px_rgba(239,68,68,0.2)] border border-red-100 text-center"
+        >
+          <div className="w-20 h-20 rounded-3xl bg-red-50 text-red-600 mb-8 mx-auto flex items-center justify-center animate-pulse border border-red-100 shadow-sm">
+            <ShieldAlert size={40} />
+          </div>
+          <h2 className="text-2xl font-black text-slate-900 mb-4 tracking-tighter uppercase italic">Violation Recorded</h2>
+          <p className="text-[13px] font-bold text-zinc-500 mb-10 leading-relaxed uppercase tracking-wider">
+            You switched tabs or minimized the window. This security breach has been <span className="text-red-600 font-black">Logged & Broadcast</span> to the mentor dashboard.
+          </p>
+          <button 
+            onClick={onResume} 
+            className="w-full py-4 rounded-2xl bg-red-600 hover:bg-red-700 text-white transition-all text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-red-100 active:scale-95 flex items-center justify-center gap-3"
+          >
+            <Lock size={16} /> Resume Session
+          </button>
+          <p className="mt-8 text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-center gap-2">
+             Vision monitoring is active
+          </p>
+        </motion.div>
+      </div>
+    )}
+  </AnimatePresence>
+));
+
 const ExitModal = React.memo(({ isOpen, onClose, onExit, password, setPassword, error }) => (
   <AnimatePresence>
     {isOpen && (
@@ -357,7 +388,7 @@ export default function ExamCockpit() {
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [faceBoxes, setFaceBoxes] = useState([]);
   const [isExecuting, setIsExecuting] = useState(false);
-  const [executionResult, setExecutionResult] = useState(null);
+  const [executionResultsByQuestion, setExecutionResultsByQuestion] = useState({});
   const [showConfirm, setShowConfirm] = useState(false);
   const [showExitPrompt, setShowExitPrompt] = useState(false);
   const [exitPassword, setExitPassword] = useState('');
@@ -367,12 +398,14 @@ export default function ExamCockpit() {
   const [needsInteraction, setNeedsInteraction] = useState(!document.fullscreenElement);
   const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const [isOffline, setIsOffline] = useState(!window.navigator.onLine);
   const [selectedLanguage, setSelectedLanguage] = useState('javascript');
   const [confidence] = useState(98);
   const [broadcastMessage, setBroadcastMessage] = useState(null);
   const [helpLoading, setHelpLoading] = useState(false);
   const [helpSent, setHelpSent] = useState(false);
   const [helpError, setHelpError] = useState(false);
+  const [isTabViolation, setIsTabViolation] = useState(false);
   
   // Layout state
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
@@ -386,6 +419,8 @@ export default function ExamCockpit() {
   }, [answers, currentQ, visited, secondsLeft]);
 
   const isTimeCritical = secondsLeft < 300 && secondsLeft > 0;
+  const currentQuestionId = questions[currentQ]?.originalId || questions[currentQ]?.id || questions[currentQ]?._id;
+  const executionResult = currentQuestionId ? executionResultsByQuestion[currentQuestionId] ?? null : null;
 
 
   // 🛡️ Global Session Guard
@@ -400,8 +435,10 @@ export default function ExamCockpit() {
 
   // 📡 Socket Connection & Broadcast Listener
   useEffect(() => {
-    socketService.connect();
-    socketService.onBroadcast((data) => {
+    const socket = socketService.connect();
+    if (!socket) return undefined;
+
+    const handleBroadcast = (data) => {
       // Bug 6: Real-time socket-based termination
       if (data.type === 'TERMINATE' && (data.studentId === sessionStorage.getItem('vision_email') || data.examId === examId)) {
         setTerminated({ reason: data.reason || 'Terminated by supervisor' });
@@ -409,8 +446,37 @@ export default function ExamCockpit() {
         setBroadcastMessage(data.message);
         setTimeout(() => setBroadcastMessage(null), 15000);
       }
-    });
-    return () => socketService.disconnect();
+    };
+
+    // 🚀 BullMQ Code Evaluation Results
+    const handleCodeEvaluationResult = (data) => {
+      setExecutionResultsByQuestion((prev) => ({ ...prev, [data.questionId]: data }));
+      setIsExecuting(false);
+      setCooldownSeconds(10);
+      toast.dismiss('code-queued');
+      toast.success("Code evaluation complete!", { id: 'code-eval-success' });
+    };
+
+    const handleCodeEvaluationError = (err) => {
+      setExecutionResultsByQuestion((prev) => ({
+        ...prev,
+        [err.questionId]: { error: 'Evaluation Failed', details: err.message },
+      }));
+      setIsExecuting(false);
+      toast.dismiss('code-queued');
+      toast.error(err.message || "Background evaluation failed.", { id: 'code-eval-error' });
+    };
+
+    socket.on('exam_broadcast', handleBroadcast);
+    socket.on('code_evaluation_result', handleCodeEvaluationResult);
+    socket.on('code_evaluation_error', handleCodeEvaluationError);
+
+    return () => {
+      socket.off('exam_broadcast', handleBroadcast);
+      socket.off('code_evaluation_result', handleCodeEvaluationResult);
+      socket.off('code_evaluation_error', handleCodeEvaluationError);
+      socketService.disconnect();
+    };
   }, [examId]);
 
   const logIncident = useCallback(async (type, severity, details) => {
@@ -454,7 +520,10 @@ export default function ExamCockpit() {
     const handleFullscreenChange = () => {
       const isFull = !!document.fullscreenElement;
       setIsFullscreen(isFull);
-      if (!isFull) setNeedsInteraction(true);
+      if (!isFull && !submitted && !terminated) {
+        setNeedsInteraction(true);
+        logIncident('Fullscreen Exit', 'high', 'Student exited fullscreen mode');
+      }
     };
 
     const blockShortcuts = (e) => {
@@ -470,6 +539,7 @@ export default function ExamCockpit() {
     const handleVisibilityChange = () => {
       if (document.hidden && !submitted && !terminated) {
         logIncident('Tab Switch', 'high', 'Student switched tabs or minimized window');
+        setIsTabViolation(true);
         toast.error("SECURITY ALERT: Tab switching recorded as violation!", { id: 'tab-switch-warning' });
       }
     };
@@ -502,6 +572,29 @@ export default function ExamCockpit() {
       document.body.style.overflow = 'auto';
       document.documentElement.style.overflow = 'auto';
       if (storedTheme) document.documentElement.setAttribute('data-theme', storedTheme);
+    };
+  }, []);
+
+  // 📶 Offline Connectivity Detection
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOffline(false);
+      toast.success("Internet Restored! Submissions enabled.", { id: 'online-toast' });
+    };
+    const handleOffline = () => {
+      setIsOffline(true);
+      toast.error("INTERNET LOST: Some features will be disabled until connection is restored.", { 
+          id: 'offline-toast',
+          duration: Infinity // Keep it visible until online
+      });
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
     };
   }, []);
 
@@ -742,16 +835,22 @@ export default function ExamCockpit() {
   const handleRunCode = async () => {
     const q = questions[currentQ];
     if (q?.type !== 'coding' || cooldownSeconds > 0) return;
-    setIsExecuting(true); setExecutionResult(null); setActiveTab('Execution Details');
+    setIsExecuting(true); setActiveTab('Execution Details');
     try {
       const qId = q.originalId || q.id || q._id;
+      setExecutionResultsByQuestion((prev) => {
+        const next = { ...prev };
+        delete next[qId];
+        return next;
+      });
       const answer = answers[qId];
       const sourceCode = typeof answer === 'object' && answer !== null ? answer.code : (answer || q.initialCode || "");
       const res = await runCodingQuestion(examId, q.id || q._id, sourceCode, selectedLanguage, false);
-      setExecutionResult(res);
+      setExecutionResultsByQuestion((prev) => ({ ...prev, [qId]: res }));
       setCooldownSeconds(10);
     } catch (err) { 
-        setExecutionResult({ error: 'Failed', details: err.message }); 
+        const qId = q.originalId || q.id || q._id;
+        setExecutionResultsByQuestion((prev) => ({ ...prev, [qId]: { error: 'Failed', details: err.message } })); 
         if (err.error === 'Cooldown Active') setCooldownSeconds(10);
     }
     finally { setIsExecuting(false); }
@@ -760,19 +859,32 @@ export default function ExamCockpit() {
   const handleCheckTestCases = async () => {
     const q = questions[currentQ];
     if (q?.type !== 'coding' || cooldownSeconds > 0) return;
-    setIsExecuting(true); setExecutionResult(null); setActiveTab('Test Cases');
+    setIsExecuting(true); setActiveTab('Test Cases');
     try {
       const qId = q.originalId || q.id || q._id;
+      setExecutionResultsByQuestion((prev) => {
+        const next = { ...prev };
+        delete next[qId];
+        return next;
+      });
       const answer = answers[qId];
       const sourceCode = typeof answer === 'object' && answer !== null ? answer.code : (answer || q.initialCode || "");
       const res = await runCodingQuestion(examId, q.id || q._id, sourceCode, selectedLanguage, true);
-      setExecutionResult(res);
-      setCooldownSeconds(10);
+      
+      if (res.status === 'queued') {
+        // Keep isExecuting true, wait for socket event
+        toast.loading("Submission queued... evaluating on server", { id: 'code-queued', duration: 3000 });
+      } else {
+        setExecutionResultsByQuestion((prev) => ({ ...prev, [qId]: res }));
+        setIsExecuting(false);
+        setCooldownSeconds(10);
+      }
     } catch (err) { 
-        setExecutionResult({ error: 'Failed', details: err.message }); 
+        const qId = q.originalId || q.id || q._id;
+        setExecutionResultsByQuestion((prev) => ({ ...prev, [qId]: { error: 'Failed', details: err.message } })); 
+        setIsExecuting(false);
         if (err.error === 'Cooldown Active') setCooldownSeconds(10);
     }
-    finally { setIsExecuting(false); }
   };
 
   const navigateTo = useCallback((i) => { 
@@ -824,7 +936,7 @@ export default function ExamCockpit() {
   if (submitted) return <div className="h-screen flex items-center justify-center bg-white font-sans"><div className="text-center"><CheckCircle size={60} className="text-emerald-500 mx-auto mb-6" /><h2 className="text-2xl font-black text-slate-900 tracking-tight">Submission Successful</h2><p className="text-slate-400 text-[12px] font-bold uppercase tracking-widest">Saving encrypted responses...</p></div></div>;
 
   return (
-    <div className="h-screen w-full bg-slate-50 flex flex-col overflow-hidden select-none font-sans text-slate-900 relative">
+    <div className={`h-screen w-full bg-slate-50 flex flex-col overflow-hidden select-none font-sans text-slate-900 relative transition-all duration-700 ${isTabViolation ? 'blur-xl grayscale' : ''}`}>
       <AnimatePresence>
         {needsInteraction && (
           <motion.div 
@@ -855,6 +967,10 @@ export default function ExamCockpit() {
           </motion.div>
         )}
       </AnimatePresence>
+      <TabViolationOverlay 
+        isOpen={isTabViolation} 
+        onResume={() => setIsTabViolation(false)} 
+      />
 
       <style>{`.scroll-thin::-webkit-scrollbar { width: 4px; } .scroll-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }`}</style>
       
@@ -993,18 +1109,18 @@ export default function ExamCockpit() {
                   <div className="flex gap-2">
                     <button 
                       onClick={handleRunCode} 
-                      disabled={isExecuting || cooldownSeconds > 0} 
-                      className={`h-11 px-6 flex items-center gap-2.5 rounded-xl text-[12px] font-black uppercase tracking-widest border transition-all active:scale-95 ${cooldownSeconds > 0 ? 'bg-slate-50 text-slate-400 border-slate-200' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:shadow-sm'}`}
+                      disabled={isExecuting || cooldownSeconds > 0 || isOffline} 
+                      className={`h-11 px-6 flex items-center gap-2.5 rounded-xl text-[12px] font-black uppercase tracking-widest border transition-all active:scale-95 ${isOffline ? 'bg-slate-100 text-slate-300 border-slate-100 cursor-not-allowed' : cooldownSeconds > 0 ? 'bg-slate-50 text-slate-400 border-slate-200' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:shadow-sm'}`}
                     >
                       {isExecuting ? <RotateCcw size={16} className="animate-spin" /> : <Play size={16} fill="currentColor" />}
-                      {cooldownSeconds > 0 ? `Wait (${cooldownSeconds}s)` : 'Run'}
+                      {isOffline ? 'Offline' : cooldownSeconds > 0 ? `Wait (${cooldownSeconds}s)` : 'Run'}
                     </button>
                     <button 
                       onClick={handleCheckTestCases} 
-                      disabled={isExecuting || cooldownSeconds > 0} 
-                      className={`h-11 px-8 flex items-center gap-2.5 rounded-xl text-[12px] font-black uppercase tracking-widest transition-all active:scale-95 ${cooldownSeconds > 0 ? 'bg-indigo-400 text-white cursor-not-allowed opacity-80' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-100'}`}
+                      disabled={isExecuting || cooldownSeconds > 0 || isOffline} 
+                      className={`h-11 px-8 flex items-center gap-2.5 rounded-xl text-[12px] font-black uppercase tracking-widest transition-all active:scale-95 ${isOffline ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : cooldownSeconds > 0 ? 'bg-indigo-400 text-white cursor-not-allowed opacity-80' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-100'}`}
                     >
-                      {cooldownSeconds > 0 ? `Ready in ${cooldownSeconds}s` : 'Submit Code'}
+                      {isOffline ? 'Internet Required' : cooldownSeconds > 0 ? `Ready in ${cooldownSeconds}s` : 'Submit Code'}
                     </button>
                   </div>
                 )}
@@ -1018,7 +1134,9 @@ export default function ExamCockpit() {
                    } else {
                      setShowConfirm(true);
                    }
-                }} className={`h-11 px-8 rounded-xl text-[12px] font-black uppercase tracking-widest transition-all ${currentQ === questions.length - 1 ? 'bg-emerald-600 text-white shadow-lg' : 'bg-slate-900 text-white shadow-lg hover:bg-black'}`}>{currentQ === questions.length - 1 ? 'Final Hand In' : 'Save & Next'} <ChevronRight size={18} className="ml-1" /></button>
+                }} 
+                disabled={isOffline}
+                className={`h-11 px-8 rounded-xl text-[12px] font-black uppercase tracking-widest transition-all ${isOffline ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : currentQ === questions.length - 1 ? 'bg-emerald-600 text-white shadow-lg' : 'bg-slate-900 text-white shadow-lg hover:bg-black'}`}>{isOffline ? 'Offline' : currentQ === questions.length - 1 ? 'Final Hand In' : 'Save & Next'} <ChevronRight size={18} className="ml-1" /></button>
               </div>
             </div>
           </div>

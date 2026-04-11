@@ -1,9 +1,12 @@
 const Exam = require('../models/Exam');
 const ExamSession = require('../models/ExamSession');
+const User = require('../models/User');
 const { getRedisClient } = require('../config/redis');
 const { executeCode } = require('../services/judge0');
 const { asyncHandler } = require('../middlewares/errorMiddleware');
 const { getTimeAgo } = require('../utils/helpers');
+const { gradeMCQ, gradeCoding, gradeShortAnswer } = require('../services/gradingService');
+const { addCodeEvaluationJob } = require('../queues/codeGradingQueue');
 
 // ─────────────── POST /api/exams/create ───────────────
 // Mentor/Admin creates a new exam and saves it to MongoDB
@@ -42,7 +45,7 @@ exports.createExam = asyncHandler(async (req, res) => {
         title,
         category: category || 'General',
         duration,
-        totalMarks: totalMarks || (validQuestions ? validQuestions.reduce((sum, q) => sum + (q.marks || 1), 0) : 0),
+        totalMarks: totalMarks || (validQuestions ? validQuestions.reduce((sum, q) => sum + (Number(q.marks) || 1), 0) : 0),
         passingMarks: passingMarks || 40,
         questions: validQuestions,
         creator: req.user.id,
@@ -115,7 +118,7 @@ exports.updateExam = asyncHandler(async (req, res) => {
     exam.title = title;
     exam.category = category || exam.category;
     exam.duration = duration;
-    exam.totalMarks = totalMarks || (validQuestions ? validQuestions.reduce((sum, q) => sum + (q.marks || 1), 0) : 0);
+    exam.totalMarks = totalMarks || (validQuestions ? validQuestions.reduce((sum, q) => sum + (Number(q.marks) || 1), 0) : 0);
     exam.passingMarks = passingMarks || exam.passingMarks;
     exam.questions = validQuestions;
     exam.status = status || exam.status;
@@ -202,6 +205,14 @@ exports.getMentorExams = asyncHandler(async (req, res) => {
                 localField: '_id',
                 foreignField: 'exam',
                 as: 'sessions'
+            }
+        },
+        {
+            $lookup: {
+                from: 'users',
+                localField: 'creator',
+                foreignField: '_id',
+                as: 'creatorInfo'
             }
         },
         {
@@ -536,7 +547,9 @@ exports.saveProgress = asyncHandler(async (req, res) => {
         }
         for (const qId of keys) {
             const answerContent = typeof answers[qId] === 'object' ? (answers[qId]?.code || '') : answers[qId];
-            if (typeof answerContent === 'string' && answerContent.length > 30000) {
+            const contentLength = typeof answerContent === 'string' ? answerContent.length : JSON.stringify(answerContent || '').length;
+            
+            if (contentLength > 30000) {
                 res.status(400);
                 throw new Error(`Payload too large: Answer for question ${qId} exceeds 30KB limit.`);
             }
@@ -709,7 +722,6 @@ exports.resumeExam = asyncHandler(async (req, res) => {
 // Coding: Evaluated against test cases via Judge0
 // Short Answer: AI suggestion generated, marked as pending_review
 exports.submitExam = asyncHandler(async (req, res) => {
-    const { gradeMCQ, gradeCoding, gradeShortAnswer } = require('../services/gradingService');
     const { examId, answers } = req.body;
     const studentId = req.user.id;
 
@@ -811,10 +823,10 @@ exports.submitExam = asyncHandler(async (req, res) => {
     }
 
     // ─── Calculate Score ─────────────────────────────
-    const totalMarks = exam.totalMarks || 100;
+    const totalMarks = Number(exam.totalMarks) || 1; // Fallback to 1 to avoid Zero-Division
     const finalStatus = hasShortAnswers ? 'pending_review' : 'submitted';
-    const percentage = Math.round((autoScore / totalMarks) * 100);
-    const passed = percentage >= (exam.passingMarks || 40);
+    const percentage = Math.round((autoScore / totalMarks) * 100) || 0;
+    const passed = percentage >= (Number(exam.passingMarks) || 40);
 
     const session = await ExamSession.findOneAndUpdate(
         { exam: examId, student: studentId },
@@ -1001,9 +1013,9 @@ exports.evaluateSession = asyncHandler(async (req, res) => {
         totalScore += (qr.marksObtained || 0);
     });
 
-    const totalMarks = exam.totalMarks || 100;
-    const percentage = Math.round((totalScore / totalMarks) * 100);
-    const passed = percentage >= (exam.passingMarks || 40);
+    const totalMarks = Number(exam.totalMarks) || 1; 
+    const percentage = Math.round((totalScore / totalMarks) * 100) || 0;
+    const passed = percentage >= (Number(exam.passingMarks) || 40);
 
     session.score = totalScore;
     session.percentage = percentage;
@@ -1032,10 +1044,13 @@ exports.logIncident = asyncHandler(async (req, res) => {
     const update = {
         $push: { 
             violations: {
-                type: type || 'Unknown',
-                severity: severity || 'medium',
-                details: details || '',
-                timestamp: new Date()
+                $each: [{
+                    type: type || 'Unknown',
+                    severity: severity || 'medium',
+                    details: details || '',
+                    timestamp: new Date()
+                }],
+                $slice: -100 // Bug 8: Cap violation list to prevent DoS attacks
             }
         }
     };
@@ -1222,6 +1237,19 @@ exports.getAdminStats = asyncHandler(async (req, res) => {
 exports.runCode = asyncHandler(async (req, res) => {
     const { examId, questionId, sourceCode, language, isSubmit } = req.body;
 
+    // Bug 2: Security Validation - check if student has an active session
+    const session = await ExamSession.findOne({ exam: examId, student: req.user.id });
+    if (req.user.role === 'student') {
+        if (!session) {
+            res.status(403);
+            throw new Error('Unauthorized execution. Start the exam session first.');
+        }
+        if (session.status === 'submitted' || session.status === 'auto_submitted') {
+            res.status(403);
+            throw new Error('Unauthorized execution. Exam has already been submitted.');
+        }
+    }
+
     const exam = await Exam.findById(examId);
     if (!exam) {
         res.status(404);
@@ -1246,37 +1274,50 @@ exports.runCode = asyncHandler(async (req, res) => {
         return res.json({ allPassed: true, rawOutput: executionResult.output, isRawExecution: true });
     }
 
-    // FORMAL SUBMISSION - Evaluate against all test cases
-    const results = [];
-    let allPassed = true;
+    // FORMAL SUBMISSION - Evaluate against all test cases via Background Queue (with Sync Fallback)
+    try {
+        await addCodeEvaluationJob({
+            sourceCode,
+            language,
+            testCases: question.testCases,
+            studentId: req.user.id,
+            questionId
+        });
 
-    for (let i = 0; i < question.testCases.length; i++) {
-        const tc = question.testCases[i];
-        const executionResult = await executeCode(sourceCode, language, tc.input);
+        return res.json({ 
+            status: 'queued', 
+            message: 'Code evaluation initiated in the background. Results will be broadcast via Socket.IO.' 
+        });
+    } catch (qErr) {
+        console.warn('⚠️ [QUEUE FALLBACK] BullMQ failed, falling back to synchronous execution:', qErr.message);
+        
+        // --- SYNC FALLBACK LOGIC ---
+        const results = [];
+        let allPassed = true;
 
-        if (executionResult.success) {
-            const passed = executionResult.output.trim() === tc.expectedOutput.trim();
-            if (!passed) allPassed = false;
+        for (let i = 0; i < question.testCases.length; i++) {
+            const tc = question.testCases[i];
+            const executionResult = await executeCode(sourceCode, language, tc.input);
 
-            results.push({
-                testCaseId: i + 1,
-                passed,
-                input: tc.isHidden ? 'Hidden Test Case' : tc.input,
-                expectedOutput: tc.isHidden ? 'Hidden' : tc.expectedOutput,
-                actualOutput: tc.isHidden ? 'Hidden' : executionResult.output,
-            });
-        } else {
-            allPassed = false;
-            results.push({ 
-                testCaseId: i + 1, 
-                passed: false, 
-                error: executionResult.error 
-            });
-            break; 
+            if (executionResult.success) {
+                const passed = executionResult.output.trim() === tc.expectedOutput.trim();
+                if (!passed) allPassed = false;
+
+                results.push({
+                    testCaseId: i + 1,
+                    passed,
+                    input: tc.isHidden ? 'Hidden' : tc.input,
+                    expectedOutput: tc.isHidden ? 'Hidden' : tc.expectedOutput,
+                    actualOutput: tc.isHidden ? 'Hidden' : executionResult.output,
+                });
+            } else {
+                allPassed = false;
+                results.push({ testCaseId: i + 1, passed: false, error: executionResult.error });
+                break; 
+            }
         }
+        return res.json({ allPassed, results, isRawExecution: false, fallback: true });
     }
-
-    res.json({ allPassed, results, isRawExecution: false });
 });
 
 // ─────────────── POST /api/exams/help ───────────────
@@ -1288,11 +1329,12 @@ exports.requestHelp = asyncHandler(async (req, res) => {
         throw new Error('Message is required.');
     }
 
-    const userName = req.user.name || req.user.email;
+    const user = await User.findById(req.user.id).select('name email');
+    const userName = user?.name || req.user.email;
     const supportMessage = {
         studentName: userName,
-        studentEmail: req.user.email,
-        studentId: req.user._id,
+        studentEmail: user?.email || req.user.email,
+        studentId: req.user.id,
         message: msg,
         timestamp: new Date()
     };

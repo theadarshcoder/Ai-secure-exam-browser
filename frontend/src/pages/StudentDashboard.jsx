@@ -92,7 +92,7 @@ const Sidebar = ({ currentTime, userName, userEmail, onSupport }) => (
   </aside>
 );
 
-const ExamCard = ({ exam, now, onLaunch, index }) => {
+const ExamCard = ({ exam, now, onLaunch, onViewResults, index }) => {
   const startTime = new Date(exam.startTime);
   const endTime = new Date(startTime.getTime() + exam.duration * 60000);
   const unlockTime = new Date(startTime.getTime() - 15 * 60000); 
@@ -104,7 +104,6 @@ const ExamCard = ({ exam, now, onLaunch, index }) => {
 
   // Derive visual states
   let cardBg = index === 0 ? "bg-[#111827] opacity-100 shadow-xl" : "bg-[#111827] opacity-90 hover:opacity-100"; 
-  let statusColor = "text-slate-500";
   let statusText = "Upcoming";
   let btnText = "Not Available";
   let btnDisabled = true;
@@ -112,7 +111,6 @@ const ExamCard = ({ exam, now, onLaunch, index }) => {
 
   if (isSubmitted) {
     cardBg = "bg-[#0B0F14] opacity-50 grayscale hover:grayscale-0 border-white/[0.02]";
-    statusColor = "text-slate-500";
     statusText = "Completed";
     btnText = "View Results";
     btnDisabled = false;
@@ -129,7 +127,6 @@ const ExamCard = ({ exam, now, onLaunch, index }) => {
     btnDisabled = false;
   } else if (isPreOnboarding) {
     cardBg = "bg-[#111827] opacity-100";
-    statusColor = "text-blue-400";
     statusText = "Final Checks";
     btnText = "Enter Waiting Room";
     btnDisabled = false;
@@ -169,7 +166,7 @@ const ExamCard = ({ exam, now, onLaunch, index }) => {
       {/* CTA Area */}
       <button 
         disabled={btnDisabled} 
-        onClick={() => btnSecondary ? navigate('/dashboard') : onLaunch(exam.id)} 
+        onClick={() => btnSecondary ? onViewResults?.(exam.id) : onLaunch(exam.id)} 
         className={`shrink-0 px-5 py-2.5 rounded-lg font-semibold text-[13px] transition-all focus:outline-none
           ${btnDisabled 
             ? 'bg-transparent text-slate-600 cursor-not-allowed border border-white/5' 
@@ -353,14 +350,15 @@ export default function StudentDashboard() {
                </div>
              ) : filteredExams.length > 0 ? (
                  <div className="flex flex-col gap-4 mt-6 mb-8">
-                   {filteredExams.map(exam => (
-                     <ExamCard 
-                       key={exam.id} 
-                       exam={exam} 
-                       now={now} 
-                       onLaunch={(id) => navigate(`/exam/${id}/verify`)} 
-                     />
-                   ))}
+                    {filteredExams.map(exam => (
+                      <ExamCard 
+                        key={exam.id} 
+                        exam={exam} 
+                        now={now} 
+                        onLaunch={(id) => navigate(`/exam/${id}/verify`)} 
+                        onViewResults={() => navigate('/dashboard')}
+                      />
+                    ))}
                  </div>
               ) : (
                 <div className="h-48 md:h-64 w-full flex flex-col items-center justify-center text-center bg-[#0d1017] border border-dashed border-white/10 rounded-3xl mt-4">

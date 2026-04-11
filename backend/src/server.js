@@ -24,11 +24,17 @@ const examRoutes = require('./routes/examRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const sessionRoutes = require('./routes/sessionRoutes');
 const aiRoutes = require('./routes/aiRoutes');
+const { setupCodeEvaluationWorker } = require('./queues/codeGradingQueue');
+const traceMiddleware = require('./middlewares/traceMiddleware');
 
 const app = express();
 const server = http.createServer(app);
 
-app.use(morgan('dev')); // Structured request logging
+app.use(traceMiddleware); // Generate Request IDs
+
+// Customize Morgan for easy debugging with prefix Request ID
+morgan.token('req-id', (req) => req.requestId ? req.requestId.split('-')[0] : '????');
+app.use(morgan('[:req-id] :method :url :status - :response-time ms'));
 
 
 // ═══════════════════════════════════════════════════════════
@@ -62,12 +68,7 @@ const corsOptions = {
         // Allow requests with no origin (Postman, mobile apps)
         if (!origin) return callback(null, true);
 
-        // Check if origin is in our allowed list or is a subdomain of vision-live.pages.dev
-        const isAllowed = allowedOrigins.includes(origin) || 
-                          origin.endsWith('.pages.dev') ||
-                          origin.includes('localhost');
-
-        if (isAllowed) {
+        if (isAllowedOrigin(origin)) {
             callback(null, true);
         } else {
             console.warn(`🚫 CORS blocked: ${origin}`);
@@ -81,6 +82,23 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '100kb' }));
+
+function isAllowedOrigin(origin) {
+    if (!origin) return true;
+
+    if (allowedOrigins.includes(origin)) {
+        return true;
+    }
+
+    try {
+        const { hostname } = new URL(origin);
+        return hostname === 'localhost'
+            || hostname === '127.0.0.1'
+            || hostname.endsWith('.pages.dev');
+    } catch (_err) {
+        return false;
+    }
+}
 
 
 // ═══════════════════════════════════════════════════════════
@@ -117,7 +135,7 @@ const globalLimiter = rateLimit({
 // Auth Rate Limiter — Strict limits for Login/Register endpoints
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 2000,
+    max: 10,
     store: createRedisStore('auth'),
     message: {
         error: 'Too many login attempts! Please try again in 15 minutes.',
@@ -139,7 +157,14 @@ app.use(globalLimiter);
 
 const io = new Server(server, {
     cors: {
-        origin: allowedOrigins,             // Same CORS rules as HTTP
+        origin: (origin, callback) => {
+            if (isAllowedOrigin(origin)) {
+                callback(null, true);
+            } else {
+                console.warn(`🚫 Socket CORS blocked: ${origin}`);
+                callback(new Error('CORS policy: Not allowed.'));
+            }
+        },
         methods: ['GET', 'POST'],
         credentials: true
     }
@@ -147,6 +172,9 @@ const io = new Server(server, {
 
 // Expose Socket.IO instance to routes/controllers globally
 app.set('io', io);
+
+// 🚀 Initialize Background Workers
+setupCodeEvaluationWorker(io);
 
 // Socket.IO Authentication Middleware
 // Har connection se pehle JWT token verify hoga
@@ -263,6 +291,12 @@ io.on('connection', (socket) => {
     }
 
     socket.on('student_violation', async (data) => {
+        // Bug 11: Real-time token expiry validation
+        if (socket.expiresAt && Date.now() > socket.expiresAt) {
+            socket.emit('session_expired', { message: 'Session expired. Please re-authenticate.' });
+            return socket.disconnect(true);
+        }
+
         // Validation: Only students should report violations
         if (socket.user.role !== 'student') {
             return socket.emit('error', { message: 'Only students can report violations.' });
@@ -285,10 +319,13 @@ io.on('connection', (socket) => {
                     { exam: data.examId, student: socket.user.id },
                     {
                         $push: { violations: {
-                            type: data.type || data.reason || 'Unknown',
-                            severity: data.severity || 'medium',
-                            details: data.details || '',
-                            timestamp: new Date()
+                            $each: [{
+                                type: data.type || data.reason || 'Unknown',
+                                severity: data.severity || 'medium',
+                                details: data.details || '',
+                                timestamp: new Date()
+                            }],
+                            $slice: -100
                         }},
                         $inc: data.type === 'Tab Switch' ? { tabSwitchCount: 1 } : {}
                     },
@@ -301,6 +338,12 @@ io.on('connection', (socket) => {
     });
 
     socket.on('student_need_help', async (data) => {
+        // Bug 11: Real-time token expiry validation
+        if (socket.expiresAt && Date.now() > socket.expiresAt) {
+            socket.emit('session_expired', { message: 'Session expired. Please re-authenticate.' });
+            return socket.disconnect(true);
+        }
+
         // Only students can request help
         if (socket.user.role !== 'student') {
             return socket.emit('error', { message: 'Only students can request help.' });
