@@ -124,7 +124,7 @@ const QuestionPalette = React.memo(({ questions, currentQ, answers, visited, mar
       </div>
     </div>
   );
-};
+});
 
 const ProctoringSidebar = React.memo(({ cameraActive, videoRef, faceActive, confidence }) => (
   <div className="flex flex-col w-full gap-5">
