@@ -399,6 +399,29 @@ exports.startExam = asyncHandler(async (req, res) => {
             }
         }
 
+        const exam = await Exam.findById(examId).populate('creator', 'name');
+        if (!exam) {
+            res.status(404);
+            throw new Error('Exam not found');
+        }
+
+        const safeQuestions = exam.questions.map((q, index) => {
+            const safe = {
+                id: q._id,
+                index,
+                type: q.type,
+                questionText: q.questionText,
+                marks: q.marks,
+            };
+            if (q.type === 'mcq') safe.options = q.options;
+            if (q.type === 'short') safe.maxWords = q.maxWords;
+            if (q.type === 'coding') {
+                safe.language = q.language;
+                safe.initialCode = q.initialCode;
+            }
+            return safe;
+        });
+
         return res.json({ 
             message: 'Exam session resumed! Your previous progress is safe.',
             sessionId: session._id,
@@ -408,7 +431,11 @@ exports.startExam = asyncHandler(async (req, res) => {
             currentQuestionIndex: liveIndex,
             answers: liveAnswers,                      
             questionStates: liveQuestionStates,        
-            remainingTimeSeconds: liveRemainingTime  
+            remainingTimeSeconds: liveRemainingTime,
+            exam: {
+                ...exam._doc,
+                questions: safeQuestions
+            }
         });
     }
 
@@ -450,6 +477,23 @@ exports.startExam = asyncHandler(async (req, res) => {
         }));
     }
 
+    const safeQuestions = exam.questions.map((q, index) => {
+        const safe = {
+            id: q._id,
+            index,
+            type: q.type,
+            questionText: q.questionText,
+            marks: q.marks,
+        };
+        if (q.type === 'mcq') safe.options = q.options;
+        if (q.type === 'short') safe.maxWords = q.maxWords;
+        if (q.type === 'coding') {
+            safe.language = q.language;
+            safe.initialCode = q.initialCode;
+        }
+        return safe;
+    });
+
     res.json({ 
         message: 'Exam session started! Best of luck!', 
         sessionId: session._id,
@@ -458,7 +502,11 @@ exports.startExam = asyncHandler(async (req, res) => {
         remainingTimeSeconds: session.remainingTimeSeconds,
         currentQuestionIndex: 0,
         answers: {},
-        questionStates: initialStates
+        questionStates: initialStates,
+        exam: {
+            ...exam._doc,
+            questions: safeQuestions
+        }
     });
 });
 

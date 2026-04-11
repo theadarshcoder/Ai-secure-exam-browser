@@ -370,6 +370,8 @@ export default function ExamCockpit() {
   const [confidence] = useState(98);
   const [broadcastMessage, setBroadcastMessage] = useState(null);
   const [helpLoading, setHelpLoading] = useState(false);
+  const [helpSent, setHelpSent] = useState(false);
+  const [helpError, setHelpError] = useState(false);
   
   // Layout state
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
@@ -428,10 +430,14 @@ export default function ExamCockpit() {
   const handleRequestHelp = async () => {
     try {
       setHelpLoading(true);
+      setHelpError(false);
       await requestHelp("Student needs manual intervention or has a query.");
-      // Support request sent
+      setHelpSent(true);
+      setTimeout(() => setHelpSent(false), 5000);
     } catch (_err) {
       console.error("Failed to send help request.");
+      setHelpError(true);
+      setTimeout(() => setHelpError(false), 5000);
     } finally {
       setHelpLoading(false);
     }
@@ -554,9 +560,9 @@ export default function ExamCockpit() {
   useEffect(() => {
     const fetchExam = async () => {
       try {
-        // Fetch session resume data
-        const response = await api.get(`/api/exams/resume/${examId}`);
-        if (response.data.isCompleted) {
+        // Fetch session start/resume data
+        const response = await api.post('/api/exams/start', { examId });
+        if (response.data.status === 'submitted' || response.data.status === 'auto_submitted') {
           setSubmitted(true);
           return;
         }
@@ -840,8 +846,19 @@ export default function ExamCockpit() {
           </div>
 
           <div className="p-4 border-t border-slate-100 mt-auto">
-             <button onClick={handleRequestHelp} disabled={helpLoading} className="w-full h-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-widest hover:bg-amber-100 transition-all active:scale-95 disabled:opacity-50">
-                {helpLoading ? <Loader2 size={14} className="animate-spin" /> : <MessageSquare size={14} />} Need Help?
+             <button 
+                onClick={handleRequestHelp} 
+                disabled={helpLoading || helpSent} 
+                className={`w-full h-10 rounded-xl flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-80
+                  ${helpSent ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 
+                    helpError ? 'bg-red-50 text-red-600 border-red-200' :
+                    'bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100'}`}
+             >
+                {helpLoading ? <Loader2 size={14} className="animate-spin" /> : 
+                 helpSent ? <CheckCircle2 size={14} /> : 
+                 helpError ? <AlertCircle size={14} /> :
+                 <MessageSquare size={14} />} 
+                {helpSent ? 'Request Sent' : helpError ? 'Request Failed' : 'Need Help?'}
              </button>
           </div>
 
@@ -853,7 +870,7 @@ export default function ExamCockpit() {
 
         <main className="flex-1 flex overflow-hidden bg-slate-50">
           <div className="flex-1 flex flex-col min-w-0">
-            {q?.type === 'coding' ? (
+            {q?.type?.toLowerCase() === 'coding' ? (
               <div className="flex-1 flex min-h-0 overflow-hidden">
                 <ObjectivePanel question={q} index={currentQ} markedForReview={markedForReview} />
                 <CodingEnvironment 
@@ -879,13 +896,19 @@ export default function ExamCockpit() {
                   <div className="p-10 border-b border-slate-100">
                     <div className="flex items-center gap-3 mb-6">
                       <div className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-xl text-[11px] font-black uppercase tracking-widest border border-indigo-100">Q{currentQ + 1}</div>
-                      <div className="px-3 py-1 bg-slate-100 text-slate-500 rounded-xl text-[11px] font-bold uppercase tracking-widest">{q?.type === 'mcq' ? 'Choice Selection' : 'Written Case'}</div>
+                      <div className="px-3 py-1 bg-slate-100 text-slate-500 rounded-xl text-[11px] font-bold uppercase tracking-widest">
+                        {q?.type?.toLowerCase() === 'mcq' ? 'Choice Selection' : q?.type?.toLowerCase() === 'coding' ? 'Coding Challenge' : 'Written Case'}
+                        {/* 🛠️ Diagnostic: Only visible if weird data exists */}
+                        {q?.type && !['mcq', 'coding', 'short'].includes(q.type.toLowerCase()) && (
+                          <span className="ml-2 text-red-500 text-[8px]">[DEBUG: {q.type}]</span>
+                        )}
+                      </div>
                       {markedForReview[q?.originalId || q?._id] && <div className="ml-auto text-violet-600 bg-violet-50 px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest border border-violet-100 flex items-center gap-2"><Bookmark size={12} fill="currentColor" /> Flagged</div>}
                     </div>
                     <h2 className="text-3xl font-black text-slate-900 leading-tight tracking-tight">{q?.questionText}</h2>
                   </div>
                   <div className="p-10 pb-12">
-                    {q?.type === 'mcq' ? (
+                    {q?.type?.toLowerCase() === 'mcq' ? (
                       <div className="grid gap-4">
                         {q?.displayOptions?.map((opt, i) => {
                           const isS = answers[q?.originalId || q?._id] === opt.originalIndex;
@@ -920,7 +943,7 @@ export default function ExamCockpit() {
                 <button onClick={() => setMarkedForReview(p => ({ ...p, [q?.originalId || q?._id]: !p[q?.originalId || q?._id] }))} className={`h-11 px-6 rounded-xl text-[12px] font-black uppercase tracking-widest border transition-all ${markedForReview[q?.originalId || q?._id] ? 'bg-violet-600 text-white border-violet-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>{markedForReview[q?.originalId || q?._id] ? 'Flagged' : 'Flag for Review'}</button>
               </div>
               <div className="flex items-center gap-4">
-                {q?.type === 'coding' && (
+                {q?.type?.toLowerCase() === 'coding' && (
                   <div className="flex gap-2">
                     <button 
                       onClick={handleRunCode} 
