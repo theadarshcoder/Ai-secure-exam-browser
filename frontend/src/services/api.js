@@ -25,9 +25,19 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if ((error.response?.status === 401 || error.response?.status === 403) && !error.config?.url?.includes('/login')) {
-      sessionStorage.clear(); localStorage.clear();
-      window.location.href = '/login';
+    if (error.response) {
+      if ((error.response.status === 401 || error.response.status === 403) && !error.config?.url?.includes('/login')) {
+        sessionStorage.clear(); localStorage.clear();
+        window.location.href = '/login';
+      } else {
+        // Show Reference ID for support
+        const errorId = error.response.data?.errorId;
+        const message = error.response.data?.message || error.message;
+        if (errorId) {
+          console.error(`[Reference ID: ${errorId}] ${message}`);
+          // alert(`Error: ${message}\nReference ID: ${errorId}`); // Optional: user-friendly alert
+        }
+      }
     }
     return Promise.reject(error);
   }

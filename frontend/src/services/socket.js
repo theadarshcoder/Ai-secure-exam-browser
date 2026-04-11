@@ -92,6 +92,18 @@ class SocketService {
       this.socket.on('mentor_alert', callback);
     }
   }
+
+  onCodeEvaluationResult(callback) {
+    if (this.socket) {
+      this.socket.on('code_evaluation_result', callback);
+    }
+  }
+
+  onCodeEvaluationError(callback) {
+    if (this.socket) {
+      this.socket.on('code_evaluation_error', callback);
+    }
+  }
 }
 
 const socketService = new SocketService();

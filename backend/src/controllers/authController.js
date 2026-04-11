@@ -26,12 +26,18 @@ exports.register = asyncHandler(async (req, res) => {
         'admin':        ['create_exam', 'view_live_grid', 'manage_users', 'view_reports']
     };
 
+    // Enterprise Security: Role Hardening
+    // Only student and mentor can be created via this endpoint.
+    // Admin/Super Mentor can only be created via direct database access or super-admin scripts.
+    const allowedRoles = ['student', 'mentor'];
+    const assignedRole = allowedRoles.includes(role) ? role : 'student';
+
     const user = new User({
         name,
         email,
         password,
-        role: role || 'student',
-        permissions: rolePermissions[role] || []
+        role: assignedRole,
+        permissions: rolePermissions[assignedRole] || []
     });
 
     await user.save();

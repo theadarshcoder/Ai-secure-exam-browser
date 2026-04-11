@@ -5,14 +5,16 @@
 const errorHandler = (err, req, res, next) => {
     const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
     
-    // Log error for developers
-    console.error(`🚨 [Backend Error]: ${err.message}`);
+    // Server console mein error log karte waqt Request ID zaroor dikhayein
+    console.error(`🚨 [Backend Error] RequestID: ${req.requestId || 'N/A'} | Path: ${req.originalUrl} | Message: ${err.message}`);
+    
     if (process.env.NODE_ENV !== 'production') {
         console.error(err.stack);
     }
 
     res.status(statusCode).json({
-        error: err.message || 'Internal Server Error',
+        message: err.message || 'Internal Server Error',
+        errorId: req.requestId, // Frontend ko error response ke sath Request ID bhej dein
         stack: process.env.NODE_ENV === 'production' ? null : err.stack
     });
 };
