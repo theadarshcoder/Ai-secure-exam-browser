@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import socketService from '../services/socket';
 import {
   LayoutDashboard, Video, FileText, BarChart3, 
@@ -349,13 +350,6 @@ export default function MentorDashboard() {
   // Real-time violation alerts state (via Socket.IO)
   const [violations, setViolations] = useState([]);
 
-  // Toast notification system
-  const [toasts, setToasts] = useState([]);
-  const addToast = useCallback((msg, type = 'success') => {
-    const id = Date.now();
-    setToasts(prev => [...prev, { id, msg, type }]);
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
-  }, []);
 
   // Confirm modal system
   const [confirmModal, setConfirmModal] = useState({ show: false, msg: '', onConfirm: null });
@@ -384,11 +378,11 @@ export default function MentorDashboard() {
     });
 
     socketService.onStudentHelp((data) => {
-      addToast(`HELP REQUEST: ${data.studentName} - ${data.message}`, 'error');
+      toast.error(`HELP REQUEST: ${data.studentName} - ${data.message}`, { duration: 6000 });
     });
 
     return () => socketService.disconnect();
-  }, [addToast]);
+  }, []);
 
   // Fetch data per tab
   useEffect(() => {
@@ -429,10 +423,10 @@ export default function MentorDashboard() {
       try {
         await deleteExam(id);
         setExams(exams.filter(e => (e.id || e._id) !== id));
-        addToast('Exam deleted successfully.');
+        toast.success('Exam deleted successfully.');
       } catch (err) {
         console.error(err);
-        addToast('Failed to delete exam.', 'error');
+        toast.error('Failed to delete exam.');
       }
     });
   };
@@ -445,7 +439,7 @@ export default function MentorDashboard() {
       setEvalSessionData(data);
     } catch (err) {
       console.error('Failed to load session:', err);
-      addToast('Failed to load session details.', 'error');
+      toast.error('Failed to load session details.');
       setShowEvalModal(false);
     } finally {
       setEvalLoading(false);
@@ -457,14 +451,14 @@ export default function MentorDashboard() {
     setIsSubmitting(true);
     try {
       await evaluateSession(evalSessionData.sessionId, gradeArray);
-      addToast('Session graded successfully!');
+      toast.success('Session graded successfully!');
       setShowEvalModal(false);
       setEvalSessionData(null);
       // Refresh results
       fetchDataForTab('Results & Reports');
     } catch (err) {
       console.error('Failed to submit grades:', err);
-      addToast('Failed to submit grades: ' + (err.message || 'Unknown error'), 'error');
+      toast.error('Failed to submit grades: ' + (err.message || 'Unknown error'));
     } finally {
       setIsSubmitting(false);
     }
@@ -472,7 +466,7 @@ export default function MentorDashboard() {
 
   const handleExportCsv = () => {
     if (results.length === 0) {
-      addToast('No results to export.', 'error');
+      toast.error('No results to export.');
       return;
     }
     const headers = 'Student,Email,Exam,Score,Percentage,Violations,Status,Submitted At\n';
@@ -948,20 +942,6 @@ export default function MentorDashboard() {
         </div>
       )}
 
-      {/* Toast Notifications */}
-      <div className="fixed bottom-8 right-8 z-[200] space-y-3">
-        {toasts.map(t => (
-          <div key={t.id} className={`flex items-center gap-3 px-5 py-4 rounded-2xl border shadow-2xl animate-in slide-in-from-right-10 duration-500 ${t.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'}`}>
-            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${t.type === 'error' ? 'bg-red-100 text-red-500' : 'bg-emerald-100 text-emerald-500'}`}>
-               {t.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle size={16} />}
-            </div>
-            <div>
-               <p className="text-[10px] font-black uppercase tracking-widest mb-0.5 leading-none">{t.type === 'error' ? 'Error' : 'Success'}</p>
-               <p className="text-[11px] font-semibold">{t.msg}</p>
-            </div>
-          </div>
-        ))}
-      </div>
 
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }

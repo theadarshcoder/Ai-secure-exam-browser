@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import socketService from '../services/socket';
 import api, { runCodingQuestion, requestHelp } from '../services/api';
 import Editor from '@monaco-editor/react';
@@ -59,7 +60,7 @@ const QuestionPalette = React.memo(({ questions, currentQ, answers, visited, mar
   const getQState = (shuffledIndex) => {
     const q = questions[shuffledIndex];
     if (!q) return 'unseen';
-    const qId = q.originalId || q._id;
+    const qId = q.originalId || q.id || q._id;
     if (shuffledIndex === currentQ) return 'current';
     if (markedForReview[qId] && answers[qId] !== undefined) return 'marked-answered';
     if (markedForReview[qId]) return 'marked';
@@ -100,7 +101,7 @@ const QuestionPalette = React.memo(({ questions, currentQ, answers, visited, mar
           {visibleIndices.map(i => (
             <button key={i} onClick={() => navigateTo(i)} className={`relative group h-10 rounded-xl flex items-center justify-center text-[13px] border transition-all duration-200 ${stateStyles[getQState(i)]}`}>
               {i + 1}
-              {markedForReview[questions[i]?.originalId || questions[i]?._id] && getQState(i) !== 'current' && (
+              {markedForReview[questions[i]?.originalId || questions[i]?.id || questions[i]?._id] && getQState(i) !== 'current' && (
                 <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 border-2 border-white rounded-full" />
               )}
             </button>
@@ -224,7 +225,7 @@ const ObjectivePanel = React.memo(({ question, index, markedForReview }) => (
   <div className="w-[42%] shrink-0 flex flex-col min-h-0 bg-white border-r border-slate-200">
     <div className="bg-slate-50 border-b border-slate-100 px-6 py-3.5 flex items-center justify-between shrink-0">
       <span className="text-[11px] font-black text-slate-900 uppercase tracking-widest">Objective</span>
-      {markedForReview[question?.originalId || question?._id] && <div className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-2 py-0.5 rounded-md border border-amber-100"><Bookmark size={10} className="fill-amber-600" /><span className="text-[9px] font-black uppercase tracking-wider">Flagged</span></div>}
+      {markedForReview[question?.originalId || question?.id || question?._id] && <div className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-2 py-0.5 rounded-md border border-amber-100"><Bookmark size={10} className="fill-amber-600" /><span className="text-[9px] font-black uppercase tracking-wider">Flagged</span></div>}
     </div>
     <div className="flex-1 overflow-y-auto p-8 scroll-thin font-medium">
       <div className="flex items-center gap-3 mb-6">
@@ -277,7 +278,7 @@ const CodingEnvironment = React.memo(({
         </div>
         <div className="flex-1 shadow-inner">
           <Editor 
-             key={`editor-${question?.originalId || question?._id}`}
+             key={`editor-${question?.originalId || question?.id || question?._id}`}
              height="100%" 
              language={selectedLanguage === 'cpp' ? 'cpp' : selectedLanguage} 
              theme="light" 
@@ -433,10 +434,12 @@ export default function ExamCockpit() {
       setHelpError(false);
       await requestHelp("Student needs manual intervention or has a query.");
       setHelpSent(true);
+      toast.success("Help request sent to supervisor.");
       setTimeout(() => setHelpSent(false), 5000);
     } catch (_err) {
       console.error("Failed to send help request.");
       setHelpError(true);
+      toast.error("Failed to send help request. Please try again.");
       setTimeout(() => setHelpError(false), 5000);
     } finally {
       setHelpLoading(false);
@@ -536,25 +539,23 @@ export default function ExamCockpit() {
     } catch (_err) { setTimeout(() => navigate('/student'), 2000); }
   }, [examId, answers, navigate]);
 
-  // ⏱️ Exam Timer (Robust Absolute Sync)
+  // ⏱️ Exam Timer (Relative Decrement for Security)
   useEffect(() => {
-    if (submitted || terminated || !endTime) return;
+    if (submitted || terminated || secondsLeft <= 0) return;
     
     const interval = setInterval(() => {
-      const remainingTotalMs = endTime - Date.now();
-      const s = Math.floor(remainingTotalMs / 1000);
-      
-      if (s <= 0) {
-        clearInterval(interval);
-        setSecondsLeft(0);
-        handleFinalSubmit();
-      } else {
-        setSecondsLeft(s);
-      }
+      setSecondsLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          handleFinalSubmit();
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [submitted, terminated, endTime, handleFinalSubmit]);
+  }, [submitted, terminated, handleFinalSubmit]);
 
   // 🏢 Fetch Exam + Seeded Shuffle + Resume Data
   useEffect(() => {
@@ -647,7 +648,12 @@ export default function ExamCockpit() {
           }
         }
       } catch (err) {
-        console.warn('Fetch failed');
+        console.error('Fetch exam failed:', err);
+        toast.error("Critical error: Failed to load exam data. Redirecting to dashboard...", {
+          duration: 5000,
+          id: 'exam-load-failure'
+        });
+        setTimeout(() => navigate('/student'), 3000);
       }
     };
     fetchExam();
@@ -701,7 +707,7 @@ export default function ExamCockpit() {
     if (q?.type !== 'coding' || cooldownSeconds > 0) return;
     setIsExecuting(true); setExecutionResult(null); setActiveTab('Execution Details');
     try {
-      const qId = q.originalId || q._id;
+      const qId = q.originalId || q.id || q._id;
       const answer = answers[qId];
       const sourceCode = typeof answer === 'object' && answer !== null ? answer.code : (answer || q.initialCode || "");
       const res = await runCodingQuestion(examId, q.id || q._id, sourceCode, selectedLanguage, false);
@@ -719,7 +725,7 @@ export default function ExamCockpit() {
     if (q?.type !== 'coding' || cooldownSeconds > 0) return;
     setIsExecuting(true); setExecutionResult(null); setActiveTab('Test Cases');
     try {
-      const qId = q.originalId || q._id;
+      const qId = q.originalId || q.id || q._id;
       const answer = answers[qId];
       const sourceCode = typeof answer === 'object' && answer !== null ? answer.code : (answer || q.initialCode || "");
       const res = await runCodingQuestion(examId, q.id || q._id, sourceCode, selectedLanguage, true);
@@ -734,7 +740,7 @@ export default function ExamCockpit() {
 
   const navigateTo = useCallback((i) => { 
      setCurrentQ(i); 
-     const qId = questions[i]?.originalId || questions[i]?._id;
+     const qId = questions[i]?.originalId || questions[i]?.id || questions[i]?._id;
      if (qId) setVisited(v => ({ ...v, [qId]: true })); 
   }, [questions]);
 
@@ -752,7 +758,7 @@ export default function ExamCockpit() {
 
   const onCodeChange = useCallback(v => {
     if (!q) return;
-    const qId = q.originalId || q._id;
+    const qId = q.originalId || q.id || q._id;
     if (qId) setAnswers(p => ({ ...p, [qId]: { code: v, language: selectedLanguage } }));
   }, [q, selectedLanguage]);
 

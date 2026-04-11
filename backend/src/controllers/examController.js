@@ -531,7 +531,8 @@ exports.saveProgress = asyncHandler(async (req, res) => {
             throw new Error('Malformed payload: Excessive answer keys.');
         }
         for (const qId of keys) {
-            if (typeof answers[qId] === 'string' && answers[qId].length > 30000) {
+            const answerContent = typeof answers[qId] === 'object' ? (answers[qId]?.code || '') : answers[qId];
+            if (typeof answerContent === 'string' && answerContent.length > 30000) {
                 res.status(400);
                 throw new Error(`Payload too large: Answer for question ${qId} exceeds 30KB limit.`);
             }
@@ -743,7 +744,9 @@ exports.submitExam = asyncHandler(async (req, res) => {
 
         } else if (q.type === 'coding') {
             try {
-                const result = await gradeCoding(q, studentAnswer);
+                // Handle both raw string and {code, language} object from frontend
+                const codeToGrade = (studentAnswer && typeof studentAnswer === 'object') ? studentAnswer.code : studentAnswer;
+                const result = await gradeCoding(q, codeToGrade);
                 autoScore += result.marksObtained;
                 questionResults.push({
                     questionIndex: index,

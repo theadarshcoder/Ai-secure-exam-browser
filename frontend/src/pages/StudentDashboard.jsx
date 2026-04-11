@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import { Navbar } from '../components/Navbar';
 import api from '../services/api';
 import { 
@@ -9,14 +10,6 @@ import {
   ChevronRight, Hash, Info, UserCircle, Activity, ClipboardList
 } from 'lucide-react';
 
-/* ─────────────── Mock Data ─────────────── */
-const MOCK_EXAMS = [
-  { id: 'EXM-CS101', title: 'Computer Science 101 - Final', duration: 90, questionsCount: 50, startTime: new Date(Date.now() + 60000).toISOString() },
-  { id: 'EXM-DSA', title: 'Data Structures & Algorithms', duration: 120, questionsCount: 40, startTime: new Date(Date.now() - 1800000).toISOString() },
-  { id: 'EXM-OS', title: 'Operating Systems Midterm', duration: 60, questionsCount: 30, startTime: new Date(Date.now() + 300000).toISOString() },
-  { id: 'EXM-DBMS', title: 'Database Management Systems', duration: 45, questionsCount: 20, startTime: new Date(Date.now() + 86400000).toISOString() },
-  { id: 'EXM-SE', title: 'Software Engineering Fundamentals', duration: 90, questionsCount: 50, startTime: new Date(Date.now() - 60000).toISOString(), alreadySubmitted: true }
-];
 
 /* ─────────────── Sub-components ─────────────── */
 
@@ -233,9 +226,12 @@ export default function StudentDashboard() {
           setIsLiveData(true);
         }
       } catch (error) {
-        console.warn('Backend unreachable, using mock exams:', error.message);
-        setExams(MOCK_EXAMS);
+        console.error('Backend unreachable or API Error:', error.message);
+        setExams([]); 
         setIsLiveData(false);
+        toast.error("Failed to fetch exams. Please check your connection to the server.", {
+          id: 'fetch-exams-error',
+        });
       } finally {
         setLoading(false);
       }
