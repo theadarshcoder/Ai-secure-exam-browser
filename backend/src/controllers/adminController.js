@@ -194,7 +194,7 @@ exports.bulkImportUsers = asyncHandler(async (req, res) => {
         validUsersToInsert.push({
             name: userData.name,
             email: userData.email,
-            role: userData.role || 'student',
+            role: userData.role ? String(userData.role).toLowerCase().trim() : 'student',
             password: hashedPassword // Pre-hashed
         });
 
@@ -213,7 +213,9 @@ exports.bulkImportUsers = asyncHandler(async (req, res) => {
         await User.insertMany(validUsersToInsert, { ordered: false });
     }
 
-    res.json({ message: 'Bulk import processed', results });
+    const successCount = results.filter(r => r.status === 'success').length;
+    const failureCount = results.filter(r => r.status === 'failed').length;
+    res.json({ message: 'Bulk import processed', results, successCount, failureCount });
 });
 
 // ═══════════════════════════════════════════════════════════

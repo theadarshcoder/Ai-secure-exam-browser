@@ -218,11 +218,21 @@ export default function AdminDashboard() {
      const reader = new FileReader();
      reader.onload = async (event) => {
          const text = event.target.result;
-         const rows = text.split('\n').filter(row => row.trim() !== '');
+         let rows = text.split('\n').filter(row => row.trim() !== '');
+         
+         // Skip header if 'email' is in the first row
+         if (rows.length > 0 && rows[0].toLowerCase().includes('email')) {
+             rows.shift();
+         }
+
          const usersToImport = rows.map(row => {
              const cols = row.split(',');
-             return { name: cols[0]?.trim(), email: cols[1]?.trim(), role: cols[2]?.trim() || 'student' };
-         }).filter(u => u.email);
+             return { 
+                 name: cols[0]?.trim() || 'No Name', 
+                 email: cols[1]?.trim(), 
+                 role: cols[2]?.trim()?.toLowerCase() || 'student' 
+             };
+         }).filter(u => u.email && u.email.includes('@'));
          
          if(usersToImport.length === 0) {
              toast.error("No valid rows found in CSV. Format: name,email,role");
@@ -231,7 +241,14 @@ export default function AdminDashboard() {
 
          try {
              const res = await bulkImportUsers(usersToImport);
-             toast.success(`${res.results?.length || 'Multiple'} users imported.`);
+             const successCount = res.successCount ?? res.results?.filter(r => r.status === 'success').length ?? 0;
+             const failureCount = res.failureCount ?? res.results?.filter(r => r.status === 'failed').length ?? 0;
+             
+             if (failureCount > 0) {
+                 toast.success(`${successCount} users imported. ${failureCount} skipped (duplicates/errors).`);
+             } else {
+                 toast.success(`${successCount} users imported successfully.`);
+             }
              fetchDataForTab('Users');
          } catch(err) {
              toast.error('Import failed: ' + (err.message || "Unknown Error"));

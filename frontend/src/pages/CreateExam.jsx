@@ -206,23 +206,95 @@ const parseCSVRow = (row) => {
   return result;
 };
 
-const csvRowToQuestion = (cols) => {
-  const type = cols[0]?.toLowerCase()?.trim();
-  if (!['mcq', 'short', 'coding'].includes(type)) return null;
+const getColumnMap = (headerRow) => {
+    const cols = parseCSVRow(headerRow).map(c => c.toLowerCase().trim());
+    return {
+        type: cols.indexOf('type'),
+        questionText: cols.findIndex(c => c.includes('question') || c.includes('text')),
+        options: cols.indexOf('options'),
+        answer: cols.findIndex(c => c.includes('answer') || c.includes('correct')),
+        input: cols.indexOf('input'),
+        output: cols.indexOf('output'),
+        language: cols.indexOf('language'),
+        marks: cols.indexOf('marks'),
+        initialCode: cols.findIndex(c => c.includes('code')),
+    };
+};
+
+const csvRowToQuestion = (cols, map) => {
+  // If no map, use legacy/default index-based mapping
+  const get = (key, defIdx) => (map && map[key] !== -1) ? cols[map[key]] : cols[defIdx];
+  
+  const type = (get('type', 0) || '').toLowerCase().trim();
+  if (!['mcq', 'short', 'coding', 'short answer'].includes(type) && !type.includes('mcq') && !type.includes('coding')) return null;
+  
+  // Normalize type
+  let normType = 'mcq';
+  if (type.includes('coding')) normType = 'coding';
+  else if (type.includes('short')) normType = 'short';
+
   const base = { id: `import-${Date.now()}-${Math.random()}`, accepted: false };
-  if (type === 'mcq') {
-    const options = [cols[2], cols[3], cols[4], cols[5]].filter(Boolean);
-    const correctLetter = (cols[6] || 'A').toUpperCase();
-    const correctOption = Math.max(0, ['A','B','C','D'].indexOf(correctLetter));
-    return { ...base, type: 'mcq', questionText: cols[1] || '', options, correctOption, marks: parseInt(cols[7]) || 2 };
+  const questionText = get('questionText', 1) || '';
+  
+  if (normType === 'mcq') {
+    let options = [];
+    const optCell = get('options', 2);
+    if (optCell) {
+        // Smart separator detection
+        const seps = [';', '|', '\n', '::']; // Commas are risky as separators inside a CSV cell but we can add as fallback
+        const foundSep = seps.find(s => optCell.includes(s));
+        if (foundSep) {
+            options = optCell.split(foundSep).map(o => o.trim()).filter(Boolean);
+        } else if (optCell.includes(',')) {
+            options = optCell.split(',').map(o => o.trim()).filter(Boolean);
+        } else {
+            // Fallback to separate columns (cols 2, 3, 4, 5)
+            options = [cols[2], cols[3], cols[4], cols[5]].filter(Boolean);
+        }
+    }
+
+    const answerCell = get('answer', 6);
+    let correctOption = 0;
+    if (answerCell && answerCell.length === 1 && /^[A-D]$/i.test(answerCell)) {
+        correctOption = Math.max(0, ['A','B','C','D'].indexOf(answerCell.toUpperCase()));
+    } else if (answerCell) {
+        // Try to match by text
+        const idx = options.findIndex(o => o.toLowerCase() === answerCell.toLowerCase());
+        if (idx !== -1) correctOption = idx;
+    }
+
+    return { ...base, type: 'mcq', questionText, options, correctOption, marks: parseInt(get('marks', 7)) || 2 };
   }
-  if (type === 'short') {
-    return { ...base, type: 'short', questionText: cols[1] || '', expectedAnswer: cols[2] || '', maxWords: parseInt(cols[3]) || 150, marks: parseInt(cols[4]) || 3 };
+
+  if (normType === 'short') {
+    return { ...base, type: 'short', questionText, expectedAnswer: get('answer', 2) || '', maxWords: parseInt(cols[3]) || 150, marks: parseInt(get('marks', 4)) || 5 };
   }
-  if (type === 'coding') {
-    const tcStr = cols[4] || '';
-    const testCases = tcStr ? tcStr.split(';').map(tc => { const [i, o] = tc.split('=>'); return { input: (i||'').trim(), expectedOutput: (o||'').trim() }; }) : [{ input: '', expectedOutput: '' }];
-    return { ...base, type: 'coding', questionText: cols[1] || '', language: cols[2] || 'javascript', initialCode: cols[3] || '', testCases, marks: parseInt(cols[5]) || 5 };
+
+  if (normType === 'coding') {
+    // Handling test cases: support "input => output" in index 4 OR separate input(4)/output(5) columns
+    const inputCol = (map && map.input !== -1) ? map.input : 4;
+    const outputCol = (map && map.output !== -1) ? map.output : 5;
+    
+    let testCases = [];
+    const tcCell = cols[inputCol] || '';
+    if (tcCell.includes('=>')) {
+        testCases = tcCell.split(';').map(tc => { 
+            const [i, o] = tc.split('=>'); 
+            return { input: (i||'').trim(), expectedOutput: (o||'').trim() }; 
+        });
+    } else {
+        testCases = [{ input: (cols[inputCol] || '').trim(), expectedOutput: (cols[outputCol] || '').trim() }];
+    }
+
+    return { 
+        ...base, 
+        type: 'coding', 
+        questionText, 
+        language: get('language', 6) || 'javascript', 
+        initialCode: get('initialCode', 3) || '', 
+        testCases, 
+        marks: parseInt(get('marks', 5)) || 10 
+    };
   }
   return null;
 };
@@ -362,8 +434,10 @@ export default function CreateExam() {
         } 
         else if (ext === 'csv') {
           const lines = event.target.result.split('\n').filter(l => l.trim() && !l.startsWith('#'));
-          const dataLines = lines[0]?.toLowerCase().includes('type') ? lines.slice(1) : lines;
-          importedQuestions = dataLines.map(l => csvRowToQuestion(parseCSVRow(l))).filter(Boolean);
+          const header = lines[0]?.toLowerCase().includes('type') ? lines[0] : null;
+          const dataLines = header ? lines.slice(1) : lines;
+          const map = header ? getColumnMap(header) : null;
+          importedQuestions = dataLines.map(l => csvRowToQuestion(parseCSVRow(l), map)).filter(Boolean);
         } else {
           addToast('Only .json or .csv supported.', 'error');
           return;
@@ -393,7 +467,14 @@ export default function CreateExam() {
           return;
         }
 
-        // 3. Persist (if editing an existing exam)
+        // 3. Smart Marks Check
+        const currentTotal = questions.reduce((s, q) => s + (q.marks || 0), 0);
+        const importedTotal = filtered.reduce((s, q) => s + (q.marks || 0), 0);
+        if (currentTotal + importedTotal > exam.totalMarks) {
+          addToast(`Warning: Import will exceed Exam Total Marks (${currentTotal + importedTotal}/${exam.totalMarks}). Please review assigned marks.`, 'error');
+        }
+
+        // 4. Persist (if editing an existing exam)
         if (editId) {
           try {
             const response = await api.post(`/api/exams/import-questions/${editId}`, { questions: filtered });
@@ -676,8 +757,10 @@ export default function CreateExam() {
         const reader = new FileReader();
         reader.onload = (e) => {
           const lines = e.target.result.split('\n').filter(l => l.trim() && !l.startsWith('#'));
-          const dataLines = lines[0]?.toLowerCase().startsWith('type') ? lines.slice(1) : lines;
-          const extracted = dataLines.map(l => csvRowToQuestion(parseCSVRow(l))).filter(Boolean);
+          const header = lines[0]?.toLowerCase().includes('type') ? lines[0] : null;
+          const dataLines = header ? lines.slice(1) : lines;
+          const map = header ? getColumnMap(header) : null;
+          const extracted = dataLines.map(l => csvRowToQuestion(parseCSVRow(l), map)).filter(Boolean);
           if (extracted.length > 0) {
             setAiSuggestions(prev => [...prev, ...extracted]);
             setShowAI(true);
