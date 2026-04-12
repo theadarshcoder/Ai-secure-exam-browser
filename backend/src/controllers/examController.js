@@ -1339,10 +1339,93 @@ exports.requestHelp = asyncHandler(async (req, res) => {
         timestamp: new Date()
     };
 
+
     const io = req.app.get('io');
     if (io) {
         io.to('role_mentor').to('role_admin').emit('student_need_help', supportMessage);
     }
 
     res.status(200).json({ success: true, message: 'Support request sent.' });
+});
+
+// ─────────────── POST /api/exams/import-questions/:id ───────────────
+// Mentor/Admin imports questions to an existing exam
+exports.importQuestions = asyncHandler(async (req, res) => {
+    const examId = req.params.id;
+    const { questions: newQuestions } = req.body;
+
+    if (!Array.isArray(newQuestions)) {
+        res.status(400);
+        throw new Error('Questions must be an array.');
+    }
+
+    const exam = await Exam.findById(examId);
+    if (!exam) {
+        res.status(404);
+        throw new Error('Exam not found');
+    }
+
+    // Security: Only creator or admin
+    if (exam.creator.toString() !== req.user.id && req.user.role !== 'admin') {
+        res.status(403);
+        throw new Error('You do not have permission to import questions to this exam.');
+    }
+
+    try {
+        // 1. Sanitization & Validation
+        const sanitized = newQuestions
+            .filter(q => q && q.questionText && q.type) // Basic validation
+            .map(q => {
+                const clean = {
+                    type: q.type,
+                    questionText: q.questionText.trim(),
+                    marks: Number(q.marks) || 5
+                };
+                
+                if (q.type === 'mcq') {
+                    clean.options = Array.isArray(q.options) ? q.options.map(o => o.trim()) : [];
+                    clean.correctOption = q.correctOption;
+                } else if (q.type === 'short') {
+                    clean.expectedAnswer = q.expectedAnswer?.trim();
+                    clean.maxWords = Number(q.maxWords) || 150;
+                } else if (q.type === 'coding') {
+                    clean.language = q.language || 'javascript';
+                    clean.initialCode = q.initialCode;
+                    clean.testCases = Array.isArray(q.testCases) ? q.testCases : [];
+                }
+                
+                return clean;
+            });
+
+        // 2. Duplicate Check (based on questionText)
+        const existingQuestionTexts = new Set(exam.questions.map(q => q.questionText.trim()));
+        const filtered = sanitized.filter(q => !existingQuestionTexts.has(q.questionText));
+
+        if (filtered.length === 0) {
+            return res.status(200).json({
+                message: "No new unique questions found.",
+                added: 0,
+                total: exam.questions.length
+            });
+        }
+
+        // 3. Append and Save
+        exam.questions.push(...filtered);
+        
+        // Recalculate total marks
+        exam.totalMarks = exam.questions.reduce((sum, q) => sum + (Number(q.marks) || 0), 0);
+        
+        await exam.save();
+
+        res.status(200).json({
+            message: "Questions imported successfully!",
+            added: filtered.length,
+            total: exam.questions.length,
+            newTotalMarks: exam.totalMarks
+        });
+    } catch (err) {
+        console.error("Import failed:", err);
+        res.status(500);
+        throw new Error("Failed to process imported questions.");
+    }
 });

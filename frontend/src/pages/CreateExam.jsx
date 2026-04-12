@@ -9,7 +9,8 @@ import {
   Check, X, Pencil, Loader2, FileText, AlertCircle,
   Upload, FilePlus, FileSpreadsheet, Lock,
   LayoutDashboard, Users, BarChart3, Settings, Bell,
-  ChevronRight, LogOut, Eye, Edit3, Star, RefreshCw
+  ChevronRight, LogOut, Eye, Edit3, Star, RefreshCw,
+  Download, UploadCloud
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 
@@ -268,6 +269,161 @@ export default function CreateExam() {
     const id = Date.now();
     setToasts(p => [...p, { id, msg, type }]);
     setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 4000);
+  };
+
+  // --- EXPORT FUNCTIONS ---
+  const exportQuestions = () => {
+    if (questions.length === 0) {
+      addToast('Export karne ke liye kam se kam ek question hona chahiye!', 'error');
+      return;
+    }
+
+    // JSON format (Best for coding questions and test cases)
+    const dataStr = JSON.stringify(questions, null, 2);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${exam.title ? exam.title.replace(/\s+/g, '_') : 'exam'}_questions.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    addToast('Questions successfully export ho gaye (JSON)!', 'success');
+  };
+
+  const exportToCSV = () => {
+    if (questions.length === 0) {
+      addToast('No questions to export!', 'error');
+      return;
+    }
+
+    const headers = ["type", "question", "marks", "option1", "option2", "option3", "option4", "answer"];
+    const rows = questions.map(q => {
+      if (q.type === 'mcq') {
+        const opts = [...(q.options || [])];
+        while (opts.length < 4) opts.push("");
+        return [
+          q.type,
+          `"${q.questionText.replace(/"/g, '""')}"`,
+          q.marks,
+          `"${opts[0]?.replace(/"/g, '""')}"`,
+          `"${opts[1]?.replace(/"/g, '""')}"`,
+          `"${opts[2]?.replace(/"/g, '""')}"`,
+          `"${opts[3]?.replace(/"/g, '""')}"`,
+          String.fromCharCode(65 + (q.correctOption || 0))
+        ];
+      } else if (q.type === 'short') {
+         return [
+           q.type,
+           `"${q.questionText.replace(/"/g, '""')}"`,
+           q.marks,
+           "", "", "", "",
+           `"${q.expectedAnswer?.replace(/"/g, '""')}"`
+         ];
+      } else {
+        return [q.type, `"${q.questionText.replace(/"/g, '""')}"`, q.marks, "", "", "", "", "DATA_IN_JSON_ONLY"];
+      }
+    });
+
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${exam.title || 'exam'}_questions.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    addToast('Questions successfully export ho gaye (CSV)!', 'success');
+  };
+
+  // --- DIRECT IMPORT FUNCTION ---
+  const handleDirectImport = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const ext = file.name.split('.').pop().toLowerCase();
+    let importedQuestions = [];
+    
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        if (ext === 'json') {
+          const parsedData = JSON.parse(event.target.result);
+          if (Array.isArray(parsedData)) {
+            importedQuestions = parsedData;
+          } else {
+            addToast('JSON format array hona chahiye.', 'error');
+            return;
+          }
+        } 
+        else if (ext === 'csv') {
+          const lines = event.target.result.split('\n').filter(l => l.trim() && !l.startsWith('#'));
+          const dataLines = lines[0]?.toLowerCase().includes('type') ? lines.slice(1) : lines;
+          importedQuestions = dataLines.map(l => csvRowToQuestion(parseCSVRow(l))).filter(Boolean);
+        } else {
+          addToast('Only .json or .csv supported.', 'error');
+          return;
+        }
+
+        if (importedQuestions.length === 0) {
+          addToast('No valid questions found in file.', 'error');
+          return;
+        }
+
+        // 1. Validation & Sanitization
+        const sanitized = importedQuestions
+          .filter(q => q && q.questionText && q.type)
+          .map(q => ({
+            ...q,
+            questionText: q.questionText.trim(),
+            id: Date.now() + Math.random() * 1000 // Fresh ID for frontend
+          }));
+
+        // 2. Duplicate Check
+        const filtered = sanitized.filter(q => 
+          !questions.some(existing => existing.questionText.trim() === q.questionText.trim())
+        );
+
+        if (filtered.length === 0) {
+          addToast('All questions in file are already present in the exam.', 'info');
+          return;
+        }
+
+        // 3. Persist (if editing an existing exam)
+        if (editId) {
+          try {
+            const response = await api.post(`/api/exams/import-questions/${editId}`, { questions: filtered });
+            addToast(`Success: ${response.data.added} questions saved to database!`);
+            // Refresh full question list to be sure
+            loadDraft(editId);
+          } catch (err) {
+            console.error("Link persistence failed:", err);
+            addToast("Questions parsed but failed to save in DB. Adding to local view only.", 'error');
+            setQuestions(prev => [...prev, ...filtered]);
+          }
+        } else {
+          // New exam: just update state
+          setQuestions(prev => [...prev, ...filtered]);
+          addToast(`${filtered.length} questions imported locally. Remember to save draft/publish.`);
+        }
+
+      } catch (err) {
+        console.error("Import logic error:", err);
+        addToast('Failed to parse file.', 'error');
+      }
+    };
+
+    if (ext === 'json' || ext === 'csv') {
+      reader.readAsText(file);
+    } else {
+      addToast('Invalid file format.', 'error');
+    }
+    
+    e.target.value = null; // reset
   };
 
   useEffect(() => {
@@ -928,7 +1084,42 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
 
                   <div className="h-px bg-white/[0.06]" />
 
+                  {/* File Import Hidden Input */}
+                  <input 
+                    type="file" 
+                    id="direct-import-file" 
+                    accept=".csv,.json" 
+                    className="hidden" 
+                    onChange={handleDirectImport} 
+                  />
+
                   <div className="space-y-4 pt-2">
+                    {/* Naye Import / Export Buttons */}
+                    <div className="flex flex-col gap-2">
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => document.getElementById('direct-import-file').click()} 
+                          className="flex-1 h-12 bg-white/[0.05] border border-white/[0.08] hover:bg-zinc-800 text-zinc-900 rounded-[16px] font-black text-[10px] uppercase tracking-[0.1em] flex items-center justify-center gap-2 transition-all active:scale-95"
+                        >
+                          <UploadCloud size={16} />
+                          Import
+                        </button>
+                        <button 
+                          onClick={exportQuestions} 
+                          className="flex-1 h-12 bg-white/[0.05] border border-white/[0.08] hover:bg-zinc-800 text-zinc-900 rounded-[16px] font-black text-[10px] uppercase tracking-[0.1em] flex items-center justify-center gap-2 transition-all active:scale-95"
+                        >
+                          <Download size={16} />
+                          JSON Data
+                        </button>
+                      </div>
+                      <button 
+                        onClick={exportToCSV} 
+                        className="w-full h-10 bg-white/[0.02] border border-white/[0.05] hover:bg-zinc-800 text-zinc-500 hover:text-zinc-800 rounded-[12px] font-bold text-[9px] uppercase tracking-[0.1em] flex items-center justify-center gap-2 transition-all border-dashed"
+                      >
+                        <FileSpreadsheet size={14} />
+                        Export Backup (CSV)
+                      </button>
+                    </div>
                     <button onClick={handlePublish} disabled={isPublishing || questions.length === 0} className="w-full h-16 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-[#0a0c10] rounded-[24px] font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-3 transition-all active:scale-95 group/pub">
                       {isPublishing ? <Loader2 size={18} className="animate-spin text-[#0a0c10]" /> : <Send size={18} className="group-hover/pub:translate-x-1 group-hover/pub:-translate-y-1 transition-transform" />}
                       {isPublishing ? 'Deploying...' : 'Deploy Now'}

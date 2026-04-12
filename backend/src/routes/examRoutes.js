@@ -69,6 +69,7 @@ router.post('/help', verifyToken, examController.requestHelp);
 // Exam details (questions without correct answers — security)
 router.get('/mentor/:id', verifyToken, checkRole(['mentor', 'admin']), examController.getMentorExamById);
 router.patch('/:id/status', verifyToken, checkRole(['mentor', 'admin']), examController.updateExamStatus);
+router.post('/import-questions/:id', verifyToken, checkRole(['mentor', 'admin']), examController.importQuestions);
 
 router.get('/:id', verifyToken, examController.getExamById);
 
