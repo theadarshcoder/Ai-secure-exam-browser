@@ -189,7 +189,9 @@ const SessionReportModal = ({ sessionData, onClose }) => {
                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Submission Artifact</p>
                        <span className="text-[10px] font-bold text-zinc-400 uppercase bg-zinc-100 px-2 py-0.5 rounded">Source Code</span>
                     </div>
-                    <pre className="bg-zinc-900 text-zinc-100 p-5 rounded-2xl text-[11px] font-mono leading-relaxed overflow-x-auto max-h-48 border border-white/5 custom-scrollbar">{q.studentAnswer}</pre>
+                    <pre className="bg-zinc-900 text-zinc-100 p-5 rounded-2xl text-[11px] font-mono leading-relaxed overflow-x-auto max-h-48 border border-white/5 custom-scrollbar">
+                      {typeof q.studentAnswer === 'object' ? q.studentAnswer.code : q.studentAnswer}
+                    </pre>
                   </div>
                 )}
 
@@ -200,7 +202,7 @@ const SessionReportModal = ({ sessionData, onClose }) => {
                         <CheckCircle size={12} className="text-zinc-300" /> Student's Response
                       </p>
                       <div className="text-xs text-zinc-700 leading-relaxed italic">
-                        {q.studentAnswer || "No content provided."}
+                        {typeof q.studentAnswer === 'object' ? q.studentAnswer.code : (q.studentAnswer || "No content provided.")}
                       </div>
                     </div>
                     <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4 shadow-sm">

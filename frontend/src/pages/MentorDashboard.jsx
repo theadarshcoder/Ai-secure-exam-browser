@@ -261,7 +261,9 @@ const EvaluationModal = ({ sessionData, onClose, onGradeSubmit, isSubmitting }) 
                     Test Cases: {q.passedTestCases}/{q.totalTestCases} Passed
                   </p>
                   {q.studentAnswer && (
-                    <pre className="bg-zinc-900 text-zinc-100 p-3 rounded-lg text-xs overflow-x-auto max-h-40">{q.studentAnswer}</pre>
+                    <pre className="bg-zinc-900 text-zinc-100 p-3 rounded-lg text-xs overflow-x-auto max-h-40">
+                      {typeof q.studentAnswer === 'object' ? q.studentAnswer.code : q.studentAnswer}
+                    </pre>
                   )}
                   {q.testCaseResults?.map((tc, ti) => (
                     <div key={ti} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs ${
@@ -281,7 +283,7 @@ const EvaluationModal = ({ sessionData, onClose, onGradeSubmit, isSubmitting }) 
                     <div>
                       <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Student's Answer</p>
                       <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-3 text-xs text-zinc-700 min-h-[60px]">
-                        {q.studentAnswer || <span className="italic text-zinc-400">No answer provided</span>}
+                        {typeof q.studentAnswer === 'object' ? q.studentAnswer.code : (q.studentAnswer || <span className="italic text-zinc-400">No answer provided</span>)}
                       </div>
                     </div>
                     <div>

@@ -393,7 +393,7 @@ export default function StudentDashboard() {
                         exam={exam} 
                         now={now} 
                         onLaunch={(id) => navigate(`/exam/${id}/verify`)} 
-                        onViewResults={() => navigate('/dashboard')}
+                        onViewResults={() => toast.success('Detailed results will be available after mentor evaluation.')}
                       />
                     ))}
                  </div>
