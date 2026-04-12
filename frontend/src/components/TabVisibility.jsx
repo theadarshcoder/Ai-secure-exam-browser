@@ -20,7 +20,7 @@ export const useTabVisibility = () => {
         document.title = originalTitle;
         const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
         link.rel = 'icon';
-        link.href = '/favicon.ico';
+        link.href = '/favicon.svg';
         document.head.appendChild(link);
         
         // Immediate toast for actual tab switch
