@@ -286,6 +286,8 @@ const LoginPage = () => {
                   <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
                   <input
                     type="text"
+                    name="email"
+                    autocomplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={role === 'student' ? "VSN-89241" : "system@vision.auth"}
@@ -301,6 +303,8 @@ const LoginPage = () => {
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
                   <input
                     type="password"
+                    name="password"
+                    autocomplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"

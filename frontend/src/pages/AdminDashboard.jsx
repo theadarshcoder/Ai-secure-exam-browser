@@ -180,9 +180,14 @@ export default function AdminDashboard() {
       }
   };
 
-  const handleLogout = () => {
-    sessionStorage.clear(); localStorage.clear();
-    navigate('/login');
+  const handleLogout = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    sessionStorage.clear(); 
+    localStorage.clear();
+    window.location.href = '/login';
   };
 
   const handleDeleteUser = async (id, role) => {
@@ -817,7 +822,7 @@ export default function AdminDashboard() {
 
         <div className="p-6 mt-auto border-t border-white/5">
           <button 
-            onClick={handleLogout}
+            onClick={(e) => handleLogout(e)}
             className="w-full flex items-center justify-center gap-2 p-3 bg-white/5 hover:bg-red-500/10 text-zinc-400 hover:text-red-400 rounded-xl text-xs font-bold transition-all uppercase tracking-widest active:scale-95 border border-white/5"
           >
             <LogOut size={16} /> Exit Module

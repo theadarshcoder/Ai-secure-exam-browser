@@ -202,9 +202,24 @@ export default function StudentDashboard() {
   const [statusFilter, setStatusFilter] = useState('All'); // All, Live, Upcoming, Completed
 
   // Exam Data
-  const [exams, setExams] = useState([]);
+  const [exams, setExams] = useState(() => {
+    try {
+      const cached = JSON.parse(localStorage.getItem('published_exams_v2'));
+      return (cached && Array.isArray(cached.data)) ? cached.data : [];
+    } catch (e) {
+      return [];
+    }
+  });
   const [loading, setLoading] = useState(true);
   const [isLiveData, setIsLiveData] = useState(false);
+  const [cacheTime, setCacheTime] = useState(() => {
+    try {
+      const cached = JSON.parse(localStorage.getItem('published_exams_v2'));
+      return cached?.timestamp ? new Date(cached.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null;
+    } catch (e) {
+      return null;
+    }
+  });
 
   // User Info
   const userName = sessionStorage.getItem('vision_name') || sessionStorage.getItem('vision_email')?.split('@')[0] || 'Vision Student';
@@ -225,14 +240,27 @@ export default function StudentDashboard() {
             alreadySubmitted: exam?.alreadySubmitted || false
           }));
           setExams(liveExams);
-          localStorage.setItem('published_exams', JSON.stringify(liveExams)); // Bug 9: Save for offline fallback
+          // Timestamped Caching
+          localStorage.setItem('published_exams_v2', JSON.stringify({
+            data: liveExams,
+            timestamp: Date.now()
+          })); 
           setIsLiveData(true);
         }
       } catch (error) {
         console.error('Backend unreachable or API Error:', error.message);
-        setExams([]); 
+        
+        // Accurate Fallback
+        const cached = JSON.parse(localStorage.getItem('published_exams_v2'));
+        if (cached && Array.isArray(cached.data)) {
+          setExams(cached.data);
+          setCacheTime(new Date(cached.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        } else {
+          setExams([]);
+        }
+        
         setIsLiveData(false);
-        toast.error("Failed to fetch exams. Please check your connection to the server.", {
+        toast.error("Unable to reach server. Using cached data if available.", {
           id: 'fetch-exams-error',
         });
       } finally {
@@ -315,7 +343,11 @@ export default function StudentDashboard() {
                </div>
                <h1 className="text-3xl lg:text-4xl font-extrabold text-white tracking-tight mb-2">My Assessments</h1>
                <p className="text-xs text-slate-400 font-medium">
-                 {isLiveData ? `${exams.length} assignments synchronised from server.` : 'Offline mode actively showing local cache.'}
+                 {isLiveData 
+                   ? `Synchronized with server (${exams.length} assignments).` 
+                   : cacheTime 
+                     ? `Operating in Offline Mode (Cached Data from ${cacheTime})` 
+                     : 'Disconnected. No cached data available.'}
                </p>
              </div>
              
