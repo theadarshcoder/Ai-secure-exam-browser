@@ -87,6 +87,154 @@ const DataTable = ({ headers, data, renderRow, loading }) => (
 // Main Component
 // ─────────────────────────────────────────────────────────
 
+
+/* ─────────────────────────────────────────────────────────
+   Session Report Modal Component
+   ───────────────────────────────────────────────────────── */
+
+const SessionReportModal = ({ sessionData, onClose }) => {
+  if (!sessionData) return null;
+
+  return (
+    <div className="fixed inset-0 bg-zinc-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-300" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-zinc-200 animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+        
+        {/* Header */}
+        <div className="flex items-center justify-between px-8 py-5 border-b border-zinc-200 bg-zinc-50 font-sans">
+          <div>
+            <h3 className="text-base font-black text-zinc-900 uppercase tracking-wider">{sessionData.exam?.title || 'Exam Report'} — Detail</h3>
+            <p className="text-xs text-zinc-500 mt-1">
+              Student: <span className="font-bold text-zinc-700">{sessionData.student?.name || 'Unknown'}</span> ({sessionData.student?.email || 'N/A'})
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <p className="text-xl font-black text-zinc-900 tabular-nums">{sessionData.score ?? 0}/{sessionData.totalMarks ?? 0}</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">{sessionData.percentage ?? 0}% — {sessionData.passed ? 'PASSED' : 'FAILED'}</p>
+            </div>
+            <button onClick={onClose} className="p-2 hover:bg-zinc-100 rounded-xl transition-all active:scale-95">
+              <X size={18} className="text-zinc-400" />
+            </button>
+          </div>
+        </div>
+
+        {/* Questions List */}
+        <div className="overflow-y-auto max-h-[65vh] p-8 space-y-6 custom-scrollbar">
+          {(!sessionData.questions || sessionData.questions.length === 0) ? (
+            <div className="text-center py-20">
+              <AlertCircle size={40} className="mx-auto text-zinc-200 mb-4" />
+              <p className="text-sm font-bold text-zinc-400 uppercase tracking-widest">No detailed question data available for this session.</p>
+            </div>
+          ) : (
+            sessionData.questions.map((q, i) => (
+              <div key={i} className={`rounded-2xl border p-6 transition-all ${
+                q.status === 'correct' ? 'border-emerald-200 bg-emerald-50/20' :
+                q.status === 'incorrect' ? 'border-red-200 bg-red-50/20' :
+                q.status === 'partial' ? 'border-amber-200 bg-amber-50/20' :
+                'border-zinc-200 bg-zinc-50/30'
+              }`}>
+                {/* Question Info */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Question {q.index + 1}</span>
+                    <span className={`px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider ${
+                      q.type === 'mcq' ? 'bg-blue-100 text-blue-700' :
+                      q.type === 'coding' ? 'bg-purple-100 text-purple-700' :
+                      'bg-orange-100 text-orange-700'
+                    }`}>
+                      {q.type || 'Standard'}
+                    </span>
+                    <Badge color={
+                      q.status === 'correct' ? 'emerald' :
+                      q.status === 'incorrect' ? 'red' :
+                      q.status === 'partial' ? 'amber' : 'zinc'
+                    }>{q.status || 'evaluated'}</Badge>
+                  </div>
+                  <span className="text-sm font-black text-zinc-900 tabular-nums bg-white px-3 py-1 rounded-lg border border-zinc-100">
+                    {q.marksObtained ?? 0} <span className="text-zinc-300 font-bold mx-0.5">/</span> {q.maxMarks || q.marks || 0}
+                  </span>
+                </div>
+
+                <p className="text-sm text-zinc-800 font-semibold leading-relaxed mb-6">{q.questionText}</p>
+
+                {/* Specific answer views */}
+                {q.type === 'mcq' && q.options && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {q.options.map((opt, oi) => {
+                      const isCorrect = oi === q.correctChoice;
+                      const isStudent = oi === q.studentChoice;
+                      return (
+                        <div key={oi} className={`px-4 py-3 rounded-xl text-xs flex items-center gap-3 border transition-all ${
+                          isCorrect ? 'bg-emerald-100 border-emerald-200 text-emerald-800 font-bold' :
+                          isStudent ? 'bg-red-50 border-red-200 text-red-700 font-bold' :
+                          'bg-white border-zinc-100 text-zinc-500'
+                        }`}>
+                          <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
+                             isCorrect ? 'bg-emerald-500 text-white' :
+                             isStudent ? 'bg-red-500 text-white' : 
+                             'bg-zinc-100 text-zinc-400'
+                          }`}>
+                            {isCorrect ? <Check size={12} /> : isStudent ? <X size={12} /> : <div className="w-1.5 h-1.5 rounded-full bg-current" />}
+                          </div>
+                          <span className="flex-1">{opt}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {q.type === 'coding' && q.studentAnswer && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                       <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Submission Artifact</p>
+                       <span className="text-[10px] font-bold text-zinc-400 uppercase bg-zinc-100 px-2 py-0.5 rounded">Source Code</span>
+                    </div>
+                    <pre className="bg-zinc-900 text-zinc-100 p-5 rounded-2xl text-[11px] font-mono leading-relaxed overflow-x-auto max-h-48 border border-white/5 custom-scrollbar">{q.studentAnswer}</pre>
+                  </div>
+                )}
+
+                {q.type === 'short' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-white border border-zinc-200 rounded-xl p-4 shadow-sm">
+                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                        <CheckCircle size={12} className="text-zinc-300" /> Student's Response
+                      </p>
+                      <div className="text-xs text-zinc-700 leading-relaxed italic">
+                        {q.studentAnswer || "No content provided."}
+                      </div>
+                    </div>
+                    <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4 shadow-sm">
+                      <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2 flex items-center gap-2">
+                         <Star size={12} className="text-emerald-400" /> Expected Blueprint
+                      </p>
+                      <div className="text-xs text-emerald-800 leading-relaxed font-medium">
+                        {q.expectedAnswer || "Static evaluation criteria not configured."}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-8 py-5 border-t border-zinc-200 bg-zinc-50 flex items-center justify-end gap-3">
+           <p className="text-[11px] font-bold text-zinc-400 mr-auto flex items-center gap-2">
+             <ShieldCheck size={14} className="text-emerald-500" /> Secure Exam Artifact — System Verified
+           </p>
+           <button 
+             onClick={onClose}
+             className="px-6 py-2.5 bg-zinc-900 text-white text-[11px] font-black uppercase tracking-widest rounded-xl hover:bg-zinc-800 transition-all active:scale-95 shadow-lg shadow-zinc-900/20"
+           >
+             Close Artifact
+           </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
@@ -866,90 +1014,21 @@ export default function AdminDashboard() {
       </main>
 
       {/* Evaluation Modal (reused from MentorDashboard pattern) */}
+      {/* Evaluation Modal */}
       {showEvalModal && (
         evalLoading ? (
           <div className="fixed inset-0 bg-zinc-900/70 backdrop-blur-sm z-50 flex items-center justify-center">
-            <div className="bg-white rounded-2xl p-8 flex items-center gap-3 shadow-2xl">
+            <div className="bg-white rounded-2xl p-8 flex items-center gap-3 shadow-2xl animate-in zoom-in-95">
               <RefreshCw size={20} className="animate-spin text-emerald-600" />
-              <span className="text-sm font-bold text-zinc-700">Loading session details...</span>
+              <span className="text-sm font-bold text-zinc-700">Accessing secure data layer...</span>
             </div>
           </div>
-        ) : evalSessionData ? (
-          <div className="fixed inset-0 bg-zinc-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => { setShowEvalModal(false); setEvalSessionData(null); }}>
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-zinc-200" onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between px-8 py-5 border-b border-zinc-200 bg-zinc-50">
-                <div>
-                  <h3 className="text-base font-black text-zinc-900 uppercase tracking-wider">{evalSessionData.exam?.title} — Detail</h3>
-                  <p className="text-xs text-zinc-500 mt-1">Student: <span className="font-bold text-zinc-700">{evalSessionData.student?.name}</span> ({evalSessionData.student?.email})</p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <p className="text-xl font-black text-zinc-900">{evalSessionData.score}/{evalSessionData.totalMarks}</p>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">{evalSessionData.percentage}%</p>
-                  </div>
-                  <button onClick={() => { setShowEvalModal(false); setEvalSessionData(null); }} className="p-2 hover:bg-zinc-100 rounded-xl">
-                    <X size={18} className="text-zinc-400" />
-                  </button>
-                </div>
-              </div>
-              <div className="overflow-y-auto max-h-[65vh] p-6 space-y-4 custom-scrollbar">
-                {evalSessionData.questions?.map((q, i) => (
-                  <div key={i} className={`rounded-xl border p-5 ${
-                    q.status === 'correct' ? 'border-emerald-200 bg-emerald-50/30' :
-                    q.status === 'incorrect' ? 'border-red-200 bg-red-50/30' :
-                    q.status === 'partial' ? 'border-amber-200 bg-amber-50/30' :
-                    'border-zinc-200 bg-white'
-                  }`}>
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Q{q.index + 1}</span>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                          q.type === 'mcq' ? 'bg-blue-100 text-blue-700' :
-                          q.type === 'coding' ? 'bg-purple-100 text-purple-700' :
-                          'bg-orange-100 text-orange-700'
-                        }`}>{q.type}</span>
-                        <Badge color={
-                          q.status === 'correct' ? 'emerald' :
-                          q.status === 'incorrect' ? 'red' :
-                          q.status === 'partial' ? 'amber' : 'zinc'
-                        }>{q.status}</Badge>
-                      </div>
-                      <span className="text-sm font-black tabular-nums text-zinc-700">{q.marksObtained}/{q.maxMarks}</span>
-                    </div>
-                    <p className="text-sm text-zinc-800 font-medium mb-2">{q.questionText}</p>
-                    {q.type === 'mcq' && q.options && (
-                      <div className="space-y-1">
-                        {q.options.map((opt, oi) => (
-                          <div key={oi} className={`px-3 py-1.5 rounded text-xs ${
-                            oi === q.correctChoice && oi === q.studentChoice ? 'bg-emerald-100 text-emerald-800 font-bold' :
-                            oi === q.correctChoice ? 'bg-emerald-100 text-emerald-700' :
-                            oi === q.studentChoice ? 'bg-red-100 text-red-700 font-bold' :
-                            'bg-zinc-50 text-zinc-600'
-                          }`}>{opt}</div>
-                        ))}
-                      </div>
-                    )}
-                    {q.type === 'coding' && q.studentAnswer && (
-                      <pre className="bg-zinc-900 text-zinc-100 p-3 rounded-lg text-xs overflow-x-auto max-h-32 mt-2">{q.studentAnswer}</pre>
-                    )}
-                    {q.type === 'short' && (
-                      <div className="grid grid-cols-2 gap-3 mt-2">
-                        <div className="bg-zinc-50 border rounded-lg p-3 text-xs">
-                          <p className="text-[10px] font-bold text-zinc-400 uppercase mb-1">Student's Answer</p>
-                          {q.studentAnswer || <span className="italic text-zinc-400">No answer</span>}
-                        </div>
-                        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-700">
-                          <p className="text-[10px] font-bold text-emerald-600 uppercase mb-1">Expected</p>
-                          {q.expectedAnswer || 'N/A'}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        ) : null
+        ) : (
+          <SessionReportModal 
+            sessionData={evalSessionData} 
+            onClose={() => { setShowEvalModal(false); setEvalSessionData(null); }} 
+          />
+        )
       )}
 
       {/* Confirm Modal */}
