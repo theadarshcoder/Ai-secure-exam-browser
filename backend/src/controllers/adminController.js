@@ -187,8 +187,13 @@ exports.bulkImportUsers = asyncHandler(async (req, res) => {
             continue;
         }
 
-        const randNum = Math.floor(1000 + Math.random() * 9000);
-        const plainPassword = `password${randNum}`;
+        // Use password from CSV if provided, else generate 6-digit random one
+        let plainPassword = userData.password;
+        if (!plainPassword || String(plainPassword).trim() === '') {
+            const randNum = Math.floor(100000 + Math.random() * 899999);
+            plainPassword = `password${randNum}`;
+        }
+        
         const hashedPassword = await bcrypt.hash(plainPassword, salt);
 
         validUsersToInsert.push({

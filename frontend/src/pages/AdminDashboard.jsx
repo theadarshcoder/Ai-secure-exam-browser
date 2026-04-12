@@ -211,6 +211,16 @@ export default function AdminDashboard() {
       });
   };
 
+  const getUserColumnMap = (headerRow) => {
+    const cols = headerRow.split(',').map(c => c.toLowerCase().trim());
+    return {
+        name: cols.indexOf('name'),
+        email: cols.findIndex(c => c.includes('email')),
+        role: cols.indexOf('role'),
+        password: cols.findIndex(c => c.includes('password'))
+    };
+  };
+
   const handleCsvImport = async (e) => {
      const file = e.target.files[0];
      if (!file) return;
@@ -219,23 +229,26 @@ export default function AdminDashboard() {
      reader.onload = async (event) => {
          const text = event.target.result;
          let rows = text.split('\n').filter(row => row.trim() !== '');
-         
-         // Skip header if 'email' is in the first row
-         if (rows.length > 0 && rows[0].toLowerCase().includes('email')) {
-             rows.shift();
-         }
+         if (rows.length === 0) return;
 
-         const usersToImport = rows.map(row => {
+         const header = rows[0].toLowerCase().includes('email') ? rows[0] : null;
+         const dataRows = header ? rows.slice(1) : rows;
+         const map = header ? getUserColumnMap(header) : null;
+
+         const usersToImport = dataRows.map(row => {
              const cols = row.split(',');
+             const get = (key, defIdx) => (map && map[key] !== -1) ? cols[map[key]] : cols[defIdx];
+             
              return { 
-                 name: cols[0]?.trim() || 'No Name', 
-                 email: cols[1]?.trim(), 
-                 role: cols[2]?.trim()?.toLowerCase() || 'student' 
+                 name: get('name', 0)?.trim() || 'No Name', 
+                 email: get('email', 1)?.trim(), 
+                 password: get('password', -1)?.trim() || '',
+                 role: get('role', 2)?.trim()?.toLowerCase() || 'student' 
              };
          }).filter(u => u.email && u.email.includes('@'));
          
          if(usersToImport.length === 0) {
-             toast.error("No valid rows found in CSV. Format: name,email,role");
+             toast.error("No valid users found in CSV.");
              return;
          }
 
