@@ -36,18 +36,30 @@ const StatusBadge = ({ status }) => {
     low: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     medium: 'bg-amber-50 text-amber-700 border-amber-200',
     high: 'bg-red-50 text-red-700 border-red-200',
-    submitted: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    pending_review: 'bg-amber-50 text-amber-700 border-amber-200',
+    submitted: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    auto_submitted: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    pending_review: 'bg-amber-100 text-amber-800 border-amber-200',
+    in_progress: 'bg-blue-100 text-blue-800 border-blue-200 animate-pulse',
+    blocked: 'bg-red-100 text-red-800 border-red-200',
+    manually_graded: 'bg-indigo-100 text-indigo-800 border-indigo-200',
     correct: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     incorrect: 'bg-red-50 text-red-700 border-red-200',
     partial: 'bg-amber-50 text-amber-700 border-amber-200',
-    manually_graded: 'bg-blue-50 text-blue-700 border-blue-200',
   };
 
   const labels = {
-    pending_review: '⏳ Needs Review',
-    submitted: '✅ Graded',
+    draft: '📝 Draft',
+    published: '🌐 Published',
+    active: '⚡ Active',
+    in_progress: '✍️ In Progress',
+    submitted: '✅ Submitted',
+    auto_submitted: '🤖 Auto Submit',
+    pending_review: '⏳ Under Review',
+    blocked: '🚫 Blocked',
     manually_graded: '📝 Mentor Graded',
+    correct: 'Correct',
+    incorrect: 'Incorrect',
+    partial: 'Partial',
   };
 
   const current = styles[status?.toLowerCase()] || styles.draft;
@@ -58,6 +70,45 @@ const StatusBadge = ({ status }) => {
     </span>
   );
 };
+
+/* ─────────────────────────────────────────────────────────
+   Floating Help Requests Panel
+   ───────────────────────────────────────────────────────── */
+
+const FloatingHelpPanel = ({ requests, onResolve }) => {
+  if (requests.length === 0) return null;
+
+  return (
+    <div className="fixed bottom-6 right-6 w-80 z-[60] animate-in slide-in-from-bottom-5 duration-300">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[400px]">
+        <div className="px-4 py-3 bg-zinc-800/50 border-b border-zinc-700 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <h3 className="text-[11px] font-black text-white uppercase tracking-widest">Help Requests ({requests.length})</h3>
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">
+          {requests.map((req, i) => (
+            <div key={req.id || i} className="bg-zinc-800/80 border border-white/5 rounded-xl p-3 hover:border-white/10 transition-all group">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] font-black text-emerald-400 truncate max-w-[150px]">{req.studentName}</span>
+                <span className="text-[8px] font-mono text-zinc-500">{new Date(req.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+              <p className="text-[11px] text-zinc-300 leading-relaxed mb-3">"{req.message}"</p>
+              <button 
+                onClick={() => onResolve(req.id)}
+                className="w-full py-1.5 rounded-lg bg-zinc-700 hover:bg-emerald-600 text-white text-[9px] font-black uppercase tracking-widest transition-all active:scale-95"
+              >
+                Mark Resolved
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
 const DataTable = ({ headers, data, renderRow, loading }) => (
   <div className="w-full overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
@@ -344,17 +395,21 @@ export default function MentorDashboard() {
   // Evaluation Modal state
   const [showEvalModal, setShowEvalModal] = useState(false);
   const [evalSessionData, setEvalSessionData] = useState(null);
+  const [helpError, setHelpError] = useState(false);
+  const [isTabViolation, setIsTabViolation] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
   const [evalLoading, setEvalLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Real-time violation alerts state (via Socket.IO)
   const [violations, setViolations] = useState([]);
+  const [helpRequests, setHelpRequests] = useState([]);
 
 
   // Confirm modal system
   const [confirmModal, setConfirmModal] = useState({ show: false, msg: '', onConfirm: null });
   const showConfirm = (msg, onConfirm) => setConfirmModal({ show: true, msg, onConfirm });
-  const closeConfirm = () => setConfirmModal({ show: false, msg: '', onConfirm: null });
+  const closeConfirm = () => setConfirmModal({ show: false, msg, onConfirm: null });
 
   // Setup search debouncing
   useEffect(() => {
@@ -379,9 +434,25 @@ export default function MentorDashboard() {
 
     socketService.onStudentHelp((data) => {
       toast.error(`HELP REQUEST: ${data.studentName} - ${data.message}`, { duration: 6000 });
+      setHelpRequests(prev => [{
+        id: `help-${Date.now()}`,
+        studentId: data.studentId,
+        studentName: data.studentName || data.studentEmail,
+        message: data.message,
+        timestamp: new Date()
+      }, ...prev]);
+      
+      // Sound Alert
+      try {
+        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
+        audio.volume = 0.5;
+        audio.play().catch(() => {});
+      } catch (err) {}
     });
 
-    return () => socketService.disconnect();
+    return () => {
+      socketService.disconnect();
+    };
   }, []);
 
   // Fetch data per tab
@@ -595,11 +666,18 @@ export default function MentorDashboard() {
 
   const renderLiveProctoring = () => {
     // Filter live sessions based on debounced search
-    const filtered = liveSessions.filter(s => 
-      !debouncedSearch || 
-      (s.name || '').toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-      (s.exam || '').toLowerCase().includes(debouncedSearch.toLowerCase())
-    );
+    const filtered = liveSessions
+      .map(s => ({
+        ...s,
+        threatScore: (s.tabSwitchCount || 0) * 2 + (s.warningCount || 0),
+        isHighRisk: (s.tabSwitchCount || 0) >= 3 || (s.warningCount || 0) >= 2
+      }))
+      .sort((a, b) => b.threatScore - a.threatScore) // Highest risk first
+      .filter(s => 
+        !debouncedSearch || 
+        (s.name || '').toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        (s.exam || '').toLowerCase().includes(debouncedSearch.toLowerCase())
+      );
 
     return (
       <div className="space-y-6 animate-in fade-in duration-300">
@@ -633,30 +711,44 @@ export default function MentorDashboard() {
           headers={['Student', 'Exam', 'Score', 'Status', 'Actions']}
           data={filtered}
           renderRow={(session, idx) => (
-            <tr key={idx} className="hover:bg-zinc-50 transition-colors group">
+            <tr key={idx} className={`hover:bg-zinc-50 transition-colors group ${session.isHighRisk ? 'bg-red-50/30' : ''}`}>
               <td className="px-6 py-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-zinc-100 border border-zinc-200 flex items-center justify-center font-bold text-zinc-600 text-xs">
+                  <div className={`w-8 h-8 rounded-lg border flex items-center justify-center font-bold text-xs ${session.isHighRisk ? 'bg-red-100 border-red-200 text-red-600 animate-pulse' : 'bg-zinc-100 border-zinc-200 text-zinc-600'}`}>
                     {(session.name || 'S').charAt(0)}
                   </div>
-                  <span className="text-sm font-semibold text-zinc-900">{session.name || 'Student'}</span>
+                  <div>
+                    <span className="text-sm font-semibold text-zinc-900">{session.name || 'Student'}</span>
+                    {session.isHighRisk && <p className="text-[8px] font-black text-red-500 uppercase mt-0.5">High Integrity Risk</p>}
+                  </div>
                 </div>
               </td>
               <td className="px-6 py-4 text-xs font-medium text-zinc-600">
                 {session.exam || 'N/A'}
               </td>
               <td className="px-6 py-4">
-                <span className={`text-xs font-black tabular-nums ${(session.score || 0) >= 80 ? 'text-emerald-700' : 'text-amber-700'}`}>
-                  {session.score != null ? `${session.score}%` : 'Pending'}
-                </span>
+                <div className="flex flex-col gap-1">
+                  <span className={`text-xs font-black tabular-nums ${(session.score || 0) >= 80 ? 'text-emerald-700' : 'text-amber-700'}`}>
+                    {session.score != null ? `${session.score}%` : 'Pending'}
+                  </span>
+                  <div className="flex items-center gap-2">
+                     <span className="text-[9px] text-zinc-400 uppercase font-bold">Tabs: {session.tabSwitchCount || 0}</span>
+                     <span className="text-[9px] text-zinc-400 uppercase font-bold">Warns: {session.warningCount || 0}</span>
+                  </div>
+                </div>
               </td>
               <td className="px-6 py-4">
                  <StatusBadge status={session.status || 'Active'} />
               </td>
               <td className="px-6 py-4">
-                 <button className="flex items-center gap-2 text-[11px] font-black uppercase text-emerald-600 hover:bg-emerald-50 px-3 py-1.5 rounded-lg transition-all border border-transparent hover:border-emerald-100 active:scale-95">
-                    <Eye size={12} /> View
-                 </button>
+                 <div className="flex items-center gap-2">
+                   <button 
+                     onClick={() => navigate(`/mentor/monitor?id=${session.sessionId || session._id}&name=${session.name}&exam=${session.exam}&risk=${session.isHighRisk ? 'High' : 'Low'}`)}
+                     className="flex items-center gap-2 text-[11px] font-black uppercase text-emerald-600 hover:bg-emerald-50 px-3 py-1.5 rounded-lg transition-all border border-transparent hover:border-emerald-100 active:scale-95"
+                   >
+                      <Eye size={12} /> View
+                   </button>
+                 </div>
               </td>
             </tr>
           )}
@@ -949,6 +1041,10 @@ export default function MentorDashboard() {
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
       `}</style>
+      <FloatingHelpPanel 
+        requests={helpRequests} 
+        onResolve={(id) => setHelpRequests(prev => prev.filter(r => r.id !== id))} 
+      />
     </div>
   );
 }

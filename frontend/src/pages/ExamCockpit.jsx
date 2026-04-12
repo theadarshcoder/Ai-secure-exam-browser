@@ -252,6 +252,34 @@ const ExitModal = React.memo(({ isOpen, onClose, onExit, password, setPassword, 
   </AnimatePresence>
 ));
 
+const FullBlockOverlay = React.memo(({ isOpen, reason }) => (
+  <AnimatePresence>
+    {isOpen && (
+      <motion.div 
+        initial={{ opacity: 0 }} 
+        animate={{ opacity: 1 }} 
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[1000] bg-slate-900 flex items-center justify-center p-6 select-none"
+      >
+        <div className="text-center max-w-md">
+          <div className="w-24 h-24 rounded-full bg-red-500/10 border-2 border-red-500 flex items-center justify-center mx-auto mb-8 animate-pulse">
+            <Lock size={48} className="text-red-500" />
+          </div>
+          <h1 className="text-4xl font-black text-white mb-4 uppercase tracking-tighter">Access Resticted</h1>
+          <p className="text-zinc-400 text-lg mb-10 leading-relaxed font-medium">
+            {reason || "Your exam session has been suspended by the supervisor due to suspicious activity."}
+          </p>
+          <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
+             <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+               Please contact your instructor immediately to regain access.
+             </p>
+          </div>
+        </div>
+      </motion.div>
+    )}
+  </AnimatePresence>
+));
+
 const ObjectivePanel = React.memo(({ question, index, markedForReview }) => (
   <div className="w-[42%] shrink-0 flex flex-col min-h-0 bg-white border-r border-slate-200">
     <div className="bg-slate-50 border-b border-slate-100 px-6 py-3.5 flex items-center justify-between shrink-0">
@@ -406,6 +434,8 @@ export default function ExamCockpit() {
   const [helpSent, setHelpSent] = useState(false);
   const [helpError, setHelpError] = useState(false);
   const [isTabViolation, setIsTabViolation] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [activeWarning, setActiveWarning] = useState(null);
   
   // Layout state
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
@@ -467,14 +497,36 @@ export default function ExamCockpit() {
       toast.error(err.message || "Background evaluation failed.", { id: 'code-eval-error' });
     };
 
+    const handleForceBlock = (data) => {
+      setIsBlocked(true);
+      toast.error(data.reason || "Your session has been blocked!", { duration: 10000 });
+    };
+
+    const handleUnblock = () => {
+      setIsBlocked(false);
+      toast.success("Your session has been unblocked. You may resume.");
+    };
+
+    const handleWarning = (data) => {
+      setActiveWarning(data.message);
+      // Auto-clear after 10 seconds
+      setTimeout(() => setActiveWarning(null), 10000);
+    };
+
     socket.on('exam_broadcast', handleBroadcast);
     socket.on('code_evaluation_result', handleCodeEvaluationResult);
     socket.on('code_evaluation_error', handleCodeEvaluationError);
+    socket.on('force_block_screen', handleForceBlock);
+    socket.on('unblock_screen', handleUnblock);
+    socket.on('warning', handleWarning);
 
     return () => {
       socket.off('exam_broadcast', handleBroadcast);
       socket.off('code_evaluation_result', handleCodeEvaluationResult);
       socket.off('code_evaluation_error', handleCodeEvaluationError);
+      socket.off('force_block_screen', handleForceBlock);
+      socket.off('unblock_screen', handleUnblock);
+      socket.off('warning', handleWarning);
       socketService.disconnect();
     };
   }, [examId]);
@@ -744,6 +796,11 @@ export default function ExamCockpit() {
           setEndTime(Date.now() + restoredTime * 1000);
           setAnswers(restoredAnswers);
           setCurrentQ(startIdx);
+          
+          // Initial Block Sync
+          if (sessionProgress.status === 'blocked') {
+            setIsBlocked(true);
+          }
           
           const currentId = finalShuffledQuestions[startIdx]?.originalId;
           if (currentId) restoredVisited[currentId] = true;
@@ -1171,6 +1228,27 @@ export default function ExamCockpit() {
           </div>
         </div>
       )}
+      {/* Floating Warnings */}
+      <AnimatePresence>
+        {activeWarning && (
+          <motion.div 
+            initial={{ y: -100, opacity: 0 }}
+            animate={{ y: 20, opacity: 1 }}
+            exit={{ y: -100, opacity: 0 }}
+            className="fixed top-0 left-0 right-0 z-[2000] flex justify-center pointer-events-none"
+          >
+            <div className="bg-red-600 text-white px-8 py-4 rounded-2xl shadow-2xl border-4 border-white flex items-center gap-4 max-w-2xl text-center pointer-events-auto">
+              <ShieldAlert size={32} className="animate-bounce shrink-0" />
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Supervisor Warning</p>
+                <p className="text-xl font-black uppercase">{activeWarning}</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <FullBlockOverlay isOpen={isBlocked} />
     </div>
   );
 }

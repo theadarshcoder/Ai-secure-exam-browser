@@ -386,6 +386,7 @@ export default function SessionMonitor() {
 
   const [activityLogs, setActivityLogs] = useState(generateInitialLogs);
   const [isConnected, setIsConnected] = useState(true);
+  const [isBlocked, setIsBlocked] = useState(searchParams.get('status') === 'blocked');
   const [elapsedTime, setElapsedTime] = useState(0);
   const [showActivityPanel, setShowActivityPanel] = useState(true);
   const [selectedLogFilter, setSelectedLogFilter] = useState('all');
@@ -495,8 +496,22 @@ export default function SessionMonitor() {
 
   const handleSendMessage = () => {
     if (!messageInput.trim()) return;
+    socketService.sendWarningToast(sessionData.id, messageInput);
     setMessages(prev => [...prev, { text: messageInput, from: 'admin', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
     setMessageInput('');
+    toast.success("Warning sent to student!");
+  };
+
+  const handleBlockToggle = () => {
+    if (isBlocked) {
+      socketService.unblockStudent(sessionData.id, sessionData.examId);
+      setIsBlocked(false);
+      toast.success("Student unblocked!");
+    } else {
+      socketService.blockStudent(sessionData.id, sessionData.examId);
+      setIsBlocked(true);
+      toast.error("Student blocked!");
+    }
   };
 
   const handleBroadcast = () => {
@@ -617,13 +632,24 @@ export default function SessionMonitor() {
               <Flag size={11} /> Flag
             </button>
             <button
-              onClick={() => setShowTerminateConfirm(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider text-red-400 border border-red-500/20 bg-red-500/5 hover:bg-red-500/15 transition-all active:scale-95"
-            >
-              <OctagonX size={11} /> Terminate
-            </button>
-          </div>
-        </div>
+               onClick={() => setShowTerminateConfirm(true)}
+               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider text-red-400 border border-red-500/20 bg-red-500/5 hover:bg-red-500/15 transition-all active:scale-95"
+             >
+               <OctagonX size={11} /> Terminate
+             </button>
+             <button
+               onClick={handleBlockToggle}
+               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all active:scale-95 ${
+                 isBlocked 
+                   ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10' 
+                   : 'text-zinc-900 bg-white hover:bg-zinc-100 border border-zinc-200'
+               }`}
+             >
+               {isBlocked ? <CheckCircle2 size={11} /> : <Lock size={11} />}
+               {isBlocked ? 'Unblock Student' : 'Block Student'}
+             </button>
+           </div>
+         </div>
 
         {/* Main Content */}
         <div className="flex-1 overflow-hidden flex flex-col p-4 gap-4">

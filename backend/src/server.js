@@ -397,6 +397,79 @@ io.on('connection', (socket) => {
             timestamp: new Date()
         });
     });
+
+    // --- 🛡️ PROCTORING ACTIONS: Block / Unblock / Warning ---
+
+    socket.on('block_student', async (data) => {
+        if (socket.user.role !== 'mentor' && socket.user.role !== 'admin') return;
+        const { studentId, examId, sessionId } = data;
+        
+        try {
+            let targetId = studentId;
+            if (sessionId && !targetId) {
+                const session = await ExamSession.findById(sessionId);
+                if (session) targetId = session.student;
+            }
+
+            if (!targetId) return;
+
+            console.log(`🔒 Blocking student ${targetId}`);
+            await ExamSession.findOneAndUpdate(
+                { $or: [{ student: targetId, exam: examId }, { _id: sessionId || targetId }] },
+                { status: 'blocked' }
+            );
+            io.to(`user_${targetId}`).emit('force_block_screen', { reason: 'Blocked by supervisor' });
+        } catch (err) {
+            console.error('Block student DB fail:', err.message);
+        }
+    });
+
+    socket.on('unblock_student', async (data) => {
+        if (socket.user.role !== 'mentor' && socket.user.role !== 'admin') return;
+        const { studentId, examId, sessionId } = data;
+
+        try {
+            let targetId = studentId;
+            if (sessionId && !targetId) {
+                const session = await ExamSession.findById(sessionId);
+                if (session) targetId = session.student;
+            }
+
+            if (!targetId) return;
+
+            console.log(`🔓 Unblocking student ${targetId}`);
+            await ExamSession.findOneAndUpdate(
+                { status: 'blocked', $or: [{ student: targetId, exam: examId }, { _id: sessionId || targetId }] },
+                { status: 'in_progress' }
+            );
+            io.to(`user_${targetId}`).emit('unblock_screen');
+        } catch (err) {
+            console.error('Unblock student DB fail:', err.message);
+        }
+    });
+
+    socket.on('send_warning', async (data) => {
+        if (socket.user.role !== 'mentor' && socket.user.role !== 'admin') return;
+        const { studentId, sessionId, message } = data;
+        
+        try {
+            let targetId = studentId;
+            if (sessionId && !targetId) {
+                const session = await ExamSession.findById(sessionId);
+                if (session) targetId = session.student;
+            }
+
+            if (!targetId) return;
+
+            console.log(`⚠️ Warning to ${targetId}: ${message}`);
+            io.to(`user_${targetId}`).emit('warning', { 
+                message,
+                timestamp: new Date()
+            });
+        } catch (err) {
+            console.error('Warning emit fail:', err.message);
+        }
+    });
     
     socket.on('disconnect', () => {
         if (watchdogTimer) clearTimeout(watchdogTimer);

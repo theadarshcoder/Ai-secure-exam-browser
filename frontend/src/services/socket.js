@@ -104,6 +104,26 @@ class SocketService {
       this.socket.on('code_evaluation_error', callback);
     }
   }
+
+  // --- 🛡️ PROCTORING EMITS ---
+
+  blockStudent(studentId, examId) {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('block_student', { studentId, examId });
+    }
+  }
+
+  unblockStudent(studentId, examId) {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('unblock_student', { studentId, examId });
+    }
+  }
+
+  sendWarningToast(studentId, message) {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('send_warning', { studentId, message });
+    }
+  }
 }
 
 const socketService = new SocketService();
