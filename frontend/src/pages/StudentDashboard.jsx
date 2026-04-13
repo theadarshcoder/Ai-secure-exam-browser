@@ -186,6 +186,180 @@ const ExamCard = ({ exam, now, onLaunch, onViewResults, index }) => {
   );
 };
 
+/* ─────────────── Results Modal ─────────────── */
+
+const ResultsModal = ({ examId, isOpen, onClose }) => {
+  const [results, setResults] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!isOpen || !examId) return;
+
+    const fetchResults = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        // TODO: Replace with actual API endpoint
+        // For now, mock data
+        const mockResults = {
+          examTitle: "Sample Exam",
+          totalMarks: 100,
+          obtainedMarks: 75,
+          percentage: 75,
+          correctAnswers: 15,
+          totalQuestions: 20,
+          negativeMarking: true,
+          negativeMarks: 2,
+          questions: Array.from({ length: 20 }, (_, i) => ({
+            id: i + 1,
+            question: `Question ${i + 1}`,
+            correctAnswer: `Option ${(i % 4) + 1}`,
+            yourAnswer: i < 15 ? `Option ${(i % 4) + 1}` : `Option ${((i + 1) % 4) + 1}`,
+            isCorrect: i < 15,
+            marks: 5,
+            negativeMarks: i >= 15 ? 1 : 0
+          }))
+        };
+        
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setResults(mockResults);
+      } catch (err) {
+        setError('Failed to load results. Please try again.');
+        console.error('Error fetching results:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchResults();
+  }, [isOpen, examId]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[1000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-[#0f1419] border border-white/10 rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-8">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-2xl font-black text-white mb-2">Exam Results</h2>
+              <p className="text-slate-400 text-sm">Detailed performance analysis</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {loading ? (
+            <div className="py-20 text-center">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500 mb-4"></div>
+              <p className="text-slate-400">Loading results...</p>
+            </div>
+          ) : error ? (
+            <div className="py-20 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle className="text-red-500" size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">Error Loading Results</h3>
+              <p className="text-slate-400 mb-6">{error}</p>
+              <button
+                onClick={onClose}
+                className="px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-semibold transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          ) : results && (
+            <>
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-6">
+                  <p className="text-emerald-400 text-sm font-bold uppercase tracking-widest mb-2">Score</p>
+                  <p className="text-3xl font-black text-white">{results.obtainedMarks}/{results.totalMarks}</p>
+                  <p className="text-slate-400 text-sm mt-2">{results.percentage}%</p>
+                </div>
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-6">
+                  <p className="text-blue-400 text-sm font-bold uppercase tracking-widest mb-2">Correct</p>
+                  <p className="text-3xl font-black text-white">{results.correctAnswers}/{results.totalQuestions}</p>
+                  <p className="text-slate-400 text-sm mt-2">Accuracy</p>
+                </div>
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-6">
+                  <p className="text-amber-400 text-sm font-bold uppercase tracking-widest mb-2">Incorrect</p>
+                  <p className="text-3xl font-black text-white">{results.totalQuestions - results.correctAnswers}</p>
+                  <p className="text-slate-400 text-sm mt-2">Questions</p>
+                </div>
+                <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6">
+                  <p className="text-red-400 text-sm font-bold uppercase tracking-widest mb-2">Negative Marks</p>
+                  <p className="text-3xl font-black text-white">-{results.negativeMarks}</p>
+                  <p className="text-slate-400 text-sm mt-2">Deductions</p>
+                </div>
+              </div>
+
+              {/* Questions Breakdown */}
+              <div className="mb-8">
+                <h3 className="text-lg font-bold text-white mb-4">Question-wise Breakdown</h3>
+                <div className="space-y-3">
+                  {results.questions.slice(0, 5).map((q) => (
+                    <div key={q.id} className={`p-4 rounded-xl border ${q.isCorrect ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-red-500/20 bg-red-500/5'}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${q.isCorrect ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                            {q.isCorrect ? '✓' : '✗'}
+                          </div>
+                          <div>
+                            <p className="text-white font-medium">Q{q.id}: {q.question}</p>
+                            <p className="text-slate-400 text-sm">Your answer: {q.yourAnswer} • Correct: {q.correctAnswer}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className={`text-sm font-bold ${q.isCorrect ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {q.isCorrect ? `+${q.marks}` : `-${q.negativeMarks}`}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {results.questions.length > 5 && (
+                  <p className="text-center text-slate-500 text-sm mt-4">
+                    Showing 5 of {results.questions.length} questions
+                  </p>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-end gap-3 pt-6 border-t border-white/10">
+                <button
+                  onClick={onClose}
+                  className="px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-semibold transition-colors"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => {
+                    // TODO: Implement download PDF or share
+                    toast.success('Results exported successfully');
+                  }}
+                  className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold transition-colors"
+                >
+                  Export Results
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 /* ─────────────── Main Page ─────────────── */
 
 export default function StudentDashboard() {
@@ -196,6 +370,10 @@ export default function StudentDashboard() {
   const [showSupport, setShowSupport] = useState(false);
   const [supportMsg, setSupportMsg] = useState('');
   const [supportSent, setSupportSent] = useState(false);
+
+  // Results modal state
+  const [showResultsModal, setShowResultsModal] = useState(false);
+  const [selectedExamId, setSelectedExamId] = useState(null);
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -389,11 +567,14 @@ export default function StudentDashboard() {
                  <div className="flex flex-col gap-4 mt-6 mb-8">
                     {filteredExams.map(exam => (
                       <ExamCard 
-                        key={exam.id} 
-                        exam={exam} 
-                        now={now} 
-                        onLaunch={(id) => navigate(`/exam/${id}/verify`)} 
-                        onViewResults={() => toast.success('Detailed results will be available after mentor evaluation.')}
+                        key={exam.id}
+                        exam={exam}
+                        now={now}
+                        onLaunch={(id) => navigate(`/exam/${id}/verify`)}
+                        onViewResults={() => {
+                          setSelectedExamId(exam.id);
+                          setShowResultsModal(true);
+                        }}
                       />
                     ))}
                  </div>
@@ -455,6 +636,13 @@ export default function StudentDashboard() {
         </div>
       </>
     )}
+
+    {/* Results Modal */}
+    <ResultsModal
+      examId={selectedExamId}
+      isOpen={showResultsModal}
+      onClose={() => setShowResultsModal(false)}
+    />
     </>
   );
 }

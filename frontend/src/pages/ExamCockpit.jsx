@@ -54,7 +54,23 @@ const QuestionPalette = React.memo(({ questions, currentQ, answers, visited, mar
   const handleSectionClick = (sec) => {
     setActiveSection(sec.id);
     const firstIdx = questions.findIndex(q => sec.types.includes(q.type));
-    if (firstIdx !== -1) navigateTo(firstIdx);
+    if (firstIdx !== -1) {
+      navigateTo(firstIdx);
+      toast.success(`Switched to ${sec.label}`, {
+        icon: '✅',
+        duration: 1500,
+        style: {
+          background: '#10b981',
+          color: 'white',
+          fontSize: '12px',
+          fontWeight: 'bold'
+        }
+      });
+    } else {
+      toast.error(`No questions found in ${sec.label}`, {
+        duration: 2000
+      });
+    }
   };
 
   const getQState = (shuffledIndex) => {
@@ -127,7 +143,7 @@ const QuestionPalette = React.memo(({ questions, currentQ, answers, visited, mar
   );
 });
 
-const ProctoringSidebar = React.memo(({ cameraActive, videoRef, faceActive, confidence }) => (
+const ProctoringSidebar = React.memo(({ cameraActive, videoRef, faceActive, confidence, camError, onRetryCamera }) => (
   <div className="flex flex-col w-full gap-5">
     <div className="relative group">
       <div className="absolute -inset-0.5 bg-gradient-to-r from-red-500 to-red-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000 animate-pulse"></div>
@@ -146,6 +162,15 @@ const ProctoringSidebar = React.memo(({ cameraActive, videoRef, faceActive, conf
         </div>
       </div>
     </div>
+    
+    {camError && (
+      <div className="bg-red-500/10 border border-red-500/50 p-4 rounded-xl text-center">
+        <p className="text-red-400 text-xs mb-2">Camera/Mic access denied. Please click the 🔒 icon in the URL bar to allow, then retry.</p>
+        <button onClick={onRetryCamera} className="px-4 py-2 bg-red-600 text-white rounded-lg text-xs font-bold uppercase">
+          Retry Camera
+        </button>
+      </div>
+    )}
     
     <div className="flex flex-col items-center gap-2">
       <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Candidate Health</p>
@@ -436,6 +461,7 @@ export default function ExamCockpit() {
   const [isTabViolation, setIsTabViolation] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [activeWarning, setActiveWarning] = useState(null);
+  const [camError, setCamError] = useState(false);
   
   // Layout state
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
@@ -578,6 +604,14 @@ export default function ExamCockpit() {
       }
     };
 
+    const handleBeforeUnload = (e) => {
+      if (!submitted && !terminated) {
+        e.preventDefault();
+        e.returnValue = 'Are you sure you want to leave? Your exam progress might be lost.';
+        return e.returnValue;
+      }
+    };
+
     const blockShortcuts = (e) => {
       if (e.ctrlKey || e.metaKey || ['F12', 'PrintScreen'].includes(e.key) || (e.altKey && e.key === 'Tab')) {
         e.preventDefault();
@@ -600,6 +634,7 @@ export default function ExamCockpit() {
     document.addEventListener('keydown', blockShortcuts);
     document.addEventListener('contextmenu', blockContextMenu);
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
     
     // Auto-check initially (though it will stay blocked, the overlay handles the reset)
     if (!document.fullscreenElement) {
@@ -611,6 +646,7 @@ export default function ExamCockpit() {
       document.removeEventListener('keydown', blockShortcuts);
       document.removeEventListener('contextmenu', blockContextMenu);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [logIncident]);
 
@@ -693,8 +729,8 @@ export default function ExamCockpit() {
       setSubmitted(true);
       await api.post('/api/exams/submit', { examId, answers });
       await storageService.deleteProgress(examId);
-      setTimeout(() => navigate('/student'), 2000);
-    } catch (_err) { setTimeout(() => navigate('/student'), 2000); }
+      setTimeout(() => navigate(`/exam/${examId}/result`), 2000);
+    } catch (_err) { setTimeout(() => navigate(`/exam/${examId}/result`), 2000); }
   }, [examId, answers, navigate]);
 
   // ⏱️ Exam Timer (Relative Decrement for Security)
@@ -823,20 +859,41 @@ export default function ExamCockpit() {
   }, [examId]);
 
   // 📷 Camera & AI Setup
+  const initCamera = useCallback(async () => {
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      setStream(s);
+      if (videoRef.current) videoRef.current.srcObject = s;
+      setCamError(false); // Success hone par error hata do
+      
+      const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+      await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+      setModelsLoaded(true);
+
+      return s;
+    } catch (err) {
+      console.warn('Camera/Mic permission denied');
+      // Log to telemetry
+      api.post('/telemetry/log', {
+        errorType: 'CAMERA_DENIED',
+        severity: 'high',
+        message: `Exam Cockpit camera access failed: ${err.message}`,
+        metadata: { examId, errorName: err.name }
+      }).catch(() => {});
+      
+      setCamError(true); // UI me error dikhane ke liye
+      throw err;
+    }
+  }, []);
+
   useEffect(() => {
     let localStream = null;
     let detectionInterval = null;
     
-    const init = async () => {
+    const setupCameraAndAI = async () => {
       try {
-        const s = await navigator.mediaDevices.getUserMedia({ video: true });
+        const s = await initCamera();
         localStream = s;
-        setStream(s);
-        if (videoRef.current) videoRef.current.srcObject = s;
-        
-        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
-        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-        setModelsLoaded(true);
 
         // Bug 1: Active AI Face Monitoring Loop
         detectionInterval = setInterval(async () => {
@@ -853,16 +910,17 @@ export default function ExamCockpit() {
             } catch (dErr) { console.warn('Detection failed frame'); }
           }
         }, 3000);
-
-      } catch (err) { console.warn('AI/Camera setup failed'); }
+      } catch (err) {
+        // Error already handled in initCamera
+      }
     };
-    init();
+    setupCameraAndAI();
     
-    return () => { 
-      if (localStream) localStream.getTracks().forEach(t => t.stop()); 
+    return () => {
+      if (localStream) localStream.getTracks().forEach(t => t.stop());
       if (detectionInterval) clearInterval(detectionInterval);
     };
-  }, [logIncident, submitted, terminated]);
+  }, [logIncident, submitted, terminated, initCamera]);
 
   useEffect(() => {
     if (submitted || terminated || !examId) return;
@@ -993,233 +1051,148 @@ export default function ExamCockpit() {
   if (submitted) return <div className="h-screen flex items-center justify-center bg-white font-sans"><div className="text-center"><CheckCircle size={60} className="text-emerald-500 mx-auto mb-6" /><h2 className="text-2xl font-black text-slate-900 tracking-tight">Submission Successful</h2><p className="text-slate-400 text-[12px] font-bold uppercase tracking-widest">Saving encrypted responses...</p></div></div>;
 
   return (
-    <div className={`h-screen w-full bg-slate-50 flex flex-col overflow-hidden select-none font-sans text-slate-900 relative transition-all duration-700 ${isTabViolation ? 'blur-xl grayscale' : ''}`}>
-      <AnimatePresence>
-        {needsInteraction && (
-          <motion.div 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            exit={{ opacity: 0 }} 
-            className="fixed inset-0 z-[200] bg-slate-900 flex flex-col items-center justify-center p-6 text-center"
-          >
-             <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/10 via-transparent to-emerald-500/10" />
-             <div className="relative z-10 max-w-md">
-                <div className="w-20 h-20 rounded-3xl bg-indigo-600 flex items-center justify-center shadow-2xl mb-10 mx-auto animate-bounce">
-                  <Shield size={40} className="text-white" />
-                </div>
-                <h1 className="text-4xl font-black text-white tracking-tighter mb-4 uppercase italic">Secure Environment</h1>
-                <p className="text-slate-400 text-sm mb-12 leading-relaxed">
-                  To maintain integrity, this assessment requires a locked environment. Please re-enter the secure perimeter to continue.
-                </p>
-                <button 
-                  onClick={handleSecureEntry}
-                  className="w-full h-14 bg-white text-slate-900 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-2xl hover:bg-indigo-50 transition-all flex items-center justify-center gap-3 active:scale-95"
-                >
-                  <Lock size={18} /> Initialize Secure Entry
-                </button>
-                <p className="mt-8 text-[9px] font-black text-slate-600 uppercase tracking-widest flex items-center justify-center gap-2">
-                   <Monitor size={12} /> Encrypted Session • Biometric Link Enabled
-                </p>
-             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <TabViolationOverlay 
-        isOpen={isTabViolation} 
-        onResume={() => setIsTabViolation(false)} 
-      />
-
-      <style>{`.scroll-thin::-webkit-scrollbar { width: 4px; } .scroll-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }`}</style>
+    <div className="h-screen w-full bg-slate-50 relative font-sans text-slate-900 overflow-hidden">
       
-      <header className="shrink-0 bg-white border-b border-slate-200 shadow-sm px-5 h-[48px] flex items-center justify-between z-30">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-100"><VisionLogo className="w-5 h-5 text-white" /></div>
-          <span className="text-[13px] font-black tracking-widest">VISION</span>
-          <div className="h-4 w-px bg-slate-200" />
-          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest max-w-[200px] truncate">{exam?.title || 'Exam'}</span>
-        </div>
-        <div className="flex items-center gap-6">
-          <ExamTimer seconds={secondsLeft} isCritical={isTimeCritical} />
-          <div className="flex items-center gap-3 pl-4 border-l border-slate-100 text-right">
-            <div>
-              <p className="text-[11px] font-bold leading-none">{sessionStorage.getItem('vision_name') || 'Candidate'}</p>
-              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{sessionStorage.getItem('vision_email') || 'VSN-USER'}</p>
-            </div>
-            <div className="w-8 h-8 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-[10px] font-black text-indigo-600 shadow-sm">
-              {(sessionStorage.getItem('vision_name') || 'C').charAt(0)}
-            </div>
+      {/* 1. LAYER BASE: Content with Blur Wrapper */}
+      <div className={`flex flex-col h-full w-full transition-all duration-700 ${(isTabViolation || !isFullscreen) ? 'blur-xl grayscale pointer-events-none' : ''}`}>
+        <style>{`.scroll-thin::-webkit-scrollbar { width: 4px; } .scroll-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }`}</style>
+        
+        <header className="shrink-0 bg-white border-b border-slate-200 shadow-sm px-5 h-[48px] flex items-center justify-between z-30">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-100"><VisionLogo className="w-5 h-5 text-white" /></div>
+            <span className="text-[13px] font-black tracking-widest">VISION</span>
+            <div className="h-4 w-px bg-slate-200" />
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest max-w-[200px] truncate">{exam?.title || 'Exam'}</span>
           </div>
-        </div>
-        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-slate-50"><div className="h-full bg-indigo-600 transition-all duration-700" style={{ width: `${(answeredCount/Math.max(questions.length, 1))*100}%` }} /></div>
-      </header>
-
-      <div className="flex flex-1 overflow-hidden">
-        <aside className="w-[240px] shrink-0 bg-white border-r border-slate-200 flex flex-col shadow-sm">
-          <QuestionPalette 
-             questions={questions} currentQ={currentQ} answers={answers} visited={visited} markedForReview={markedForReview} 
-             navigateTo={navigateTo} 
-          />
-
-          <div className="px-5 py-2 border-t border-slate-100 flex-shrink-0">
-             <ProctoringSidebar cameraActive={cameraActive} videoRef={videoRef} faceActive={faceBoxes.length > 0} confidence={confidence} />
-          </div>
-
-          <div className="p-4 border-t border-slate-100 mt-auto">
-             <button 
-                onClick={handleRequestHelp} 
-                disabled={helpLoading || helpSent} 
-                className={`w-full h-10 rounded-xl flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-80
-                  ${helpSent ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 
-                    helpError ? 'bg-red-50 text-red-600 border-red-200' :
-                    'bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100'}`}
-             >
-                {helpLoading ? <Loader2 size={14} className="animate-spin" /> : 
-                 helpSent ? <CheckCircle2 size={14} /> : 
-                 helpError ? <AlertCircle size={14} /> :
-                 <MessageSquare size={14} />} 
-                {helpSent ? 'Request Sent' : helpError ? 'Request Failed' : 'Need Help?'}
-             </button>
-          </div>
-
-          <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
-            <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1.5"><div className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse" /> Encrypted Session</span>
-            <button onClick={() => setShowExitPrompt(true)} className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors border border-red-100 shadow-sm active:scale-95"><Power size={14} /></button>
-          </div>
-        </aside>
-
-        <main className="flex-1 flex overflow-hidden bg-slate-50">
-          <div className="flex-1 flex flex-col min-w-0">
-            {q?.type?.toLowerCase() === 'coding' ? (
-              <div className="flex-1 flex min-h-0 overflow-hidden">
-                <ObjectivePanel question={q} index={currentQ} markedForReview={markedForReview} />
-                <CodingEnvironment 
-                  question={q}
-                  answer={answers[q?.originalId || q?._id]}
-                  onCodeChange={onCodeChange}
-                  selectedLanguage={selectedLanguage}
-                  setSelectedLanguage={setSelectedLanguage}
-                  isLangDropdownOpen={isLangDropdownOpen}
-                  setIsLangDropdownOpen={setIsLangDropdownOpen}
-                  editorHeight={editorHeight}
-                  setEditorHeight={setEditorHeight}
-                  isExecuting={isExecuting}
-                  executionResult={executionResult}
-                  activeTab={activeTab}
-                  setActiveTab={setActiveTab}
-                  onMouseDown={onMouseDown}
-                />
+          <div className="flex items-center gap-6">
+            <ExamTimer seconds={secondsLeft} isCritical={isTimeCritical} />
+            <div className="flex items-center gap-3 pl-4 border-l border-slate-100 text-right">
+              <div>
+                <p className="text-[11px] font-bold leading-none">{sessionStorage.getItem('vision_name') || 'Candidate'}</p>
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{sessionStorage.getItem('vision_email') || 'VSN-USER'}</p>
               </div>
-            ) : (
-              <div className="flex-1 overflow-y-auto scroll-thin px-8 py-10">
-                <div className="max-w-3xl mx-auto w-full bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden mb-12">
-                  <div className="p-10 border-b border-slate-100">
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-xl text-[11px] font-black uppercase tracking-widest border border-indigo-100">Q{currentQ + 1}</div>
-                      <div className="px-3 py-1 bg-slate-100 text-slate-500 rounded-xl text-[11px] font-bold uppercase tracking-widest">
-                        {q?.type?.toLowerCase() === 'mcq' ? 'Choice Selection' : q?.type?.toLowerCase() === 'coding' ? 'Coding Challenge' : 'Written Case'}
-                        {/* 🛠️ Diagnostic: Only visible if weird data exists */}
-                        {q?.type && !['mcq', 'coding', 'short'].includes(q.type.toLowerCase()) && (
-                          <span className="ml-2 text-red-500 text-[8px]">[DEBUG: {q.type}]</span>
-                        )}
+              <div className="w-8 h-8 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-[10px] font-black text-indigo-600 shadow-sm">
+                {(sessionStorage.getItem('vision_name') || 'C').charAt(0)}
+              </div>
+            </div>
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-slate-50"><div className="h-full bg-indigo-600 transition-all duration-700" style={{ width: `${(answeredCount/Math.max(questions.length, 1))*100}%` }} /></div>
+        </header>
+
+        <div className="flex flex-1 overflow-hidden">
+          <aside className="w-[240px] shrink-0 bg-white border-r border-slate-200 flex flex-col shadow-sm">
+            <QuestionPalette 
+               questions={questions} currentQ={currentQ} answers={answers} visited={visited} markedForReview={markedForReview} 
+               navigateTo={navigateTo} 
+            />
+            <div className="px-5 py-2 border-t border-slate-100 flex-shrink-0">
+               <ProctoringSidebar
+                 cameraActive={cameraActive}
+                 videoRef={videoRef}
+                 faceActive={faceBoxes.length > 0}
+                 confidence={confidence}
+                 camError={camError}
+                 onRetryCamera={initCamera}
+               />
+            </div>
+            <div className="p-4 border-t border-slate-100 mt-auto">
+               <button onClick={handleRequestHelp} disabled={helpLoading || helpSent} className={`w-full h-10 rounded-xl flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-80 ${helpSent ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : helpError ? 'bg-red-50 text-red-600 border-red-200' : 'bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100'}`}>
+                  {helpLoading ? <Loader2 size={14} className="animate-spin" /> : helpSent ? <CheckCircle2 size={14} /> : helpError ? <AlertCircle size={14} /> : <MessageSquare size={14} />} 
+                  {helpSent ? 'Request Sent' : helpError ? 'Request Failed' : 'Need Help?'}
+               </button>
+            </div>
+            <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1.5"><div className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse" /> Encrypted Session</span>
+              <button onClick={() => setShowExitPrompt(true)} className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors border border-red-100 shadow-sm active:scale-95"><Power size={14} /></button>
+            </div>
+          </aside>
+
+          <main className="flex-1 flex overflow-hidden bg-slate-50">
+            <div className="flex-1 flex flex-col min-w-0">
+              {q?.type?.toLowerCase() === 'coding' ? (
+                <div className="flex-1 flex min-h-0 overflow-hidden">
+                  <ObjectivePanel question={q} index={currentQ} markedForReview={markedForReview} />
+                  <CodingEnvironment question={q} answer={answers[currentQuestionId]} onCodeChange={onCodeChange} selectedLanguage={selectedLanguage} setSelectedLanguage={setSelectedLanguage} isLangDropdownOpen={isLangDropdownOpen} setIsLangDropdownOpen={setIsLangDropdownOpen} editorHeight={editorHeight} setEditorHeight={setEditorHeight} isExecuting={isExecuting} executionResult={executionResult} activeTab={activeTab} setActiveTab={setActiveTab} onMouseDown={onMouseDown} />
+                </div>
+              ) : (
+                <div className="flex-1 overflow-y-auto scroll-thin px-8 py-10">
+                  <div className="max-w-3xl mx-auto w-full bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden mb-12">
+                    <div className="p-10 border-b border-slate-100">
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-xl text-[11px] font-black uppercase tracking-widest border border-indigo-100">Q{currentQ + 1}</div>
+                        <div className="px-3 py-1 bg-slate-100 text-slate-500 rounded-xl text-[11px] font-bold uppercase tracking-widest">{q?.type?.toLowerCase() === 'mcq' ? 'Choice Selection' : q?.type?.toLowerCase() === 'coding' ? 'Coding Challenge' : 'Written Case'}</div>
+                        {markedForReview[currentQuestionId] && <div className="ml-auto text-violet-600 bg-violet-50 px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest border border-violet-100 flex items-center gap-2"><Bookmark size={12} fill="currentColor" /> Flagged</div>}
                       </div>
-                      {markedForReview[q?.originalId || q?._id] && <div className="ml-auto text-violet-600 bg-violet-50 px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest border border-violet-100 flex items-center gap-2"><Bookmark size={12} fill="currentColor" /> Flagged</div>}
+                      <h2 className="text-3xl font-black text-slate-900 leading-tight tracking-tight">{q?.questionText}</h2>
                     </div>
-                    <h2 className="text-3xl font-black text-slate-900 leading-tight tracking-tight">{q?.questionText}</h2>
-                  </div>
-                  <div className="p-10 pb-12">
-                    {q?.type?.toLowerCase() === 'mcq' ? (
-                      <div className="grid gap-4">
-                        {q?.displayOptions?.map((opt, i) => {
-                          const isS = answers[q?.originalId || q?._id] === opt.originalIndex;
-                          return (
-                            <button key={i} onClick={() => setAnswers(p => ({ ...p, [q?.originalId || q?._id]: opt.originalIndex }))} className={`w-full flex items-center gap-6 p-6 rounded-2xl border-2 transition-all duration-300 text-left relative group ${isS ? 'bg-indigo-50/50 border-indigo-600 shadow-lg shadow-indigo-100/50' : 'bg-white border-slate-100 hover:border-slate-300 hover:bg-slate-50/50'}`}>
-                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-[14px] font-black transition-all ${isS ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-100 text-slate-400'}`}>{String.fromCharCode(65 + i)}</div>
-                              <span className={`text-[17px] leading-relaxed flex-1 ${isS ? 'font-bold text-indigo-900' : 'font-medium text-slate-600'}`}>{opt.text}</span>
-                              {isS && <CheckCircle2 size={24} className="text-indigo-600 animate-in zoom-in duration-300" />}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="relative group">
-                          <textarea value={answers[q?.originalId || q?._id] || ''} onChange={e => setAnswers(p => ({ ...p, [q?.originalId || q?._id]: e.target.value }))} placeholder="Type your structured response here..." className="w-full h-96 bg-slate-50/50 border-2 border-slate-100 rounded-3xl p-10 focus:bg-white focus:border-indigo-500 focus:ring-8 focus:ring-indigo-500/5 transition-all outline-none resize-none shadow-inner font-medium text-slate-700 leading-relaxed text-[17px]" />
-                          <div className="absolute top-6 right-6"><div className="w-2 h-2 rounded-full bg-indigo-200 group-focus-within:bg-indigo-500 animate-pulse" /></div>
-                      </div>
-                    )}
+                    <div className="p-10 pb-12">
+                      {q?.type?.toLowerCase() === 'mcq' ? (
+                        <div className="grid gap-4">
+                          {q?.displayOptions?.map((opt, i) => {
+                            const isS = answers[currentQuestionId] === opt.originalIndex;
+                            return (
+                              <button key={i} onClick={() => setAnswers(p => ({ ...p, [currentQuestionId]: opt.originalIndex }))} className={`w-full flex items-center gap-6 p-6 rounded-2xl border-2 transition-all duration-300 text-left relative group ${isS ? 'bg-indigo-50/50 border-indigo-600 shadow-lg shadow-indigo-100/50' : 'bg-white border-slate-100 hover:border-slate-300 hover:bg-slate-50/50'}`}>
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-[14px] font-black transition-all ${isS ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-100 text-slate-400'}`}>{String.fromCharCode(65 + i)}</div>
+                                <span className={`text-[17px] leading-relaxed flex-1 ${isS ? 'font-bold text-indigo-900' : 'font-medium text-slate-600'}`}>{opt.text}</span>
+                                {isS && <CheckCircle2 size={24} className="text-indigo-600 animate-in zoom-in duration-300" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="relative group">
+                            <textarea value={answers[currentQuestionId] || ''} onChange={e => setAnswers(p => ({ ...p, [currentQuestionId]: e.target.value }))} placeholder="Type your structured response here..." className="w-full h-96 bg-slate-50/50 border-2 border-slate-100 rounded-3xl p-10 focus:bg-white focus:border-indigo-500 focus:ring-8 focus:ring-indigo-500/5 transition-all outline-none resize-none shadow-inner font-medium text-slate-700 leading-relaxed text-[17px]" />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-
-            <div className="bg-white border-t border-slate-200 px-8 h-[64px] flex items-center justify-between shrink-0 shadow-[0_-8px_20px_-8px_rgba(0,0,0,0.05)] z-20">
-              <div className="flex items-center gap-3">
-                <button onClick={() => {
-                   const p = Math.max(0, currentQ - 1);
-                   setCurrentQ(p); 
-                   const qId = questions[p]?.originalId || questions[p]?._id;
-                   if (qId) setVisited(v => ({ ...v, [qId]: true }));
-                }} disabled={currentQ === 0} className={`h-11 px-6 flex items-center gap-2.5 rounded-xl text-[12px] font-black uppercase tracking-widest border transition-all ${currentQ === 0 ? 'text-slate-300 border-slate-100 opacity-50' : 'text-slate-600 border-slate-200 hover:bg-slate-50 shadow-sm active:scale-95'}`}><ChevronLeft size={18} /> Back</button>
-                <button onClick={() => setMarkedForReview(p => ({ ...p, [q?.originalId || q?._id]: !p[q?.originalId || q?._id] }))} className={`h-11 px-6 rounded-xl text-[12px] font-black uppercase tracking-widest border transition-all ${markedForReview[q?.originalId || q?._id] ? 'bg-violet-600 text-white border-violet-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>{markedForReview[q?.originalId || q?._id] ? 'Flagged' : 'Flag for Review'}</button>
-              </div>
-              <div className="flex items-center gap-4">
-                {q?.type?.toLowerCase() === 'coding' && (
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={handleRunCode} 
-                      disabled={isExecuting || cooldownSeconds > 0 || isOffline} 
-                      className={`h-11 px-6 flex items-center gap-2.5 rounded-xl text-[12px] font-black uppercase tracking-widest border transition-all active:scale-95 ${isOffline ? 'bg-slate-100 text-slate-300 border-slate-100 cursor-not-allowed' : cooldownSeconds > 0 ? 'bg-slate-50 text-slate-400 border-slate-200' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:shadow-sm'}`}
-                    >
-                      {isExecuting ? <RotateCcw size={16} className="animate-spin" /> : <Play size={16} fill="currentColor" />}
-                      {isOffline ? 'Offline' : cooldownSeconds > 0 ? `Wait (${cooldownSeconds}s)` : 'Run'}
-                    </button>
-                    <button 
-                      onClick={handleCheckTestCases} 
-                      disabled={isExecuting || cooldownSeconds > 0 || isOffline} 
-                      className={`h-11 px-8 flex items-center gap-2.5 rounded-xl text-[12px] font-black uppercase tracking-widest transition-all active:scale-95 ${isOffline ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : cooldownSeconds > 0 ? 'bg-indigo-400 text-white cursor-not-allowed opacity-80' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-100'}`}
-                    >
-                      {isOffline ? 'Internet Required' : cooldownSeconds > 0 ? `Ready in ${cooldownSeconds}s` : 'Submit Code'}
-                    </button>
-                  </div>
-                )}
-                <div className="h-8 w-px bg-slate-100 mx-2" />
-                <button onClick={() => {
-                   if (currentQ < questions.length - 1) {
-                     const n = currentQ + 1;
-                     setCurrentQ(n); 
-                     const qId = questions[n]?.originalId || questions[n]?._id;
+              )}
+              
+              <footer className="bg-white border-t border-slate-200 px-8 h-[64px] flex items-center justify-between shrink-0 shadow-[0_-8px_20px_-8px_rgba(0,0,0,0.05)] z-20">
+                <div className="flex items-center gap-3">
+                  <button onClick={() => {
+                     const p = Math.max(0, currentQ - 1);
+                     setCurrentQ(p); 
+                     const qId = questions[p]?.originalId || questions[p]?._id;
                      if (qId) setVisited(v => ({ ...v, [qId]: true }));
-                   } else {
-                     setShowConfirm(true);
-                   }
-                }} 
-                disabled={isOffline}
-                className={`h-11 px-8 rounded-xl text-[12px] font-black uppercase tracking-widest transition-all ${isOffline ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : currentQ === questions.length - 1 ? 'bg-emerald-600 text-white shadow-lg' : 'bg-slate-900 text-white shadow-lg hover:bg-black'}`}>{isOffline ? 'Offline' : currentQ === questions.length - 1 ? 'Final Hand In' : 'Save & Next'} <ChevronRight size={18} className="ml-1" /></button>
-              </div>
+                  }} disabled={currentQ === 0} className={`h-11 px-6 flex items-center gap-2.5 rounded-xl text-[12px] font-black uppercase tracking-widest border transition-all ${currentQ === 0 ? 'text-slate-300 border-slate-100 opacity-50' : 'text-slate-600 border-slate-200 hover:bg-slate-50 shadow-sm active:scale-95'}`}><ChevronLeft size={18} /> Back</button>
+                  <button onClick={() => setMarkedForReview(p => ({ ...p, [currentQuestionId]: !p[currentQuestionId] }))} className={`h-11 px-6 rounded-xl text-[12px] font-black uppercase tracking-widest border transition-all ${markedForReview[currentQuestionId] ? 'bg-violet-600 text-white border-violet-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>{markedForReview[currentQuestionId] ? 'Flagged' : 'Flag for Review'}</button>
+                </div>
+                <div className="flex items-center gap-4">
+                  {q?.type?.toLowerCase() === 'coding' && (
+                    <div className="flex gap-2">
+                      <button onClick={handleRunCode} disabled={isExecuting || cooldownSeconds > 0 || isOffline} className={`h-11 px-6 flex items-center gap-2.5 rounded-xl text-[12px] font-black uppercase tracking-widest border transition-all active:scale-95 ${isOffline ? 'bg-slate-100 text-slate-300 border-slate-100 cursor-not-allowed' : cooldownSeconds > 0 ? 'bg-slate-50 text-slate-400 border-slate-200' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:shadow-sm'}`}>{isExecuting ? <RotateCcw size={16} className="animate-spin" /> : <Play size={16} fill="currentColor" />} {isOffline ? 'Offline' : cooldownSeconds > 0 ? `Wait (${cooldownSeconds}s)` : 'Run'}</button>
+                      <button onClick={handleCheckTestCases} disabled={isExecuting || cooldownSeconds > 0 || isOffline} className={`h-11 px-8 flex items-center gap-2.5 rounded-xl text-[12px] font-black uppercase tracking-widest transition-all active:scale-95 ${isOffline ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : cooldownSeconds > 0 ? 'bg-indigo-400 text-white cursor-not-allowed opacity-80' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-100'}`}>{isOffline ? 'Internet Required' : cooldownSeconds > 0 ? `Ready in ${cooldownSeconds}s` : 'Submit Code'}</button>
+                    </div>
+                  )}
+                  <div className="h-8 w-px bg-slate-100 mx-2" />
+                  <button onClick={() => {
+                     if (currentQ < questions.length - 1) {
+                       const n = currentQ + 1;
+                       setCurrentQ(n); 
+                       const qId = questions[n]?.originalId || questions[n]?._id;
+                       if (qId) setVisited(v => ({ ...v, [qId]: true }));
+                     } else {
+                       setShowConfirm(true);
+                     }
+                  }} disabled={isOffline} className={`h-11 px-8 rounded-xl text-[12px] font-black uppercase tracking-widest transition-all ${isOffline ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : currentQ === questions.length - 1 ? 'bg-emerald-600 text-white shadow-lg' : 'bg-slate-900 text-white shadow-lg hover:bg-black'}`}>{isOffline ? 'Offline' : currentQ === questions.length - 1 ? 'Final Hand In' : 'Save & Next'} <ChevronRight size={18} className="ml-1" /></button>
+                </div>
+              </footer>
             </div>
-          </div>
-        </main>
+          </main>
+        </div>
       </div>
 
+      {/* 2. LAYER OVERLAY: Modals and Alerts (Never Blurry) */}
       <SubmitModal isOpen={showConfirm} onClose={() => setShowConfirm(false)} stats={{ answered: answeredCount, total: questions.length, marked: Object.values(markedForReview).filter(Boolean).length }} onConfirm={handleFinalSubmit} />
-      <ExitModal isOpen={showExitPrompt} onClose={() => setShowExitPrompt(false)} password={exitPassword} setPassword={setExitPassword} error={exitError} onExit={() => { if (exitPassword === '12345') navigate('/student'); else setExitError('Denied'); }} />
+      <ExitModal isOpen={showExitPrompt} onClose={() => setShowExitPrompt(false)} password={exitPassword} setPassword={setExitPassword} error={exitError} onExit={() => { if (exitPassword === '12345') { window.removeEventListener('beforeunload', () => {}); navigate('/student'); } else setExitError('Denied'); }} />
+      <TabViolationOverlay isOpen={isTabViolation} onResume={() => setIsTabViolation(false)} />
       <TabToast toast={tabToast} />
 
-      {/* 📡 Live Broadcast Overlay */}
-      <AnimatePresence>
-        {broadcastMessage && (
-          <motion.div initial={{ opacity: 0, y: -50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -50 }} className="fixed top-16 left-1/2 -translate-x-1/2 z-[250] pointer-events-none">
-            <div className="bg-indigo-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-start gap-4 max-w-xl border border-white/10 ring-8 ring-indigo-500/10 pointer-events-auto">
-              <div className="bg-white/20 p-2 rounded-xl shrink-0 mt-0.5"><Radio size={20} className="animate-pulse" /></div>
-              <div><h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-100 mb-1">Live Announcement</h3><p className="text-sm font-semibold leading-relaxed text-white">{broadcastMessage}</p></div>
-              <button onClick={() => setBroadcastMessage(null)} className="ml-2 p-1 hover:bg-white/10 rounded-lg transition-colors"><XCircle size={18} /></button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* 🔒 Fullscreen Overlay */}
+      {/* Fullscreen Guard */}
       {!isFullscreen && !submitted && !terminated && (
-        <div className="fixed inset-0 z-[200] bg-slate-900/98 backdrop-blur-2xl flex items-center justify-center p-8 text-center animate-in fade-in duration-700">
+        <div className="fixed inset-0 z-[200] bg-slate-900/98 backdrop-blur-2xl flex items-center justify-center p-8 text-center">
           <div className="max-w-md w-full bg-slate-900 border border-red-500/20 p-10 rounded-[40px] shadow-2xl ring-1 ring-white/5">
             <div className="w-20 h-20 bg-red-500/10 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-inner ring-1 ring-red-500/20"><ShieldAlert size={40} className="text-red-500" /></div>
             <h2 className="text-3xl font-black text-white mb-3 uppercase tracking-tighter">Security Violation</h2>
@@ -1227,7 +1200,7 @@ export default function ExamCockpit() {
             <button onClick={() => document.documentElement.requestFullscreen()} className="w-full py-5 bg-red-600 hover:bg-red-500 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[12px] transition-all shadow-xl shadow-red-900/40 transform active:scale-95">Restore Secure Session</button>
           </div>
         </div>
-      )}
+      </div>
       {/* Floating Warnings */}
       <AnimatePresence>
         {activeWarning && (
@@ -1244,6 +1217,51 @@ export default function ExamCockpit() {
                 <p className="text-xl font-black uppercase">{activeWarning}</p>
               </div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 📡 Live Broadcast Overlay */}
+      <AnimatePresence>
+        {broadcastMessage && (
+          <motion.div initial={{ opacity: 0, y: -50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -50 }} className="fixed top-16 left-1/2 -translate-x-1/2 z-[250] pointer-events-none">
+            <div className="bg-indigo-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-start gap-4 max-w-xl border border-white/10 ring-8 ring-indigo-500/10 pointer-events-auto">
+              <div className="bg-white/20 p-2 rounded-xl shrink-0 mt-0.5"><Radio size={20} className="animate-pulse" /></div>
+              <div><h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-100 mb-1">Live Announcement</h3><p className="text-sm font-semibold leading-relaxed text-white">{broadcastMessage}</p></div>
+              <button onClick={() => setBroadcastMessage(null)} className="ml-2 p-1 hover:bg-white/10 rounded-lg transition-colors"><XCircle size={18} /></button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Needs Interaction Overlay */}
+      <AnimatePresence>
+        {needsInteraction && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] bg-slate-900 flex flex-col items-center justify-center p-6 text-center"
+          >
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/10 via-transparent to-emerald-500/10" />
+              <div className="relative z-10 max-w-md">
+                 <div className="w-20 h-20 rounded-3xl bg-indigo-600 flex items-center justify-center shadow-2xl mb-10 mx-auto animate-bounce">
+                   <Shield size={40} className="text-white" />
+                 </div>
+                 <h1 className="text-4xl font-black text-white tracking-tighter mb-4 uppercase italic">Secure Environment</h1>
+                 <p className="text-slate-400 text-sm mb-12 leading-relaxed">
+                   To maintain integrity, this assessment requires a locked environment. Please re-enter the secure perimeter to continue.
+                 </p>
+                 <button
+                   onClick={handleSecureEntry}
+                   className="w-full h-14 bg-white text-slate-900 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-2xl hover:bg-indigo-50 transition-all flex items-center justify-center gap-3 active:scale-95"
+                 >
+                   <Lock size={18} /> Initialize Secure Entry
+                 </button>
+                 <p className="mt-8 text-[9px] font-black text-slate-600 uppercase tracking-widest flex items-center justify-center gap-2">
+                    <Monitor size={12} /> Encrypted Session • Biometric Link Enabled
+                 </p>
+              </div>
           </motion.div>
         )}
       </AnimatePresence>

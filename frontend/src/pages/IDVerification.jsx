@@ -101,6 +101,7 @@ export default function IDVerification() {
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [faceBox, setFaceBox] = useState(null);
   const [capturedPhoto, setCapturedPhoto] = useState(null);
+  const [camError, setCamError] = useState(false);
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -111,13 +112,25 @@ export default function IDVerification() {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: 1280, height: 720 },
-        audio: false,
+        audio: false, // ID Verification only needs video
       });
       setStream(mediaStream);
+      setCamError(false);
     } catch (err) {
+      console.error('Camera access failed:', err);
+      // Log to telemetry
+      api.post('/telemetry/log', {
+        errorType: 'CAMERA_DENIED',
+        severity: 'high',
+        message: `ID Verification camera access failed: ${err.message}`,
+        metadata: { examId, errorName: err.name }
+      }).catch(() => {});
+
       setError({
         title: err.name === 'NotAllowedError' ? 'Permission Denied' : 'Hardware Error',
-        message: err.message,
+        message: err.name === 'NotAllowedError' 
+          ? 'Browser blocked camera access. Please click the lock icon in your URL bar, allow "Camera", and click Retry.' 
+          : 'Could not detect a functional camera. Please check your hardware connections.',
         type: err.name
       });
     } finally {

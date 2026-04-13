@@ -4,7 +4,7 @@ import { Navbar } from '../components/Navbar';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, Plus, Trash2, Code, ListChecks, AlignLeft,
-  CheckCircle, Save, Send, Copy, Award, Clock,
+  CheckCircle, Save, Send, Copy, Award, Clock, Minus,
   BookOpen, ChevronDown, ChevronUp, Sparkles, Wand2,
   Check, X, Pencil, Loader2, FileText, AlertCircle,
   Upload, FilePlus, FileSpreadsheet, Lock,
@@ -302,18 +302,18 @@ const csvRowToQuestion = (cols, map) => {
 export default function CreateExam() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [exam, setExam] = useState({ title: '', description: '', duration: 60, totalMarks: 100, passingMarks: 40, category: 'DSA', scheduledDate: '' });
+  const [exam, setExam] = useState({ title: '', description: '', duration: 60, totalMarks: 100, passingMarks: 40, negativeMarks: 0, category: 'DSA', scheduledDate: '' });
   const [questions, setQuestions] = useState([]);
   const [expandedQ, setExpandedQ] = useState(null);
   const [showAI, setShowAI] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState([]);
   const [syllabus, setSyllabus] = useState('');
-  const [editingSuggestion, setEditingSuggestion] = useState(null);
+  const [_editingSuggestion, _setEditingSuggestion] = useState(null);
   const [aiConfig, setAiConfig] = useState({ mcq: 5, short: 3, coding: 1 });
   const [uploadedFile, setUploadedFile] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [fileParseLoading, setFileParseLoading] = useState(false);
+  const [_fileParseLoading, setFileParseLoading] = useState(false);
   const [inputMode, setInputMode] = useState('text'); // 'text' | 'file'
   const [uploadIntent, setUploadIntent] = useState('import'); // 'import' | 'syllabus'
   const [isPublishing, setIsPublishing] = useState(false);
@@ -558,8 +558,9 @@ export default function CreateExam() {
       duration: exam.duration,
       totalMarks: exam.totalMarks,
       passingMarks: exam.passingMarks,
+      negativeMarks: exam.negativeMarks,
       questions: questions.map(q => {
-        const { id, ...cleanQ } = q;
+        const { id: _id, ...cleanQ } = q;
         return {
           ...cleanQ,
           type: q.type || 'short' // Safety fallback
@@ -604,6 +605,37 @@ export default function CreateExam() {
           return;
         }
       }
+    }
+    
+    // Validate negative marks
+    if (exam.negativeMarks < 0) {
+      addToast('Negative marks cannot be less than 0.', 'error');
+      setIsPublishing(false);
+      return;
+    }
+    
+    // Validate that negative marks don't exceed question marks
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+      if (exam.negativeMarks > q.marks) {
+        addToast(`Question ${i + 1}: Negative marks (${exam.negativeMarks}) cannot exceed question marks (${q.marks}).`, 'error');
+        setIsPublishing(false);
+        setExpandedQ(q.id);
+        return;
+      }
+    }
+    
+    // Validate time limit constraints
+    if (exam.duration < 5) {
+      addToast('Exam duration must be at least 5 minutes.', 'error');
+      setIsPublishing(false);
+      return;
+    }
+    
+    if (exam.duration > 300) {
+      addToast('Exam duration cannot exceed 300 minutes (5 hours).', 'error');
+      setIsPublishing(false);
+      return;
     }
 
     try {
@@ -659,10 +691,30 @@ export default function CreateExam() {
   const handleSaveDraft = async () => {
     setIsSaving(true);
     
-    // Drafts don't need strict validation on questions, 
+    // Drafts don't need strict validation on questions,
     // but we need the basic exam info.
     if (!exam.title || !exam.duration) {
       addToast('Please at least provide a Title and Duration to save a draft.', 'error');
+      setIsSaving(false);
+      return;
+    }
+    
+    // Validate duration for drafts too
+    if (exam.duration < 5) {
+      addToast('Exam duration must be at least 5 minutes.', 'error');
+      setIsSaving(false);
+      return;
+    }
+    
+    if (exam.duration > 300) {
+      addToast('Exam duration cannot exceed 300 minutes (5 hours).', 'error');
+      setIsSaving(false);
+      return;
+    }
+    
+    // Validate negative marks for drafts
+    if (exam.negativeMarks < 0) {
+      addToast('Negative marks cannot be less than 0.', 'error');
       setIsSaving(false);
       return;
     }
@@ -671,8 +723,9 @@ export default function CreateExam() {
       ...exam,
       scheduledDate: exam.scheduledDate ? new Date(exam.scheduledDate).toISOString() : new Date().toISOString(),
       status: 'draft',
+      negativeMarks: exam.negativeMarks,
       questions: questions.map(q => {
-        const { id, ...cleanQ } = q;
+        const { id: _id, ...cleanQ } = q;
         return {
           ...cleanQ,
           type: q.type || 'short'
@@ -939,10 +992,11 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mt-10 pt-10 border-t border-zinc-200">
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-8 mt-10 pt-10 border-t border-zinc-200">
                     <div>
                       <label className={LABEL_BASE}>Duration</label>
                       <StepperInput value={exam.duration} onChange={v => setExam({...exam, duration: v})} icon={Clock} unit="min" step={5} />
+                      <p className="text-[9px] text-zinc-500 mt-1 uppercase font-bold">5‑300 minutes</p>
                     </div>
                     <div>
                       <label className={LABEL_BASE}>Total Marks</label>
@@ -951,6 +1005,11 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                     <div>
                       <label className={LABEL_BASE}>Passing</label>
                       <StepperInput value={exam.passingMarks} onChange={v => setExam({...exam, passingMarks: v})} step={5} />
+                    </div>
+                    <div>
+                      <label className={LABEL_BASE}>Negative Marks</label>
+                      <StepperInput value={exam.negativeMarks} onChange={v => setExam({...exam, negativeMarks: v})} icon={Minus} step={0.5} min={0} />
+                      <p className="text-[9px] text-zinc-500 mt-1 uppercase font-bold">per wrong answer</p>
                     </div>
                     <div>
                       <label className={LABEL_BASE}>Schedule</label>

@@ -26,4 +26,16 @@ const codeExecutionLimiter = rateLimit({
     }
 });
 
-module.exports = { codeExecutionLimiter };
+const telemetryLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 10, // Max 10 telemetry logs per minute
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => req.user?.id || req.ip,
+    message: {
+        success: false,
+        message: 'Rate limit exceeded. Please try again later.'
+    }
+});
+
+module.exports = { codeExecutionLimiter, telemetryLimiter };

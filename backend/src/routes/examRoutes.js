@@ -6,7 +6,15 @@ const express = require('express');
 const router = express.Router();
 const { verifyToken, checkRole } = require('../middlewares/authMiddleware');
 const examController = require('../controllers/examController');
-const { codeExecutionLimiter } = require('../middlewares/rateLimiter');
+const telemetryController = require('../controllers/telemetryController');
+const { codeExecutionLimiter, telemetryLimiter } = require('../middlewares/rateLimiter');
+
+// ═══════════════════════════════════════════════════════════
+//  📊 Telemetry & Diagnostics
+// ═══════════════════════════════════════════════════════════
+
+// Log hardware/proctoring errors
+router.post('/telemetry/log', verifyToken, telemetryLimiter, telemetryController.logError);
 
 // ═══════════════════════════════════════════════════════════
 //  🧑‍🏫 Mentor / Admin Endpoints
@@ -53,6 +61,9 @@ router.get('/resume/:examId', verifyToken, examController.resumeExam);
 
 // Exam submit karo — auto-scoring hogi, results milenge
 router.post('/submit', verifyToken, examController.submitExam);
+
+// 🆕 Student Result — Student view of their own performance breakdown
+router.get('/student-result/:examId', verifyToken, examController.getStudentResult);
 
 // 🆕 Session Detail — Mentor/Admin full view of a submission with per-question grading
 router.get('/session-detail/:sessionId', verifyToken, checkRole(['mentor', 'admin']), examController.getSessionDetail);

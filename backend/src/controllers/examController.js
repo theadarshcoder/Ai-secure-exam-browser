@@ -3,6 +3,8 @@ const ExamSession = require('../models/ExamSession');
 const User = require('../models/User');
 const { getRedisClient } = require('../config/redis');
 const { executeCode } = require('../services/judge0');
+const { getRedisClient } = require('../config/redis');
+const { executeCode } = require('../services/judge0');
 const { asyncHandler } = require('../middlewares/errorMiddleware');
 const { getTimeAgo } = require('../utils/helpers');
 const { gradeMCQ, gradeCoding, gradeShortAnswer } = require('../services/gradingService');
@@ -11,7 +13,7 @@ const { addCodeEvaluationJob } = require('../queues/codeGradingQueue');
 // ─────────────── POST /api/exams/create ───────────────
 // Mentor/Admin creates a new exam and saves it to MongoDB
 exports.createExam = asyncHandler(async (req, res) => {
-    const { title, category, duration, totalMarks, passingMarks, questions, scheduledDate, status } = req.body;
+    const { title, category, duration, totalMarks, passingMarks, questions, scheduledDate, status, negativeMarks } = req.body;
 
     const isDraft = status === 'draft';
 
@@ -19,6 +21,12 @@ exports.createExam = asyncHandler(async (req, res) => {
     if (!title || !duration) {
         res.status(400);
         throw new Error('Title and duration are required.');
+    }
+
+    // Time limit constraints
+    if (duration < 5 || duration > 300) {
+        res.status(400);
+        throw new Error('Exam duration must be between 5 and 300 minutes.');
     }
 
     // Filter out completely empty questions from drafts to avoid mongoose crashes
@@ -32,12 +40,27 @@ exports.createExam = asyncHandler(async (req, res) => {
         throw new Error('At least 1 question is required to publish an exam.');
     }
 
-    // Question Type Validation
+    // Question Type & Marks Validation
     const allowedTypes = ['mcq', 'short', 'coding'];
+    const negMarks = Number(negativeMarks) || 0;
+
+    if (negMarks < 0) {
+        res.status(400);
+        throw new Error('Negative marks cannot be less than 0.');
+    }
+
     for (const q of validQuestions) {
         if (!q.type || !allowedTypes.includes(q.type)) {
             res.status(400);
             throw new Error(`Invalid question type: ${q.type || 'missing'}. Allowed types: ${allowedTypes.join(', ')}`);
+        }
+        if (Number(q.marks) <= 0) {
+            res.status(400);
+            throw new Error('Question marks must be greater than 0.');
+        }
+        if (negMarks > Number(q.marks)) {
+            res.status(400);
+            throw new Error(`Negative marks (${negMarks}) cannot exceed question marks (${q.marks}).`);
         }
     }
 
@@ -47,6 +70,7 @@ exports.createExam = asyncHandler(async (req, res) => {
         duration,
         totalMarks: totalMarks || (validQuestions ? validQuestions.reduce((sum, q) => sum + (Number(q.marks) || 1), 0) : 0),
         passingMarks: passingMarks || 40,
+        negativeMarks: negMarks,
         questions: validQuestions,
         creator: req.user.id,
         status: status || 'published',
@@ -73,7 +97,7 @@ exports.createExam = asyncHandler(async (req, res) => {
 // Mentor/Admin updates an existing exam (e.g. from draft to published)
 exports.updateExam = asyncHandler(async (req, res) => {
     const examId = req.params.id;
-    const { title, category, duration, totalMarks, passingMarks, questions, scheduledDate, status } = req.body;
+    const { title, category, duration, totalMarks, passingMarks, questions, scheduledDate, status, negativeMarks } = req.body;
 
     const exam = await Exam.findById(examId);
 
@@ -96,6 +120,12 @@ exports.updateExam = asyncHandler(async (req, res) => {
         throw new Error('Title and duration are required.');
     }
 
+    // Time limit constraints
+    if (duration < 5 || duration > 300) {
+        res.status(400);
+        throw new Error('Exam duration must be between 5 and 300 minutes.');
+    }
+
     let validQuestions = questions || [];
     if (isDraft) {
         validQuestions = validQuestions.filter(q => q && q.questionText && q.questionText.trim() !== '');
@@ -106,12 +136,27 @@ exports.updateExam = asyncHandler(async (req, res) => {
         throw new Error('At least 1 question is required to publish an exam.');
     }
 
-    // Question Type Validation
+    // Question Type & Marks Validation
     const allowedTypes = ['mcq', 'short', 'coding'];
+    const negMarks = Number(negativeMarks) || 0;
+
+    if (negMarks < 0) {
+        res.status(400);
+        throw new Error('Negative marks cannot be less than 0.');
+    }
+
     for (const q of validQuestions) {
         if (!q.type || !allowedTypes.includes(q.type)) {
             res.status(400);
             throw new Error(`Invalid question type: ${q.type || 'missing'}. Allowed types: ${allowedTypes.join(', ')}`);
+        }
+        if (Number(q.marks) <= 0) {
+            res.status(400);
+            throw new Error('Question marks must be greater than 0.');
+        }
+        if (negMarks > Number(q.marks)) {
+            res.status(400);
+            throw new Error(`Negative marks (${negMarks}) cannot exceed question marks (${q.marks}).`);
         }
     }
 
@@ -120,6 +165,7 @@ exports.updateExam = asyncHandler(async (req, res) => {
     exam.duration = duration;
     exam.totalMarks = totalMarks || (validQuestions ? validQuestions.reduce((sum, q) => sum + (Number(q.marks) || 1), 0) : 0);
     exam.passingMarks = passingMarks || exam.passingMarks;
+    exam.negativeMarks = negMarks;
     exam.questions = validQuestions;
     exam.status = status || exam.status;
     if (scheduledDate && !isNaN(new Date(scheduledDate).getTime())) {
@@ -1099,6 +1145,82 @@ exports.getExamSubmissions = asyncHandler(async (req, res) => {
     }));
 
     res.json(result);
+});
+
+
+// ─────────────── GET /api/exams/student-result/:examId ───────────────
+// Secure self-result fetch for students. Strips correct answers to preserve integrity.
+exports.getStudentResult = asyncHandler(async (req, res) => {
+    const examId = req.params.examId;
+    const studentId = req.user.id;
+
+    const session = await ExamSession.findOne({ exam: examId, student: studentId })
+        .populate('student', 'name email')
+        .populate('exam', 'title category duration totalMarks passingMarks');
+
+    if (!session) {
+        res.status(404);
+        throw new Error('No exam result found for this session.');
+    }
+
+    // Security: Enforce self-access
+    if (String(session.student._id) !== String(studentId)) {
+        res.status(403);
+        throw new Error('Unauthorized result access.');
+    }
+
+    // Strip answers & correct keys to prevent bank leaks
+    const sanitizedQuestionResults = (session.questionResults || []).map(qr => {
+        const result = qr.toObject();
+        
+        // Remove Correct Data
+        delete result.correctChoice;
+        if (result.testCaseResults) {
+            result.testCaseResults = result.testCaseResults.map(tc => {
+                const safeTC = { ...tc };
+                delete safeTC.expectedOutput;
+                // If hidden test case, hide input and output too
+                if (tc.isHidden) {
+                    safeTC.input = 'Hidden';
+                    safeTC.actualOutput = 'Hidden';
+                }
+                return safeTC;
+            });
+        }
+
+        return result;
+    });
+
+    // Calculate aggregated section stats
+    const sectionStats = sanitizedQuestionResults.reduce((acc, curr) => {
+        const type = curr.type || 'other';
+        if (!acc[type]) acc[type] = { total: 0, correct: 0, attempted: 0, marks: 0 };
+        
+        acc[type].total += 1;
+        if (curr.status === 'correct') acc[type].correct += 1;
+        if (curr.studentChoice !== null || (curr.testCaseResults && curr.testCaseResults.length > 0)) {
+            acc[type].attempted += 1;
+        }
+        acc[type].marks += curr.marksObtained || 0;
+        
+        return acc;
+    }, {});
+
+    res.json({
+        sessionId: session._id,
+        examTitle: session.exam?.title,
+        score: session.score,
+        totalMarks: session.totalMarks,
+        percentage: session.percentage,
+        passed: session.passed,
+        status: session.status,
+        submittedAt: session.submittedAt,
+        startedAt: session.startedAt,
+        violations: session.violations.length,
+        tabSwitches: session.tabSwitchCount,
+        sectionStats,
+        results: sanitizedQuestionResults
+    });
 });
 
 

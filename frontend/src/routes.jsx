@@ -12,6 +12,7 @@ import CreateExam from './pages/CreateExam';
 import IDVerification from './pages/IDVerification';
 import ExamWaitingRoom from './pages/ExamWaitingRoom';
 import SessionMonitor from './pages/SessionMonitor';
+import StudentResult from './pages/StudentResult';
 
 const ThemeEnforcer = () => {
   const { pathname } = useLocation();
@@ -144,6 +145,12 @@ export default function AppRouter() {
           <Route path="/exam/:examId/waiting" element={
             <ProtectedRoute allowedRoles={['student']}>
               <ExamWaitingRoom />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/exam/:examId/result" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <StudentResult />
             </ProtectedRoute>
           } />
           
