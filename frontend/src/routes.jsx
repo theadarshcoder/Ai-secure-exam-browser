@@ -65,14 +65,7 @@ const ProtectedRoute = ({ allowedRoles, children }) => {
 };
 
 const LoginRedirect = () => {
-  const token = sessionStorage.getItem('vision_token');
-  const role = sessionStorage.getItem('vision_role')?.toLowerCase();
-  
-  if (token && role) {
-    const map = { admin: '/admin', super_mentor: '/admin', mentor: '/mentor', student: '/student' };
-    return <Navigate to={map[role] || '/student'} replace />;
-  }
-  
+  // 🛡️ Always show login page when explicitly requested
   return <LoginPage />;
 };
 

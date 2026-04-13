@@ -487,7 +487,7 @@ export default function MentorDashboard() {
   };
 
   const handleLogout = (e) => {
-    if (e) {
+    if (e && e.preventDefault) {
       e.preventDefault();
       e.stopPropagation();
     }
@@ -961,7 +961,7 @@ export default function MentorDashboard() {
 
         <div className="p-6 mt-auto border-t border-white/5">
           <button 
-            onClick={(e) => handleLogout(e)}
+            onClick={() => showConfirm('Are you sure you want to exit the mentor module? All active monitoring will continue to run.', handleLogout)}
             className="w-full flex items-center justify-center gap-2 p-3 bg-white/5 hover:bg-red-500/10 text-zinc-400 hover:text-red-400 rounded-xl text-xs font-bold transition-all uppercase tracking-widest active:scale-95 border border-white/5"
           >
             <LogOut size={16} /> Exit Module
