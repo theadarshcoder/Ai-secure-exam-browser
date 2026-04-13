@@ -1200,7 +1200,7 @@ export default function ExamCockpit() {
             <button onClick={() => document.documentElement.requestFullscreen()} className="w-full py-5 bg-red-600 hover:bg-red-500 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[12px] transition-all shadow-xl shadow-red-900/40 transform active:scale-95">Restore Secure Session</button>
           </div>
         </div>
-      </div>
+      )}
       {/* Floating Warnings */}
       <AnimatePresence>
         {activeWarning && (
