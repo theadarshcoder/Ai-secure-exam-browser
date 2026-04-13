@@ -1,5 +1,6 @@
 const Exam = require('../models/Exam');
 const ExamSession = require('../models/ExamSession');
+const ExamAnswer = require('../models/ExamAnswer');
 const User = require('../models/User');
 const { getRedisClient } = require('../config/redis');
 const { executeCode } = require('../services/judge0');
@@ -437,24 +438,33 @@ exports.startExam = asyncHandler(async (req, res) => {
 
         if (redisClient) {
             const cacheKey = `exam_session:${examId}:${studentId}`;
-            const cacheStr = await redisClient.get(cacheKey);
-            if (cacheStr) {
+            const cachedData = await redisClient.hGetAll(cacheKey);
+            
+            if (cachedData && Object.keys(cachedData).length > 0) {
                 try {
-                    const parsed = JSON.parse(cacheStr);
-                    liveAnswers = parsed.answers || liveAnswers;
-                    liveQuestionStates = parsed.questionStates || liveQuestionStates;
-                    liveRemainingTime = parsed.remainingTimeSeconds || liveRemainingTime;
-                    liveIndex = parsed.currentQuestionIndex || liveIndex;
+                    liveAnswers = cachedData.answers ? JSON.parse(cachedData.answers) : liveAnswers;
+                    liveQuestionStates = cachedData.questionStates ? JSON.parse(cachedData.questionStates) : liveQuestionStates;
+                    liveRemainingTime = cachedData.remainingTimeSeconds ? parseInt(cachedData.remainingTimeSeconds) : liveRemainingTime;
+                    liveIndex = cachedData.currentQuestionIndex ? parseInt(cachedData.currentQuestionIndex) : liveIndex;
                 } catch (parseErr) {
-                    console.error('⚠️ Redis Cache Corrupted in startExam, falling back to DB:', parseErr.message);
+                    console.error('⚠️ Redis Hash parsing error in startExam:', parseErr.message);
                 }
             } else {
-                await redisClient.setEx(cacheKey, 86400, JSON.stringify({
-                    answers: liveAnswers,
-                    currentQuestionIndex: liveIndex,
-                    questionStates: liveQuestionStates,
-                    remainingTimeSeconds: liveRemainingTime
-                }));
+                // FALLBACK: Hydrate from ExamAnswer collection
+                const savedAnswers = await ExamAnswer.find({ sessionId: session._id });
+                liveAnswers = {};
+                savedAnswers.forEach(a => {
+                    liveAnswers[a.questionId] = a.code ? { answer: a.answer, code: a.code } : a.answer;
+                });
+
+                // Backfill Redis
+                await redisClient.hSet(cacheKey, {
+                    answers: JSON.stringify(liveAnswers),
+                    currentQuestionIndex: liveIndex.toString(),
+                    questionStates: JSON.stringify(liveQuestionStates),
+                    remainingTimeSeconds: liveRemainingTime.toString()
+                });
+                await redisClient.expire(cacheKey, 86400);
             }
         }
 
@@ -528,12 +538,13 @@ exports.startExam = asyncHandler(async (req, res) => {
     const redisClient = getRedisClient();
     if (redisClient) {
         const cacheKey = `exam_session:${examId}:${studentId}`;
-        await redisClient.setEx(cacheKey, 86400, JSON.stringify({
-            answers: {},
-            currentQuestionIndex: 0,
-            questionStates: initialStates,
-            remainingTimeSeconds: exam.duration * 60
-        }));
+        await redisClient.hSet(cacheKey, {
+            answers: JSON.stringify({}),
+            currentQuestionIndex: '0',
+            questionStates: JSON.stringify(initialStates),
+            remainingTimeSeconds: (exam.duration * 60).toString()
+        });
+        await redisClient.expire(cacheKey, 86400);
     }
 
     const safeQuestions = exam.questions.map((q, index) => {
@@ -585,7 +596,7 @@ exports.saveProgress = asyncHandler(async (req, res) => {
     // 🛡️ GRANULAR VALIDATION: Payload Exhaustion Guard
     if (answers && typeof answers === 'object') {
         const keys = Object.keys(answers);
-        if (keys.length > 200) { // Abnormal number of questions
+        if (keys.length > 200) {
             res.status(400);
             throw new Error('Malformed payload: Excessive answer keys.');
         }
@@ -593,64 +604,67 @@ exports.saveProgress = asyncHandler(async (req, res) => {
             const answerContent = typeof answers[qId] === 'object' ? (answers[qId]?.code || '') : answers[qId];
             const contentLength = typeof answerContent === 'string' ? answerContent.length : JSON.stringify(answerContent || '').length;
             
-            if (contentLength > 30000) {
+            if (contentLength > 10000) {
                 res.status(400);
-                throw new Error(`Payload too large: Answer for question ${qId} exceeds 30KB limit.`);
+                throw new Error(`Payload too large: Answer for question ${qId} exceeds 10KB limit.`);
             }
         }
     }
 
-    if (questionStates && typeof questionStates === 'object') {
-        if (Object.keys(questionStates).length > 200) {
-            res.status(400);
-            throw new Error('Malformed payload: Excessive state keys.');
+    // 1. Find the session to get sessionId
+    const session = await ExamSession.findOne({ exam: examId, student: studentId });
+    if (!session) {
+        res.status(404);
+        throw new Error('Session not found. Please start the exam first.');
+    }
+
+    // 2. Relational Split: Save answers to ExamAnswer collection
+    if (answers && typeof answers === 'object') {
+        const bulkOps = Object.keys(answers).map(qId => {
+            const answerVal = answers[qId];
+            return {
+                updateOne: {
+                    filter: { sessionId: session._id, questionId: qId },
+                    update: { 
+                        $set: { 
+                            answer: typeof answerVal === 'object' ? (answerVal.answer || null) : answerVal,
+                            code: typeof answerVal === 'object' ? (answerVal.code || null) : undefined,
+                            lastSavedAt: new Date()
+                        }
+                    },
+                    upsert: true
+                }
+            };
+        });
+
+        if (bulkOps.length > 0) {
+            await ExamAnswer.bulkWrite(bulkOps);
         }
     }
 
-    if (remainingTimeSeconds !== undefined && (typeof remainingTimeSeconds !== 'number' || remainingTimeSeconds < -600)) {
-        res.status(400);
-        throw new Error('Invalid remaining time value.');
-    }
-
-    // --- Update Redis Cache (High performance) ---
+    // 3. Update Redis Cache (High performance - keeps the combined object for fast hydration)
     const redisClient = getRedisClient();
     if (redisClient) {
         const cacheKey = `exam_session:${examId}:${studentId}`;
-        
-        // Fetch existing cache to avoid overwriting missing fields
-        const cacheStr = await redisClient.get(cacheKey);
-        let sessionData = {};
-        if (cacheStr) {
-            try {
-                sessionData = JSON.parse(cacheStr);
-            } catch (pErr) {
-                console.error('⚠️ Redis Cache Corrupted in saveProgress:', pErr.message);
-            }
+        const updates = [];
+        if (answers !== undefined)              updates.push('answers', JSON.stringify(answers));
+        if (currentQuestionIndex !== undefined) updates.push('currentQuestionIndex', currentQuestionIndex.toString());
+        if (questionStates !== undefined)       updates.push('questionStates', JSON.stringify(questionStates));
+        if (remainingTimeSeconds !== undefined) updates.push('remainingTimeSeconds', remainingTimeSeconds.toString());
+        updates.push('lastSavedAt', new Date().toISOString());
+
+        if (updates.length > 0) {
+            await redisClient.hSet(cacheKey, updates);
+            await redisClient.expire(cacheKey, 86400);
         }
-        
-        if (answers !== undefined)              sessionData.answers = answers;
-        if (currentQuestionIndex !== undefined) sessionData.currentQuestionIndex = currentQuestionIndex;
-        if (questionStates !== undefined)       sessionData.questionStates = questionStates;
-        if (remainingTimeSeconds !== undefined) sessionData.remainingTimeSeconds = remainingTimeSeconds;
-        sessionData.lastSavedAt = new Date();
-        
-        await redisClient.setEx(cacheKey, 86400, JSON.stringify(sessionData));
     }
 
-    // --- Async DB Sync (Background - Safe) ---
-    ExamSession.findOneAndUpdate(
-        { exam: examId, student: studentId },
-        { 
-            answers, 
-            currentQuestionIndex, 
-            questionStates, 
-            remainingTimeSeconds,
-            lastSavedAt: new Date() 
-        },
-        { upsert: false } 
-    ).catch(err => {
-        console.error(`⚠️ [Background DB Sync Failed]: ${err.message}`);
-    });
+    // 4. Update ExamSession Metadata
+    session.currentQuestionIndex = currentQuestionIndex !== undefined ? currentQuestionIndex : session.currentQuestionIndex;
+    if (questionStates) session.questionStates = questionStates;
+    if (remainingTimeSeconds !== undefined) session.remainingTimeSeconds = remainingTimeSeconds;
+    session.lastSavedAt = new Date();
+    await session.save();
 
     res.json({ success: true, message: 'Progress synchronized successfully.' });
 });
@@ -717,24 +731,32 @@ exports.resumeExam = asyncHandler(async (req, res) => {
 
     if (redisClient) {
         const cacheKey = `exam_session:${examId}:${studentId}`;
-        const cacheStr = await redisClient.get(cacheKey);
-        if (cacheStr) {
+        const cachedData = await redisClient.hGetAll(cacheKey);
+        
+        if (cachedData && Object.keys(cachedData).length > 0) {
             try {
-                const parsed = JSON.parse(cacheStr);
-                liveAnswers = parsed.answers || liveAnswers;
-                liveQuestionStates = parsed.questionStates || liveQuestionStates;
-                liveRemainingTime = parsed.remainingTimeSeconds || liveRemainingTime;
-                liveIndex = parsed.currentQuestionIndex || liveIndex;
+                liveAnswers = cachedData.answers ? JSON.parse(cachedData.answers) : liveAnswers;
+                liveQuestionStates = cachedData.questionStates ? JSON.parse(cachedData.questionStates) : liveQuestionStates;
+                liveRemainingTime = cachedData.remainingTimeSeconds ? parseInt(cachedData.remainingTimeSeconds) : liveRemainingTime;
+                liveIndex = cachedData.currentQuestionIndex ? parseInt(cachedData.currentQuestionIndex) : liveIndex;
             } catch (pErr) {
-                console.error('⚠️ Redis Cache Corrupted in resumeExam, falling back to DB:', pErr.message);
+                console.error('⚠️ Redis Hash parsing error in resumeExam:', pErr.message);
             }
         } else {
-            await redisClient.setEx(cacheKey, 86400, JSON.stringify({
-                answers: liveAnswers,
-                currentQuestionIndex: liveIndex,
-                questionStates: liveQuestionStates,
-                remainingTimeSeconds: liveRemainingTime
-            }));
+            // FALLBACK: Hydrate from ExamAnswer collection
+            const savedAnswers = await ExamAnswer.find({ sessionId: session._id });
+            liveAnswers = {};
+            savedAnswers.forEach(a => {
+                liveAnswers[a.questionId] = a.code ? { answer: a.answer, code: a.code } : a.answer;
+            });
+
+            await redisClient.hSet(cacheKey, {
+                answers: JSON.stringify(liveAnswers),
+                currentQuestionIndex: liveIndex.toString(),
+                questionStates: JSON.stringify(liveQuestionStates),
+                remainingTimeSeconds: liveRemainingTime.toString()
+            });
+            await redisClient.expire(cacheKey, 86400);
         }
     }
 
@@ -760,11 +782,6 @@ exports.resumeExam = asyncHandler(async (req, res) => {
 });
 
 
-// ─────────────── POST /api/exams/submit ───────────────
-// Submits the exam — evaluates all question types and saves detailed results.
-// MCQ: Auto-graded instantly
-// Coding: Evaluated against test cases via Judge0
-// Short Answer: AI suggestion generated, marked as pending_review
 exports.submitExam = asyncHandler(async (req, res) => {
     const { examId, answers } = req.body;
     const studentId = req.user.id;
@@ -775,123 +792,123 @@ exports.submitExam = asyncHandler(async (req, res) => {
         throw new Error('Exam not found');
     }
 
+    const session = await ExamSession.findOne({ exam: examId, student: studentId });
+    if (!session) {
+        res.status(404);
+        throw new Error('Active session not found');
+    }
+
+    // Bug Fix: Submission Lock (Guardrail 3)
+    if (session.status === 'submitted' || session.status === 'auto_submitted') {
+        res.status(400);
+        throw new Error('This exam has already been submitted.');
+    }
+
     // 🚀 Redis Final Merge Logic
     const redisClient = getRedisClient();
     let finalAnswers = answers || {};
     if (redisClient) {
         try {
             const cacheKey = `exam_session:${examId}:${studentId}`;
-            const cacheStr = await redisClient.get(cacheKey);
-            if (cacheStr) {
-                const parsed = JSON.parse(cacheStr);
-                finalAnswers = { ...parsed.answers, ...finalAnswers };
+            const cachedData = await redisClient.hGetAll(cacheKey);
+            if (cachedData && cachedData.answers) {
+                const redisAnswers = JSON.parse(cachedData.answers);
+                finalAnswers = { ...redisAnswers, ...finalAnswers };
             }
-            await redisClient.del(cacheKey); // Clean up
+            await redisClient.del(cacheKey); // Clean up hash
         } catch (redisErr) {
-            console.warn('⚠️ Redis error during submission, ignoring cache:', redisErr.message);
+            console.warn('⚠️ Redis error during submission merge:', redisErr.message);
         }
     }
 
     // ─── Evaluate Each Question ──────────────────────
-    const questionResults = [];
+    const answerBulkOps = [];
+    const summaryResults = []; // For response only
     let autoScore = 0;
     let hasShortAnswers = false;
 
     for (let index = 0; index < exam.questions.length; index++) {
         const q = exam.questions[index];
         const qId = q._id.toString();
-        // Support lookup by ID (modern) or Index (legacy)
         const studentAnswer = finalAnswers[qId] !== undefined ? finalAnswers[qId] : finalAnswers[String(index)];
 
-        if (q.type === 'mcq') {
-            const result = gradeMCQ(q, studentAnswer);
-            autoScore += result.marksObtained;
-            questionResults.push({
-                questionIndex: index,
-                questionId: qId,
-                type: 'mcq',
-                ...result
-            });
+        let evaluation = { marksObtained: 0, status: 'not_answered', result: {} };
 
-        } else if (q.type === 'coding') {
-            try {
-                // Handle both raw string and {code, language} object from frontend
-                const codeToGrade = (studentAnswer && typeof studentAnswer === 'object') ? studentAnswer.code : studentAnswer;
-                const result = await gradeCoding(q, codeToGrade);
-                autoScore += result.marksObtained;
-                questionResults.push({
-                    questionIndex: index,
-                    questionId: qId,
-                    type: 'coding',
-                    ...result
-                });
-            } catch (err) {
-                console.error(`Coding grading failed for Q${index}:`, err.message);
-                questionResults.push({
-                    questionIndex: index,
-                    questionId: qId,
-                    type: 'coding',
-                    marksObtained: 0,
-                    maxMarks: q.marks || 1,
-                    status: 'pending_review',
-                    testCaseResults: [],
-                    aiReasoning: 'Code execution service unavailable. Manual review required.'
-                });
-                hasShortAnswers = true; // Treat as needing review
-            }
-
-        } else if (q.type === 'short') {
-            hasShortAnswers = true;
-            try {
-                const result = await gradeShortAnswer(q, studentAnswer);
-                questionResults.push({
-                    questionIndex: index,
-                    questionId: qId,
-                    type: 'short',
-                    ...result
-                });
-            } catch (err) {
-                console.error(`Short answer grading failed for Q${index}:`, err.message);
-                questionResults.push({
-                    questionIndex: index,
-                    questionId: qId,
-                    type: 'short',
-                    marksObtained: 0,
-                    maxMarks: q.marks || 1,
-                    status: 'pending_review',
-                    aiSuggestedMarks: null,
-                    aiReasoning: 'AI evaluation unavailable. Manual review required.'
-                });
+        if (studentAnswer !== undefined && studentAnswer !== null) {
+            if (q.type === 'mcq') {
+                evaluation = gradeMCQ(q, studentAnswer);
+                autoScore += evaluation.marksObtained;
+            } else if (q.type === 'coding') {
+                try {
+                    const codeToGrade = (studentAnswer && typeof studentAnswer === 'object') ? studentAnswer.code : studentAnswer;
+                    evaluation = await gradeCoding(q, codeToGrade);
+                    autoScore += evaluation.marksObtained;
+                } catch (err) {
+                    evaluation = { 
+                        marksObtained: 0, maxMarks: q.marks || 1, status: 'pending_review', 
+                        result: { error: 'Grading Service Unavailable' } 
+                    };
+                    hasShortAnswers = true;
+                }
+            } else if (q.type === 'short') {
+                hasShortAnswers = true;
+                try {
+                    evaluation = await gradeShortAnswer(q, studentAnswer);
+                } catch (err) {
+                    evaluation = { 
+                        marksObtained: 0, maxMarks: q.marks || 1, status: 'pending_review',
+                        result: { error: 'AI Service Unavailable' }
+                    };
+                }
             }
         }
+
+        // Prepare relational update
+        answerBulkOps.push({
+            updateOne: {
+                filter: { sessionId: session._id, questionId: qId },
+                update: {
+                    $set: {
+                        answer: (studentAnswer && typeof studentAnswer === 'object') ? studentAnswer.answer : studentAnswer,
+                        code: (studentAnswer && typeof studentAnswer === 'object') ? studentAnswer.code : undefined,
+                        marksObtained: evaluation.marksObtained,
+                        maxMarks: q.marks || evaluation.maxMarks || 0,
+                        status: evaluation.status,
+                        result: evaluation // Detailed results (test cases, AI reasoning)
+                    }
+                },
+                upsert: true
+            }
+        });
+
+        summaryResults.push({
+            questionIndex: index,
+            type: q.type,
+            marksObtained: evaluation.marksObtained,
+            maxMarks: q.marks || evaluation.maxMarks || 0,
+            status: evaluation.status
+        });
     }
 
-    // ─── Calculate Score ─────────────────────────────
-    const totalMarks = Number(exam.totalMarks) || 1; // Fallback to 1 to avoid Zero-Division
+    // Execute Relational Writes
+    if (answerBulkOps.length > 0) {
+        await ExamAnswer.bulkWrite(answerBulkOps);
+    }
+
+    // ─── Calculate Score & Update Session ──────────────
+    const totalMarks = Number(exam.totalMarks) || 1;
     const finalStatus = hasShortAnswers ? 'pending_review' : 'submitted';
     const percentage = Math.round((autoScore / totalMarks) * 100) || 0;
     const passed = percentage >= (Number(exam.passingMarks) || 40);
 
-    const session = await ExamSession.findOneAndUpdate(
-        { exam: examId, student: studentId },
-        { 
-            answers: finalAnswers,
-            score: autoScore,
-            totalMarks,
-            percentage,
-            passed: hasShortAnswers ? false : passed, // Don't finalize pass until fully graded
-            status: finalStatus,
-            requiresManualGrading: hasShortAnswers,
-            questionResults,
-            submittedAt: new Date()
-        },
-        { new: true }
-    );
-
-    if (!session) {
-        res.status(404);
-        throw new Error('Active session not found');
-    }
+    session.score = autoScore;
+    session.totalMarks = totalMarks;
+    session.percentage = percentage;
+    session.passed = hasShortAnswers ? false : passed;
+    session.status = finalStatus;
+    session.requiresManualGrading = hasShortAnswers;
+    session.submittedAt = new Date();
+    await session.save();
 
     res.json({
         message: hasShortAnswers 
@@ -903,13 +920,7 @@ exports.submitExam = asyncHandler(async (req, res) => {
         passed: session.passed,
         status: session.status,
         requiresManualGrading: session.requiresManualGrading,
-        questionResults: questionResults.map(qr => ({
-            questionIndex: qr.questionIndex,
-            type: qr.type,
-            marksObtained: qr.marksObtained,
-            maxMarks: qr.maxMarks,
-            status: qr.status
-        }))
+        questionResults: summaryResults
     });
 });
 
@@ -932,25 +943,24 @@ exports.getSessionDetail = asyncHandler(async (req, res) => {
         throw new Error('Associated exam not found');
     }
 
-    // Build detailed question view with answers and grading results
+    // Fetch all answers for this session (Bug Fix: Relational Join)
+    const savedAnswers = await ExamAnswer.find({ sessionId: session._id });
+
+    // Build detailed question view
     const questionsWithResults = exam.questions.map((q, index) => {
         const qId = q._id.toString();
-        // Lookup result by ID (new) then index (legacy)
-        const result = session.questionResults.find(r => r.questionId === qId) || 
-                       session.questionResults.find(r => r.questionIndex === index) || {};
-                       
-        // Lookup answer by ID (new) then index (legacy)
-        const studentAnswer = session.answers?.[qId] !== undefined ? session.answers[qId] : session.answers?.[String(index)];
+        const savedAnswer = savedAnswers.find(a => a.questionId === qId);
+        const result = savedAnswer?.result || {};
 
         const detail = {
             index,
             type: q.type,
             questionText: q.questionText,
             marks: q.marks,
-            studentAnswer,
-            marksObtained: result.marksObtained || 0,
-            maxMarks: result.maxMarks || q.marks || 0,
-            status: result.status || 'pending_review',
+            studentAnswer: savedAnswer?.code ? { code: savedAnswer.code, answer: savedAnswer.answer } : savedAnswer?.answer,
+            marksObtained: savedAnswer?.marksObtained || 0,
+            maxMarks: savedAnswer?.maxMarks || q.marks || 0,
+            status: savedAnswer?.status || 'pending_review',
         };
 
         if (q.type === 'mcq') {
@@ -1013,7 +1023,7 @@ exports.getSessionDetail = asyncHandler(async (req, res) => {
 exports.evaluateSession = asyncHandler(async (req, res) => {
     const { sessionId } = req.params;
     const { grades } = req.body;
-    // grades = [{ questionIndex, marksObtained, mentorFeedback }]
+    // grades = [{ questionId, marksObtained, mentorFeedback }]
 
     if (!grades || !Array.isArray(grades)) {
         res.status(400);
@@ -1032,29 +1042,38 @@ exports.evaluateSession = asyncHandler(async (req, res) => {
         throw new Error('Associated exam not found');
     }
 
-    // Apply mentor grades to questionResults
-    for (const grade of grades) {
-        const qrIndex = session.questionResults.findIndex(
-            r => r.questionIndex === grade.questionIndex
-        );
-        
-        if (qrIndex !== -1) {
-            const qr = session.questionResults[qrIndex];
-            const maxMarks = qr.maxMarks || 0;
-            const awarded = Math.min(Math.max(Number(grade.marksObtained) || 0, 0), maxMarks);
-            
-            session.questionResults[qrIndex].marksObtained = awarded;
-            session.questionResults[qrIndex].mentorFeedback = grade.mentorFeedback || '';
-            session.questionResults[qrIndex].status = 'manually_graded';
-            session.questionResults[qrIndex].gradedBy = req.user.id;
-            session.questionResults[qrIndex].gradedAt = new Date();
-        }
+    // Apply mentor grades to ExamAnswer collection
+    const bulkOps = grades.map(grade => {
+        // Validation: awarded marks cannot exceed max marks for this question
+        const question = exam.questions.id(grade.questionId) || exam.questions[grade.questionIndex];
+        const maxMarks = question?.marks || 0;
+        const awarded = Math.min(Math.max(Number(grade.marksObtained) || 0, 0), maxMarks);
+
+        return {
+            updateOne: {
+                filter: { sessionId: session._id, questionId: grade.questionId || (question?._id.toString()) },
+                update: {
+                    $set: {
+                        marksObtained: awarded,
+                        status: 'manually_graded',
+                        'result.mentorFeedback': grade.mentorFeedback || '',
+                        'result.gradedBy': req.user.id,
+                        'result.gradedAt': new Date()
+                    }
+                }
+            }
+        };
+    });
+
+    if (bulkOps.length > 0) {
+        await ExamAnswer.bulkWrite(bulkOps);
     }
 
-    // Recalculate total score from all questionResults
+    // Recalculate total score by summing up all ExamAnswer marks for this session
+    const allAnswers = await ExamAnswer.find({ sessionId: session._id });
     let totalScore = 0;
-    session.questionResults.forEach(qr => {
-        totalScore += (qr.marksObtained || 0);
+    allAnswers.forEach(a => {
+        totalScore += (a.marksObtained || 0);
     });
 
     const totalMarks = Number(exam.totalMarks) || 1; 
@@ -1167,11 +1186,14 @@ exports.getStudentResult = asyncHandler(async (req, res) => {
         throw new Error('Unauthorized result access.');
     }
 
+    // Fetch relational results
+    const savedAnswers = await ExamAnswer.find({ sessionId: session._id });
+
     // Strip answers & correct keys to prevent bank leaks
-    const sanitizedQuestionResults = (session.questionResults || []).map(qr => {
-        const result = qr.toObject();
+    const sanitizedQuestionResults = savedAnswers.map(ans => {
+        const result = ans.result || {};
         
-        // Remove Correct Data
+        // Remove Sensitive Correct Data
         delete result.correctChoice;
         if (result.testCaseResults) {
             result.testCaseResults = result.testCaseResults.map(tc => {
@@ -1186,7 +1208,14 @@ exports.getStudentResult = asyncHandler(async (req, res) => {
             });
         }
 
-        return result;
+        return {
+            questionId: ans.questionId,
+            type: result.type,
+            marksObtained: ans.marksObtained,
+            maxMarks: ans.maxMarks,
+            status: ans.status,
+            result: result
+        };
     });
 
     // Calculate aggregated section stats
@@ -1196,7 +1225,7 @@ exports.getStudentResult = asyncHandler(async (req, res) => {
         
         acc[type].total += 1;
         if (curr.status === 'correct') acc[type].correct += 1;
-        if (curr.studentChoice !== null || (curr.testCaseResults && curr.testCaseResults.length > 0)) {
+        if (curr.marksObtained > 0 || curr.status !== 'not_answered') {
             acc[type].attempted += 1;
         }
         acc[type].marks += curr.marksObtained || 0;
@@ -1356,6 +1385,12 @@ exports.getAdminStats = asyncHandler(async (req, res) => {
 // Run Coding Question against Test Cases or Raw execution
 exports.runCode = asyncHandler(async (req, res) => {
     const { examId, questionId, sourceCode, language, isSubmit } = req.body;
+
+    // Bug Fix 3: Payload Size Limit (10KB)
+    if (sourceCode && sourceCode.length > 10000) {
+        res.status(400);
+        throw new Error('Code payload too large. Maximum 10KB allowed.');
+    }
 
     // Bug 2: Security Validation - check if student has an active session
     const session = await ExamSession.findOne({ exam: examId, student: req.user.id });

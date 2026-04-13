@@ -124,6 +124,14 @@ class SocketService {
       this.socket.emit('send_warning', { studentId, message });
     }
   }
+
+  // 🛡️ Silent Re-Authentication (Bug Fix 5)
+  reAuth(newToken) {
+    if (this.socket && this.socket.connected) {
+      console.log('🔄 Socket: Emitting re-auth with new token');
+      this.socket.emit('re_auth', newToken);
+    }
+  }
 }
 
 const socketService = new SocketService();

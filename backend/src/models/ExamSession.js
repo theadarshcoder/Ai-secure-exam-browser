@@ -24,38 +24,7 @@ const violationSchema = new mongoose.Schema({
     timestamp: { type: Date, default: Date.now }
 }, { _id: true });
 
-// ─── Per-Question Grading Result ─────────────────────────
-// Stores the evaluation outcome for each individual question
-const questionResultSchema = new mongoose.Schema({
-    questionIndex: { type: Number, required: true },
-    questionId: { type: String, default: '' },
-    type: { type: String, enum: ['mcq', 'short', 'coding'] },
-    marksObtained: { type: Number, default: 0 },
-    maxMarks: { type: Number, default: 0 },
-    status: {
-        type: String,
-        enum: ['correct', 'incorrect', 'partial', 'pending_review', 'manually_graded'],
-        default: 'pending_review'
-    },
-    // For MCQ: What student chose vs correct
-    studentChoice: { type: mongoose.Schema.Types.Mixed, default: null },
-    correctChoice: { type: mongoose.Schema.Types.Mixed, default: null },
-    // For Coding: Test case results
-    testCaseResults: [{
-        testCaseIndex: { type: Number },
-        passed: { type: Boolean },
-        input: { type: String, default: '' },
-        expectedOutput: { type: String, default: '' },
-        actualOutput: { type: String, default: '' },
-        error: { type: String, default: '' }
-    }],
-    // For Short Answer: AI + Mentor grading
-    aiSuggestedMarks: { type: Number, default: null },
-    aiReasoning: { type: String, default: '' },
-    mentorFeedback: { type: String, default: '' },
-    gradedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    gradedAt: { type: Date }
-}, { _id: false });
+// questionResultSchema removed — now managed by ExamAnswer model
 
 // ─── Exam Session Schema ─────────────────────────────────
 // Tracks every individual exam attempt by a student.
@@ -73,12 +42,8 @@ const examSessionSchema = new mongoose.Schema({
         required: true 
     },
     
-    // ─── Student's Answers ───────────────────────────
-    // Key: Question index (string); Value: Student's response
-    // MCQ:    { "0": 2, "1": 0 }           ← Index of the selected option
-    // Short:  { "2": "This is my answer" } ← Plain text response
-    // Coding: { "3": "console.log('hi')" }  ← Submitted code string
-    answers: { type: mongoose.Schema.Types.Mixed, default: {} },
+    // Student's Answers — 🆕 Moved to ExamAnswer collection
+    // answers: { type: mongoose.Schema.Types.Mixed, default: {} },
     
     // ─── 🆕 LIVE PROGRESS TRACKING ──────────────────
     // These fields are crucial for session persistence in case of:
@@ -111,8 +76,8 @@ const examSessionSchema = new mongoose.Schema({
     percentage: { type: Number, default: 0 },
     passed: { type: Boolean, default: false },
 
-    // ─── 🆕 Per-Question Grading ─────────────────────
-    questionResults: [questionResultSchema],
+    // ─── 🆕 Per-Question Grading — 🆕 Moved to ExamAnswer collection
+    // questionResults: [questionResultSchema],
     requiresManualGrading: { type: Boolean, default: false },
     
     // ─── Timing ──────────────────────────────────────

@@ -7,6 +7,7 @@ const http = require('http');
 const cors = require('cors');
 const { Server } = require('socket.io');
 const rateLimit = require('express-rate-limit');
+const mongoSanitize = require('express-mongo-sanitize');
 const connectDB = require('./config/db.js');
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
@@ -82,6 +83,7 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '100kb' }));
+app.use(mongoSanitize()); // Prevent NoSQL Injection attacks
 
 function isAllowedOrigin(origin) {
     if (!origin) return true;
@@ -145,8 +147,18 @@ const authLimiter = rateLimit({
     legacyHeaders: false
 });
 
-// Global limiter saari routes pe lagao
-app.use(globalLimiter);
+// Relaxed Rate Limiter for Auto-Save (protects against self-DDOS without blocking legitimate progress saves)
+const autoSaveLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 1000, // Shared with global, but isolated for this endpoint
+    store: createRedisStore('autosave'),
+    message: { error: 'Too many save attempts. Slow down!' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+// Global limiter definition is above. 
+// We will apply it route-wise below to avoid blocking the save-progress endpoint.
 
 
 // ═══════════════════════════════════════════════════════════
@@ -243,11 +255,15 @@ app.get('/', (req, res) => res.send('<h1>Server & Sockets working perfectly 🔒
 // Auth routes — Rate limiter EXTRA tight
 app.use('/api/auth', authLimiter, authRoutes);
 
+// 🛡️ CRITICAL: Apply relaxed limiter to save-progress route specifically 
+// and apply global limiter to other exam routes.
+app.use('/api/exams/save-progress', autoSaveLimiter);
+
 // Protected routes — Global limiter active
-app.use('/api/exams', examRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/session', sessionRoutes);
-app.use('/api/ai', aiRoutes);
+app.use('/api/exams', globalLimiter, examRoutes);
+app.use('/api/admin', globalLimiter, adminRoutes);
+app.use('/api/session', globalLimiter, sessionRoutes);
+app.use('/api/ai', globalLimiter, aiRoutes);
 
 // ─── 404 Global Handler ──────────────────────────────────
 app.use((req, res, next) => {
@@ -274,6 +290,32 @@ io.on('connection', (socket) => {
     // Join role-specific and user-specific rooms for targeted broadcasting
     socket.join(`role_${socket.user.role}`);
     socket.join(`user_${socket.user.id}`);
+
+    // --- 🛡️ Silent Re-Authentication (Bug Fix 5) ---
+    socket.on('re_auth', (token) => {
+        try {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            console.log(`🔄 [SCALING] Socket Re-Auth: ${decoded.email}`);
+            
+            // Update socket context
+            socket.user = { id: decoded.id, email: decoded.email, role: decoded.role };
+            socket.expiresAt = decoded.exp * 1000;
+
+            // Reset Watchdog timer
+            if (watchdogTimer) {
+                clearTimeout(watchdogTimer);
+                const newRemaining = socket.expiresAt - Date.now();
+                if (newRemaining > 0) {
+                    watchdogTimer = setTimeout(() => {
+                        socket.emit('session_expired', { message: 'Security: Your session has expired. Please login again.' });
+                        socket.disconnect(true);
+                    }, newRemaining);
+                }
+            }
+        } catch (err) {
+            console.warn(`🚫 Socket re-auth failed for ${socket.id}: ${err.message}`);
+        }
+    });
 
     // --- 🛡️ Session Watchdog (Token Expiry Check) ---
     const remainingTime = socket.expiresAt - Date.now();

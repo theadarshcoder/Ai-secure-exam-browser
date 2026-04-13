@@ -470,6 +470,12 @@ export default function ExamCockpit() {
   const isResizing = useRef(false);
   const progressRef = useRef({ answers, currentQ, visited, secondsLeft });
 
+  // 🛡️ Refs for Lifecycle & Reliability (Bug Fix 6 & 7)
+  const endRef = useRef(null);
+  const streamRef = useRef(null);
+  const detectionIntervalRef = useRef(null);
+  const mountedRef = useRef(true);
+
   useEffect(() => {
     progressRef.current = { answers, currentQ, visited, secondsLeft };
   }, [answers, currentQ, visited, secondsLeft]);
@@ -733,22 +739,36 @@ export default function ExamCockpit() {
     } catch (_err) { setTimeout(() => navigate(`/exam/${examId}/result`), 2000); }
   }, [examId, answers, navigate]);
 
-  // ⏱️ Exam Timer (Relative Decrement for Security)
+  // ⏱️ Exam Timer (Absolute Drift-Free Sync)
   useEffect(() => {
-    if (submitted || terminated || secondsLeft <= 0) return;
-    
-    const interval = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          handleFinalSubmit();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    if (submitted || terminated || secondsLeft < 0) return;
 
-    return () => clearInterval(interval);
+    const tick = () => {
+      if (endRef.current) {
+        const remainingMs = Math.max(0, endRef.current - Date.now());
+        const remainingSec = Math.floor(remainingMs / 1000);
+
+        if (remainingSec === 0 && secondsLeft > 0) {
+          setSecondsLeft(0);
+          handleFinalSubmit();
+        } else {
+          setSecondsLeft(remainingSec);
+        }
+      }
+    };
+
+    const interval = setInterval(tick, 1000);
+
+    // Re-sync on tab focus
+    const handleFocus = () => {
+        if (document.visibilityState === 'visible') tick();
+    };
+    document.addEventListener('visibilitychange', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleFocus);
+    };
   }, [submitted, terminated, handleFinalSubmit]);
 
   // 🏢 Fetch Exam + Seeded Shuffle + Resume Data
@@ -829,7 +849,7 @@ export default function ExamCockpit() {
           });
 
           setSecondsLeft(restoredTime);
-          setEndTime(Date.now() + restoredTime * 1000);
+          endRef.current = Date.now() + restoredTime * 1000;
           setAnswers(restoredAnswers);
           setCurrentQ(startIdx);
           
@@ -887,38 +907,73 @@ export default function ExamCockpit() {
   }, []);
 
   useEffect(() => {
-    let localStream = null;
-    let detectionInterval = null;
+    mountedRef.current = true;
     
     const setupCameraAndAI = async () => {
       try {
         const s = await initCamera();
-        localStream = s;
+        if (!mountedRef.current) {
+            s.getTracks().forEach(t => t.stop());
+            return;
+        }
+        streamRef.current = s;
 
-        // Bug 1: Active AI Face Monitoring Loop
-        detectionInterval = setInterval(async () => {
-          if (videoRef.current && !submitted && !terminated) {
-            try {
-              const detections = await faceapi.detectAllFaces(videoRef.current, new faceapi.TinyFaceDetectorOptions());
-              setFaceBoxes(detections);
-              
-              if (detections.length === 0) {
-                logIncident('No Face Detected', 'high', 'Student missing from frame');
-              } else if (detections.length > 1) {
-                logIncident('Multiple Faces', 'critical', 'Extra person detected in frame');
-              }
-            } catch (dErr) { console.warn('Detection failed frame'); }
-          }
-        }, 3000);
+        // Start Detection Loop
+        const startDetection = () => {
+            if (detectionIntervalRef.current) clearInterval(detectionIntervalRef.current);
+            detectionIntervalRef.current = setInterval(async () => {
+                if (videoRef.current && !submitted && !terminated && document.visibilityState === 'visible') {
+                    try {
+                        const detections = await faceapi.detectAllFaces(videoRef.current, new faceapi.TinyFaceDetectorOptions());
+                        if (mountedRef.current) {
+                            setFaceBoxes(detections);
+                            if (detections.length === 0) {
+                                logIncident('No Face Detected', 'high', 'Student missing from frame');
+                            } else if (detections.length > 1) {
+                                logIncident('Multiple Faces', 'critical', 'Extra person detected in frame');
+                            }
+                        }
+                    } catch (dErr) { console.warn('Detection failed frame'); }
+                }
+            }, 3000);
+        };
+
+        startDetection();
+
+        // Track listener for permission revocation
+        s.getTracks().forEach(t => {
+            t.onended = () => {
+                if (mountedRef.current) setCamError(true);
+            };
+        });
+
+        // Visibility aware detection (Bug Fix 7A)
+        const vHandler = () => {
+            if (document.hidden) {
+                if (detectionIntervalRef.current) clearInterval(detectionIntervalRef.current);
+                detectionIntervalRef.current = null;
+            } else {
+                startDetection();
+            }
+        };
+        document.addEventListener('visibilitychange', vHandler);
+
       } catch (err) {
-        // Error already handled in initCamera
+        // Error handled in initCamera
       }
     };
     setupCameraAndAI();
     
     return () => {
-      if (localStream) localStream.getTracks().forEach(t => t.stop());
-      if (detectionInterval) clearInterval(detectionInterval);
+      mountedRef.current = false;
+      if (streamRef.current) {
+          streamRef.current.getTracks().forEach(t => t.stop());
+          streamRef.current = null;
+      }
+      if (detectionIntervalRef.current) {
+          clearInterval(detectionIntervalRef.current);
+          detectionIntervalRef.current = null;
+      }
     };
   }, [logIncident, submitted, terminated, initCamera]);
 
