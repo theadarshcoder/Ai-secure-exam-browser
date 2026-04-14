@@ -10,6 +10,8 @@ const User = require('../models/User');
 // ═════════════════════════════════════════════
 router.post('/snapshot', verifyToken, upload.single('image'), async (req, res) => {
     try {
+        if (!req.file) return res.status(400).json({ error: 'No image file received. Check multipart/form-data.' });
+
         const { sessionId, type } = req.body;
         const imageUrl = req.file.path; // Cloudinary returns secure URL in .path
 
@@ -21,8 +23,8 @@ router.post('/snapshot', verifyToken, upload.single('image'), async (req, res) =
 
         res.json({ success: true, url: imageUrl });
     } catch (error) {
-        console.error("Snapshot upload failed:", error);
-        res.status(500).json({ error: 'Snapshot upload failed' });
+        console.error("Snapshot upload failed:", error.message);
+        res.status(500).json({ error: 'Snapshot upload failed', detail: error.message });
     }
 });
 
@@ -31,12 +33,14 @@ router.post('/snapshot', verifyToken, upload.single('image'), async (req, res) =
 // ═════════════════════════════════════════════
 router.post('/profile', verifyToken, upload.single('image'), async (req, res) => {
     try {
+        if (!req.file) return res.status(400).json({ error: 'No image file received. Check multipart/form-data.' });
+
         const imageUrl = req.file.path;
         await User.findByIdAndUpdate(req.user.id, { profilePicture: imageUrl });
         res.json({ success: true, url: imageUrl });
     } catch (error) {
-        console.error("Profile upload failed:", error);
-        res.status(500).json({ error: 'Profile upload failed' });
+        console.error("Profile upload failed:", error.message);
+        res.status(500).json({ error: 'Profile upload failed', detail: error.message });
     }
 });
 
@@ -45,12 +49,14 @@ router.post('/profile', verifyToken, upload.single('image'), async (req, res) =>
 // ═════════════════════════════════════════════
 router.post('/id-card', verifyToken, upload.single('image'), async (req, res) => {
     try {
+        if (!req.file) return res.status(400).json({ error: 'No image file received. Check multipart/form-data.' });
+
         const imageUrl = req.file.path;
         await User.findByIdAndUpdate(req.user.id, { idCardUrl: imageUrl });
         res.json({ success: true, url: imageUrl });
     } catch (error) {
-        console.error("ID card upload failed:", error);
-        res.status(500).json({ error: 'ID card upload failed' });
+        console.error("ID card upload failed:", error.message);
+        res.status(500).json({ error: 'ID card upload failed', detail: error.message });
     }
 });
 
