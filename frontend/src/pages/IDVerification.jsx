@@ -225,9 +225,7 @@ export default function IDVerification() {
       formData.append('image', blob, `${step === 1 ? 'face' : 'id'}_${Date.now()}.jpg`);
 
       const endpoint = step === 1 ? '/api/upload/profile' : '/api/upload/id-card';
-      await api.post(endpoint, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      await api.post(endpoint, formData);
 
       setCapturedPhoto(null);
       if (step === 1) {
