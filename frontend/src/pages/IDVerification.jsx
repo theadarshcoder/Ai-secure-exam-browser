@@ -6,6 +6,7 @@ import { Camera, UserCircle2, CreditCard, ArrowRight, ShieldCheck, CheckCircle2,
 import * as faceapi from '@vladmandic/face-api';
 import { Navbar } from '../components/Navbar';
 import api from '../services/api';
+import { toast } from 'react-hot-toast';
 
 /* ─────────────── Sub-components ─────────────── */
 
