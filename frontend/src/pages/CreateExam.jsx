@@ -80,7 +80,7 @@ function StepperInput({ value, onChange, min = 0, max = 999, step = 1, icon: Ico
         onChange={handleChange}
         onFocus={() => setIsFocused(true)}
         onBlur={handleBlur}
-        className="flex-1 min-w-0 bg-transparent border-none focus:ring-0 text-sm font-bold text-zinc-900 px-3 h-full"
+        className="flex-1 min-w-[40px] bg-transparent border-none focus:ring-0 text-sm font-bold text-zinc-900 px-2 h-full"
       />
       <div className="flex items-center pr-1 gap-1">
         {unit && (
