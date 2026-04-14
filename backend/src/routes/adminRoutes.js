@@ -46,4 +46,12 @@ router.get('/audit-logs', verifyToken, checkRole(['admin', 'super_mentor']), adm
 router.get('/settings', verifyToken, checkRole(['admin', 'super_mentor']), adminController.getSettings);
 router.post('/settings', verifyToken, checkRole(['admin', 'super_mentor']), adminController.saveSettings);
 
+// ─────────────────────────────────────────────────────────
+// Candidate Identity Verification (eKYC)
+// ─────────────────────────────────────────────────────────
+
+router.get('/candidates', verifyToken, checkRole(['admin', 'super_mentor']), adminController.getCandidates);
+router.put('/candidates/verify/:userId', verifyToken, checkRole(['admin', 'super_mentor']), adminController.verifyCandidate);
+router.put('/candidates/unverify/:userId', verifyToken, checkRole(['admin', 'super_mentor']), adminController.unverifyCandidate);
+
 module.exports = router;
