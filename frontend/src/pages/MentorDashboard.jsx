@@ -476,7 +476,8 @@ export default function MentorDashboard() {
         setExams(Array.isArray(res) ? res : []);
       } else if (tab === 'Results & Reports') {
         const res = await getAllResults();
-        setResults(Array.isArray(res) ? res : []);
+        const data = res?.results || res || [];
+        setResults(Array.isArray(data) ? data : []);
       }
     } catch (err) {
       console.error('Failed to fetch data:', err);
