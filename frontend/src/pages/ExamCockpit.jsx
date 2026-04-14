@@ -432,7 +432,7 @@ export default function ExamCockpit() {
   const [questions, setQuestions] = useState([]); // Will store shuffled list
   const [secondsLeft, setSecondsLeft] = useState(TOTAL_SECONDS);
   const [endTime, setEndTime] = useState(null);
-  const [cameraActive, setCameraActive] = useState(true);
+  const [cameraActive, setCameraActive] = useState(false); // false until stream is confirmed active
   const [stream, setStream] = useState(null);
   const [currentQ, setCurrentQ] = useState(0); // Shuffled array index
   const [answers, setAnswers] = useState({}); // Keyed by ORIGINAL question index/ID
@@ -939,7 +939,8 @@ export default function ExamCockpit() {
       const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       setStream(s);
       if (videoRef.current) videoRef.current.srcObject = s;
-      setCamError(false); // Success hone par error hata do
+      setCamError(false);    // Clear any prior error
+      setCameraActive(true); // ✅ Only set active AFTER stream is confirmed
       
       const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
       await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
@@ -948,6 +949,8 @@ export default function ExamCockpit() {
       return s;
     } catch (err) {
       console.warn('Camera/Mic permission denied');
+      setCameraActive(false); // ❌ Keep disabled — show placeholder, not black video
+      setCamError(true);      // Show the error banner with Retry button
       // Log to telemetry
       api.post('/telemetry/log', {
         errorType: 'CAMERA_DENIED',
@@ -955,8 +958,6 @@ export default function ExamCockpit() {
         message: `Exam Cockpit camera access failed: ${err.message}`,
         metadata: { examId, errorName: err.name }
       }).catch(() => {});
-      
-      setCamError(true); // UI me error dikhane ke liye
       throw err;
     }
   }, []);
@@ -995,10 +996,13 @@ export default function ExamCockpit() {
 
         startDetection();
 
-        // Track listener for permission revocation
+        // Track listener for permission revocation mid-session
         s.getTracks().forEach(t => {
             t.onended = () => {
-                if (mountedRef.current) setCamError(true);
+                if (mountedRef.current) {
+                    setCamError(true);
+                    setCameraActive(false); // Show placeholder if stream is killed
+                }
             };
         });
 

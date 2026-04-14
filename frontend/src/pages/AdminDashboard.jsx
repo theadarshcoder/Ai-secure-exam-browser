@@ -316,17 +316,20 @@ export default function AdminDashboard() {
               setAuditLogs(logsRes || []);
           } else if (tab === 'Users') {
               const [studentsRes, mentorsRes, adminsRes] = await Promise.all([
-                  getStudents().catch(() => []),
-                  getMentors().catch(() => []),
+                  getStudents().catch(() => ({ students: [] })),
+                  getMentors().catch(() => ({ mentors: [] })),
                   getAdmins().catch(() => [])
               ]);
-              setUsers([...adminsRes, ...mentorsRes, ...studentsRes]);
+              const studentsData = studentsRes?.students || studentsRes || [];
+              const mentorsData = mentorsRes?.mentors || mentorsRes || [];
+              const adminsData = Array.isArray(adminsRes) ? adminsRes : [];
+              setUsers([...adminsData, ...mentorsData, ...studentsData]);
           } else if (tab === 'Exams') {
               const res = await getAdminExams();
               setExams(res || []);
           } else if (tab === 'Results') {
               const res = await getAdminResults();
-              setAdminResults(res || []);
+              setAdminResults(res?.results || res || []);
           } else if (tab === 'Settings') {
               const res = await getSettings();
               if (res) setSettingsState(res);
