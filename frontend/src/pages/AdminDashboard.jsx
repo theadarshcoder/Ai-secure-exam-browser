@@ -7,7 +7,7 @@ import {
   Search, FileUp, UserPlus, Trash2, Eye,
   ShieldCheck, Activity, AlertOctagon,
   ChevronRight, LogOut, Bell, RefreshCw, Edit3,
-  BarChart3, Download, Clock, Check, X, Star, CheckCircle, AlertCircle, Plus
+  BarChart3, Download, Clock, Check, X, Star, CheckCircle, AlertCircle, Plus, ScanFace, Radio, ShieldAlert, User
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import api, { 
@@ -25,7 +25,10 @@ import api, {
   getAdminResults,
   getAdmins,
   getSessionDetail,
-  evaluateSession
+  evaluateSession,
+  getCandidates,
+  verifyCandidate,
+  unverifyCandidate
 } from '../services/api';
 
 // ─────────────────────────────────────────────────────────
@@ -260,6 +263,11 @@ export default function AdminDashboard() {
   const [evalSessionData, setEvalSessionData] = useState(null);
   const [evalLoading, setEvalLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Candidate eKYC states
+  const [candidates, setCandidates] = useState([]);
+  const [candidateSearch, setCandidateSearch] = useState('');
+  const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [settings, setSettingsState] = useState({
      maxTabSwitches: 5,
      forceFullscreen: true,
@@ -322,6 +330,9 @@ export default function AdminDashboard() {
           } else if (tab === 'Settings') {
               const res = await getSettings();
               if (res) setSettingsState(res);
+          } else if (tab === 'Candidates') {
+              const res = await getCandidates(candidateSearch).catch(() => []);
+              setCandidates(res || []);
           }
       } catch (err) {
           console.error("Failed fetching data:", err);
@@ -502,6 +513,7 @@ export default function AdminDashboard() {
   const tabs = [
     { id: 'Overview', label: 'Overview', icon: LayoutDashboard, access: ['admin', 'super_mentor'] },
     { id: 'Users', label: 'User Management', icon: Users, access: ['admin', 'super_mentor'] },
+    { id: 'Candidates', label: 'Candidates', icon: ScanFace, access: ['admin', 'super_mentor'] },
     { id: 'Exams', label: 'Exam Library', icon: FileText, access: ['admin', 'super_mentor'] },
     { id: 'Results', label: 'Results & Reports', icon: BarChart3, access: ['admin', 'super_mentor'] },
     { id: 'Settings', label: 'System Settings', icon: Settings, access: ['admin'] },
@@ -927,10 +939,199 @@ export default function AdminDashboard() {
     </div>
   );
 
+  const handleVerifyCandidate = async (userId, shouldVerify) => {
+    try {
+      if (shouldVerify) await verifyCandidate(userId);
+      else await unverifyCandidate(userId);
+      setCandidates(prev => prev.map(c => c._id === userId ? { ...c, isVerified: shouldVerify } : c));
+      if (selectedCandidate?._id === userId) setSelectedCandidate(prev => ({ ...prev, isVerified: shouldVerify }));
+      toast.success(shouldVerify ? 'Candidate verified!' : 'Verification revoked.');
+    } catch (err) {
+      toast.error('Action failed: ' + (err.message || err));
+    }
+  };
+
+  const renderCandidates = () => (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-black text-zinc-900 tracking-tight">Candidate Identity Board</h2>
+          <p className="text-xs text-zinc-400 font-medium mt-1">Review student identity proofs captured during exam onboarding.</p>
+        </div>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={14} />
+          <input
+            type="text"
+            placeholder="Search student..."
+            value={candidateSearch}
+            onChange={(e) => {
+              setCandidateSearch(e.target.value);
+              getCandidates(e.target.value).then(r => setCandidates(r || [])).catch(() => {});
+            }}
+            className="pl-9 pr-4 py-2.5 border border-zinc-200 rounded-xl text-sm text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 w-64 transition-all bg-white shadow-sm"
+          />
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="h-64 rounded-2xl bg-zinc-100 animate-pulse" />
+          ))}
+        </div>
+      ) : candidates.length === 0 ? (
+        <div className="h-64 flex flex-col items-center justify-center text-zinc-400 gap-3">
+          <ScanFace size={40} className="opacity-20" />
+          <p className="text-xs font-bold uppercase tracking-widest opacity-40">No candidates found.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {candidates.map((c) => (
+            <div
+              key={c._id}
+              onClick={() => setSelectedCandidate(c)}
+              className="group relative bg-white rounded-2xl border border-zinc-200 overflow-hidden shadow-sm hover:shadow-xl hover:border-emerald-200 transition-all duration-300 cursor-pointer hover:-translate-y-1"
+            >
+              {/* Live Badge */}
+              {c.isLive && (
+                <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 bg-red-500 text-white px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg">
+                  <Radio size={8} className="animate-pulse" /> Live
+                </div>
+              )}
+              {/* Verified Badge */}
+              {c.isVerified && (
+                <div className="absolute top-3 right-3 z-10 w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shadow-md">
+                  <Check size={12} className="text-white" />
+                </div>
+              )}
+              {/* Profile Picture */}
+              <div className="aspect-square w-full bg-zinc-50 overflow-hidden">
+                {c.profilePicture ? (
+                  <img src={c.profilePicture} alt={c.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <User size={40} className="text-zinc-200" />
+                  </div>
+                )}
+              </div>
+              {/* Info */}
+              <div className="p-4">
+                <p className="text-sm font-black text-zinc-900 truncate">{c.name}</p>
+                <p className="text-[10px] text-zinc-400 truncate mt-0.5">{c.email}</p>
+                {c.currentExam && (
+                  <p className="text-[9px] text-red-500 font-bold mt-2 truncate uppercase tracking-wide">📝 {c.currentExam}</p>
+                )}
+                <div className="flex items-center justify-between mt-3">
+                  <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                    c.isVerified ? 'bg-emerald-50 text-emerald-700' : c.profilePicture ? 'bg-amber-50 text-amber-700' : 'bg-zinc-100 text-zinc-500'
+                  }`}>
+                    {c.isVerified ? 'Verified' : c.profilePicture ? 'Pending' : 'No Photo'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Candidate Detail Modal */}
+      {selectedCandidate && (
+        <div className="fixed inset-0 bg-zinc-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedCandidate(null)}>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-zinc-200" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-8 py-5 border-b border-zinc-100 bg-zinc-50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+                  <ScanFace size={20} className="text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-zinc-900 uppercase tracking-wide">{selectedCandidate.name}</h3>
+                  <p className="text-xs text-zinc-400">{selectedCandidate.email}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                {selectedCandidate.isLive && (
+                  <span className="flex items-center gap-1.5 bg-red-50 text-red-500 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-red-100">
+                    <Radio size={10} className="animate-pulse" /> Live Exam
+                  </span>
+                )}
+                <button onClick={() => setSelectedCandidate(null)} className="p-2 hover:bg-zinc-100 rounded-xl transition-all">
+                  <X size={18} className="text-zinc-400" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-8 grid grid-cols-2 gap-6">
+              {/* Face Photo */}
+              <div>
+                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2"><User size={12} /> Face Capture</p>
+                <div className="aspect-square rounded-2xl bg-zinc-50 border-2 border-zinc-200 overflow-hidden">
+                  {selectedCandidate.profilePicture ? (
+                    <img src={selectedCandidate.profilePicture} alt="Face" className="w-full h-full object-cover scale-x-[-1]" />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-zinc-300">
+                      <User size={32} />
+                      <span className="text-[9px] font-bold uppercase tracking-widest">Not Captured</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ID Card */}
+              <div>
+                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2"><ShieldCheck size={12} /> ID Card</p>
+                <div className="aspect-square rounded-2xl bg-zinc-50 border-2 border-zinc-200 overflow-hidden flex items-center justify-center">
+                  {selectedCandidate.idCardUrl ? (
+                    <img src={selectedCandidate.idCardUrl} alt="ID Card" className="w-full h-full object-contain p-2" />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-zinc-300">
+                      <ShieldAlert size={32} />
+                      <span className="text-[9px] font-bold uppercase tracking-widest">Not Uploaded</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="px-8 py-5 border-t border-zinc-100 bg-zinc-50 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Joined: {new Date(selectedCandidate.createdAt).toLocaleDateString()}</p>
+                <p className={`text-xs font-black mt-1 ${selectedCandidate.isVerified ? 'text-emerald-600' : 'text-amber-600'}`}>
+                  {selectedCandidate.isVerified ? '✅ Identity Verified' : '⏳ Pending Verification'}
+                </p>
+              </div>
+              <div className="flex gap-3">
+                {selectedCandidate.isVerified ? (
+                  <button
+                    onClick={() => handleVerifyCandidate(selectedCandidate._id, false)}
+                    className="px-5 py-2.5 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-black uppercase tracking-wider rounded-xl transition-all border border-red-100 active:scale-95"
+                  >
+                    Revoke Verification
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleVerifyCandidate(selectedCandidate._id, true)}
+                    disabled={!selectedCandidate.profilePicture || !selectedCandidate.idCardUrl}
+                    className="px-6 py-2.5 bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-emerald-900/20 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    ✅ Verify Identity
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   const renderContent = () => {
     switch (activeTab) {
       case 'Overview': return renderOverview();
       case 'Users': return renderUsers();
+      case 'Candidates': return renderCandidates();
       case 'Exams': return renderExams();
       case 'Results': return renderResults();
       case 'Settings': return renderSettings();

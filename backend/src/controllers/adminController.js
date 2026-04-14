@@ -300,3 +300,60 @@ exports.saveSettings = asyncHandler(async (req, res) => {
     }
     res.json({ message: 'Settings saved successfully', setting });
 });
+
+// ═══════════════════════════════════════════════════════════
+// Candidate Identity Verification (eKYC)
+// ═══════════════════════════════════════════════════════════
+exports.getCandidates = asyncHandler(async (req, res) => {
+    const search = req.query.search || '';
+    const query = { role: 'student' };
+    if (search) {
+        query.$or = [
+            { name: { $regex: search, $options: 'i' } },
+            { email: { $regex: search, $options: 'i' } }
+        ];
+    }
+
+    const candidates = await User.find(query)
+        .select('name email profilePicture idCardUrl isVerified createdAt')
+        .lean();
+
+    // Enrich with active exam session info
+    const studentIds = candidates.map(c => c._id);
+    const activeSessions = await ExamSession.find({ student: { $in: studentIds }, status: 'in_progress' })
+        .populate('exam', 'title')
+        .lean();
+
+    const sessionMap = {};
+    activeSessions.forEach(s => { sessionMap[s.student.toString()] = s; });
+
+    const enriched = candidates.map(c => ({
+        ...c,
+        isLive: !!sessionMap[c._id.toString()],
+        currentExam: sessionMap[c._id.toString()]?.exam?.title || null
+    }));
+
+    res.json(enriched);
+});
+
+exports.verifyCandidate = asyncHandler(async (req, res) => {
+    const user = await User.findByIdAndUpdate(
+        req.params.userId,
+        { isVerified: true },
+        { new: true }
+    ).select('name email isVerified');
+
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ success: true, user });
+});
+
+exports.unverifyCandidate = asyncHandler(async (req, res) => {
+    const user = await User.findByIdAndUpdate(
+        req.params.userId,
+        { isVerified: false },
+        { new: true }
+    ).select('name email isVerified');
+
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ success: true, user });
+});

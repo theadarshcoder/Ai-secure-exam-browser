@@ -12,7 +12,11 @@ const userSchema = new mongoose.Schema({
     },
     currentSessionToken: { type: String },
     currentDeviceId: { type: String },
-    permissions: [{ type: String }]
+    permissions: [{ type: String }],
+    // Identity Verification (eKYC)
+    profilePicture: { type: String, default: null },
+    idCardUrl: { type: String, default: null },
+    isVerified: { type: Boolean, default: false }
 }, { timestamps: true });
 
 // ─── Password Hashing ───────────────────────────────────

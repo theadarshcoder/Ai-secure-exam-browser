@@ -264,4 +264,35 @@ export const requestHelp = async (msg) => {
     }
 };
 
+// ─────────────────────────────────────────────────────────
+// Candidate eKYC Identity APIs
+// ─────────────────────────────────────────────────────────
+
+export const getCandidates = async (search = '') => {
+    try {
+        const response = await api.get('/api/admin/candidates', { params: { search } });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
+export const verifyCandidate = async (userId) => {
+    try {
+        const response = await api.put(`/api/admin/candidates/verify/${userId}`);
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
+export const unverifyCandidate = async (userId) => {
+    try {
+        const response = await api.put(`/api/admin/candidates/unverify/${userId}`);
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
 export default api;

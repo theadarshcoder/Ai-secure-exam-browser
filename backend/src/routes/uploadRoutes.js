@@ -3,14 +3,16 @@ const router = express.Router();
 const upload = require('../middlewares/uploadMiddleware');
 const { verifyToken } = require('../middlewares/authMiddleware');
 const ExamSession = require('../models/ExamSession');
+const User = require('../models/User');
 
-// Upload Snapshot & Link to Session
+// ═════════════════════════════════════════════
+// POST /api/upload/snapshot — Proctoring Snap
+// ═════════════════════════════════════════════
 router.post('/snapshot', verifyToken, upload.single('image'), async (req, res) => {
     try {
-        const { sessionId, type } = req.body; // type can be 'violation' or 'random'
-        const imageUrl = req.file.path; // Cloudinary uses .path for the secure URL
+        const { sessionId, type } = req.body;
+        const imageUrl = req.file.path; // Cloudinary returns secure URL in .path
 
-        // DB update (Push URL to session)
         if (sessionId) {
             await ExamSession.findByIdAndUpdate(sessionId, {
                 $push: { snapshots: { url: imageUrl, timestamp: new Date(), type } }
@@ -19,8 +21,36 @@ router.post('/snapshot', verifyToken, upload.single('image'), async (req, res) =
 
         res.json({ success: true, url: imageUrl });
     } catch (error) {
-        console.error("Upload failed:", error);
-        res.status(500).json({ error: 'Upload failed' });
+        console.error("Snapshot upload failed:", error);
+        res.status(500).json({ error: 'Snapshot upload failed' });
+    }
+});
+
+// ═════════════════════════════════════════════
+// POST /api/upload/profile — Face Photo (eKYC)
+// ═════════════════════════════════════════════
+router.post('/profile', verifyToken, upload.single('image'), async (req, res) => {
+    try {
+        const imageUrl = req.file.path;
+        await User.findByIdAndUpdate(req.user.id, { profilePicture: imageUrl });
+        res.json({ success: true, url: imageUrl });
+    } catch (error) {
+        console.error("Profile upload failed:", error);
+        res.status(500).json({ error: 'Profile upload failed' });
+    }
+});
+
+// ═════════════════════════════════════════════
+// POST /api/upload/id-card — ID Card (eKYC)
+// ═════════════════════════════════════════════
+router.post('/id-card', verifyToken, upload.single('image'), async (req, res) => {
+    try {
+        const imageUrl = req.file.path;
+        await User.findByIdAndUpdate(req.user.id, { idCardUrl: imageUrl });
+        res.json({ success: true, url: imageUrl });
+    } catch (error) {
+        console.error("ID card upload failed:", error);
+        res.status(500).json({ error: 'ID card upload failed' });
     }
 });
 

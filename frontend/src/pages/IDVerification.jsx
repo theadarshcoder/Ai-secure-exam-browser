@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import VisionLogo from '../components/VisionLogo';
-import { Camera, UserCircle2, CreditCard, ArrowRight, ShieldCheck, CheckCircle2, RotateCcw, AlertTriangle, ScanFace } from 'lucide-react';
+import { Camera, UserCircle2, CreditCard, ArrowRight, ShieldCheck, CheckCircle2, RotateCcw, AlertTriangle, ScanFace, Loader2 } from 'lucide-react';
 import * as faceapi from '@vladmandic/face-api';
 import { Navbar } from '../components/Navbar';
+import api from '../services/api';
 
 /* ─────────────── Sub-components ─────────────── */
 
@@ -102,6 +103,7 @@ export default function IDVerification() {
   const [faceBox, setFaceBox] = useState(null);
   const [capturedPhoto, setCapturedPhoto] = useState(null);
   const [camError, setCamError] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -212,14 +214,32 @@ export default function IDVerification() {
     }, 800);
   };
 
-  const confirmPhoto = () => {
-    localStorage.setItem(step === 1 ? 'vision_reference_face' : 'vision_reference_id', 'VERIFIED_HASH');
-    setCapturedPhoto(null);
-    if (step === 1) {
-      setStep(2);
-    } else {
-      setStep(3);
-      if (stream) stream.getTracks().forEach(t => t.stop());
+  const confirmPhoto = async () => {
+    setIsUploading(true);
+    try {
+      // Convert dataURL to blob
+      const res = await fetch(capturedPhoto);
+      const blob = await res.blob();
+      const formData = new FormData();
+      formData.append('image', blob, `${step === 1 ? 'face' : 'id'}_${Date.now()}.jpg`);
+
+      const endpoint = step === 1 ? '/api/upload/profile' : '/api/upload/id-card';
+      await api.post(endpoint, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      setCapturedPhoto(null);
+      if (step === 1) {
+        setStep(2);
+      } else {
+        setStep(3);
+        if (stream) stream.getTracks().forEach(t => t.stop());
+      }
+    } catch (err) {
+      console.error('Upload failed:', err);
+      toast.error('Upload failed. Please retake.');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -311,12 +331,14 @@ export default function IDVerification() {
                   <span className="text-[11px] font-medium tracking-wide">{step === 1 ? 'Center your alignment relative to focus points.' : 'Align document edges with the security perimeter.'}</span>
                 </div>
                 <div className="flex gap-3">
-                  {capturedPhoto ? (
-                    <>
-                      <button onClick={retakePhoto} disabled={isProcessing} className="px-6 py-2.5 rounded-xl border border-white/10 text-slate-300 hover:bg-white/5 text-[11px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"><RotateCcw size={14} /> Retake</button>
-                      <button onClick={confirmPhoto} disabled={isProcessing} className="px-8 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white shadow-indigo-500/20 shadow-lg text-[11px] font-black uppercase tracking-widest flex items-center gap-2 transition-all">Proceed <ArrowRight size={14} /></button>
-                    </>
-                  ) : (
+                    {capturedPhoto ? (
+                      <>
+                        <button onClick={retakePhoto} disabled={isProcessing || isUploading} className="px-6 py-2.5 rounded-xl border border-white/10 text-slate-300 hover:bg-white/5 text-[11px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"><RotateCcw size={14} /> Retake</button>
+                        <button onClick={confirmPhoto} disabled={isProcessing || isUploading} className="px-8 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white shadow-indigo-500/20 shadow-lg text-[11px] font-black uppercase tracking-widest flex items-center gap-2 transition-all disabled:opacity-60">
+                          {isUploading ? <><Loader2 size={14} className="animate-spin" /> Uploading...</> : <>Proceed <ArrowRight size={14} /></>}
+                        </button>
+                      </>
+                    ) : (
                     <>
                       {step === 2 && <button onClick={() => setStep(1)} disabled={isProcessing} className="px-5 py-2.5 rounded-xl border border-white/10 text-slate-300 hover:bg-white/5 text-[11px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"><RotateCcw size={14} /> Back</button>}
                       <button onClick={capture} disabled={!stream || isProcessing} className={`px-8 py-2.5 rounded-xl text-[#0a0c10] transition-all text-[11px] font-black uppercase tracking-widest flex items-center gap-2 ${step === 1 ? 'bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/20 shadow-lg' : 'bg-amber-500 hover:bg-amber-400 shadow-amber-500/20 shadow-lg'} disabled:opacity-50`}>
