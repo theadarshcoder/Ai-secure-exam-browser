@@ -1583,7 +1583,6 @@ exports.importQuestions = asyncHandler(async (req, res) => {
         res.status(500);
         throw new Error("Failed to process imported questions.");
     }
-    }
 });
 
 // ═══════════════════════════════════════════════════════════
