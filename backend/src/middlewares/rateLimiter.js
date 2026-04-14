@@ -38,4 +38,20 @@ const telemetryLimiter = rateLimit({
     }
 });
 
-module.exports = { codeExecutionLimiter, telemetryLimiter };
+/**
+ * 🔗 External Import Rate Limiter
+ * Limits scraping requests to prevent spamming external APIs.
+ */
+const importLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 5, // Limit each user to 5 import requests per minute
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => req.user?.id || req.ip,
+    message: {
+        success: false,
+        error: "Too many import requests. Please try again after a minute."
+    }
+});
+
+module.exports = { codeExecutionLimiter, telemetryLimiter, importLimiter };

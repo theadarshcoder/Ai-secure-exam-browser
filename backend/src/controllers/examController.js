@@ -5,7 +5,7 @@ const User = require('../models/User');
 const { getRedisClient } = require('../config/redis');
 const { executeCode } = require('../services/judge0');
 const { asyncHandler } = require('../middlewares/errorMiddleware');
-const { getTimeAgo } = require('../utils/helpers');
+const { getTimeAgo, parseLeetCode, parseCodeChef } = require('../utils/helpers');
 const { gradeMCQ, gradeCoding, gradeShortAnswer } = require('../services/gradingService');
 const { addCodeEvaluationJob } = require('../queues/codeGradingQueue');
 
@@ -1582,5 +1582,90 @@ exports.importQuestions = asyncHandler(async (req, res) => {
         console.error("Import failed:", err);
         res.status(500);
         throw new Error("Failed to process imported questions.");
+    }
+    }
+});
+
+// ═══════════════════════════════════════════════════════════
+//  🚀 Multi-Platform Question Import (LeetCode / CodeChef)
+// ═══════════════════════════════════════════════════════════
+
+// The Parser Registry — easy to extend with new platforms
+const parsers = {
+    leetcode: parseLeetCode,
+    codechef: parseCodeChef,
+};
+
+/**
+ * Detects the platform based on the URL domain.
+ */
+const detectPlatform = (url) => {
+    if (url.includes('leetcode.com')) return 'leetcode';
+    if (url.includes('codechef.com')) return 'codechef';
+    return null; 
+};
+
+/**
+ * 🔗 Main Controller for Link-based Import
+ * Includes Redis caching (24h) and Parser Registry.
+ */
+exports.importQuestionFromLink = asyncHandler(async (req, res) => {
+    const { url } = req.body;
+
+    // 1. Strict Validation
+    if (!url || typeof url !== 'string') {
+        res.status(400);
+        throw new Error("A valid URL is required.");
+    }
+
+    const platform = detectPlatform(url);
+    if (!platform || !parsers[platform]) {
+        res.status(400);
+        throw new Error("Unsupported platform. Currently supporting LeetCode & CodeChef.");
+    }
+
+    // 2. Redis Caching Layer (Check if already parsed recently)
+    const redisClient = getRedisClient();
+    const cacheKey = `vision:import:${platform}:${url}`;
+    
+    if (redisClient) {
+        try {
+            const cached = await redisClient.get(cacheKey);
+            if (cached) {
+                return res.status(200).json({ 
+                    question: JSON.parse(cached), 
+                    cached: true,
+                    info: "Resolved from Vision Engine Cache"
+                });
+            }
+        } catch (cacheErr) {
+            console.warn("⚠️ Redis cache read failure:", cacheErr.message);
+        }
+    }
+
+    // 3. Execute Registry Parser
+    try {
+        const questionData = await parsers[platform](url);
+
+        // 4. Save to Cache (Expires in 24 hours)
+        if (redisClient) {
+            try {
+                await redisClient.set(cacheKey, JSON.stringify(questionData), {
+                    EX: 86400 // 24 hours
+                });
+            } catch (cacheErr) {
+                console.warn("⚠️ Redis cache write failure:", cacheErr.message);
+            }
+        }
+
+        res.status(200).json({ 
+            question: questionData, 
+            cached: false 
+        });
+
+    } catch (scrapingError) {
+        console.error(`[${platform.toUpperCase()}] Scraping Error:`, scrapingError.message);
+        res.status(422);
+        throw new Error(`Failed to extract problem details. The platform might be blocking requests or the URL is invalid.`);
     }
 });

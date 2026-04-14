@@ -7,7 +7,7 @@ const router = express.Router();
 const { verifyToken, checkRole } = require('../middlewares/authMiddleware');
 const examController = require('../controllers/examController');
 const telemetryController = require('../controllers/telemetryController');
-const { codeExecutionLimiter, telemetryLimiter } = require('../middlewares/rateLimiter');
+const { codeExecutionLimiter, telemetryLimiter, importLimiter } = require('../middlewares/rateLimiter');
 
 // ═══════════════════════════════════════════════════════════
 //  📊 Telemetry & Diagnostics
@@ -81,6 +81,9 @@ router.post('/help', verifyToken, examController.requestHelp);
 router.get('/mentor/:id', verifyToken, checkRole(['mentor', 'admin']), examController.getMentorExamById);
 router.patch('/:id/status', verifyToken, checkRole(['mentor', 'admin']), examController.updateExamStatus);
 router.post('/import-questions/:id', verifyToken, checkRole(['mentor', 'admin']), examController.importQuestions);
+
+// 🔗 Import from External Link (LeetCode/CodeChef)
+router.post('/import-from-link', verifyToken, checkRole(['mentor', 'admin']), importLimiter, examController.importQuestionFromLink);
 
 router.get('/:id', verifyToken, examController.getExamById);
 

@@ -10,7 +10,7 @@ import {
   Upload, FilePlus, FileSpreadsheet, Lock,
   LayoutDashboard, Users, BarChart3, Settings, Bell,
   ChevronRight, LogOut, Eye, Edit3, Star, RefreshCw,
-  Download, UploadCloud
+  Download, UploadCloud, Link, AlertCircle
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 
@@ -323,6 +323,13 @@ export default function CreateExam() {
   const [editId, setEditId] = useState(null);
   const [initialLoading, setInitialLoading] = useState(false);
   const [toasts, setToasts] = useState([]);
+  
+  // Link Import States
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [importUrl, setImportUrl] = useState('');
+  const [isImportingLink, setIsImportingLink] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewQuestion, setPreviewQuestion] = useState(null);
 
   const navItems = [
     { id: 'Overview', label: 'Overview', icon: LayoutDashboard },
@@ -505,6 +512,48 @@ export default function CreateExam() {
     }
     
     e.target.value = null; // reset
+  };
+
+  const handleLinkImport = async () => {
+    if (!importUrl) {
+      addToast('Please enter a valid URL', 'error');
+      return;
+    }
+    setIsImportingLink(true);
+    try {
+      const response = await api.post('/api/exams/import-from-link', { url: importUrl });
+      
+      setPreviewQuestion({
+        ...response.data.question,
+        id: `link-import-${Date.now()}`
+      });
+      
+      setShowLinkModal(false);
+      setImportUrl('');
+      setShowPreviewModal(true);
+      
+    } catch (err) {
+      console.error("Import failed:", err);
+      addToast(err.response?.data?.error || 'Failed to import from link.', 'error');
+    } finally {
+      setIsImportingLink(false);
+    }
+  };
+
+  const confirmLinkImport = () => {
+    // Validation: Require Expected Outputs
+    const hasEmptyOutputs = previewQuestion.testCases.some(tc => !tc.expectedOutput || !tc.expectedOutput.trim());
+    
+    if (hasEmptyOutputs) {
+      addToast("Warning: Please fill all 'Expected Output' fields before saving.", "error");
+      return;
+    }
+
+    setQuestions(prev => [...prev, previewQuestion]);
+    setExpandedQ(previewQuestion.id);
+    setShowPreviewModal(false);
+    setPreviewQuestion(null);
+    addToast('External question successfully added to the assessment!', 'success');
   };
 
   useEffect(() => {
@@ -1241,25 +1290,25 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                       <div className="flex gap-2">
                         <button 
                           onClick={() => document.getElementById('direct-import-file').click()} 
-                          className="flex-1 h-12 bg-white/[0.05] border border-white/[0.08] hover:bg-zinc-800 text-zinc-900 rounded-[16px] font-black text-[10px] uppercase tracking-[0.1em] flex items-center justify-center gap-2 transition-all active:scale-95"
+                          className="flex-1 h-12 bg-white/[0.05] border border-white/10 hover:bg-zinc-800 text-zinc-900 rounded-[16px] font-black text-[10px] uppercase tracking-[0.1em] flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm shadow-black/5"
                         >
                           <UploadCloud size={16} />
-                          Import
+                          File
                         </button>
                         <button 
-                          onClick={exportQuestions} 
-                          className="flex-1 h-12 bg-white/[0.05] border border-white/[0.08] hover:bg-zinc-800 text-zinc-900 rounded-[16px] font-black text-[10px] uppercase tracking-[0.1em] flex items-center justify-center gap-2 transition-all active:scale-95"
+                          onClick={() => setShowLinkModal(true)} 
+                          className="flex-1 h-12 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 text-emerald-500 rounded-[16px] font-black text-[10px] uppercase tracking-[0.1em] flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm shadow-emerald-900/10"
                         >
-                          <Download size={16} />
-                          JSON Data
+                          <Link size={16} />
+                          URL Link
                         </button>
                       </div>
                       <button 
-                        onClick={exportToCSV} 
-                        className="w-full h-10 bg-white/[0.02] border border-white/[0.05] hover:bg-zinc-800 text-zinc-500 hover:text-zinc-800 rounded-[12px] font-bold text-[9px] uppercase tracking-[0.1em] flex items-center justify-center gap-2 transition-all border-dashed"
+                        onClick={exportQuestions} 
+                        className="w-full h-10 bg-white/[0.02] border border-white/[0.05] hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600 rounded-[12px] font-bold text-[9px] uppercase tracking-[0.1em] flex items-center justify-center gap-2 transition-all active:scale-95"
                       >
-                        <FileSpreadsheet size={14} />
-                        Export Backup (CSV)
+                        <Download size={14} />
+                        Download JSON Data
                       </button>
                     </div>
                     <button onClick={handlePublish} disabled={isPublishing || questions.length === 0} className="w-full h-16 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-[#0a0c10] rounded-[24px] font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-3 transition-all active:scale-95 group/pub">
@@ -1297,6 +1346,225 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
           </div>
         </div>
       </main>
+
+      {/* 🔗 URL-Based Import Modal (Source Link) */}
+      {showLinkModal && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 backdrop-blur-md bg-black/60 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[32px] p-8 w-full max-w-md shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-zinc-200 relative overflow-hidden animate-in zoom-in-95 duration-300">
+            {/* Background Accent */}
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600" />
+            
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <h3 className="text-xl font-black uppercase text-zinc-900 tracking-tight flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                    <Link size={16} strokeWidth={3} />
+                  </div>
+                  Vision Engine <span className="text-zinc-400 font-bold ml-1">Import</span>
+                </h3>
+                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mt-2 ml-11">Supporting LeetCode & CodeChef Labs</p>
+              </div>
+              <button 
+                onClick={() => setShowLinkModal(false)} 
+                className="p-2.5 bg-zinc-50 hover:bg-red-50 text-zinc-400 hover:text-red-500 rounded-2xl transition-all border border-zinc-100"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-6 mb-10">
+              <div className="space-y-3">
+                <label className={LABEL_BASE + " ml-0"}>Problem Repository URL</label>
+                <div className="relative group">
+                  <input 
+                    type="url" 
+                    value={importUrl} 
+                    onChange={e => setImportUrl(e.target.value)} 
+                    placeholder="https://leetcode.com/problems/..." 
+                    className={INPUT_BASE + " h-14 pl-5 text-sm font-semibold border-zinc-200 focus:border-emerald-500 bg-zinc-50/50"}
+                  />
+                  <div className="absolute inset-0 rounded-xl border-2 border-emerald-500/0 group-focus-within:border-emerald-500/10 pointer-events-none transition-all" />
+                </div>
+              </div>
+
+              {/* Platform Chips */}
+              <div className="flex items-center gap-3 px-1">
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-50 border border-zinc-200 rounded-lg">
+                  <div className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
+                  <span className="text-[9px] font-black text-zinc-600 uppercase tracking-tighter">LeetCode Ready</span>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-50 border border-zinc-200 rounded-lg">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                  <span className="text-[9px] font-black text-zinc-600 uppercase tracking-tighter">CodeChef Alpha</span>
+                </div>
+              </div>
+            </div>
+
+            <button 
+              onClick={handleLinkImport} 
+              disabled={isImportingLink || !importUrl} 
+              className="w-full h-16 bg-zinc-900 border border-white/5 text-white rounded-[20px] font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all enabled:hover:scale-[1.02] enabled:active:scale-[0.98] shadow-2xl disabled:opacity-30 group"
+            >
+              {isImportingLink ? (
+                <Loader2 size={20} className="animate-spin text-emerald-400" />
+              ) : (
+                <RefreshCw size={18} className="group-hover:rotate-180 transition-transform duration-700" />
+              )}
+              {isImportingLink ? 'Processing Endpoint...' : 'Initialize Secure Scraping'}
+            </button>
+            
+            <p className="text-[9px] text-zinc-400 font-bold uppercase text-center mt-6 tracking-widest opacity-50">Authorized Mentor Import Only</p>
+          </div>
+        </div>
+      )}
+
+      {/* 🧪 Preview & Validation Sidebar Workspace */}
+      {showPreviewModal && previewQuestion && (
+        <div className="fixed inset-0 z-[160] flex items-center justify-center p-6 backdrop-blur-sm bg-black/60 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[40px] w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-[0_30px_100px_-20px_rgba(0,0,0,0.5)] border border-zinc-200 flex flex-col animate-in slide-in-from-bottom-12 duration-500">
+            
+            {/* Header Area */}
+            <div className="p-8 border-b border-zinc-100 flex justify-between items-start bg-zinc-50/50">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                   <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                   <h3 className="text-2xl font-black uppercase text-zinc-900 tracking-tighter">Scraping <span className="text-zinc-400">Preview</span></h3>
+                </div>
+                <div className="flex gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-white border border-zinc-200 text-zinc-500 shadow-sm">Source: <span className="text-emerald-500">{previewQuestion.source}</span></span>
+                  <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-white border border-zinc-200 text-zinc-500 shadow-sm">Difficulty: <span className="text-violet-500">{previewQuestion.difficulty}</span></span>
+                  <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-white border border-zinc-200 text-zinc-500 shadow-sm">Marks: <span className="text-blue-500">{previewQuestion.marks}</span></span>
+                </div>
+              </div>
+              <button 
+                onClick={() => {setShowPreviewModal(false); setPreviewQuestion(null);}} 
+                className="w-12 h-12 flex items-center justify-center bg-white hover:bg-red-50 text-zinc-400 hover:text-red-500 rounded-2xl transition-all border border-zinc-200 shadow-sm group"
+              >
+                <X size={20} strokeWidth={3} className="group-hover:rotate-90 transition-transform" />
+              </button>
+            </div>
+
+            {/* Scrollable Workspace */}
+            <div className="flex-1 overflow-y-auto p-10 custom-scrollbar space-y-10">
+              
+              {/* Alert Message */}
+              <div className="bg-amber-50 border border-amber-200/50 p-6 rounded-[32px] flex items-start gap-5 relative overflow-hidden group/warning">
+                  <div className="absolute top-0 right-0 p-4 opacity-[0.05] group-hover/warning:scale-110 transition-transform">
+                    <AlertCircle size={80} />
+                  </div>
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-lg shadow-amber-500/20 shrink-0">
+                      <AlertCircle size={24} strokeWidth={2.5} />
+                  </div>
+                  <div className="min-w-0">
+                      <h4 className="text-[11px] font-black text-amber-700 uppercase tracking-[0.2em] mb-1.5 flex items-center gap-2">
+                        Heads Up <span className="w-1 h-1 rounded-full bg-amber-400" /> Validation Required
+                      </h4>
+                      <p className="text-xs text-amber-800/70 font-bold leading-relaxed">
+                          Vision Engine has normalized the problem text, but <span className="text-amber-900 underline decoration-amber-500/50 underline-offset-4">test cases require your expert review</span>. Specifically, the "Expected Output" for auto-grading must be manually verified or filled prior to deployment.
+                      </p>
+                  </div>
+              </div>
+
+              {/* Problem Content Editor */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                <div className="space-y-4">
+                  <label className={LABEL_BASE}>Refine Question Statement</label>
+                  <textarea 
+                    value={previewQuestion.questionText} 
+                    onChange={e => setPreviewQuestion({...previewQuestion, questionText: e.target.value})}
+                    placeholder="Problem text..."
+                    className={INPUT_BASE + " h-[400px] resize-none font-mono text-xs p-6 leading-relaxed bg-zinc-50 border-zinc-200 shadow-inner"} 
+                  />
+                </div>
+
+                <div className="space-y-6">
+                  {/* Test Case Logic Workspace */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <label className={LABEL_BASE}>Logic Validation Set</label>
+                      <button 
+                        onClick={() => setPreviewQuestion({...previewQuestion, testCases: [...previewQuestion.testCases, { input: '', expectedOutput: '', isHidden: false }] })} 
+                        className="text-[10px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2 px-3 py-1.5 rounded-lg border border-emerald-500/10 hover:bg-emerald-500/5 transition-all"
+                      >
+                        <Plus size={12} strokeWidth={3} /> Inject Hidden Case
+                      </button>
+                    </div>
+                    
+                    <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                      {previewQuestion.testCases.map((tc, index) => (
+                         <div key={index} className="p-6 bg-zinc-50 border border-zinc-200 rounded-[24px] space-y-4 group/tc relative">
+                            <div className="flex items-center justify-between mb-2">
+                               <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Case #{index + 1}</span>
+                               {previewQuestion.testCases.length > 1 && (
+                                 <button 
+                                   onClick={() => {
+                                      const filtered = previewQuestion.testCases.filter((_, i) => i !== index);
+                                      setPreviewQuestion({...previewQuestion, testCases: filtered});
+                                   }}
+                                   className="text-zinc-400 hover:text-red-500 transition-colors"
+                                 >
+                                    <Trash2 size={12} />
+                                 </button>
+                               )}
+                            </div>
+                            <div className="grid grid-cols-1 gap-4">
+                               <div>
+                                  <p className="text-[8px] font-black text-zinc-500 uppercase mb-2 tracking-tighter">System Input</p>
+                                  <textarea 
+                                    value={tc.input} 
+                                    onChange={(e) => {
+                                       const updatedTCs = [...previewQuestion.testCases];
+                                       updatedTCs[index].input = e.target.value;
+                                       setPreviewQuestion({...previewQuestion, testCases: updatedTCs});
+                                    }}
+                                    className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2.5 text-[11px] font-mono focus:border-zinc-400 outline-none resize-none" 
+                                    rows={2}
+                                  />
+                               </div>
+                               <div>
+                                  <p className={`text-[8px] font-black uppercase mb-2 tracking-tighter ${!tc.expectedOutput ? 'text-amber-500' : 'text-zinc-500'}`}>
+                                    {`Grade Requirement (Output) ${!tc.expectedOutput ? '*' : ''}`}
+                                  </p>
+                                  <textarea 
+                                    placeholder="Enter expected outcome for grader..." 
+                                    value={tc.expectedOutput}
+                                    onChange={(e) => {
+                                       const updatedTCs = [...previewQuestion.testCases];
+                                       updatedTCs[index].expectedOutput = e.target.value;
+                                       setPreviewQuestion({...previewQuestion, testCases: updatedTCs});
+                                    }}
+                                    className={`w-full border rounded-xl px-3 py-2.5 text-[11px] font-mono outline-none resize-none transition-all ${!tc.expectedOutput ? 'border-amber-400 bg-amber-50 shadow-[0_0_15px_rgba(245,158,11,0.1)]' : 'bg-white border-zinc-200 focus:border-emerald-500'}`}
+                                    rows={2}
+                                  />
+                               </div>
+                            </div>
+                         </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="p-8 border-t border-zinc-100 bg-zinc-50/50 flex gap-5">
+               <button 
+                 onClick={() => {setShowPreviewModal(false); setPreviewQuestion(null);}} 
+                 className="flex-1 h-16 bg-white border border-zinc-200 hover:bg-zinc-100 text-zinc-700 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 shadow-sm"
+               >
+                  Discard Candidate
+               </button>
+               <button 
+                 onClick={confirmLinkImport} 
+                 className="flex-[2] h-16 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all shadow-[0_15px_40px_-10px_rgba(16,185,129,0.3)] active:scale-95 flex items-center justify-center gap-3 group"
+               >
+                  <CheckCircle size={20} strokeWidth={2.5} className="group-hover:scale-110 transition-transform" />
+                  Finalize & Add to Assessment
+               </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Success Modal */}
       {showSuccessModal && (
