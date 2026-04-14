@@ -72,6 +72,18 @@ const parseLeetCode = async (url) => {
         if (!problem) throw new Error("Problem not found on LeetCode.");
 
         const $ = cheerio.load(problem.content);
+        
+        // --- Smart Output Extraction ---
+        const extractedOutputs = [];
+        $('pre').each((_, pre) => {
+            const text = $(pre).text();
+            // Regex to find content between "Output:" and ("Explanation:" or end of string)
+            const match = text.match(/Output:\s*([\s\S]*?)(?=Explanation:|$)/i);
+            if (match && match[1]) {
+                extractedOutputs.push(match[1].trim());
+            }
+        });
+
         $('p, pre, ul, li').append('\n'); 
         const cleanText = $.text().trim();
 
@@ -79,9 +91,9 @@ const parseLeetCode = async (url) => {
 
         let testCases = [];
         if (problem.exampleTestcases) {
-            testCases = problem.exampleTestcases.split('\n').map(tc => ({
+            testCases = problem.exampleTestcases.split('\n').map((tc, index) => ({
                 input: tc,
-                expectedOutput: "", // Forced empty for manual verification
+                expectedOutput: extractedOutputs[index] || "", // Pre-fill if found
                 isHidden: false
             }));
         } else {
