@@ -123,17 +123,39 @@ const parseLeetCode = async (url) => {
  */
 const parseCodeChef = async (url) => {
     try {
-        if (!url.includes('/problems/')) {
-            // CodeChef problem URLs usually have /problems/ in them
-            if (!url.match(/codechef\.com\/[A-Z0-9]+/i)) {
-                throw new Error("Invalid CodeChef URL.");
+        let targetUrl = url;
+        
+        // 🧠 Smart Fallback: If it's a course link, try to derive the public practice URL
+        if (url.includes('/learn/course/')) {
+            const problemCode = url.split('/').pop();
+            if (problemCode) {
+                targetUrl = `https://www.codechef.com/problems/${problemCode}`;
+                console.log(`[CODECHEF] Course link detected. Attempting fallback to public URL: ${targetUrl}`);
             }
         }
-        const response = await axios.get(url, { timeout: 5000 });
+        
+        const response = await axios.get(targetUrl, { 
+            timeout: 5000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
+            }
+        });
+        
         const $ = cheerio.load(response.data);
         
-        const title = $('h1').first().text().trim() || "CodeChef Problem";
-        const problemText = $('#problem-statement').text().trim(); 
+        // Refined selectors for standard CodeChef pages
+        const title = $('h1').first().text().trim() || $('title').text().split('|')[0].trim();
+        const problemText = $('#problem-statement').text().trim() || $('.problem-statement').text().trim(); 
+
+        if (!problemText || problemText.length < 50) {
+            // If fallback also fails, give a clear explanation
+            if (url.includes('/learn/course/')) {
+                throw new Error("This problem is exclusive to a private course and has no public practice version. Manual copy-paste required.");
+            }
+            throw new Error("The page was fetched but the problem content was not found. The link might be protected.");
+        }
 
         return {
             type: 'coding',
@@ -141,14 +163,14 @@ const parseCodeChef = async (url) => {
             sourceUrl: url,
             difficulty: 'medium',
             tags: [],
-            questionText: `**${title}**\n\n${problemText || "Please refer to the problem link for full details."}`,
+            questionText: `**${title.toUpperCase()}**\n\n${problemText}`,
             initialCode: `// Write your CodeChef logic here\n`,
             marks: 5,
             language: 'cpp',
             testCases: [{ input: "", expectedOutput: "", isHidden: false }]
         };
     } catch (error) {
-        throw new Error(`CodeChef Scraping Failed: ${error.message}`);
+        throw new Error(error.message || `CodeChef Scraping Failed.`);
     }
 };
 
