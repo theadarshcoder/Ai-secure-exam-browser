@@ -38,12 +38,15 @@ function StepperInput({ value, onChange, min = 0, max = 999, step = 1, icon: Ico
 
   const handleChange = (e) => {
     const raw = e.target.value;
-    const clean = raw.replace(/[^\d]/g, '').replace(/^0+(\d)/, '$1');
+    // Allow digits and at most one decimal point
+    const clean = raw.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1');
     setDisplay(clean);
     
-    if (clean !== '') {
-      const v = Math.min(max, parseInt(clean, 10));
-      if (!isNaN(v) && v >= min) {
+    if (clean !== '' && clean !== '.') {
+      const v = parseFloat(clean);
+      if (!isNaN(v)) {
+        // We update the parent state immediately for a better UX,
+        // but we don't clamp it to min/max yet so the user can finish typing.
         onChange(v);
       }
     }
@@ -1088,13 +1091,14 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                     </div>
                     <div>
                       <label className={LABEL_BASE}>Schedule</label>
-                      <div className="relative group">
+                      <div className="relative group cursor-pointer">
                         <input 
                           type="datetime-local" 
                           value={exam.scheduledDate} 
                           onChange={e => setExam({...exam, scheduledDate: e.target.value})} 
-                          className="w-full h-12 bg-white border border-zinc-200 rounded-xl px-4 text-xs font-bold text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all uppercase [color-scheme:light]" 
+                          className="w-full h-12 bg-white border border-zinc-200 rounded-xl px-4 text-xs font-bold text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all cursor-pointer [color-scheme:light] hover:border-zinc-300" 
                         />
+                        <Clock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none group-hover:text-emerald-500 transition-colors" />
                       </div>
                     </div>
                   </div>
