@@ -276,6 +276,26 @@ exports.bulkImportUsers = asyncHandler(async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
+// Bulk Delete Users
+// ═══════════════════════════════════════════════════════════
+
+exports.bulkDeleteUsers = asyncHandler(async (req, res) => {
+    const { userIds } = req.body;
+    
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+        res.status(400);
+        throw new Error('Please provide an array of user IDs to delete');
+    }
+
+    // Prevent admin from deleting themselves
+    const filteredIds = userIds.filter(id => id.toString() !== req.user.id.toString());
+    
+    const result = await User.deleteMany({ _id: { $in: filteredIds } });
+
+    res.json({ message: `${result.deletedCount} users deleted successfully` });
+});
+
+// ═══════════════════════════════════════════════════════════
 // Global Settings
 // ═══════════════════════════════════════════════════════════
 
@@ -318,9 +338,14 @@ exports.getCandidates = asyncHandler(async (req, res) => {
         .select('name email profilePicture idCardUrl isVerified createdAt')
         .lean();
 
-    // Enrich with active exam session info
+    // Enrich with active exam session info (Only those active in the last 3 minutes)
     const studentIds = candidates.map(c => c._id);
-    const activeSessions = await ExamSession.find({ student: { $in: studentIds }, status: 'in_progress' })
+    const LIVE_THRESHOLD = new Date(Date.now() - 3 * 60 * 1000);
+    const activeSessions = await ExamSession.find({ 
+        student: { $in: studentIds }, 
+        status: 'in_progress',
+        updatedAt: { $gte: LIVE_THRESHOLD }
+    })
         .populate('exam', 'title')
         .lean();
 

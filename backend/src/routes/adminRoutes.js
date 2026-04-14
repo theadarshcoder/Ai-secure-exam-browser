@@ -21,8 +21,9 @@ router.get('/stats', verifyToken, checkRole(['admin', 'super_mentor', 'mentor'])
 router.get('/students', verifyToken, checkRole(['admin', 'super_mentor', 'mentor']), adminController.getAllStudents);
 router.delete('/students/:id', verifyToken, checkRole(['admin', 'super_mentor']), adminController.deleteStudent);
 
-// Bulk Import
+// Bulk Operations
 router.post('/bulk-import', verifyToken, checkRole(['admin', 'super_mentor']), adminController.bulkImportUsers);
+router.post('/students/bulk-delete', verifyToken, checkRole(['admin']), adminController.bulkDeleteUsers);
 
 // Mentors CRUD (Admin ONLY)
 router.get('/mentors', verifyToken, checkRole(['admin']), adminController.getAllMentors);

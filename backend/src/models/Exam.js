@@ -52,6 +52,12 @@ const examSchema = new mongoose.Schema({
         default: 'draft' 
     },
     
+    // Admin toggles this to make results visible to students
+    resultsPublished: {
+        type: Boolean,
+        default: false
+    },
+    
     scheduledDate: { type: Date, default: Date.now }
 }, { timestamps: true });
 

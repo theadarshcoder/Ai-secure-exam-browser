@@ -28,7 +28,9 @@ import api, {
   evaluateSession,
   getCandidates,
   verifyCandidate,
-  unverifyCandidate
+  unverifyCandidate,
+  deleteExam,
+  togglePublishResults
 } from '../services/api';
 
 // ─────────────────────────────────────────────────────────
@@ -253,6 +255,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState({ totalUsers: 0, activeExams: 0, systemHealth: '100%', totalViolations: 0 });
   const [auditLogs, setAuditLogs] = useState([]);
   const [users, setUsers] = useState([]);
+  const [selectedUsers, setSelectedUsers] = useState(new Set());
   const [userRoleFilter, setUserRoleFilter] = useState('ALL');
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [exams, setExams] = useState([]);
@@ -354,17 +357,80 @@ export default function AdminDashboard() {
     window.location.href = '/login';
   };
 
-  const handleDeleteUser = async (id, role) => {
-     showConfirm("Are you sure you want to delete this user?", async () => {
-         try {
-             if (role === 'student') await removeStudent(id);
-             else await removeMentor(id);
-             setUsers(users.filter(u => u._id !== id));
-             toast.success('User deleted successfully.');
-         } catch(err) {
-             toast.error("Failed to delete: " + err.message);
-         }
-     });
+  const handleDeleteUser = async (id, currentRole) => {
+    if (userRole !== 'admin' && currentRole === 'mentor') return toast.error('Unauthorized');
+    
+    showConfirm('Are you sure you want to delete this user? This action cannot be undone.', async () => {
+       try {
+         const route = currentRole === 'student' ? `/api/admin/students/${id}` : `/api/admin/mentors/${id}`;
+         await api.delete(route);
+         setUsers(users.filter(u => u._id !== id));
+         toast.success('User deleted successfully.');
+         closeConfirm();
+       } catch (err) {
+         toast.error('Failed to delete user.');
+       }
+    });
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedUsers.size === 0) return;
+    
+    showConfirm(`Are you sure you want to delete ${selectedUsers.size} selected users?`, async () => {
+      try {
+        await api.post('/api/admin/students/bulk-delete', { userIds: Array.from(selectedUsers) });
+        setUsers(users.filter(u => !selectedUsers.has(u._id)));
+        setSelectedUsers(new Set());
+        toast.success(`Successfully deleted ${selectedUsers.size} users`);
+        closeConfirm();
+      } catch (err) {
+        toast.error('Failed to delete selected users');
+      }
+    });
+  };
+
+  const handleBulkExportCSV = () => {
+    if (selectedUsers.size === 0) return;
+    const selectedData = users.filter(u => selectedUsers.has(u._id));
+    
+    const headers = 'ID,Name,Email,Role,Date Added\n';
+    const rows = selectedData.map(u => `"${u._id}","${u.name}","${u.email}","${u.role}","${new Date(u.createdAt).toLocaleDateString()}"`).join('\n');
+    
+    const blob = new Blob([headers + rows], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `vision_users_export_${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Export downloaded');
+  };
+
+  const toggleUserSelection = (userId) => {
+    const newSet = new Set(selectedUsers);
+    if (newSet.has(userId)) newSet.delete(userId);
+    else newSet.add(userId);
+    setSelectedUsers(newSet);
+  };
+
+  const toggleAllUsers = (filteredUsers) => {
+    if (selectedUsers.size === filteredUsers.length && filteredUsers.length > 0) {
+      setSelectedUsers(new Set());
+    } else {
+      setSelectedUsers(new Set(filteredUsers.map(u => u._id)));
+    }
+  };
+
+  const handleTogglePublishResults = async (id, currentStatus) => {
+      try {
+          const newStatus = !currentStatus;
+          await togglePublishResults(id, newStatus);
+          toast.success(newStatus ? 'Results published to students' : 'Results hidden from students');
+          // Update local state without full refetch
+          setExams(exams.map(e => String(e.id || e._id) === String(id) ? { ...e, resultsPublished: newStatus } : e));
+      } catch (err) {
+          toast.error("Failed to toggle results visibility.");
+      }
   };
 
   const handleDeleteExam = async (id) => {
@@ -647,17 +713,55 @@ export default function AdminDashboard() {
         ))}
       </div>
 
+      {selectedUsers.size > 0 && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-zinc-900 border border-zinc-800 shadow-2xl rounded-2xl p-3 flex items-center gap-4 z-50 animate-in slide-in-from-bottom-5">
+           <span className="text-white text-xs font-bold px-3 py-1 bg-white/10 rounded-lg">{selectedUsers.size} Selected</span>
+           <div className="flex gap-2">
+              <button onClick={handleBulkExportCSV} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all shadow-lg active:scale-95">
+                 Export CSV
+              </button>
+              {userRole === 'admin' && (
+                <button onClick={handleBulkDelete} className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-xl transition-all shadow-lg active:scale-95 flex items-center gap-2">
+                   <Trash2 size={14} /> Delete
+                </button>
+              )}
+           </div>
+        </div>
+      )}
+
       <DataTable 
         loading={loading}
-        headers={['Name', 'Email', 'Role', 'Date Added', 'Actions']}
+        headers={[
+          <input 
+             type="checkbox" 
+             className="w-4 h-4 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500"
+             checked={
+               (() => {
+                  const filtered = users.filter(u => {
+                    const matchesRole = userRoleFilter === 'ALL' || (userRoleFilter === 'student' && u.role === 'student') || (userRoleFilter === 'mentor' && (u.role === 'mentor' || u.role === 'super_mentor')) || (userRoleFilter === 'admin' && u.role === 'admin');
+                    const matchesSearch = !userSearchQuery.trim() || u.name.toLowerCase().includes(userSearchQuery.toLowerCase()) || u.email.toLowerCase().includes(userSearchQuery.toLowerCase());
+                    return matchesRole && matchesSearch;
+                  });
+                  return filtered.length > 0 && selectedUsers.size === filtered.length;
+               })()
+             }
+             onChange={() => {
+                const filtered = users.filter(u => {
+                  const matchesRole = userRoleFilter === 'ALL' || (userRoleFilter === 'student' && u.role === 'student') || (userRoleFilter === 'mentor' && (u.role === 'mentor' || u.role === 'super_mentor')) || (userRoleFilter === 'admin' && u.role === 'admin');
+                  const matchesSearch = !userSearchQuery.trim() || u.name.toLowerCase().includes(userSearchQuery.toLowerCase()) || u.email.toLowerCase().includes(userSearchQuery.toLowerCase());
+                  return matchesRole && matchesSearch;
+                });
+                toggleAllUsers(filtered);
+             }}
+          />, 
+          'Name', 'Email', 'Role', 'Date Added', 'Actions'
+        ]}
         data={users.filter(u => {
-          // Role Filtering
           const matchesRole = userRoleFilter === 'ALL' || 
             (userRoleFilter === 'student' && u.role === 'student') ||
             (userRoleFilter === 'mentor' && (u.role === 'mentor' || u.role === 'super_mentor')) ||
             (userRoleFilter === 'admin' && u.role === 'admin');
           
-          // Search Query Filtering
           const matchesSearch = !userSearchQuery.trim() || 
             u.name.toLowerCase().includes(userSearchQuery.toLowerCase()) || 
             u.email.toLowerCase().includes(userSearchQuery.toLowerCase());
@@ -665,7 +769,15 @@ export default function AdminDashboard() {
           return matchesRole && matchesSearch;
         })}
         renderRow={(user) => (
-          <tr key={user._id} className="hover:bg-zinc-50/80 transition-colors">
+          <tr key={user._id} className={selectedUsers.has(user._id) ? "bg-emerald-50/50" : "hover:bg-zinc-50/80 transition-colors"}>
+            <td className="px-6 py-4">
+               <input 
+                 type="checkbox" 
+                 checked={selectedUsers.has(user._id)}
+                 onChange={() => toggleUserSelection(user._id)}
+                 className="w-4 h-4 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500"
+               />
+            </td>
             <td className="px-6 py-4 text-sm font-semibold text-zinc-900">{user.name}</td>
             <td className="px-6 py-4 text-sm text-zinc-500">{user.email}</td>
             <td className="px-6 py-4">
@@ -675,7 +787,10 @@ export default function AdminDashboard() {
             </td>
             <td className="px-6 py-4 text-[13px] text-zinc-500">{new Date(user.createdAt).toLocaleDateString()}</td>
             <td className="px-6 py-4">
-              <button onClick={() => handleDeleteUser(user._id, user.role)} className="text-zinc-400 hover:text-red-600 transition-colors active:scale-90">
+              <button 
+                onClick={(e) => { e.stopPropagation(); handleDeleteUser(user._id, user.role); }} 
+                className="text-zinc-400 hover:text-red-600 transition-colors active:scale-90"
+              >
                 <Trash2 size={16} />
               </button>
             </td>
@@ -748,6 +863,14 @@ export default function AdminDashboard() {
             </td>
             <td className="px-6 py-4">
               <div className="flex items-center gap-4">
+                <button 
+                  onClick={() => handleTogglePublishResults(exam.id || exam._id, exam.resultsPublished)} 
+                  className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95 ${exam.resultsPublished ? 'text-emerald-600 hover:text-emerald-700' : 'text-zinc-400 hover:text-emerald-600'}`}
+                  title={exam.resultsPublished ? "Results visible to students" : "Results hidden from students"}
+                >
+                  {exam.resultsPublished ? <CheckCircle size={14} /> : <EyeOff size={14} />} 
+                  {exam.resultsPublished ? 'Published' : 'Hidden'}
+                </button>
                 <button onClick={() => navigate(`/mentor/create-exam?id=${exam.id || exam._id}&view=true`)} className="text-xs font-bold text-zinc-500 hover:text-emerald-600 uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95">
                   <Eye size={14} /> View
                 </button>

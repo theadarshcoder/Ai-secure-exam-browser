@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Vision Platform — OJT Project Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+/* ── RESET ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── GLOBALS ── */
+:root {
+  --blue:    #1D4ED8;
+  --blue-l:  #EFF6FF;
+  --blue-m:  #DBEAFE;
+  --slate:   #1E293B;
+  --gray:    #64748B;
+  --gray-l:  #F1F5F9;
+  --gray-m:  #E2E8F0;
+  --green:   #15803D;
+  --green-l: #DCFCE7;
+  --red:     #B91C1C;
+  --red-l:   #FEE2E2;
+  --yellow:  #92400E;
+  --yellow-l:#FEF3C7;
+  --border:  #CBD5E1;
+  --text:    #0F172A;
+  --muted:   #475569;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text);
+  background: #fff;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0;
+}
+
+/* ── PAGE BREAK ── */
+.page { page-break-after: always; padding: 56px 64px; min-height: 100vh; display: flex; flex-direction: column; }
+.page:last-child { page-break-after: avoid; }
+
+/* ── SECTION (no forced break) ── */
+.section { padding: 48px 64px; border-bottom: 1px solid var(--gray-m); }
+.section:last-child { border-bottom: none; }
+
+/* ── COVER ── */
+.cover {
+  background: #fff;
+  color: var(--text);
+  justify-content: flex-end;
+  padding: 0 !important;
+  gap: 0;
+  position: relative;
+  overflow: hidden;
+}
+/* Top accent bar */
+.cover-accent-top {
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 6px;
+  background: var(--text);
+}
+/* Left thick rule */
+.cover-accent-left {
+  position: absolute; top: 0; left: 72px; bottom: 0;
+  width: 3px; background: var(--text);
+}
+.cover-inner {
+  padding: 80px 72px 60px 100px;
+  display: flex; flex-direction: column;
+  flex: 1; justify-content: space-between;
+}
+.cover-top { flex: 1; display: flex; flex-direction: column; justify-content: center; padding-top: 40px; }
+.cover-kicker {
+  font-size: 10px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase;
+  color: var(--gray); margin-bottom: 32px; display: flex; align-items: center; gap: 12px;
+}
+.cover-kicker::after {
+  content: ''; flex: 0 0 40px; height: 1px; background: var(--gray);
+}
+.cover h1 {
+  font-size: 68px; font-weight: 900; letter-spacing: -3px; margin-bottom: 0;
+  color: var(--text); line-height: 1; text-transform: uppercase;
+}
+.cover-rule { width: 56px; height: 4px; background: var(--text); margin: 28px 0; }
+.cover-sub {
+  font-size: 16px; color: var(--gray); max-width: 480px; font-weight: 400;
+  line-height: 1.6; margin: 0 0 0;
+}
+.cover-authors {
+  margin-top: 32px; display: flex; flex-direction: column; gap: 4px;
+}
+.cover-authors-label {
+  font-size: 9px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase;
+  color: var(--gray);
+}
+.cover-authors-names {
+  font-size: 17px; font-weight: 700; color: var(--text); letter-spacing: -.2px;
+}
+.cover-meta {
+  border-top: 1px solid var(--border); padding-top: 28px; margin-top: 48px;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 0;
+}
+.cover-meta-item {
+  padding: 0 24px 0 0;
+  border-right: 1px solid var(--border);
+  margin-right: 0;
+}
+.cover-meta-item:last-child { border-right: none; }
+.cover-meta-item .label {
+  font-size: 9px; color: var(--gray); text-transform: uppercase;
+  letter-spacing: 2px; margin-bottom: 6px; font-weight: 700;
+}
+.cover-meta-item .value {
+  font-size: 13px; font-weight: 700; color: var(--text);
+}
+.cover-tags { display: none; }
+.cover-tag { display: none; }
+
+/* ── TOC ── */
+.toc-title { font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--blue); margin-bottom: 24px; }
+.toc-list { list-style: none; }
+.toc-item {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 10px 0; border-bottom: 1px dashed var(--gray-m);
+  font-size: 14px;
+}
+.toc-num { font-weight: 700; color: var(--blue); min-width: 28px; }
+.toc-name { font-weight: 500; }
+.toc-dots { flex: 1; border-bottom: 1px dotted var(--border); margin: 0 8px; position: relative; top: -3px; }
+.toc-page { color: var(--gray); font-size: 13px; }
+
+/* ── SECTION HEADER ── */
+.sec-eyebrow {
+  font-size: 10px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--blue); margin-bottom: 8px;
+}
+.sec-title { font-size: 28px; font-weight: 800; color: var(--slate); margin-bottom: 6px; line-height: 1.2; }
+.sec-title span { color: var(--blue); }
+.sec-divider { width: 48px; height: 3px; background: var(--blue); border-radius: 2px; margin-bottom: 24px; }
+.sec-lead { font-size: 15px; color: var(--muted); margin-bottom: 28px; line-height: 1.7; max-width: 680px; }
+
+/* ── CARDS & BOXES ── */
+.card {
+  background: var(--gray-l); border: 1px solid var(--gray-m);
+  border-radius: 10px; padding: 20px 24px; margin-bottom: 16px;
+}
+.card-blue  { background: var(--blue-l);   border-color: #BFDBFE; }
+.card-green { background: var(--green-l);  border-color: #BBF7D0; }
+.card-red   { background: var(--red-l);    border-color: #FECACA; }
+.card-yellow{ background: var(--yellow-l); border-color: #FDE68A; }
+
+.card h3 { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--slate); }
+.card p  { color: var(--muted); font-size: 13px; }
+
+/* ── GRID ── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+
+/* ── TABLE ── */
+table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px; }
+th { background: var(--slate); color: #fff; padding: 10px 14px; text-align: left; font-weight: 600; font-size: 12px; letter-spacing: .5px; }
+td { padding: 9px 14px; border-bottom: 1px solid var(--gray-m); color: var(--muted); vertical-align: top; }
+tr:nth-child(even) td { background: var(--gray-l); }
+td strong { color: var(--text); font-weight: 600; }
+
+/* ── BADGE ── */
+.badge {
+  display: inline-block; border-radius: 4px; padding: 2px 8px;
+  font-size: 11px; font-weight: 700; letter-spacing: .3px;
+}
+.badge-blue   { background: var(--blue-m);   color: var(--blue); }
+.badge-green  { background: var(--green-l);  color: var(--green); }
+.badge-red    { background: var(--red-l);    color: var(--red); }
+.badge-yellow { background: var(--yellow-l); color: var(--yellow); }
+
+/* ── DIAGRAM IMAGE ── */
+.diagram { width: 100%; border: 1px solid var(--gray-m); border-radius: 8px; margin: 20px 0; display: block; }
+.diagram-caption {
+  font-size: 11px; color: var(--gray); text-align: center; margin-top: -12px;
+  margin-bottom: 20px; font-style: italic;
+}
+
+/* ── BULLET LIST ── */
+ul.styled { list-style: none; padding: 0; margin-bottom: 16px; }
+ul.styled li { padding: 5px 0 5px 20px; position: relative; color: var(--muted); font-size: 13px; border-bottom: 1px solid var(--gray-m); }
+ul.styled li:last-child { border-bottom: none; }
+ul.styled li::before { content: '→'; position: absolute; left: 0; color: var(--blue); font-weight: 700; }
+ul.styled li strong { color: var(--text); }
+
+/* ── CODE BLOCK ── */
+code { font-family: 'Fira Code', monospace; font-size: 12px; background: var(--gray-l); padding: 1px 6px; border-radius: 4px; color: #7C3AED; }
+pre { font-family: 'Fira Code', monospace; font-size: 12px; background: #0F172A; color: #E2E8F0; padding: 18px 20px; border-radius: 8px; margin: 12px 0 20px; overflow-x: auto; line-height: 1.6; }
+pre .c { color: #64748B; }
+pre .k { color: #7DD3FC; }
+pre .s { color: #86EFAC; }
+pre .n { color: #FCA5A5; }
+
+/* ── TIMELINE ── */
+.timeline { margin: 20px 0; }
+.tl-item { display: flex; gap: 16px; margin-bottom: 20px; }
+.tl-left { display: flex; flex-direction: column; align-items: center; }
+.tl-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--blue); flex-shrink: 0; margin-top: 4px; }
+.tl-line { flex: 1; width: 2px; background: var(--gray-m); margin-top: 4px; }
+.tl-body h4 { font-size: 14px; font-weight: 700; color: var(--slate); margin-bottom: 4px; }
+.tl-body p  { font-size: 13px; color: var(--muted); }
+
+/* ── RESUME BULLETS ── */
+.resume-block { background: #F8FAFC; border-left: 4px solid var(--blue); border-radius: 0 8px 8px 0; padding: 20px 24px; margin-bottom: 20px; }
+.resume-block h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.resume-block .stack { font-size: 12px; color: var(--blue); font-weight: 600; font-style: italic; margin-bottom: 12px; }
+.resume-block ul { list-style: disc; padding-left: 18px; }
+.resume-block li { font-size: 13px; color: var(--muted); padding: 3px 0; }
+
+/* ── DEMO SCRIPT ── */
+.scene { border: 1px solid var(--gray-m); border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
+.scene-head {
+  background: var(--slate); color: #fff; padding: 10px 18px;
+  display: flex; align-items: center; gap: 12px;
+}
+.scene-head .num { font-size: 11px; font-weight: 700; background: var(--blue); padding: 2px 8px; border-radius: 20px; }
+.scene-head .title { font-size: 14px; font-weight: 700; }
+.scene-head .dur { margin-left: auto; font-size: 12px; color: #94A3B8; }
+.scene-body { padding: 16px 18px; }
+.scene-body .action { font-size: 12px; font-weight: 700; color: var(--blue); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+.scene-body .say { font-size: 13px; color: var(--muted); font-style: italic; border-left: 3px solid var(--blue-m); padding-left: 12px; margin-bottom: 10px; }
+.scene-body ul { list-style: disc; padding-left: 18px; }
+.scene-body li { font-size: 13px; color: var(--muted); padding: 2px 0; }
+
+/* ── PRINT ── */
+@media print {
+  body { max-width: 100%; margin: 0; padding: 0; font-size: 13px; }
+  .page { padding: 40px 48px; min-height: unset; }
+  .section { padding: 36px 48px; }
+  .no-print { display: none !important; }
+  img { max-width: 100%; }
+  .cover h1 { font-size: 44px; }
+  h2.sec-title { font-size: 22px; }
+}
+
+/* ── PRINT BTN ── */
+.print-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 999;
+  background: var(--slate); padding: 10px 32px;
+  display: flex; align-items: center; justify-content: space-between;
+  box-shadow: 0 2px 12px rgba(0,0,0,.2);
+}
+.print-bar span { color: #94A3B8; font-size: 13px; }
+.print-btn {
+  background: var(--blue); color: #fff; border: none; border-radius: 6px;
+  padding: 8px 24px; font-size: 13px; font-weight: 700; cursor: pointer;
+  font-family: 'Inter', sans-serif; letter-spacing: .3px;
+  transition: background .2s;
+}
+.print-btn:hover { background: #1e40af; }
+
+@media print {
+  .print-bar { display: none; }
+  body { padding-top: 0 !important; }
+}
+
+body { padding-top: 48px; }
+</style>
+</head>
+<body>
+
+<!-- PRINT BAR -->
+<div class="print-bar no-print">
+  <span>👁️ Vision Platform — OJT Project Report</span>
+  <button class="print-btn" onclick="window.print()">⬇ Save as PDF</button>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     PAGE 1: COVER
+════════════════════════════════════════ -->
+<div class="page cover">
+  <div class="cover-accent-top"></div>
+  <div class="cover-accent-left"></div>
+  <div class="cover-inner">
+    <div class="cover-top">
+      <div class="cover-kicker">OJT Project Report</div>
+      <h1>Vision</h1>
+      <div class="cover-rule"></div>
+      <p class="cover-sub">Secure Exam Browser &amp; Real-Time Proctoring Platform built on React, Node.js, MongoDB, Redis, and Socket.IO</p>
+      <div class="cover-authors">
+        <div class="cover-authors-label">Prepared by</div>
+        <div class="cover-authors-names">Vinit Jangir &nbsp;&amp;&nbsp; Adarsh</div>
+      </div>
+    </div>
+    <div class="cover-meta">
+      <div class="cover-meta-item">
+        <div class="label">Report Type</div>
+        <div class="value">OJT Technical Report</div>
+      </div>
+      <div class="cover-meta-item" style="padding-left:24px;">
+        <div class="label">Technology Stack</div>
+        <div class="value">React · Node.js · MongoDB</div>
+      </div>
+      <div class="cover-meta-item" style="padding-left:24px;">
+        <div class="label">Deployment Status</div>
+        <div class="value">Live on Production</div>
+      </div>
+      <div class="cover-meta-item" style="padding-left:24px;">
+        <div class="label">Year</div>
+        <div class="value">2026</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     PAGE 2: TABLE OF CONTENTS
+════════════════════════════════════════ -->
+<div class="page" style="justify-content:center;">
+  <div class="sec-eyebrow">Navigation</div>
+  <h2 class="sec-title">Table of <span>Contents</span></h2>
+  <div class="sec-divider"></div>
+  <ul class="toc-list">
+    <li class="toc-item"><span class="toc-num">01</span><span class="toc-name">Problem Statement</span><span class="toc-dots"></span><span class="toc-page">§3</span></li>
+    <li class="toc-item"><span class="toc-num">02</span><span class="toc-name">System Architecture (HLD Overview)</span><span class="toc-dots"></span><span class="toc-page">§4</span></li>
+    <li class="toc-item"><span class="toc-num">03</span><span class="toc-name">Consumer Flows (User Journeys)</span><span class="toc-dots"></span><span class="toc-page">§5</span></li>
+    <li class="toc-item"><span class="toc-num">04</span><span class="toc-name">HLD + LLD — Design Breakdown</span><span class="toc-dots"></span><span class="toc-page">§6</span></li>
+    <li class="toc-item"><span class="toc-num">05</span><span class="toc-name">RBAC — Authorization Pipeline</span><span class="toc-dots"></span><span class="toc-page">§7</span></li>
+    <li class="toc-item"><span class="toc-num">06</span><span class="toc-name">Database Schema</span><span class="toc-dots"></span><span class="toc-page">§8</span></li>
+    <li class="toc-item"><span class="toc-num">07</span><span class="toc-name">Live Deployed Demo</span><span class="toc-dots"></span><span class="toc-page">§9</span></li>
+    <li class="toc-item"><span class="toc-num">08</span><span class="toc-name">Scaling Discussion</span><span class="toc-dots"></span><span class="toc-page">§10</span></li>
+    <li class="toc-item"><span class="toc-num">09</span><span class="toc-name">Future Roadmap</span><span class="toc-dots"></span><span class="toc-page">§11</span></li>
+    <li class="toc-item"><span class="toc-num">10</span><span class="toc-name">Demo Script</span><span class="toc-dots"></span><span class="toc-page">§12</span></li>
+    <li class="toc-item"><span class="toc-num">11</span><span class="toc-name">Resume Description</span><span class="toc-dots"></span><span class="toc-page">§13</span></li>
+  </ul>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     §3 — PROBLEM STATEMENT
+════════════════════════════════════════ -->
+<div class="section">
+  <div class="sec-eyebrow">01 — Problem Statement</div>
+  <h2 class="sec-title">Why does <span>Vision</span> exist?</h2>
+  <div class="sec-divider"></div>
+  <p class="sec-lead">Remote exams have a serious trust problem. Without physical supervision, students can cheat, impersonate others, or take exams in an uncontrolled environment — and nobody knows until it is too late.</p>
+
+  <div class="grid-3">
+    <div class="card card-red">
+      <h3>😈 Cheating & Impersonation</h3>
+      <p>Students use second devices, get answers from others, or have someone else take the exam on their behalf. There is no way to verify who is actually sitting in front of the screen.</p>
+    </div>
+    <div class="card card-red">
+      <h3>👁️ No Real-Time Oversight</h3>
+      <p>Mentors have zero visibility into what students are doing during the exam. Tab switching, window hopping, and looking up answers go completely undetected.</p>
+    </div>
+    <div class="card card-red">
+      <h3>📋 Manual Grading Overload</h3>
+      <p>Code answers and short answers require hours of manual review. For 100+ students, this becomes impossible without a smart queuing and grading system.</p>
+    </div>
+  </div>
+
+  <div class="card card-blue" style="margin-top:8px;">
+    <h3>✅ What Vision Solves</h3>
+    <p>Vision is a full-stack, production-grade exam platform that enforces identity verification before entry, locks the browser during the exam, captures real-time violations, enables mentors to monitor and intervene live, and grades code automatically — all in one system.</p>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     §4 — SYSTEM ARCHITECTURE
+════════════════════════════════════════ -->
+<div class="section" style="page-break-before: always;">
+  <div class="sec-eyebrow">02 — Architecture</div>
+  <h2 class="sec-title">System <span>Architecture</span></h2>
+  <div class="sec-divider"></div>
+  <p class="sec-lead">Vision follows a classic three-tier architecture — a React frontend, a Node.js/Express backend, and a data layer made up of MongoDB, Redis, and third-party cloud services.</p>
+
+  <img src="img_arch.png" alt="System Architecture" class="diagram"/>
+  <p class="diagram-caption">Fig 1. Three-tier system architecture showing all components and their connections</p>
+
+  <div class="grid-3" style="margin-top:8px;">
+    <div class="card">
+      <h3>🖥️ Client Layer</h3>
+      <p>React 18 SPA with three separate portals — Student, Mentor, Admin. Uses Framer Motion for animations and Monaco Editor for the in-browser coding IDE.</p>
+    </div>
+    <div class="card">
+      <h3>⚙️ Application Layer</h3>
+      <p>Node.js + Express handles all REST APIs and WebSocket connections. RBAC middleware, Bull job queues, and a Puppeteer scraper all run here.</p>
+    </div>
+    <div class="card">
+      <h3>☁️ Data & Services Layer</h3>
+      <p>MongoDB stores all data. Redis handles caching and rate limiting. Cloudinary stores media. Judge0 runs student code in 40+ languages safely.</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     §5 — CONSUMER FLOWS
+════════════════════════════════════════ -->
+<div class="section" style="page-break-before: always;">
+  <div class="sec-eyebrow">03 — Consumer Flows</div>
+  <h2 class="sec-title">User <span>Journeys</span></h2>
+  <div class="sec-divider"></div>
+  <p class="sec-lead">Each of the three user roles has a completely different path through the system. Below is the end-to-end journey for each role.</p>
+
+  <img src="img_flows.png" alt="Consumer Flows" class="diagram"/>
+  <p class="diagram-caption">Fig 2. Consumer flow diagram — Student, Mentor, and Admin journeys with decision points</p>
+
+  <table>
+    <thead>
+      <tr><th>Role</th><th>Entry Point</th><th>Key Actions</th><th>Exit / Goal</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Student</strong></td>
+        <td>Register → eKYC verification</td>
+        <td>Selfie + ID capture, enter exam, answer questions, view score</td>
+        <td>Exam result + session report</td>
+      </tr>
+      <tr>
+        <td><strong>Mentor</strong></td>
+        <td>Login → Dashboard</td>
+        <td>Create exam, import questions, monitor live sessions, grade answers</td>
+        <td>Finalized exam results</td>
+      </tr>
+      <tr>
+        <td><strong>Admin</strong></td>
+        <td>Login → Admin Panel</td>
+        <td>Approve eKYC candidates, manage users, assign roles, view audit logs</td>
+        <td>Platform governance</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     §6 — HLD + LLD
+════════════════════════════════════════ -->
+<div class="section" style="page-break-before: always;">
+  <div class="sec-eyebrow">04 — Design</div>
+  <h2 class="sec-title">HLD + <span>LLD</span></h2>
+  <div class="sec-divider"></div>
+  <p class="sec-lead"><strong>High Level Design (HLD)</strong> shows the big picture — what components exist and how they talk. <strong>Low Level Design (LLD)</strong> goes deeper — showing the actual functions, APIs, and logic inside each module.</p>
+
+  <img src="img_hld.png" alt="HLD and LLD" class="diagram"/>
+  <p class="diagram-caption">Fig 3. HLD (top) showing 3 layers, and LLD (bottom) showing 5 module breakdowns with real function-level detail</p>
+
+  <div class="grid-2" style="margin-top:8px;">
+    <div class="card card-blue">
+      <h3>HLD in one line</h3>
+      <p>Client talks to Express API over HTTPS and WebSocket. API reads/writes MongoDB, uses Redis for speed, Cloudinary for files, and Judge0 to run code.</p>
+    </div>
+    <div class="card card-blue">
+      <h3>LLD in one line</h3>
+      <p>5 core modules: Auth & RBAC, Exam Builder, Anti-Cheat Engine, Grading Engine (Bull + Judge0), and Real-Time Proctoring (Socket.IO events).</p>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr><th>Module</th><th>Key Functions</th><th>Technology</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Auth & RBAC</strong></td><td><code>verifyToken()</code>, <code>restrictTo(...roles)</code>, bcrypt compare</td><td>JWT, Bcrypt</td></tr>
+      <tr><td><strong>Exam Builder</strong></td><td><code>createExam()</code>, <code>addQuestion()</code>, <code>scrapeFromLeetCode()</code>, <code>importCSV()</code></td><td>Puppeteer, Cheerio</td></tr>
+      <tr><td><strong>Anti-Cheat</strong></td><td>Tab switch listener, fullscreen guard, devtools block, webcam snapshot</td><td>Browser APIs, Socket.IO</td></tr>
+      <tr><td><strong>Grading Engine</strong></td><td>MCQ auto-grade, Bull queue job push, Judge0 API call, result aggregation</td><td>Bull, Judge0 CE</td></tr>
+      <tr><td><strong>Real-Time</strong></td><td>Socket rooms, violation alerts, mentor send-warning, force-terminate</td><td>Socket.IO</td></tr>
+    </tbody>
+  </table>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     §7 — RBAC
+════════════════════════════════════════ -->
+<div class="section" style="page-break-before: always;">
+  <div class="sec-eyebrow">05 — Security</div>
+  <h2 class="sec-title">RBAC — <span>Authorization Pipeline</span></h2>
+  <div class="sec-divider"></div>
+  <p class="sec-lead">Every request goes through a strict authorization pipeline. If the JWT is invalid or the user's role does not have permission for the route, the request is rejected before it ever touches the database.</p>
+
+  <img src="img_rbac.png" alt="RBAC Pipeline" class="diagram"/>
+  <p class="diagram-caption">Fig 4. Full request lifecycle — JWT verification, role check, rate limiting, and response</p>
+
+  <div class="grid-2" style="margin-top:8px;">
+    <div class="card">
+      <h3>4 Roles in the System</h3>
+      <ul class="styled">
+        <li><strong>student</strong> — Can only take assigned exams, submit answers, upload eKYC</li>
+        <li><strong>mentor</strong> — Can create exams, import questions, grade answers, proctor</li>
+        <li><strong>super_mentor</strong> — Elevated mentor with additional admin access</li>
+        <li><strong>admin</strong> — Full platform access: users, eKYC, audit logs, RBAC assignment</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Security Layers</h3>
+      <ul class="styled">
+        <li><strong>JWT</strong> — All APIs require a valid token, signed with a secret key</li>
+        <li><strong>Bcrypt</strong> — Passwords are hashed with 10 salt rounds, never stored plain</li>
+        <li><strong>Rate Limiting</strong> — Redis blocks 100 req/15min general, 5 req/min for login</li>
+        <li><strong>Helmet.js</strong> — HTTP headers sanitized against XSS and clickjacking</li>
+        <li><strong>CORS</strong> — Only the frontend origin is whitelisted for API access</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     §8 — DATABASE SCHEMA
+════════════════════════════════════════ -->
+<div class="section" style="page-break-before: always;">
+  <div class="sec-eyebrow">06 — Database</div>
+  <h2 class="sec-title">Database <span>Schema</span></h2>
+  <div class="sec-divider"></div>
+  <p class="sec-lead">Vision uses MongoDB with 6 collections. The schema is designed for performance — indexed on the most common query patterns and split into separate collections where documents would otherwise exceed MongoDB's 16MB limit.</p>
+
+  <img src="img_db.png" alt="Database Schema" class="diagram"/>
+  <p class="diagram-caption">Fig 5. ER diagram for all 6 MongoDB collections with fields, types, indexes, and relationships</p>
+
+  <table>
+    <thead><tr><th>Collection</th><th>Purpose</th><th>Key Fields</th><th>Indexes</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>users</strong></td>
+        <td>All user accounts</td>
+        <td><code>role</code>, <code>isVerified</code>, <code>profilePicture</code>, <code>idCardUrl</code></td>
+        <td><code>email</code> (unique)</td>
+      </tr>
+      <tr>
+        <td><strong>exams</strong></td>
+        <td>Exam definitions with embedded questions</td>
+        <td><code>creator</code>, <code>status</code>, <code>questions[]</code> (MCQ/Short/Coding)</td>
+        <td><code>creator+createdAt</code>, <code>status</code></td>
+      </tr>
+      <tr>
+        <td><strong>examsessions</strong></td>
+        <td>Each attempt by a student</td>
+        <td><code>violations[]</code>, <code>snapshots[]</code>, <code>questionStates</code>, <code>remainingTimeSeconds</code></td>
+        <td><code>exam+student</code> (unique), <code>status</code>, <code>student+status</code></td>
+      </tr>
+      <tr>
+        <td><strong>examanswers</strong></td>
+        <td>Per-question student responses</td>
+        <td><code>sessionId</code>, <code>answer</code>, <code>marksObtained</code>, <code>status</code></td>
+        <td><code>sessionId+questionId</code> (unique)</td>
+      </tr>
+      <tr>
+        <td><strong>auditlogs</strong></td>
+        <td>Admin action history</td>
+        <td><code>adminId</code>, <code>action</code>, <code>targetUserId</code>, <code>details</code></td>
+        <td><code>createdAt</code></td>
+      </tr>
+      <tr>
+        <td><strong>errorlogs</strong></td>
+        <td>Backend error tracking</td>
+        <td><code>message</code>, <code>stack</code>, <code>route</code>, <code>userId</code></td>
+        <td><code>createdAt</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="card card-yellow">
+    <h3>⚡ Why ExamAnswers is a separate collection</h3>
+    <p>Storing all student answers inside ExamSession would cause documents to exceed MongoDB's 16MB per-document limit for large exams with coding questions. By splitting answers into their own collection with a <code>sessionId</code> foreign key, each document stays small and queries stay fast.</p>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     §9 — LIVE DEMO
+════════════════════════════════════════ -->
+<div class="section" style="page-break-before: always;">
+  <div class="sec-eyebrow">07 — Live Demo</div>
+  <h2 class="sec-title">Live <span>Deployed Demo</span></h2>
+  <div class="sec-divider"></div>
+  <p class="sec-lead">Vision is fully deployed on a production server. Below is a summary of what is live and running — covering all major features accessible through the deployed URL.</p>
+
+  <div class="grid-2">
+    <div class="card card-green">
+      <h3>✅ What's Live</h3>
+      <ul class="styled">
+        <li><strong>Student Portal</strong> — eKYC, exam entry, Monaco code editor, live timer</li>
+        <li><strong>Mentor Portal</strong> — Exam builder, LeetCode scraper, live proctoring panel</li>
+        <li><strong>Admin Dashboard</strong> — eKYC approval board, user management, audit logs</li>
+        <li><strong>Backend API</strong> — All REST endpoints and Socket.IO events running</li>
+        <li><strong>Cloudinary</strong> — Real eKYC and snapshot uploads working</li>
+        <li><strong>Judge0</strong> — Live code compilation in 40+ languages</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🎬 Best Things to Show in Demo</h3>
+      <ul class="styled">
+        <li><strong>eKYC gate</strong> — Camera opens, prevents entry until admin approves</li>
+        <li><strong>Tab switch</strong> — Switch tab mid-exam → violation appears instantly</li>
+        <li><strong>Live code run</strong> — Write code in Monaco → click Run → output appears</li>
+        <li><strong>LeetCode scraper</strong> — Paste URL → question auto-fills in builder</li>
+        <li><strong>Mentor force terminate</strong> — Click terminate → student session ends</li>
+      </ul>
+    </div>
+  </div>
+
+  <table style="margin-top:8px;">
+    <thead><tr><th>Feature</th><th>How to Demonstrate</th><th>Wow Factor</th></tr></thead>
+    <tbody>
+      <tr><td><strong>eKYC Verification</strong></td><td>Log in as student, click Enter Exam, go through camera flow</td><td><span class="badge badge-red">HIGH</span></td></tr>
+      <tr><td><strong>Anti-Cheat: Tab Switch</strong></td><td>During exam, switch to another tab — violation toast appears</td><td><span class="badge badge-red">HIGH</span></td></tr>
+      <tr><td><strong>Code Execution</strong></td><td>Open a coding question, type code, click Run</td><td><span class="badge badge-yellow">MEDIUM</span></td></tr>
+      <tr><td><strong>LeetCode Scraper</strong></td><td>Mentor: Import → paste LeetCode URL → auto-fill</td><td><span class="badge badge-red">HIGH</span></td></tr>
+      <tr><td><strong>Live Proctoring</strong></td><td>Open mentor panel while student is in exam</td><td><span class="badge badge-red">HIGH</span></td></tr>
+      <tr><td><strong>Force Terminate</strong></td><td>Mentor clicks terminate → student session ends</td><td><span class="badge badge-yellow">MEDIUM</span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     §10 — SCALING
+════════════════════════════════════════ -->
+<div class="section" style="page-break-before: always;">
+  <div class="sec-eyebrow">08 — Scaling</div>
+  <h2 class="sec-title">Scaling <span>Discussion</span></h2>
+  <div class="sec-divider"></div>
+  <p class="sec-lead">Vision is designed with scaling in mind from day one. Here is how each layer handles growth — from 10 students to 10,000.</p>
+
+  <table>
+    <thead><tr><th>Challenge</th><th>Current Solution</th><th>At Scale</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>High API Traffic</strong></td>
+        <td>Redis rate limiter prevents spam. Express handles concurrent requests.</td>
+        <td>Add horizontal Node.js replicas behind a load balancer (Nginx). Redis stays shared.</td>
+      </tr>
+      <tr>
+        <td><strong>Heavy Code Grading</strong></td>
+        <td>Bull Queue pushes grading jobs async so API never blocks.</td>
+        <td>Add more Bull workers. Point to a self-hosted Judge0 cluster for higher throughput.</td>
+      </tr>
+      <tr>
+        <td><strong>Real-Time WebSockets</strong></td>
+        <td>Socket.IO rooms group students by exam session.</td>
+        <td>Use Redis Adapter for Socket.IO so multiple Node instances share the same socket state.</td>
+      </tr>
+      <tr>
+        <td><strong>Media Storage</strong></td>
+        <td>Cloudinary handles all eKYC photos and snapshots — zero local disk usage.</td>
+        <td>Cloudinary scales automatically. No changes needed on our side.</td>
+      </tr>
+      <tr>
+        <td><strong>Database Growth</strong></td>
+        <td>MongoDB indexed on <code>creator</code>, <code>status</code>, <code>student+status</code>, <code>sessionId+questionId</code>.</td>
+        <td>Enable MongoDB Atlas auto-scaling. Add read replicas for dashboard queries.</td>
+      </tr>
+      <tr>
+        <td><strong>ExamSession Size</strong></td>
+        <td>Answers are split into ExamAnswers collection to avoid the 16MB document limit.</td>
+        <td>Already solved by design. Works for exams with 500+ questions.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="grid-2" style="margin-top:8px;">
+    <div class="card card-blue">
+      <h3>🏗️ What's already production-ready</h3>
+      <ul class="styled">
+        <li>Redis rate limiting protects against DDoS and brute force</li>
+        <li>Bull Queue isolates grading from the main API process</li>
+        <li>All DB queries use compound indexes — no full collection scans</li>
+        <li>ExamSession tracks <code>remainingTimeSeconds</code> server-side — timer can't be cheated client-side</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🔜 Next scaling step</h3>
+      <ul class="styled">
+        <li>Add a Redis Adapter for multi-instance Socket.IO</li>
+        <li>Deploy multiple Node.js instances behind Nginx</li>
+        <li>Move to MongoDB Atlas for managed auto-scaling</li>
+        <li>Add a CDN layer (Cloudflare) in front of the React build</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     §11 — FUTURE ROADMAP
+════════════════════════════════════════ -->
+<div class="section" style="page-break-before: always;">
+  <div class="sec-eyebrow">09 — Roadmap</div>
+  <h2 class="sec-title">Future <span>Roadmap</span></h2>
+  <div class="sec-divider"></div>
+  <p class="sec-lead">Vision has a strong foundation. These are the features planned for the next phases of development.</p>
+
+  <div class="timeline">
+    <div class="tl-item">
+      <div class="tl-left"><div class="tl-dot"></div><div class="tl-line"></div></div>
+      <div class="tl-body">
+        <h4>🤖 AI Answer Evaluation <span class="badge badge-yellow">Next</span></h4>
+        <p>Use an LLM (GPT-4 / Gemini) to automatically evaluate short-answer and subjective responses. The AI grades phrasing and concept accuracy — reducing mentor workload by 80%.</p>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-left"><div class="tl-dot"></div><div class="tl-line"></div></div>
+      <div class="tl-body">
+        <h4>🎭 Real-Time Face Recognition <span class="badge badge-yellow">Next</span></h4>
+        <p>Use a face detection model (face-api.js or AWS Rekognition) to match the live webcam feed against the eKYC selfie in real-time. Auto-flag if face is absent or does not match.</p>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-left"><div class="tl-dot"></div><div class="tl-line"></div></div>
+      <div class="tl-body">
+        <h4>📊 Advanced Analytics Dashboard <span class="badge badge-green">Planned</span></h4>
+        <p>Per-exam performance heatmaps, question difficulty analysis, student risk scores, and violation trend graphs — giving mentors data-driven insight into exam quality.</p>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-left"><div class="tl-dot"></div><div class="tl-line"></div></div>
+      <div class="tl-body">
+        <h4>📱 Mobile App (React Native) <span class="badge badge-green">Planned</span></h4>
+        <p>A dedicated mobile app for mentors to receive live proctoring alerts, approve eKYC requests, and view exam stats from anywhere.</p>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-left"><div class="tl-dot"></div><div class="tl-line"></div></div>
+      <div class="tl-body">
+        <h4>🔗 Third-Party LMS Integration <span class="badge badge-green">Planned</span></h4>
+        <p>Connect Vision with Moodle, Canvas, or Google Classroom via REST APIs — so institutions can use Vision as the secure exam layer on top of existing systems.</p>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-left"><div class="tl-dot"></div></div>
+      <div class="tl-body">
+        <h4>🌐 Multi-Language Support (i18n) <span class="badge badge-green">Planned</span></h4>
+        <p>Add internationalization so the platform can be used in Hindi, Marathi, Tamil, and other regional languages — expanding the user base across India.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     §12 — DEMO SCRIPT
+════════════════════════════════════════ -->
+<div class="section" style="page-break-before: always;">
+  <div class="sec-eyebrow">10 — Appendix A</div>
+  <h2 class="sec-title">Demo <span>Script</span></h2>
+  <div class="sec-divider"></div>
+  <p class="sec-lead">Use this script when presenting the live demo. Each scene tells you what to click and what to say. Total time: ~10 minutes.</p>
+
+  <div class="scene">
+    <div class="scene-head"><span class="num">OPENING</span><span class="title">Introduction</span><span class="dur">~30 sec</span></div>
+    <div class="scene-body">
+      <p class="say">"Hi, I'm Vinit Jangir. Today I'll demo Vision — an AI-powered, secure exam platform I built during my OJT. The core problem it solves is academic integrity in remote exams. Let me show you how."</p>
+    </div>
+  </div>
+
+  <div class="scene">
+    <div class="scene-head"><span class="num">SCENE 1</span><span class="title">Login & Role System</span><span class="dur">~1 min</span></div>
+    <div class="scene-body">
+      <div class="action">What to do</div>
+      <ul><li>Open the deployed app. Show the login page.</li><li>Log in as a student account.</li></ul>
+      <p class="say">"Vision has three user roles — Student, Mentor, and Admin — all with separate dashboards and permissions. I'll start as a student."</p>
+    </div>
+  </div>
+
+  <div class="scene">
+    <div class="scene-head"><span class="num">SCENE 2</span><span class="title">eKYC Identity Verification</span><span class="dur">~1.5 min</span></div>
+    <div class="scene-body">
+      <div class="action">What to do</div>
+      <ul><li>Click "Enter Exam" — eKYC camera flow triggers.</li><li>Capture selfie → capture ID card → submit.</li><li>Show "Pending Approval" state.</li></ul>
+      <p class="say">"Before entering any exam, the student must verify their identity. The camera opens, they take a selfie and an ID card photo. These upload to Cloudinary. No admin approval, no entry — this eliminates impersonation."</p>
+    </div>
+  </div>
+
+  <div class="scene">
+    <div class="scene-head"><span class="num">SCENE 3</span><span class="title">Exam Cockpit (Anti-Cheat Live)</span><span class="dur">~2 min</span></div>
+    <div class="scene-body">
+      <div class="action">What to do</div>
+      <ul><li>Enter an approved exam session — browser goes fullscreen.</li><li>Answer an MCQ question.</li><li>Open a coding question — show Monaco Editor, type code, click Run.</li><li>Switch tabs — show violation toast appearing.</li></ul>
+      <p class="say">"The exam cockpit locks the browser into fullscreen. Students can answer MCQs, short answers, and write code in a full IDE powered by Monaco Editor. Code is compiled live using Judge0. When I switch tabs — watch — a violation is logged instantly. If the student exceeds the threshold, the exam auto-terminates."</p>
+    </div>
+  </div>
+
+  <div class="scene">
+    <div class="scene-head"><span class="num">SCENE 4</span><span class="title">Mentor Live Proctoring</span><span class="dur">~1.5 min</span></div>
+    <div class="scene-body">
+      <div class="action">What to do</div>
+      <ul><li>Switch to mentor account. Open Live Proctoring view.</li><li>Show student cards with violation badges.</li><li>Click Force Terminate on a session.</li></ul>
+      <p class="say">"The mentor sees every active student session in real-time via WebSockets. Violation counts update live. With one click, the mentor can terminate a suspicious session immediately."</p>
+    </div>
+  </div>
+
+  <div class="scene">
+    <div class="scene-head"><span class="num">SCENE 5</span><span class="title">LeetCode Question Scraper</span><span class="dur">~1.5 min</span></div>
+    <div class="scene-body">
+      <div class="action">What to do</div>
+      <ul><li>Mentor → Create Exam → Import from LeetCode.</li><li>Paste a LeetCode URL → click Scrape.</li><li>Watch the question auto-fill into the exam builder.</li></ul>
+      <p class="say">"This is my favorite feature. Paste any LeetCode URL — Puppeteer visits the page, Cheerio extracts the problem, constraints, and sample test cases, and they auto-populate the exam builder. No copy-pasting."</p>
+    </div>
+  </div>
+
+  <div class="scene">
+    <div class="scene-head"><span class="num">CLOSING</span><span class="title">Summary</span><span class="dur">~30 sec</span></div>
+    <div class="scene-body">
+      <p class="say">"To summarize — Vision is a production-ready, secure exam platform with real-time proctoring via WebSockets, identity verification via eKYC, live code execution via Judge0, cloud-native media via Cloudinary, and a full anti-cheat engine. All built from scratch during my OJT using React, Node.js, MongoDB, Redis, and Socket.IO. Thank you — happy to answer questions."</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     §13 — RESUME
+════════════════════════════════════════ -->
+<div class="section" style="page-break-before: always;">
+  <div class="sec-eyebrow">11 — Appendix B</div>
+  <h2 class="sec-title">Resume <span>Description</span></h2>
+  <div class="sec-divider"></div>
+  <p class="sec-lead">Ready-to-use bullet points for your resume/CV under the Projects section. Pick 4–5 that best match the job you're applying for.</p>
+
+  <div class="resume-block">
+    <h3>Vision — AI-Powered Secure Exam Platform</h3>
+    <div class="stack">React 18 · Node.js · Express · MongoDB · Redis · Socket.IO · Cloudinary · Judge0 CE</div>
+    <ul>
+      <li>Architected and built a production-grade, full-stack exam proctoring platform from scratch, serving Student, Mentor, and Admin roles with permission-isolated dashboards</li>
+      <li>Engineered a real-time anti-cheat engine enforcing fullscreen lockdown, tab-switch detection, DevTools blocking, and configurable auto-termination thresholds based on violation count</li>
+      <li>Implemented an eKYC identity verification workflow using HTML5 camera streams, Cloudinary CDN upload pipeline, and an admin approval gate to prevent exam impersonation</li>
+      <li>Built a live proctoring system using Socket.IO WebSockets, enabling mentors to monitor active sessions, view real-time violations, send warnings, and force-terminate sessions</li>
+      <li>Integrated Judge0 CE remote code execution engine with Monaco Editor for multi-language code submissions, graded asynchronously via a Bull job queue backed by Redis</li>
+      <li>Developed a LeetCode / CodeChef question scraper using Puppeteer and Cheerio to auto-extract problem descriptions, test cases, and constraints directly into the exam builder</li>
+      <li>Secured the backend with RBAC middleware (4 roles), JWT authentication, Bcrypt password hashing, Redis rate limiting, and Helmet.js HTTP hardening</li>
+      <li>Designed a MongoDB schema across 6 collections with compound indexes; split ExamAnswers into a separate collection to avoid the 16MB document size limit on large exams</li>
+    </ul>
+  </div>
+
+  <div class="card card-blue" style="margin-top:8px;">
+    <h3>💡 Skills to list (from this project)</h3>
+    <p>
+      <span class="badge badge-blue">React 18</span>&nbsp;
+      <span class="badge badge-blue">Node.js</span>&nbsp;
+      <span class="badge badge-blue">Express.js</span>&nbsp;
+      <span class="badge badge-blue">MongoDB</span>&nbsp;
+      <span class="badge badge-blue">Redis</span>&nbsp;
+      <span class="badge badge-blue">Socket.IO</span>&nbsp;
+      <span class="badge badge-blue">REST APIs</span>&nbsp;
+      <span class="badge badge-blue">WebSockets</span>&nbsp;
+      <span class="badge badge-blue">JWT Auth</span>&nbsp;
+      <span class="badge badge-blue">RBAC</span>&nbsp;
+      <span class="badge badge-blue">Bull Queue</span>&nbsp;
+      <span class="badge badge-blue">Cloudinary</span>&nbsp;
+      <span class="badge badge-blue">Puppeteer</span>&nbsp;
+      <span class="badge badge-blue">Git</span>
+    </p>
+  </div>
+</div>
+
+<!-- Footer -->
+<div style="text-align:center; padding: 32px 64px; color: var(--gray); font-size: 12px; border-top: 1px solid var(--gray-m);">
+  Vision Platform — OJT Project Report &nbsp;·&nbsp; Built with React, Node.js, MongoDB, Redis, Socket.IO &nbsp;·&nbsp; 2026
+</div>
+
+</body>
+</html>

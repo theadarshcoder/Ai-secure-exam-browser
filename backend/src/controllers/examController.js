@@ -177,6 +177,32 @@ exports.updateExam = asyncHandler(async (req, res) => {
     res.json({ message: 'Exam updated successfully', exam });
 });
 
+// ─────────────── PUT /api/exams/:id/publish-results ───────────────
+// Admin/Mentor toggles whether students can view detailed results
+exports.togglePublishResults = asyncHandler(async (req, res) => {
+    const examId = req.params.id;
+    const { resultsPublished } = req.body;
+
+    const exam = await Exam.findById(examId);
+    if (!exam) {
+        res.status(404);
+        throw new Error('Exam not found');
+    }
+
+    if (exam.creator.toString() !== req.user.id && req.user.role !== 'admin' && req.user.role !== 'super_mentor') {
+        res.status(403);
+        throw new Error('You do not have permission to modify this exam.');
+    }
+
+    exam.resultsPublished = Boolean(resultsPublished);
+    await exam.save();
+
+    res.json({ 
+        message: exam.resultsPublished ? 'Results published to students.' : 'Results hidden from students.', 
+        resultsPublished: exam.resultsPublished 
+    });
+});
+
 // ─────────────── DELETE /api/exams/:id ───────────────
 // Mentor/Admin deletes an exam
 exports.deleteExam = asyncHandler(async (req, res) => {
@@ -232,7 +258,8 @@ exports.getActiveExams = asyncHandler(async (req, res) => {
         questionsCount: exam.questions.length,
         startTime: exam.scheduledDate,
         creator: exam.creator?.name || 'Unknown',
-        alreadySubmitted: submittedExamIds.has(exam._id.toString())
+        alreadySubmitted: submittedExamIds.has(exam._id.toString()),
+        resultsPublished: exam.resultsPublished || false
     }));
 
     // Set Cache for 60s
@@ -1194,7 +1221,13 @@ exports.getStudentResult = asyncHandler(async (req, res) => {
     // Security: Enforce self-access
     if (String(session.student._id) !== String(studentId)) {
         res.status(403);
-        throw new Error('Unauthorized result access.');
+        throw new Error('Unauthorized access to this result.');
+    }
+
+    // Security: Enforce Admin Toggle
+    if (session.exam && session.exam.resultsPublished === false) {
+        res.status(403);
+        throw new Error('Results for this assignment are currently pending or hidden by the administrator.');
     }
 
     // Fetch relational results

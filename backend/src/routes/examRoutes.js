@@ -26,6 +26,9 @@ router.post('/create', verifyToken, checkRole(['admin', 'mentor']), examControll
 // Exam update karo (draft -> publish ya details edit)
 router.put('/update/:id', verifyToken, checkRole(['admin', 'mentor']), examController.updateExam);
 
+// Change results visibility
+router.put('/:id/publish-results', verifyToken, checkRole(['admin', 'super_mentor']), examController.togglePublishResults);
+
 // Exam delete karo
 router.delete('/:id', verifyToken, checkRole(['admin', 'mentor']), examController.deleteExam);
 

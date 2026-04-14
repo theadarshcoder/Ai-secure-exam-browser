@@ -114,9 +114,17 @@ const ExamCard = ({ exam, now, onLaunch, onViewResults, index }) => {
     cardBg = "bg-[#0B0F14] opacity-50 grayscale hover:grayscale-0 border-white/[0.02]";
     statusColor = "text-slate-500";
     statusText = "Completed";
-    btnText = "View Results";
-    btnDisabled = false;
-    btnSecondary = true;
+    
+    // Check if results are published by admin
+    if (exam.resultsPublished) {
+      btnText = "View Results";
+      btnDisabled = false;
+      btnSecondary = true;
+    } else {
+      btnText = "Results Pending";
+      btnDisabled = true;
+      btnSecondary = true;
+    }
   } else if (isExpired) {
     cardBg = "bg-[#0B0F14] opacity-40 border-white/[0.02]";
     statusColor = "text-red-400";
@@ -415,7 +423,8 @@ export default function StudentDashboard() {
             duration: exam?.duration || 60,
             questionsCount: exam?.questionsCount || 0,
             startTime: exam?.startTime || new Date().toISOString(),
-            alreadySubmitted: exam?.alreadySubmitted || false
+            alreadySubmitted: exam?.alreadySubmitted || false,
+            resultsPublished: exam?.resultsPublished || false
           }));
           setExams(liveExams);
           // Timestamped Caching

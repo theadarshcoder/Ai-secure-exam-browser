@@ -230,6 +230,15 @@ export const deleteExam = async (id) => {
     }
 };
 
+export const togglePublishResults = async (id, resultsPublished) => {
+    try {
+        const response = await api.put(`/api/exams/${id}/publish-results`, { resultsPublished });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
 // ─────────────────────────────────────────────────────────
 // 🆕 Evaluation & Session Detail APIs
 // ─────────────────────────────────────────────────────────
