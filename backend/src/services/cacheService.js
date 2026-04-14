@@ -9,6 +9,10 @@ const { getRedisClient } = require('../config/redis');
 const SESSION_PREFIX = 'session:';
 const DEFAULT_TTL = 86400; // 24 hours in seconds (matching JWT expiry)
 
+// --- Added for Phase 2 Optimization ---
+const TTL_ACTIVE_SESSION = 21600; // 6 hours for ongoing exams
+const TTL_API_CACHE = 60; // 60 seconds for dashboard data
+
 /**
  * 🔑 Save user session token to Redis
  */
@@ -57,8 +61,40 @@ const removeUserSession = async (userId) => {
     }
 };
 
+/**
+ * 💾 Generic Set Cache
+ */
+const setCache = async (key, data, ttl = TTL_API_CACHE) => {
+    const redis = getRedisClient();
+    if (!redis) return;
+    try {
+        await redis.set(key, JSON.stringify(data), { EX: ttl });
+    } catch (err) {
+        console.warn(`⚠️  Redis: Failed to set cache for ${key}:`, err.message);
+    }
+};
+
+/**
+ * 🔑 Generic Get Cache
+ */
+const getCache = async (key) => {
+    const redis = getRedisClient();
+    if (!redis) return null;
+    try {
+        const data = await redis.get(key);
+        return data ? JSON.parse(data) : null;
+    } catch (err) {
+        console.warn(`⚠️  Redis: Failed to get cache for ${key}:`, err.message);
+        return null;
+    }
+};
+
 module.exports = {
     saveUserSession,
     getUserSession,
-    removeUserSession
+    removeUserSession,
+    setCache,
+    getCache,
+    TTL_ACTIVE_SESSION,
+    TTL_API_CACHE
 };

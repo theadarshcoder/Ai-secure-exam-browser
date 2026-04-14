@@ -54,4 +54,17 @@ const importLimiter = rateLimit({
     }
 });
 
-module.exports = { codeExecutionLimiter, telemetryLimiter, importLimiter };
+/**
+ * 💾 Autosave Rate Limiter
+ * Limits silent progress saves during exam.
+ */
+const autosaveLimiter = rateLimit({
+    windowMs: 30 * 1000, // 30 seconds
+    max: 20, // 20 requests allowed per 30 sec
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => req.user?.id || req.ip,
+    message: 'Too many autosave requests, please wait'
+});
+
+module.exports = { codeExecutionLimiter, telemetryLimiter, importLimiter, autosaveLimiter };

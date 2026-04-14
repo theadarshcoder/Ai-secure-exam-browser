@@ -25,6 +25,7 @@ const examRoutes = require('./routes/examRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const sessionRoutes = require('./routes/sessionRoutes');
 const aiRoutes = require('./routes/aiRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
 const { setupCodeEvaluationWorker } = require('./queues/codeGradingQueue');
 const traceMiddleware = require('./middlewares/traceMiddleware');
 
@@ -264,6 +265,7 @@ app.use('/api/exams', globalLimiter, examRoutes);
 app.use('/api/admin', globalLimiter, adminRoutes);
 app.use('/api/session', globalLimiter, sessionRoutes);
 app.use('/api/ai', globalLimiter, aiRoutes);
+app.use('/api/upload', verifyToken, globalLimiter, uploadRoutes);
 
 // ─── 404 Global Handler ──────────────────────────────────
 app.use((req, res, next) => {

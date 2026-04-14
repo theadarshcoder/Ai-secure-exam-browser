@@ -6,15 +6,25 @@ const Setting = require('../models/Setting');
 const { asyncHandler } = require('../middlewares/errorMiddleware');
 const axios = require('axios');
 const mongoose = require('mongoose');
+const { getCache, setCache, TTL_API_CACHE } = require('../services/cacheService');
 
 // ═══════════════════════════════════════════════════════════
 // Fetch all exam results and sessions for Admin/Mentor Dashboard
 // ═══════════════════════════════════════════════════════════
 exports.getAllResults = asyncHandler(async (req, res) => {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
     const results = await ExamSession.find()
         .populate('student', 'name email')
         .populate('exam', 'title duration category')
-        .sort({ startedAt: -1, submittedAt: -1 });
+        .sort({ startedAt: -1, submittedAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+    const total = await ExamSession.countDocuments();
 
     const formattedResults = results.map(session => ({
         _id: session._id,
@@ -32,45 +42,87 @@ exports.getAllResults = asyncHandler(async (req, res) => {
         submittedAt: session.submittedAt || session.startedAt 
     }));
 
-    res.json(formattedResults);
+    res.json({
+        results: formattedResults,
+        total,
+        page,
+        pages: Math.ceil(total / limit)
+    });
 });
 
 // ═══════════════════════════════════════════════════════════
 // Get Stats for Top Cards (Total Exams, Total Students, Total Live)
 // ═══════════════════════════════════════════════════════════
 exports.getDashboardStats = asyncHandler(async (req, res) => {
+    const cacheKey = 'admin_dashboard_stats_global';
+    const cached = await getCache(cacheKey);
+    if (cached) return res.json(cached);
+
     const [totalExams, totalAttempts, liveExams, liveStudents, totalViolations] = await Promise.all([
-        Exam.countDocuments(),
-        ExamSession.countDocuments(),
-        Exam.countDocuments({ status: 'published' }),
-        ExamSession.countDocuments({ status: 'in_progress' }),
-        ExamSession.countDocuments({ 'violations.0': { $exists: true } })
+        Exam.countDocuments().lean(),
+        ExamSession.countDocuments().lean(),
+        Exam.countDocuments({ status: 'published' }).lean(),
+        ExamSession.countDocuments({ status: 'in_progress' }).lean(),
+        ExamSession.countDocuments({ 'violations.0': { $exists: true } }).lean()
     ]);
 
-    res.json({ 
+    const result = { 
         totalExams, 
         totalAttempts,
         liveExams,
         liveStudents, 
         flaggedSessions: totalViolations
-    });
+    };
+
+    await setCache(cacheKey, result, TTL_API_CACHE);
+    res.json(result);
 });
 
 // ═══════════════════════════════════════════════════════════
 // User Management (Students & Mentors)
 // ═══════════════════════════════════════════════════════════
 exports.getAllStudents = asyncHandler(async (req, res) => {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
     const students = await User.find({ role: 'student' })
         .select('-password')
-        .sort({ createdAt: -1 });
-    res.json(students);
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+    const total = await User.countDocuments({ role: 'student' });
+
+    res.json({
+        students,
+        total,
+        page,
+        pages: Math.ceil(total / limit)
+    });
 });
 
 exports.getAllMentors = asyncHandler(async (req, res) => {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
     const mentors = await User.find({ role: { $in: ['mentor', 'super_mentor'] } })
         .select('-password')
-        .sort({ createdAt: -1 });
-    res.json(mentors);
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+    const total = await User.countDocuments({ role: { $in: ['mentor', 'super_mentor'] } });
+
+    res.json({
+        mentors,
+        total,
+        page,
+        pages: Math.ceil(total / limit)
+    });
 });
 
 exports.getAllAdmins = asyncHandler(async (req, res) => {

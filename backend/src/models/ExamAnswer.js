@@ -45,4 +45,7 @@ examAnswerSchema.index({ sessionId: 1, questionId: 1 }, { unique: true });
 // Index for mentor detail views
 examAnswerSchema.index({ sessionId: 1 });
 
+// Fast lookup for analytics and grading
+examAnswerSchema.index({ questionId: 1 });
+
 module.exports = mongoose.model('ExamAnswer', examAnswerSchema);

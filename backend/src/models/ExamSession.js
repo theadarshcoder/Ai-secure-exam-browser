@@ -88,6 +88,11 @@ const examSessionSchema = new mongoose.Schema({
     violations: [violationSchema],
     helpRequests: [helpRequestSchema],
     tabSwitchCount: { type: Number, default: 0 },
+    snapshots: [{
+        url: String,
+        timestamp: { type: Date, default: Date.now },
+        type: { type: String, enum: ['violation', 'random', 'id_verify'] }
+    }],
     
     // ─── Session Status ──────────────────────────────
     // in_progress:    Exam currently being taken
@@ -111,5 +116,8 @@ examSessionSchema.index({ status: 1 });
 
 // startedAt index for recent activity sorting
 examSessionSchema.index({ startedAt: -1 });
+
+// Composite index for student dashboard queries
+examSessionSchema.index({ student: 1, status: 1 });
 
 module.exports = mongoose.model('ExamSession', examSessionSchema);

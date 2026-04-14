@@ -8,6 +8,7 @@ const { asyncHandler } = require('../middlewares/errorMiddleware');
 const { getTimeAgo, parseLeetCode, parseCodeChef } = require('../utils/helpers');
 const { gradeMCQ, gradeCoding, gradeShortAnswer } = require('../services/gradingService');
 const { addCodeEvaluationJob } = require('../queues/codeGradingQueue');
+const { getCache, setCache, TTL_API_CACHE } = require('../services/cacheService');
 
 // ─────────────── POST /api/exams/create ───────────────
 // Mentor/Admin creates a new exam and saves it to MongoDB
@@ -202,17 +203,24 @@ exports.deleteExam = asyncHandler(async (req, res) => {
 // ─────────────── GET /api/exams/active ───────────────
 // Students see all published exams they haven't submitted yet
 exports.getActiveExams = asyncHandler(async (req, res) => {
+    const studentId = req.user.id;
+    const cacheKey = `active_exams_user_${studentId}`;
+    
+    // Check Cache
+    const cached = await getCache(cacheKey);
+    if (cached) return res.json(cached);
+
     const exams = await Exam.find({ status: 'published' })
         .select('title category duration totalMarks passingMarks scheduledDate questions creator')
         .populate('creator', 'name email')
-        .sort({ scheduledDate: -1 });
+        .sort({ scheduledDate: -1 })
+        .lean(); // Faster lookup
 
     // Check which exams this student has already submitted
-    const studentId = req.user.id;
     const submittedSessions = await ExamSession.find({ 
         student: studentId, 
         status: 'submitted' 
-    }).select('exam');
+    }).select('exam').lean();
     const submittedExamIds = new Set(submittedSessions.map(s => s.exam.toString()));
 
     const result = exams.map(exam => ({
@@ -226,6 +234,9 @@ exports.getActiveExams = asyncHandler(async (req, res) => {
         creator: exam.creator?.name || 'Unknown',
         alreadySubmitted: submittedExamIds.has(exam._id.toString())
     }));
+
+    // Set Cache for 60s
+    await setCache(cacheKey, result, TTL_API_CACHE);
 
     res.json(result);
 });
@@ -1255,18 +1266,26 @@ exports.getStudentResult = asyncHandler(async (req, res) => {
 // Dashboard statistics for the mentor - Optimized
 exports.getMentorStats = asyncHandler(async (req, res) => {
     const mongoose = require('mongoose');
-    const mentorId = new mongoose.Types.ObjectId(req.user.id);
+    const mentorId = req.user.id;
+    const cacheKey = `mentor_stats_${mentorId}`;
 
-    const mentorExams = await Exam.find({ creator: mentorId }).select('_id');
+    const cached = await getCache(cacheKey);
+    if (cached) return res.json(cached);
+
+    const mentorIdObj = new mongoose.Types.ObjectId(mentorId);
+
+    const mentorExams = await Exam.find({ creator: mentorIdObj }).select('_id').lean();
     const examIds = mentorExams.map(e => e._id);
 
     if (examIds.length === 0) {
-        return res.json({
+        const emptyResult = {
             stats: { liveStudents: 0, totalSubmissions: 0, flags: 0, totalExams: 0 },
             activity: [],
             performance: [],
             summary: []
-        });
+        };
+        await setCache(cacheKey, emptyResult, TTL_API_CACHE);
+        return res.json(emptyResult);
     }
 
     const stats = await ExamSession.aggregate([
@@ -1283,7 +1302,8 @@ exports.getMentorStats = asyncHandler(async (req, res) => {
         .populate('student', 'name')
         .populate('exam', 'title')
         .sort({ submittedAt: -1 })
-        .limit(10);
+        .limit(10)
+        .lean();
 
     const activity = performanceSessions.map(s => ({
         name: s.student?.name || 'Student',
@@ -1293,7 +1313,7 @@ exports.getMentorStats = asyncHandler(async (req, res) => {
         type: s.violations.length > 0 ? 'flag' : 'submit'
     }));
 
-    res.json({
+    const result = {
         stats: {
             liveStudents: (stats[0]?.totalSessions || 0) - (stats[0]?.submittedCount || 0),
             totalSubmissions: stats[0]?.submittedCount || 0,
@@ -1308,76 +1328,98 @@ exports.getMentorStats = asyncHandler(async (req, res) => {
             status: s.passed ? 'Passed' : 'Failed'
         })),
         summary: [] // Placeholders for future expanded stats
-    });
+    };
+
+    await setCache(cacheKey, result, TTL_API_CACHE);
+    res.json(result);
 });
 
 
-// ─────────────── GET /api/exams/admin-stats ───────────────
 // System-wide statistics for Administrators
 exports.getAdminStats = asyncHandler(async (req, res) => {
-    const allExams = await Exam.find({})
-        .select('title category duration totalMarks status scheduledDate questions creator')
-        .populate('creator', 'name')
-        .sort({ createdAt: -1 });
+    const cacheKey = 'admin_stats_global';
+    const cached = await getCache(cacheKey);
+    if (cached) return res.json(cached);
 
-    const stats = await ExamSession.aggregate([
-        { $group: {
-            _id: null,
-            totalSessions: { $sum: 1 },
-            submittedCount: { $sum: { $cond: [{ $eq: ['$status', 'submitted'] }, 1, 0] } },
-            flaggedCount: { $sum: { $cond: [{ $gt: [{ $size: { $ifNull: ['$violations', []] } }, 0] }, 1, 0] } }
-        }}
-    ]);
-
-    const activeSessions = await ExamSession.find({ status: 'in_progress' })
-        .populate('student', 'name email')
-        .populate('exam', 'title')
-        .sort({ startedAt: -1 })
-        .limit(20);
-
-    const examList = await Promise.all(allExams.map(async (exam) => {
-        const counts = await ExamSession.aggregate([
-            { $match: { exam: exam._id } },
-            { $group: {
-                _id: null,
+    // 1. Heavy Aggregate: Get stats for ALL exams in one go
+    const examStats = await ExamSession.aggregate([
+        {
+            $group: {
+                _id: '$exam',
                 total: { $sum: 1 },
                 submitted: { $sum: { $cond: [{ $eq: ['$status', 'submitted'] }, 1, 0] } },
                 flags: { $sum: { $cond: [{ $gt: [{ $size: { $ifNull: ['$violations', []] } }, 0] }, 1, 0] } }
-            }}
-        ]);
-        
+            }
+        }
+    ]);
+
+    // Create a map for easy lookup
+    const statsMap = {};
+    let totalSessions = 0;
+    let totalSubmitted = 0;
+    let totalFlags = 0;
+
+    examStats.forEach(s => {
+        if (s._id) {
+            statsMap[s._id.toString()] = s;
+            totalSessions += s.total;
+            totalSubmitted += s.submitted;
+            totalFlags += s.flags;
+        }
+    });
+
+    // 2. Fetch Exams with creator info
+    const allExams = await Exam.find({})
+        .select('title category duration totalMarks status scheduledDate questions creator')
+        .populate('creator', 'name')
+        .sort({ createdAt: -1 })
+        .lean();
+
+    const examList = allExams.map(exam => {
+        const counts = statsMap[exam._id.toString()] || { total: 0, submitted: 0, flags: 0 };
         return {
             id: exam._id,
             name: exam.title,
             category: exam.category,
-            students: counts[0]?.total || 0,
-            submitted: counts[0]?.submitted || 0,
-            flags: counts[0]?.flags || 0,
+            students: counts.total,
+            submitted: counts.submitted,
+            flags: counts.flags,
             status: exam.status === 'published' ? 'live' : 'draft',
             creator: exam.creator?.name || 'Unknown',
             duration: exam.duration,
             questionsCount: exam.questions.length
         };
-    }));
+    });
 
-    res.json({
+    // 3. Active Sessions Snapshot
+    const activeSessions = await ExamSession.find({ status: 'in_progress' })
+        .populate('student', 'name email')
+        .populate('exam', 'title')
+        .sort({ startedAt: -1 })
+        .limit(20)
+        .lean();
+
+    const result = {
         stats: {
             totalExams: allExams.length,
-            totalSessions: stats[0]?.totalSessions || 0,
-            totalSubmissions: stats[0]?.submittedCount || 0,
-            flags: stats[0]?.flaggedCount || 0,
-            activeSessions: (stats[0]?.totalSessions || 0) - (stats[0]?.submittedCount || 0)
+            totalSessions: totalSessions,
+            totalSubmissions: totalSubmitted,
+            flags: totalFlags,
+            activeSessions: totalSessions - totalSubmitted
         },
         sessions: activeSessions.map(s => ({
             id: s._id,
             name: s.student?.name || 'Student',
             exam: s.exam?.title || 'Exam',
-            risk: s.violations.length > 3 ? 'High' : s.violations.length > 0 ? 'Medium' : 'Low',
+            risk: (s.violations?.length || 0) > 3 ? 'High' : (s.violations?.length || 0) > 0 ? 'Medium' : 'Low',
             time: s.startedAt ? `${Math.round((Date.now() - new Date(s.startedAt)) / 60000)}m` : 'N/A'
         })),
         examList,
         incidents: [] // Placeholder for detailed incident logs
-    });
+    };
+
+    await setCache(cacheKey, result, TTL_API_CACHE);
+    res.json(result);
 });
 
 

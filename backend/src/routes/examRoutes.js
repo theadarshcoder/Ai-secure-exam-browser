@@ -7,7 +7,7 @@ const router = express.Router();
 const { verifyToken, checkRole } = require('../middlewares/authMiddleware');
 const examController = require('../controllers/examController');
 const telemetryController = require('../controllers/telemetryController');
-const { codeExecutionLimiter, telemetryLimiter, importLimiter } = require('../middlewares/rateLimiter');
+const { codeExecutionLimiter, telemetryLimiter, importLimiter, autosaveLimiter } = require('../middlewares/rateLimiter');
 
 // ═══════════════════════════════════════════════════════════
 //  📊 Telemetry & Diagnostics
@@ -54,7 +54,7 @@ router.post('/start', verifyToken, examController.startExam);
 
 // ⭐ Live Progress Save — har 30 sec mein auto-call hoga
 // Isse answers, current question, remaining time sab silently save hota hai
-router.post('/save-progress', verifyToken, examController.saveProgress);
+router.post('/save-progress', verifyToken, autosaveLimiter, examController.saveProgress);
 
 // Resume endpoint — internet/light wapas aane pe poora state restore karo
 router.get('/resume/:examId', verifyToken, examController.resumeExam);

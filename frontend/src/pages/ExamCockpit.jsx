@@ -428,6 +428,7 @@ export default function ExamCockpit() {
   const tabToast = useTabVisibility();
 
   const [exam, setExam] = useState(null);
+  const [sessionId, setSessionId] = useState(null);
   const [questions, setQuestions] = useState([]); // Will store shuffled list
   const [secondsLeft, setSecondsLeft] = useState(TOTAL_SECONDS);
   const [endTime, setEndTime] = useState(null);
@@ -563,6 +564,34 @@ export default function ExamCockpit() {
     };
   }, [examId]);
 
+  const captureAndUploadSnapshot = useCallback(async (type = 'random') => {
+    if (!videoRef.current || !sessionId) return;
+    
+    const canvas = document.createElement('canvas');
+    canvas.width = videoRef.current.videoWidth || 640;
+    canvas.height = videoRef.current.videoHeight || 480;
+    if (canvas.width === 0 || canvas.height === 0) return;
+    
+    canvas.getContext('2d').drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+    
+    canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        const formData = new FormData();
+        formData.append('image', blob, `snapshot_${Date.now()}.jpg`);
+        formData.append('sessionId', sessionId);
+        formData.append('type', type);
+
+        try {
+            await api.post('/api/upload/snapshot', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            console.log(`Snapshot (${type}) secured to S3`);
+        } catch (err) {
+            console.warn('Snapshot upload failed');
+        }
+    }, 'image/jpeg', 0.6);
+  }, [sessionId]);
+
   const logIncident = useCallback(async (type, severity, details) => {
     const studentId = sessionStorage.getItem('vision_email');
     if (!studentId) return; // Guarded by useEffect above
@@ -578,8 +607,12 @@ export default function ExamCockpit() {
     try {
       await api.post('/api/exams/incident', incident);
       socketService.emitViolation(incident);
+      if (severity === 'high' || severity === 'critical') {
+          captureAndUploadSnapshot('violation');
+      }
     } catch (_err) { console.warn('Incident log failed'); }
-  }, [examId]);
+  }, [examId, captureAndUploadSnapshot]);
+
 
   const handleRequestHelp = async () => {
     try {
@@ -598,6 +631,27 @@ export default function ExamCockpit() {
       setHelpLoading(false);
     }
   };
+
+  // 📸 Random Snapshot Interval
+  useEffect(() => {
+      if (submitted || terminated || !sessionId || !cameraActive) return;
+      
+      // Random interval between 2 and 5 minutes for proctoring
+      const minMs = 2 * 60 * 1000;
+      const maxMs = 5 * 60 * 1000;
+      let timerId;
+
+      const scheduleNextCapture = () => {
+          const timeout = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
+          timerId = setTimeout(() => {
+              captureAndUploadSnapshot('random');
+              scheduleNextCapture();
+          }, timeout);
+      };
+
+      scheduleNextCapture();
+      return () => clearTimeout(timerId);
+  }, [submitted, terminated, sessionId, cameraActive, captureAndUploadSnapshot]);
 
   // 🔒 Security: Fullscreen & Shortcuts
   useEffect(() => {
@@ -785,6 +839,7 @@ export default function ExamCockpit() {
         const data = response.data.exam;
         const sessionProgress = response.data;
         setExam(data);
+        setSessionId(sessionProgress.sessionId);
 
         if (data.questions && data.questions.length > 0) {
           const mainSeedStr = (examId + sessionProgress.sessionId);

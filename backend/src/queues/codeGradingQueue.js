@@ -17,7 +17,7 @@ const addCodeEvaluationJob = async (jobData) => {
     console.log(`[Queue] Adding job for Student: ${jobData.studentId}, Question: ${jobData.questionId}`);
     const job = await codeEvaluationQueue.add('evaluate', jobData, {
         attempts: 3,
-        backoff: { type: 'exponential', delay: 1000 },
+        backoff: { type: 'exponential', delay: 2000 },
         removeOnComplete: true,
         removeOnFail: false
     });
@@ -95,11 +95,11 @@ const setupCodeEvaluationWorker = (io) => {
     });
 
     worker.on('failed', (job, err) => {
-        console.error(`❌ [Worker] Job ${job.id} failed:`, err.message);
-        if (io) {
+        console.error(`❌ [Worker] Job ${job.id} failed after ${job.attemptsMade} attempts. Error:`, err.message);
+        if (job.attemptsMade >= 3 && io) {
             io.to(`user_${job.data.studentId}`).emit('code_evaluation_error', {
                 questionId: job.data.questionId,
-                message: 'Your code evaluation failed due to a background processing error.'
+                message: 'Your code evaluation failed after multiple attempts. Please contact support if the issue persists.'
             });
         }
     });
