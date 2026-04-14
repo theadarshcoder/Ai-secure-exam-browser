@@ -9,6 +9,7 @@ const { getTimeAgo, parseLeetCode, parseCodeChef } = require('../utils/helpers')
 const { gradeMCQ, gradeCoding, gradeShortAnswer } = require('../services/gradingService');
 const { addCodeEvaluationJob } = require('../queues/codeGradingQueue');
 const { getCache, setCache, TTL_API_CACHE } = require('../services/cacheService');
+const Setting = require('../models/Setting');
 
 // ─────────────── POST /api/exams/create ───────────────
 // Mentor/Admin creates a new exam and saves it to MongoDB
@@ -249,6 +250,15 @@ exports.getActiveExams = asyncHandler(async (req, res) => {
     }).select('exam').lean();
     const submittedExamIds = new Set(submittedSessions.map(s => s.exam.toString()));
 
+    const globalSettings = await Setting.findOne() || {
+        maxTabSwitches: 5,
+        forceFullscreen: true,
+        allowLateSubmissions: false,
+        enableWebcam: true,
+        disableCopyPaste: true,
+        requireIDVerification: true
+    };
+
     const result = exams.map(exam => ({
         id: exam._id,
         title: exam.title,
@@ -259,7 +269,8 @@ exports.getActiveExams = asyncHandler(async (req, res) => {
         startTime: exam.scheduledDate,
         creator: exam.creator?.name || 'Unknown',
         alreadySubmitted: submittedExamIds.has(exam._id.toString()),
-        resultsPublished: exam.resultsPublished || false
+        resultsPublished: exam.resultsPublished || false,
+        settings: globalSettings
     }));
 
     // Set Cache for 60s
@@ -380,6 +391,16 @@ exports.getExamById = asyncHandler(async (req, res) => {
         return safe;
     });
 
+    // Fetch global settings to enforce proctoring rules dynamically
+    const globalSettings = await Setting.findOne() || {
+        maxTabSwitches: 5,
+        forceFullscreen: true,
+        allowLateSubmissions: false,
+        enableWebcam: true,
+        disableCopyPaste: true,
+        requireIDVerification: true
+    };
+
     res.json({
         id: exam._id,
         title: exam.title,
@@ -388,7 +409,8 @@ exports.getExamById = asyncHandler(async (req, res) => {
         totalMarks: exam.totalMarks,
         startTime: exam.scheduledDate,
         creator: exam.creator?.name,
-        questions: sanitizedQuestions // Ab fully sanitized questions bhejo
+        questions: sanitizedQuestions,
+        settings: globalSettings
     });
 });
 
@@ -452,6 +474,16 @@ exports.updateExamStatus = asyncHandler(async (req, res) => {
 exports.startExam = asyncHandler(async (req, res) => {
     const { examId } = req.body;
     const studentId = req.user.id;
+
+    // Fetch global settings to enforce proctoring rules dynamically
+    const globalSettings = await Setting.findOne() || {
+        maxTabSwitches: 5,
+        forceFullscreen: true,
+        allowLateSubmissions: false,
+        enableWebcam: true,
+        disableCopyPaste: true,
+        requireIDVerification: true
+    };
 
     // Step 1: Check if a session already exists
     let session = await ExamSession.findOne({ exam: examId, student: studentId });
@@ -542,7 +574,8 @@ exports.startExam = asyncHandler(async (req, res) => {
             remainingTimeSeconds: liveRemainingTime,
             exam: {
                 ...exam._doc,
-                questions: safeQuestions
+                questions: safeQuestions,
+                settings: globalSettings
             }
         });
     }
@@ -614,7 +647,8 @@ exports.startExam = asyncHandler(async (req, res) => {
         questionStates: initialStates,
         exam: {
             ...exam._doc,
-            questions: safeQuestions
+            questions: safeQuestions,
+            settings: globalSettings
         }
     });
 });

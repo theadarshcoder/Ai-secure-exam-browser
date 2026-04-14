@@ -449,6 +449,7 @@ export default function ExamCockpit() {
   const [exitError, setExitError] = useState('');
   const [terminated, setTerminated] = useState(null);
   const [terminateCountdown, setTerminateCountdown] = useState(8);
+  const [tabSwitchCount, setTabSwitchCount] = useState(0); 
   const [needsInteraction, setNeedsInteraction] = useState(!document.fullscreenElement);
   const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
@@ -658,7 +659,10 @@ export default function ExamCockpit() {
     const handleFullscreenChange = () => {
       const isFull = !!document.fullscreenElement;
       setIsFullscreen(isFull);
-      if (!isFull && !submitted && !terminated) {
+      
+      // Dynamic Check: Only enforce if Admin enabled Force Fullscreen
+      const shouldForce = exam?.settings?.forceFullscreen ?? true;
+      if (!isFull && !submitted && !terminated && shouldForce) {
         setNeedsInteraction(true);
         logIncident('Fullscreen Exit', 'high', 'Student exited fullscreen mode');
       }
@@ -673,20 +677,41 @@ export default function ExamCockpit() {
     };
 
     const blockShortcuts = (e) => {
+      // Dynamic Check: Skip blocking if Admin disabled Copy/Paste restriction
+      const isRestricted = exam?.settings?.disableCopyPaste ?? true;
+      if (!isRestricted) return true;
+
       if (e.ctrlKey || e.metaKey || ['F12', 'PrintScreen'].includes(e.key) || (e.altKey && e.key === 'Tab')) {
         e.preventDefault();
         logIncident('Shortcut Blocked', 'medium', `Attempted shortcut: ${e.key}`);
         return false;
       }
     };
-    const blockContextMenu = (e) => { e.preventDefault(); logIncident('Right Click Blocked', 'low', 'Context menu attempt'); return false; };
+    const blockContextMenu = (e) => { 
+      const isRestricted = exam?.settings?.disableCopyPaste ?? true;
+      if (!isRestricted) return true;
+
+      e.preventDefault(); 
+      logIncident('Right Click Blocked', 'low', 'Context menu attempt'); 
+      return false; 
+    };
     
     // Bug 8: Tab Switch Incident Logging
     const handleVisibilityChange = () => {
       if (document.hidden && !submitted && !terminated) {
-        logIncident('Tab Switch', 'high', 'Student switched tabs or minimized window');
+        const currentCount = tabSwitchCount + 1;
+        setTabSwitchCount(currentCount);
+
+        const maxAllowed = exam?.settings?.maxTabSwitches ?? 5;
+        logIncident('Tab Switch', 'high', `Student switched tabs. Count: ${currentCount}/${maxAllowed}`);
+        
+        if (currentCount >= maxAllowed) {
+            setTerminated({ type: 'policy_violation', reason: 'Maximum tab switch limit exceeded' });
+            return;
+        }
+
         setIsTabViolation(true);
-        toast.error("SECURITY ALERT: Tab switching recorded as violation!", { id: 'tab-switch-warning' });
+        toast.error(`SECURITY ALERT: Tab switch violation (${currentCount}/${maxAllowed})`, { id: 'tab-switch-warning' });
       }
     };
 
@@ -1124,13 +1149,22 @@ export default function ExamCockpit() {
 
   const handleSecureEntry = async () => {
     try {
-      if (!document.documentElement.requestFullscreen) return; 
-      await document.documentElement.requestFullscreen();
+    if (!document.documentElement.requestFullscreen) return; 
+    try {
+      if (exam?.settings?.forceFullscreen !== false) {
+          await document.documentElement.requestFullscreen();
+          setIsFullscreen(true);
+      }
+      
+      // If camera is required, wait for it
+      if (exam?.settings?.enableWebcam !== false) {
+          await requestCamera();
+      }
+      
       setNeedsInteraction(false);
-      setIsFullscreen(true);
     } catch (_err) { 
-      console.error("Fullscreen failed");
-      toast.error("Please allow Fullscreen permission to start the exam!", { id: 'fullscreen-error' });
+      console.error("Interaction failed", _err);
+      toast.error("Permission required to start the exam safely!", { id: 'fullscreen-error' });
     }
   };
   

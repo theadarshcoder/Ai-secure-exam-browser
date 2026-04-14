@@ -275,7 +275,9 @@ export default function AdminDashboard() {
      maxTabSwitches: 5,
      forceFullscreen: true,
      allowLateSubmissions: false,
-     enableWebcam: false
+     enableWebcam: true,
+     disableCopyPaste: true,
+     requireIDVerification: true
   });
 
   const [showAddUserModal, setShowAddUserModal] = useState(false);
@@ -944,6 +946,32 @@ export default function AdminDashboard() {
                   className={`w-11 h-6 rounded-full relative cursor-pointer transition-colors ${settings.enableWebcam ? 'bg-emerald-600' : 'bg-zinc-200'}`}
                >
                   <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 shadow-md transition-all ${settings.enableWebcam ? 'right-0.5' : 'left-0.5'}`} />
+               </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-4 border-t border-zinc-100">
+               <div>
+                  <p className="text-sm font-semibold text-zinc-900">Disable Copy/Paste & Context Menu</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">Prevent students from using clipboard or right-click during exam.</p>
+               </div>
+               <div 
+                  onClick={() => setSettingsState({...settings, disableCopyPaste: !settings.disableCopyPaste})}
+                  className={`w-11 h-6 rounded-full relative cursor-pointer transition-colors ${settings.disableCopyPaste ? 'bg-emerald-600' : 'bg-zinc-200'}`}
+               >
+                  <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 shadow-md transition-all ${settings.disableCopyPaste ? 'right-0.5' : 'left-0.5'}`} />
+               </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-4 border-t border-zinc-100">
+               <div>
+                  <p className="text-sm font-semibold text-zinc-900">Require ID Verification (eKYC)</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">Ensure students verify their identity via face-match before starting.</p>
+               </div>
+               <div 
+                  onClick={() => setSettingsState({...settings, requireIDVerification: !settings.requireIDVerification})}
+                  className={`w-11 h-6 rounded-full relative cursor-pointer transition-colors ${settings.requireIDVerification ? 'bg-emerald-600' : 'bg-zinc-200'}`}
+               >
+                  <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 shadow-md transition-all ${settings.requireIDVerification ? 'right-0.5' : 'left-0.5'}`} />
                </div>
             </div>
          </div>

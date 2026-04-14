@@ -424,7 +424,8 @@ export default function StudentDashboard() {
             questionsCount: exam?.questionsCount || 0,
             startTime: exam?.startTime || new Date().toISOString(),
             alreadySubmitted: exam?.alreadySubmitted || false,
-            resultsPublished: exam?.resultsPublished || false
+            resultsPublished: exam?.resultsPublished || false,
+            settings: exam?.settings || {}
           }));
           setExams(liveExams);
           // Timestamped Caching
@@ -579,7 +580,14 @@ export default function StudentDashboard() {
                         key={exam.id}
                         exam={exam}
                         now={now}
-                        onLaunch={(id) => navigate(`/exam/${id}/verify`)}
+                      onLaunch={(id) => {
+                        const examObj = exams.find(e => e.id === id);
+                        if (examObj?.settings?.requireIDVerification === false) {
+                            navigate(`/exam/${id}`);
+                        } else {
+                            navigate(`/exam/${id}/verify`);
+                        }
+                      }}
                         onViewResults={() => {
                           setSelectedExamId(exam.id);
                           setShowResultsModal(true);

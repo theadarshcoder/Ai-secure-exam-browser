@@ -314,6 +314,8 @@ exports.saveSettings = asyncHandler(async (req, res) => {
         setting.forceFullscreen = req.body.forceFullscreen ?? setting.forceFullscreen;
         setting.allowLateSubmissions = req.body.allowLateSubmissions ?? setting.allowLateSubmissions;
         setting.enableWebcam = req.body.enableWebcam ?? setting.enableWebcam;
+        setting.disableCopyPaste = req.body.disableCopyPaste ?? setting.disableCopyPaste;
+        setting.requireIDVerification = req.body.requireIDVerification ?? setting.requireIDVerification;
         await setting.save();
     } else {
         setting = await Setting.create(req.body);
