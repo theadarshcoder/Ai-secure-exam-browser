@@ -327,7 +327,8 @@ exports.getMentorExams = asyncHandler(async (req, res) => {
                         }
                     }
                 },
-                creatorName: { $first: '$creatorInfo.name' }
+                creatorName: { $first: '$creatorInfo.name' },
+                resultsPublished: '$resultsPublished'
             }
         }
     ]);
