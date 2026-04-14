@@ -26,53 +26,79 @@ const LABEL_BASE = "text-[10px] font-bold text-zinc-500 uppercase tracking-wides
 
 // --- Components ---
 
-function StepperInput({ value, onChange, min = 0, step = 1, icon: Icon, unit }) {
+function StepperInput({ value, onChange, min = 0, max = 999, step = 1, icon: Icon, unit }) {
   const [display, setDisplay] = useState(String(value));
+  const [isFocused, setIsFocused] = useState(false);
 
   useEffect(() => {
-    setDisplay(String(value));
-  }, [value]);
+    if (!isFocused) {
+      setDisplay(String(value));
+    }
+  }, [value, isFocused]);
 
   const handleChange = (e) => {
     const raw = e.target.value;
-    const clean = raw.replace(/^0+(\d)/, '$1');
+    const clean = raw.replace(/[^\d]/g, '').replace(/^0+(\d)/, '$1');
     setDisplay(clean);
-    const v = parseInt(clean, 10);
-    if (!isNaN(v) && v >= min) onChange(v);
-  };
-
-  const blockNonDigit = (e) => {
-    const allowed = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Tab', 'Home', 'End'];
-    if (!allowed.includes(e.key) && !/^\d$/.test(e.key)) {
-      e.preventDefault();
+    
+    if (clean !== '') {
+      const v = Math.min(max, parseInt(clean, 10));
+      if (!isNaN(v) && v >= min) {
+        onChange(v);
+      }
     }
   };
 
+  const handleBlur = () => {
+    setIsFocused(false);
+    let v = parseInt(display, 10);
+    if (display === '' || isNaN(v)) v = value;
+    v = Math.min(max, Math.max(min, v));
+    setDisplay(String(v));
+    onChange(v);
+  };
+
   const handleStep = (delta) => {
-    const next = Math.max(min, value + delta);
+    const next = Math.min(max, Math.max(min, value + delta));
     onChange(next);
   };
 
   return (
-    <div className="relative flex items-center">
-      {Icon && <Icon size={14} className="absolute left-3.5 text-zinc-600 pointer-events-none z-10" />}
+    <div className={`relative flex items-center bg-white border h-12 rounded-xl transition-all duration-300 shadow-sm ${isFocused ? 'border-emerald-500 ring-2 ring-emerald-500/10' : 'border-zinc-200 hover:border-zinc-300'}`}>
+      {Icon && (
+        <div className="pl-4 pr-1 text-zinc-400">
+          <Icon size={16} className={isFocused ? 'text-emerald-500' : ''} />
+        </div>
+      )}
       <input
         type="text"
         inputMode="numeric"
         value={display}
         onChange={handleChange}
-        onKeyDown={blockNonDigit}
-        className={`${INPUT_BASE} ${Icon ? 'pl-10' : ''} pr-24 font-mono text-sm`}
+        onFocus={() => setIsFocused(true)}
+        onBlur={handleBlur}
+        className="flex-1 min-w-0 bg-transparent border-none focus:ring-0 text-sm font-bold text-zinc-900 px-3 h-full"
       />
-      <div className="absolute right-1.5 flex items-center gap-2">
-        {unit && <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest select-none">{unit}</span>}
-        <div className="flex items-center bg-white/[0.03] border border-white/[0.05] rounded-lg overflow-hidden">
-          <button type="button" tabIndex="-1" onClick={() => handleStep(-step)} className="w-7 h-[26px] flex items-center justify-center hover:bg-white/[0.08] text-zinc-400 hover:text-white transition-colors active:bg-white/[0.1]">
-            <ChevronDown size={12} strokeWidth={2.5} />
+      <div className="flex items-center pr-1 gap-1">
+        {unit && (
+          <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest bg-zinc-50 px-2 py-1 rounded-md border border-zinc-100 hidden sm:inline-block">
+            {unit}
+          </span>
+        )}
+        <div className="flex flex-col border-l border-zinc-100 pl-1">
+          <button 
+            type="button" 
+            onClick={() => handleStep(step)} 
+            className="p-1 hover:text-emerald-500 text-zinc-400 transition-colors"
+          >
+            <ChevronUp size={12} strokeWidth={3} />
           </button>
-          <div className="w-px h-3 bg-white/[0.08]" />
-          <button type="button" tabIndex="-1" onClick={() => handleStep(step)} className="w-7 h-[26px] flex items-center justify-center hover:bg-white/[0.08] text-zinc-400 hover:text-white transition-colors active:bg-white/[0.1]">
-            <ChevronUp size={12} strokeWidth={2.5} />
+          <button 
+            type="button" 
+            onClick={() => handleStep(-step)} 
+            className="p-1 hover:text-red-500 text-zinc-400 transition-colors"
+          >
+            <ChevronDown size={12} strokeWidth={3} />
           </button>
         </div>
       </div>
@@ -1041,28 +1067,35 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-5 gap-8 mt-10 pt-10 border-t border-zinc-200">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mt-10 pt-10 border-t border-zinc-100">
                     <div>
                       <label className={LABEL_BASE}>Duration</label>
-                      <StepperInput value={exam.duration} onChange={v => setExam({...exam, duration: v})} icon={Clock} unit="min" step={5} />
-                      <p className="text-[9px] text-zinc-500 mt-1 uppercase font-bold">5‑300 minutes</p>
+                      <StepperInput value={exam.duration} onChange={v => setExam({...exam, duration: v})} icon={Clock} unit="min" step={5} max={300} />
+                      <p className="text-[9px] text-zinc-400 mt-2 uppercase font-black tracking-tighter">5‑300 minutes</p>
                     </div>
                     <div>
                       <label className={LABEL_BASE}>Total Marks</label>
-                      <StepperInput value={exam.totalMarks} onChange={v => setExam({...exam, totalMarks: v})} step={5} />
+                      <StepperInput value={exam.totalMarks} onChange={v => setExam({...exam, totalMarks: v})} step={5} max={1000} />
                     </div>
                     <div>
                       <label className={LABEL_BASE}>Passing</label>
-                      <StepperInput value={exam.passingMarks} onChange={v => setExam({...exam, passingMarks: v})} step={5} />
+                      <StepperInput value={exam.passingMarks} onChange={v => setExam({...exam, passingMarks: v})} step={5} max={exam.totalMarks} />
                     </div>
                     <div>
                       <label className={LABEL_BASE}>Negative Marks</label>
-                      <StepperInput value={exam.negativeMarks} onChange={v => setExam({...exam, negativeMarks: v})} icon={Minus} step={0.5} min={0} />
-                      <p className="text-[9px] text-zinc-500 mt-1 uppercase font-bold">per wrong answer</p>
+                      <StepperInput value={exam.negativeMarks} onChange={v => setExam({...exam, negativeMarks: v})} icon={Minus} step={0.25} min={0} max={10} />
+                      <p className="text-[9px] text-zinc-400 mt-2 uppercase font-black tracking-tighter">per wrong answer</p>
                     </div>
                     <div>
                       <label className={LABEL_BASE}>Schedule</label>
-                      <input type="datetime-local" value={exam.scheduledDate} onChange={e => setExam({...exam, scheduledDate: e.target.value})} className={INPUT_BASE + " h-11 [color-scheme:dark] uppercase text-[10px] font-bold"} />
+                      <div className="relative group">
+                        <input 
+                          type="datetime-local" 
+                          value={exam.scheduledDate} 
+                          onChange={e => setExam({...exam, scheduledDate: e.target.value})} 
+                          className="w-full h-12 bg-white border border-zinc-200 rounded-xl px-4 text-xs font-bold text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all uppercase [color-scheme:light]" 
+                        />
+                      </div>
                     </div>
                   </div>
                 </section>
