@@ -9,16 +9,17 @@ import {
   CheckCircle2, ArrowUpRight, ArrowDownRight,
   Filter, Download, Eye, Power, Users, ShieldCheck, 
   Edit3, RefreshCw, Trash2, X, Check, AlertCircle,
-  Code, MessageSquare, Star, CheckCircle, AlertOctagon
+  Code, MessageSquare, Star, CheckCircle, AlertOctagon, EyeOff
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import { 
   getMentorStats, 
   getMentorExamList, 
   getAllResults,
-  deleteExam,
   getSessionDetail,
-  evaluateSession
+  evaluateSession,
+  togglePublishResults,
+  deleteExam
 } from '../services/api';
 
 /* ─────────────────────────────────────────────────────────
@@ -468,16 +469,14 @@ export default function MentorDashboard() {
       if (tab === 'Overview' || tab === 'Live Proctoring') {
         const res = await getMentorStats();
         setStats(res.stats || { liveStudents: 0, totalSubmissions: 0, flags: 0, totalExams: 0 });
-        setActivity(res.activity || []);
-        // For live proctoring, use the live sessions from stats
-        // The mentor-stats endpoint returns session data we can use
-        setLiveSessions(res.performance || []);
+        setActivity(Array.isArray(res.activity) ? res.activity : []);
+        setLiveSessions(Array.isArray(res.performance) ? res.performance : []);
       } else if (tab === 'Exam Management') {
         const res = await getMentorExamList();
-        setExams(res || []);
+        setExams(Array.isArray(res) ? res : []);
       } else if (tab === 'Results & Reports') {
         const res = await getAllResults();
-        setResults(res || []);
+        setResults(Array.isArray(res) ? res : []);
       }
     } catch (err) {
       console.error('Failed to fetch data:', err);
@@ -507,6 +506,18 @@ export default function MentorDashboard() {
         toast.error('Failed to delete exam.');
       }
     });
+  };
+
+  const handleTogglePublishResults = async (id, currentStatus) => {
+      try {
+          const newStatus = !currentStatus;
+          await togglePublishResults(id, newStatus);
+          toast.success(newStatus ? 'Results published to students' : 'Results hidden from students');
+          // Update local state without full refetch
+          setExams(exams.map(e => String(e.id || e._id) === String(id) ? { ...e, resultsPublished: newStatus } : e));
+      } catch (err) {
+          toast.error("Failed to toggle results visibility.");
+      }
   };
 
   const handleViewSession = async (sessionId) => {
@@ -791,6 +802,14 @@ export default function MentorDashboard() {
             </td>
             <td className="px-6 py-4">
                <div className="flex items-center gap-4">
+                  <button 
+                    onClick={() => handleTogglePublishResults(exam.id || exam._id, exam.resultsPublished)} 
+                    className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95 ${exam.resultsPublished ? 'text-emerald-600 hover:text-emerald-700' : 'text-zinc-400 hover:text-emerald-600'}`}
+                    title={exam.resultsPublished ? "Results visible to students" : "Results hidden from students"}
+                  >
+                    {exam.resultsPublished ? <CheckCircle size={14} /> : <EyeOff size={14} />} 
+                    {exam.resultsPublished ? 'Published' : 'Hidden'}
+                  </button>
                   <button 
                     onClick={() => navigate(`/mentor/create-exam?id=${exam.id || exam._id}&view=true`)}
                     className="text-xs font-bold text-zinc-500 hover:text-emerald-600 uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95"
