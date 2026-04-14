@@ -10,7 +10,7 @@ import {
   Upload, FilePlus, FileSpreadsheet, Lock,
   LayoutDashboard, Users, BarChart3, Settings, Bell,
   ChevronRight, LogOut, Eye, Edit3, Star, RefreshCw,
-  Download, UploadCloud, Link, AlertCircle
+  Download, UploadCloud, Link
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 
