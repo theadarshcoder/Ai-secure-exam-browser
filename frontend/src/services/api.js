@@ -188,6 +188,24 @@ export const getAuditLogs = async () => {
     }
 };
 
+export const deleteAuditLog = async (id) => {
+    try {
+        const response = await api.delete(`/api/admin/audit-logs/${id}`);
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
+export const clearAllAuditLogs = async () => {
+    try {
+        const response = await api.delete('/api/admin/audit-logs');
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
 // ─────────────────────────────────────────────────────────
 // Mentor Dashboard APIs
 // ─────────────────────────────────────────────────────────

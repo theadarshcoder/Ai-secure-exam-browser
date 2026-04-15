@@ -39,6 +39,8 @@ router.get('/health', verifyToken, checkRole(['admin', 'super_mentor']), adminCo
 
 // Audit Logs retrieval
 router.get('/audit-logs', verifyToken, checkRole(['admin', 'super_mentor']), adminController.getAuditLogs);
+router.delete('/audit-logs/:id', verifyToken, checkRole(['admin']), adminController.deleteAuditLog);
+router.delete('/audit-logs', verifyToken, checkRole(['admin']), adminController.clearAuditLogs);
 
 // ─────────────────────────────────────────────────────────
 // Global Settings

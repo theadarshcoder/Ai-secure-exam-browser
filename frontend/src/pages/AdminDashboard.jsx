@@ -254,6 +254,9 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({ totalUsers: 0, activeExams: 0, systemHealth: '100%', totalViolations: 0 });
   const [auditLogs, setAuditLogs] = useState([]);
+  const [helpRequests, setHelpRequests] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   const [users, setUsers] = useState([]);
   const [selectedUsers, setSelectedUsers] = useState(new Set());
   const [userRoleFilter, setUserRoleFilter] = useState('ALL');
@@ -297,12 +300,39 @@ export default function AdminDashboard() {
     const userEmail = sessionStorage.getItem('vision_email');
     if (userEmail) socketService.connect(userEmail);
 
+    // Socket: Student Help Request
     socketService.onStudentHelp((data) => {
       toast.error(`HELP REQUEST: ${data.studentName} - ${data.message}`, { duration: 6000 });
+      const newReq = { ...data, id: Date.now(), type: 'help', unread: true };
+      setHelpRequests(prev => [newReq, ...prev]);
+      setNotifications(prev => [newReq, ...prev]);
+    });
+
+    // Socket: Proctoring Violation Alert
+    socketService.onMentorAlert((data) => {
+      toast.error(`VIOLATION: ${data.studentId} - ${data.type}`, { icon: '🚨' });
+      const newNotif = { ...data, id: Date.now(), type: 'violation', unread: true, timestamp: new Date() };
+      setNotifications(prev => [newNotif, ...prev]);
     });
 
     return () => socketService.disconnect();
   }, []);
+
+  const handleClearNotifications = () => {
+    setNotifications([]);
+    setShowNotifDropdown(false);
+  };
+
+  const unreadCount = notifications.filter(n => n.unread).length;
+
+  const markAllRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
+  };
+
+  const handleResolveHelp = (id) => {
+    setHelpRequests(prev => prev.filter(r => r.id !== id));
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
 
   const fetchDataForTab = async (tab) => {
       setLoading(true);
@@ -347,6 +377,29 @@ export default function AdminDashboard() {
       } finally {
           setLoading(false);
       }
+  };
+
+  const handleDeleteLog = async (id) => {
+    try {
+      await deleteAuditLog(id);
+      setAuditLogs(prev => prev.filter(l => l._id !== id));
+      toast.success('Log entry removed');
+    } catch (err) {
+      toast.error('Failed to delete log');
+    }
+  };
+
+  const handleClearAllLogs = () => {
+    showConfirm('Delete ALL audit logs forever?', async () => {
+      try {
+        await clearAllAuditLogs();
+        setAuditLogs([]);
+        toast.success('Audit trail cleared');
+        closeConfirm();
+      } catch (err) {
+        toast.error('Failed to clear logs');
+      }
+    });
   };
 
   const handleLogout = (e) => {
@@ -617,31 +670,102 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      <div className="p-6 rounded-2xl bg-white border border-zinc-200 shadow-sm">
-        <div className="flex items-center justify-between mb-6">
-           <h4 className="text-sm font-bold text-zinc-900 uppercase tracking-tight">Recent System Activity (Audit Logs)</h4>
-           {loading && <RefreshCw size={14} className="animate-spin text-zinc-400" />}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Left Column: Audit Logs */}
+        <div className="p-6 rounded-3xl bg-white border border-zinc-200 shadow-sm flex flex-col h-[500px]">
+          <div className="flex items-center justify-between mb-6 shrink-0">
+             <div className="flex items-center gap-3">
+               <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-600"><FileText size={16} /></div>
+               <h4 className="text-sm font-black text-zinc-900 uppercase tracking-tight">System Audit logs</h4>
+             </div>
+             <div className="flex items-center gap-3">
+               {auditLogs.length > 0 && (
+                 <button onClick={handleClearAllLogs} className="text-[10px] font-black text-red-500 hover:text-red-600 uppercase tracking-widest px-3 py-1 rounded-lg hover:bg-red-50 transition-all">Clear All</button>
+               )}
+               {loading && <RefreshCw size={14} className="animate-spin text-zinc-400" />}
+             </div>
+          </div>
+          <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3">
+             {auditLogs.length > 0 ? auditLogs.map((log) => (
+                <div key={log._id} className="group relative flex flex-col p-4 bg-zinc-50 border border-zinc-100 rounded-2xl hover:border-zinc-200 transition-all">
+                   <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Badge color={log.action.includes('DELETE') ? 'red' : 'zinc'}>{log.action}</Badge>
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{new Date(log.createdAt).toLocaleString()}</span>
+                      </div>
+                      <button onClick={() => handleDeleteLog(log._id)} className="opacity-0 group-hover:opacity-100 p-1.5 text-zinc-400 hover:text-red-500 transition-all"><Trash2 size={14} /></button>
+                   </div>
+                   <p className="text-[11px] text-zinc-600 font-bold italic mb-2">By: {log.adminId?.name || 'Admin'} <span className="opacity-50 noter-italic">({log.adminId?.email || 'N/A'})</span></p>
+                   {log.details && (
+                      <div className="p-3 bg-white/60 rounded-xl border border-zinc-100 text-[10px] font-mono text-zinc-500 break-all leading-relaxed shadow-inner">
+                         {JSON.stringify(log.details)}
+                      </div>
+                   )}
+                </div>
+             )) : (
+                <div className="h-full flex flex-col items-center justify-center text-zinc-300 gap-3">
+                   <Activity size={32} className="opacity-20 translate-y-2" />
+                   <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">Audit trail is empty</p>
+                </div>
+             )}
+          </div>
         </div>
-        <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-           {auditLogs.length > 0 ? auditLogs.map((log) => (
-              <div key={log._id} className="flex flex-col p-4 bg-zinc-50 border border-zinc-100 rounded-xl">
-                 <div className="flex items-center justify-between mb-2">
-                    <p className="text-[13px] font-bold text-zinc-900">{log.action}</p>
-                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{new Date(log.createdAt).toLocaleString()}</span>
-                 </div>
-                 <p className="text-[11px] text-zinc-500 font-medium">By: {log.adminId?.name || 'Admin'} ({log.adminId?.email || 'N/A'})</p>
-                 {log.details && Object.keys(log.details).length > 0 && (
-                    <div className="mt-3 p-3 bg-white rounded-lg border border-zinc-200 text-[10px] font-mono text-zinc-600">
-                       {JSON.stringify(log.details, null, 2)}
+
+        {/* Right Column: Student Activity */}
+        <div className="p-6 rounded-3xl bg-white border border-zinc-200 shadow-sm flex flex-col h-[500px]">
+           <div className="flex items-center justify-between mb-6 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center text-orange-600"><AlertCircle size={16} /></div>
+                <h4 className="text-sm font-black text-zinc-900 uppercase tracking-tight">Active Student Signals</h4>
+              </div>
+              <span className="px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[9px] font-black uppercase tracking-widest animate-pulse">Live Feed</span>
+           </div>
+           
+           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
+              {helpRequests.length === 0 && notifications.filter(n => n.type === 'violation').length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-zinc-300 gap-3">
+                   <Radio size={32} className="opacity-20" />
+                   <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">No active signals from candidates</p>
+                </div>
+              ) : (
+                <>
+                  {/* Help Requests specifically */}
+                  {helpRequests.map(req => (
+                    <div key={req.id} className="p-5 bg-emerald-50 border border-emerald-100 rounded-2xl relative overflow-hidden group">
+                       <div className="absolute top-0 right-0 p-3">
+                          <button onClick={() => handleResolveHelp(req.id)} className="p-1.5 bg-white text-emerald-600 rounded-lg shadow-sm hover:bg-emerald-600 hover:text-white transition-all"><Check size={14} /></button>
+                       </div>
+                       <div className="flex items-center gap-2 mb-3">
+                          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
+                          <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Help Requested</span>
+                       </div>
+                       <h5 className="text-xs font-black text-zinc-900 mb-1">{req.studentName}</h5>
+                       <p className="text-[11px] text-zinc-500 font-bold mb-3">{req.studentEmail}</p>
+                       <div className="p-3 bg-white rounded-xl border border-emerald-100 text-xs font-semibold text-emerald-900 shadow-sm italic">
+                          "{req.message}"
+                       </div>
                     </div>
-                 )}
-              </div>
-           )) : (
-              <div className="h-32 flex flex-col items-center justify-center text-zinc-400 gap-2">
-                 <Activity size={24} className="opacity-20" />
-                 <p className="text-xs font-bold uppercase tracking-widest opacity-40 text-center">No recent audit logs found.</p>
-              </div>
-           )}
+                  ))}
+
+                  {/* Violations from Notifications state */}
+                  {notifications.filter(n => n.type === 'violation').map(notif => (
+                    <div key={notif.id} className="p-5 bg-red-50 border border-red-100 rounded-2xl">
+                       <div className="flex items-center gap-2 mb-3">
+                          <ShieldAlert size={14} className="text-red-500" />
+                          <span className="text-[10px] font-black text-red-600 uppercase tracking-widest">Security Alert</span>
+                          <span className="ml-auto text-[9px] font-bold text-red-400 capitalize">{new Date(notif.timestamp).toLocaleTimeString()}</span>
+                       </div>
+                       <p className="text-xs font-bold text-zinc-900 leading-relaxed">
+                          <span className="text-red-600">{notif.studentId}</span> triggered a <span className="underline decoration-red-200">{notif.type}</span> violation.
+                       </p>
+                       <button className="mt-3 text-[10px] font-black text-red-500 uppercase tracking-widest flex items-center gap-1 hover:gap-2 transition-all">
+                          Investigate Session <ChevronRight size={12} />
+                       </button>
+                    </div>
+                  ))}
+                </>
+              )}
+           </div>
         </div>
       </div>
     </div>
@@ -1015,6 +1139,62 @@ export default function AdminDashboard() {
            >
              <RefreshCw size={14} />
            </button>
+           {/* Notifications */}
+          <div className="relative">
+            <button 
+              onClick={() => {
+                setShowNotifDropdown(!showNotifDropdown);
+                if (!showNotifDropdown) markAllRead();
+              }}
+              className="p-2.5 bg-zinc-100 text-zinc-600 rounded-xl hover:bg-zinc-200 transition-all active:scale-95 relative"
+            >
+              <Bell size={18} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white animate-bounce-short">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+
+            {showNotifDropdown && (
+              <div className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-zinc-200 z-50 overflow-hidden animate-in slide-in-from-top-2 duration-200">
+                <div className="px-5 py-4 border-b border-zinc-100 bg-zinc-50 flex items-center justify-between">
+                  <h5 className="text-[10px] font-black text-zinc-900 uppercase tracking-widest">Alert Center</h5>
+                  <button onClick={handleClearNotifications} className="text-[9px] font-black text-zinc-400 hover:text-red-500 uppercase tracking-widest">Clear All</button>
+                </div>
+                <div className="max-h-80 overflow-y-auto custom-scrollbar">
+                  {notifications.length === 0 ? (
+                    <div className="py-10 text-center">
+                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">No notifications</p>
+                    </div>
+                  ) : (
+                    notifications.map((n) => (
+                      <div key={n.id} className={`p-4 border-b border-zinc-50 hover:bg-zinc-50 transition-all ${n.unread ? 'bg-blue-50/30' : ''}`}>
+                         <div className="flex gap-3">
+                            <div className={`w-8 h-8 rounded-lg shrink-0 flex items-center justify-center ${
+                              n.type === 'help' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'
+                            }`}>
+                               {n.type === 'help' ? <MessageCircle size={14} /> : <AlertTriangle size={14} />}
+                            </div>
+                            <div className="flex-1">
+                               <p className="text-[11px] font-bold text-zinc-900 leading-tight mb-1">
+                                 {n.type === 'help' ? `Support: ${n.studentName}` : `Security Alert: ${n.studentId}`}
+                               </p>
+                               <p className="text-[10px] text-zinc-500 line-clamp-2 mb-2 italic">
+                                 {n.type === 'help' ? n.message : `Violation: ${n.type}`}
+                               </p>
+                               <span className="text-[9px] font-bold text-zinc-300 uppercase tracking-tighter">
+                                 {n.timestamp ? new Date(n.timestamp).toLocaleTimeString() : 'Just now'}
+                               </span>
+                            </div>
+                         </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
          </div>
       </div>
       {/* Mobile filter bar */}

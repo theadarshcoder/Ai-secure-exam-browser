@@ -209,6 +209,22 @@ exports.getAuditLogs = asyncHandler(async (req, res) => {
     res.json(logs);
 });
 
+// Delete a single audit log
+exports.deleteAuditLog = asyncHandler(async (req, res) => {
+    const log = await AuditLog.findByIdAndDelete(req.params.id);
+    if (!log) {
+        res.status(404);
+        throw new Error('Audit log not found');
+    }
+    res.json({ message: 'Audit log deleted' });
+});
+
+// Clear all audit logs
+exports.clearAuditLogs = asyncHandler(async (req, res) => {
+    await AuditLog.deleteMany({});
+    res.json({ message: 'All audit logs cleared' });
+});
+
 // ═══════════════════════════════════════════════════════════
 // Bulk Import Users
 // ═══════════════════════════════════════════════════════════
