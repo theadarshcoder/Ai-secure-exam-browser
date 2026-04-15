@@ -1141,17 +1141,8 @@ export default function AdminDashboard() {
            >
              <RefreshCw size={14} />
            </button>
-                            </div>
-                         </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
           </div>
-         </div>
-      </div>
+        </div>
       {/* Mobile filter bar */}
       <div className="md:hidden flex bg-zinc-100/80 p-1 rounded-lg w-full overflow-x-auto scroll-thin mb-4 mt-2">
         {['ALL', 'PENDING', 'PAST'].map(f => (
