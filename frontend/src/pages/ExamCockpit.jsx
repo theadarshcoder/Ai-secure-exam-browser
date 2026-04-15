@@ -1148,23 +1148,19 @@ export default function ExamCockpit() {
   }, [questions]);
 
   const handleSecureEntry = async () => {
-    try {
-    if (!document.documentElement.requestFullscreen) return; 
+    if (!document.documentElement.requestFullscreen) return;
     try {
       if (exam?.settings?.forceFullscreen !== false) {
-          await document.documentElement.requestFullscreen();
-          setIsFullscreen(true);
+        await document.documentElement.requestFullscreen();
+        setIsFullscreen(true);
       }
-      
-      // If camera is required, wait for it
       if (exam?.settings?.enableWebcam !== false) {
-          await requestCamera();
+        await requestCamera();
       }
-      
       setNeedsInteraction(false);
-    } catch (_err) { 
-      console.error("Interaction failed", _err);
-      toast.error("Permission required to start the exam safely!", { id: 'fullscreen-error' });
+    } catch (err) {
+      console.error("Secure entry failed:", err);
+      toast.error("Security initialization failed. Please try again.");
     }
   };
   
