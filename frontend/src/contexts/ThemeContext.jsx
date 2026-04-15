@@ -12,9 +12,12 @@ export const ThemeProvider = ({ children }) => {
   });
 
   useEffect(() => {
-    // If we are currently on the Landing Page, rigidly force dark mode
-    if (window.location.pathname === '/') {
+    const path = window.location.pathname;
+    // Rigidly force specific themes for key entry points/dashboards
+    if (path === '/') {
       document.documentElement.setAttribute('data-theme', 'dark');
+    } else if (path === '/login' || path === '/student' || path.startsWith('/student/')) {
+      document.documentElement.setAttribute('data-theme', 'light');
     } else {
       document.documentElement.setAttribute('data-theme', theme);
     }

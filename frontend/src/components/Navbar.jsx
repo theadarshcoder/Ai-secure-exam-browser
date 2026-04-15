@@ -47,7 +47,7 @@ export function Navbar({ role, hideSignOut }) {
                   <LogOut size={14} /> Sign Out
                 </button>
               )}
-              <ThemeToggle />
+              {role !== 'Student' && <ThemeToggle />}
               
               {!role && (
                 <div className="hidden md:flex flex-row gap-3">
