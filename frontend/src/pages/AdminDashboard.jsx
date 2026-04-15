@@ -7,7 +7,7 @@ import {
   Search, FileUp, UserPlus, Trash2, Eye,
   ShieldCheck, Activity, AlertOctagon,
   ChevronRight, LogOut, Bell, RefreshCw, Edit3,
-  BarChart3, Download, Clock, Check, X, Star, CheckCircle, AlertCircle, Plus, ScanFace, Radio, ShieldAlert, User, EyeOff
+  BarChart3, Download, Clock, Check, X, Star, CheckCircle, AlertCircle, Plus, ScanFace, Radio, ShieldAlert, User, EyeOff, MessageCircle, AlertTriangle
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import api, { 
@@ -30,7 +30,9 @@ import api, {
   verifyCandidate,
   unverifyCandidate,
   deleteExam,
-  togglePublishResults
+  togglePublishResults,
+  deleteAuditLog,
+  clearAllAuditLogs
 } from '../services/api';
 
 // ─────────────────────────────────────────────────────────
@@ -1139,53 +1141,6 @@ export default function AdminDashboard() {
            >
              <RefreshCw size={14} />
            </button>
-           {/* Notifications */}
-          <div className="relative">
-            <button 
-              onClick={() => {
-                setShowNotifDropdown(!showNotifDropdown);
-                if (!showNotifDropdown) markAllRead();
-              }}
-              className="p-2.5 bg-zinc-100 text-zinc-600 rounded-xl hover:bg-zinc-200 transition-all active:scale-95 relative"
-            >
-              <Bell size={18} />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white animate-bounce-short">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-
-            {showNotifDropdown && (
-              <div className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-zinc-200 z-50 overflow-hidden animate-in slide-in-from-top-2 duration-200">
-                <div className="px-5 py-4 border-b border-zinc-100 bg-zinc-50 flex items-center justify-between">
-                  <h5 className="text-[10px] font-black text-zinc-900 uppercase tracking-widest">Alert Center</h5>
-                  <button onClick={handleClearNotifications} className="text-[9px] font-black text-zinc-400 hover:text-red-500 uppercase tracking-widest">Clear All</button>
-                </div>
-                <div className="max-h-80 overflow-y-auto custom-scrollbar">
-                  {notifications.length === 0 ? (
-                    <div className="py-10 text-center">
-                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">No notifications</p>
-                    </div>
-                  ) : (
-                    notifications.map((n) => (
-                      <div key={n.id} className={`p-4 border-b border-zinc-50 hover:bg-zinc-50 transition-all ${n.unread ? 'bg-blue-50/30' : ''}`}>
-                         <div className="flex gap-3">
-                            <div className={`w-8 h-8 rounded-lg shrink-0 flex items-center justify-center ${
-                              n.type === 'help' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'
-                            }`}>
-                               {n.type === 'help' ? <MessageCircle size={14} /> : <AlertTriangle size={14} />}
-                            </div>
-                            <div className="flex-1">
-                               <p className="text-[11px] font-bold text-zinc-900 leading-tight mb-1">
-                                 {n.type === 'help' ? `Support: ${n.studentName}` : `Security Alert: ${n.studentId}`}
-                               </p>
-                               <p className="text-[10px] text-zinc-500 line-clamp-2 mb-2 italic">
-                                 {n.type === 'help' ? n.message : `Violation: ${n.type}`}
-                               </p>
-                               <span className="text-[9px] font-bold text-zinc-300 uppercase tracking-tighter">
-                                 {n.timestamp ? new Date(n.timestamp).toLocaleTimeString() : 'Just now'}
-                               </span>
                             </div>
                          </div>
                       </div>
@@ -1527,9 +1482,66 @@ export default function AdminDashboard() {
           </div>
 
           <div className="flex items-center gap-6">
-             <div className="relative group cursor-pointer">
-                <Bell size={20} className="text-zinc-400 hover:text-emerald-600 transition-colors" />
-                <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
+             <div className="relative">
+                <button 
+                  onClick={() => {
+                    setShowNotifDropdown(!showNotifDropdown);
+                    if (!showNotifDropdown) markAllRead();
+                  }}
+                  className="p-2.5 bg-zinc-100 text-zinc-600 rounded-xl hover:bg-zinc-200 transition-all active:scale-95 relative"
+                >
+                  <Bell size={18} />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white">
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+
+                {showNotifDropdown && (
+                  <div className="absolute right-0 mt-3 w-80 bg-white rounded-3xl shadow-2xl border border-zinc-200 z-50 overflow-hidden animate-in slide-in-from-top-2 duration-200">
+                    <div className="px-6 py-4 border-b border-zinc-100 bg-zinc-50 flex items-center justify-between">
+                      <h5 className="text-[10px] font-black text-zinc-900 uppercase tracking-widest">Alert Center</h5>
+                      <button onClick={handleClearNotifications} className="text-[9px] font-black text-zinc-400 hover:text-red-500 uppercase tracking-widest">Clear All</button>
+                    </div>
+                    <div className="max-h-80 overflow-y-auto custom-scrollbar">
+                      {notifications.length === 0 ? (
+                        <div className="py-12 text-center">
+                          <AlertCircle size={32} className="mx-auto text-zinc-100 mb-3" />
+                          <p className="text-[10px] font-bold text-zinc-300 uppercase tracking-[0.2em]">No active alerts</p>
+                        </div>
+                      ) : (
+                        notifications.map((n) => (
+                          <div key={n.id} className={`p-4 border-b border-zinc-50 hover:bg-zinc-50 transition-all ${n.unread ? 'bg-emerald-50/20' : ''}`}>
+                             <div className="flex gap-4">
+                                <div className={`w-10 h-10 rounded-xl shrink-0 flex items-center justify-center ${
+                                  n.type === 'help' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'
+                                }`}>
+                                   {n.type === 'help' ? <MessageCircle size={16} /> : <AlertTriangle size={16} />}
+                                </div>
+                                <div className="flex-1">
+                                   <div className="flex items-center justify-between mb-1">
+                                      <p className="text-[11px] font-black text-zinc-900 uppercase tracking-tight">
+                                        {n.type === 'help' ? `Support Needed` : `Security Violation`}
+                                      </p>
+                                      <span className="text-[9px] font-bold text-zinc-300 uppercase shrink-0">
+                                        {n.timestamp ? new Date(n.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Now'}
+                                      </span>
+                                   </div>
+                                   <p className="text-[11px] font-bold text-zinc-700 leading-tight mb-1">
+                                      {n.type === 'help' ? n.studentName : n.studentId}
+                                   </p>
+                                   <p className="text-[10px] text-zinc-500 line-clamp-2 italic font-medium">
+                                     {n.type === 'help' ? n.message : `Violation detected: ${n.type}`}
+                                   </p>
+                                </div>
+                             </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
              </div>
              <div className="h-6 w-px bg-zinc-200" />
              <div className="flex items-center gap-3 cursor-pointer group">
