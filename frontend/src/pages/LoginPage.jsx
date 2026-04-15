@@ -7,7 +7,6 @@ import {
   Globe, ScrollText, MapPin, AppWindow, AlertTriangle
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
-import { ThemeToggle } from '../contexts/ThemeContext';
 
 /* ─────────────── Config & Constants ─────────────── */
 
@@ -246,10 +245,7 @@ const LoginPage = () => {
     <div className="h-screen w-full flex items-center justify-center p-4 bg-black font-sans overflow-hidden select-none">
       <style>{`html, body { overflow: hidden !important; height: 100% !important; overscroll-behavior: none !important; }`}</style>
       
-      {/* Theme toggle — fixed top-right */}
-      <div className="fixed top-4 right-4 z-50">
-        <ThemeToggle />
-      </div>
+
       
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none opacity-40" />
       <div className="absolute top-[10%] left-[20%] w-[500px] h-[500px] rounded-full blur-[120px] pointer-events-none bg-white/5" />
