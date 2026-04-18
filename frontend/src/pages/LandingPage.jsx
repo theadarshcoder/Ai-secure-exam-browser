@@ -331,8 +331,8 @@ const KineticTextSequence = () => {
       <AnimatePresence>
         {phase === 4 && (
           <motion.div key="final" variants={finalVariants} initial="initial" animate="animate" style={{ transformStyle: 'preserve-3d' }} className="flex flex-col items-center text-center">
-             <h1 className={`text-5xl md:text-7xl lg:text-[6.5rem] font-black uppercase tracking-tighter ${metallicText} flex items-center gap-2 md:gap-4 mb-4`}>
-                UNCOMPROMISED EXAMS<span className="w-4 h-4 md:w-6 md:h-6 bg-emerald-500 rounded-full shadow-[0_0_40px_rgba(16,185,129,1)] animate-pulse"></span>
+             <h1 className="text-5xl md:text-7xl lg:text-[6.5rem] font-black uppercase tracking-tighter text-glow-sweep flex items-center gap-2 md:gap-4 mb-4">
+                UNCOMPROMISED EXAMS<span className="w-4 h-4 md:w-6 md:h-6 bg-emerald-500 rounded-full shadow-[0_0_40px_rgba(16,185,129,1)] animate-pulse" style={{ flexShrink: 0, WebkitTextFillColor: 'initial', backgroundClip: 'unset', background: 'none' }}></span>
              </h1>
              <p className="text-zinc-400 text-lg md:text-xl font-medium max-w-2xl tracking-wide opacity-90 mt-4">
                A perfect score means nothing if the process is broken<br />We protect the integrity of the test so your hard work actually matters

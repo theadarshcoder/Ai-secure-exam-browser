@@ -14,37 +14,37 @@ import {
 /* ─────────────── Sub-components ─────────────── */
 
 const SkeletonExamCard = () => (
-  <div className="bg-[#12161f]/50 p-6 rounded-3xl border border-white/[0.02] flex flex-col xl:flex-row xl:items-center justify-between gap-6 animate-pulse">
+  <div className="bg-[#F5F5F5]/50 p-6 rounded-3xl border border-slate-200 flex flex-col xl:flex-row xl:items-center justify-between gap-6 animate-pulse">
     <div className="flex gap-5 items-start w-full">
-      <div className="w-14 h-14 rounded-2xl bg-white/[0.03] shrink-0" />
+      <div className="w-14 h-14 rounded-2xl bg-slate-200 shrink-0" />
       <div className="w-full">
-        <div className="w-24 h-4 rounded-full bg-white/[0.03] mb-3" />
-        <div className="w-3/4 max-w-sm h-7 rounded-lg bg-white/[0.05] mb-4" />
+        <div className="w-24 h-4 rounded-full bg-slate-200 mb-3" />
+        <div className="w-3/4 max-w-sm h-7 rounded-lg bg-slate-200 mb-4" />
         <div className="flex gap-4">
-          <div className="w-28 h-4 rounded-full bg-white/[0.03]" />
-          <div className="w-20 h-4 rounded-full bg-white/[0.03]" />
+          <div className="w-28 h-4 rounded-full bg-slate-200" />
+          <div className="w-20 h-4 rounded-full bg-slate-200" />
         </div>
       </div>
     </div>
-    <div className="w-full xl:w-40 h-14 rounded-xl bg-white/[0.03] shrink-0" />
+    <div className="w-full xl:w-40 h-14 rounded-xl bg-slate-200 shrink-0" />
   </div>
 );
 
 const Sidebar = ({ currentTime, userName, userEmail, onSupport }) => (
   <aside className="w-full lg:w-[280px] shrink-0 relative z-10 flex flex-col gap-4">
-    <div className="bg-[#111827] rounded-xl border border-white/5 p-5 lg:p-6 shadow-sm relative overflow-hidden flex flex-col h-full lg:h-auto">
+    <div className="bg-[#F5F5F5] rounded-xl border border-slate-200 p-5 lg:p-6 shadow-sm relative overflow-hidden flex flex-col h-full lg:h-auto">
       {/* Clean User Profile */}
-      <div className="flex items-center gap-3 mb-6 pb-6 border-b border-white/[0.05] relative z-10 w-full">
+      <div className="flex items-center gap-3 mb-6 pb-6 border-b border-slate-200 relative z-10 w-full">
         
         {/* Fixed Sizing Avatar */}
-        <div className="w-10 h-10 shrink-0 rounded-full bg-slate-800/30 border border-white/5 flex items-center justify-center text-slate-400">
+        <div className="w-10 h-10 shrink-0 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500">
           <UserCircle size={20} strokeWidth={1.5} />
         </div>
 
         {/* Clean Text Stack Rhythm */}
         <div className="flex flex-col leading-tight">
           <div className="flex items-center gap-2 mb-0.5">
-            <h2 className="text-[15px] font-semibold text-slate-100">{userName || 'Vinit'}</h2>
+            <h2 className="text-[15px] font-semibold text-slate-800">{userName || 'Vinit'}</h2>
           </div>
           
           <span className="text-[12px] text-slate-500 mb-1">
@@ -64,7 +64,7 @@ const Sidebar = ({ currentTime, userName, userEmail, onSupport }) => (
              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
            </div>
-           <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">System Status</h3>
+           <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-500">System Status</h3>
          </div>
          <div className="space-y-3.5">
            <div className="flex justify-between items-center text-[13px]">
@@ -83,8 +83,8 @@ const Sidebar = ({ currentTime, userName, userEmail, onSupport }) => (
       </div>
 
       {/* Centered Support Action */}
-      <div className="mt-6 pt-5 border-t border-white/[0.05] relative z-10">
-         <button onClick={onSupport} className="w-full py-2.5 rounded-lg text-xs font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:hover:text-slate-200 dark:hover:bg-white/[0.04] transition-all flex items-center justify-center gap-2">
+      <div className="mt-6 pt-5 border-t border-slate-200 relative z-10">
+         <button onClick={onSupport} className="w-full py-2.5 rounded-lg text-xs font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:hover:text-slate-700 dark:hover:bg-slate-100 transition-all flex items-center justify-center gap-2">
            <LifeBuoy size={15} strokeWidth={2} /> Get Help
          </button>
       </div>
@@ -103,7 +103,7 @@ const ExamCard = ({ exam, now, onLaunch, onViewResults, index }) => {
   const isSubmitted = exam.alreadySubmitted;
 
   // Derive visual states
-  let cardBg = index === 0 ? "bg-[#111827] opacity-100 shadow-xl" : "bg-[#111827] opacity-90 hover:opacity-100"; 
+  let cardBg = index === 0 ? "bg-[#F5F5F5] opacity-100 shadow-xl" : "bg-[#F5F5F5] opacity-90 hover:opacity-100"; 
   let statusColor = "text-slate-500";
   let statusText = "Upcoming";
   let btnText = "Not Available";
@@ -111,7 +111,7 @@ const ExamCard = ({ exam, now, onLaunch, onViewResults, index }) => {
   let btnSecondary = false;
 
   if (isSubmitted) {
-    cardBg = "bg-[#0B0F14] opacity-50 grayscale hover:grayscale-0 border-white/[0.02]";
+    cardBg = "bg-[#FFFFFF] opacity-50 grayscale hover:grayscale-0 border-slate-200";
     statusColor = "text-slate-500";
     statusText = "Completed";
     
@@ -126,40 +126,40 @@ const ExamCard = ({ exam, now, onLaunch, onViewResults, index }) => {
       btnSecondary = true;
     }
   } else if (isExpired) {
-    cardBg = "bg-[#0B0F14] opacity-40 border-white/[0.02]";
-    statusColor = "text-red-400";
+    cardBg = "bg-[#FFFFFF] opacity-40 border-slate-200";
+    statusColor = "text-red-600";
     statusText = "Expired";
     btnText = "Exam Over";
     btnDisabled = true;
   } else if (isLive) {
-    cardBg = "bg-[#111827] opacity-100 border-white/10 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.5)]"; 
-    statusColor = "text-emerald-400";
+    cardBg = "bg-[#F5F5F5] opacity-100 border-slate-200 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.5)]"; 
+    statusColor = "text-emerald-600";
     statusText = "Live Now";
     btnText = "Start Exam";
     btnDisabled = false;
   } else if (isPreOnboarding) {
-    cardBg = "bg-[#111827] opacity-100";
-    statusColor = "text-blue-400";
+    cardBg = "bg-[#F5F5F5] opacity-100";
+    statusColor = "text-blue-600";
     statusText = "Final Checks";
     btnText = "Enter Waiting Room";
     btnDisabled = false;
   }
 
   return (
-    <div className={`p-5 lg:p-6 rounded-xl border border-white/5 transition-all duration-300 flex flex-col sm:flex-row sm:items-center justify-between gap-6 group ${cardBg}`}>
+    <div className={`p-5 lg:p-6 rounded-xl border border-slate-200 transition-all duration-300 flex flex-col sm:flex-row sm:items-center justify-between gap-6 group ${cardBg}`}>
       
       {/* Primary Info */}
       <div className="flex gap-4 items-start sm:items-center">
-        <div className={`w-12 h-12 shrink-0 rounded-xl flex items-center justify-center border ${isLive ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400' : 'border-white/5 bg-white/[0.02] text-slate-500 group-hover:text-slate-300'} transition-colors`}>
+        <div className={`w-12 h-12 shrink-0 rounded-xl flex items-center justify-center border ${isLive ? 'border-emerald-200 bg-emerald-50 border-emerald-200 text-emerald-600' : 'border-slate-200 bg-white text-slate-500 group-hover:text-slate-300'} transition-colors`}>
           <ClipboardList size={22} strokeWidth={1.5} />
         </div>
         
         <div className="flex flex-col justify-center">
           <div className="flex items-center gap-3 mb-1.5">
-            <h3 className="text-base font-semibold text-slate-100 leading-none">{exam.title}</h3>
+            <h3 className="text-base font-semibold text-slate-800 leading-none">{exam.title}</h3>
             
             {(isLive || isPreOnboarding) ? (
-              <span className={`text-[10px] uppercase tracking-wider font-bold flex items-center gap-1.5 px-2 py-0.5 rounded ${isLive ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}`}>
+              <span className={`text-[10px] uppercase tracking-wider font-bold flex items-center gap-1.5 px-2 py-0.5 rounded ${isLive ? 'bg-emerald-50 border-emerald-200 text-emerald-600 border border-emerald-200' : 'bg-blue-50 border-blue-200 text-blue-600 border border-blue-200'}`}>
                 {isLive && <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
                 {statusText}
               </span>
@@ -182,10 +182,10 @@ const ExamCard = ({ exam, now, onLaunch, onViewResults, index }) => {
         onClick={() => btnSecondary ? onViewResults?.(exam.id) : onLaunch(exam.id)} 
         className={`shrink-0 px-5 py-2.5 rounded-lg font-semibold text-[13px] transition-all focus:outline-none
           ${btnDisabled 
-            ? 'bg-transparent text-slate-600 cursor-not-allowed border border-white/5' 
+            ? 'bg-transparent text-slate-600 cursor-not-allowed border border-slate-200' 
             : btnSecondary 
-              ? 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/5'
-              : 'bg-white text-[#0a0c10] hover:bg-slate-200 border border-white shadow-sm hover:shadow active:scale-[0.98]'
+              ? 'bg-slate-50 text-slate-300 hover:bg-slate-100 border border-slate-200'
+              : 'bg-slate-900 text-slate-900 hover:bg-slate-200 border border-slate-200 shadow-sm hover:shadow active:scale-[0.98]'
           }`}
       >
         {btnText}
@@ -247,17 +247,17 @@ const ResultsModal = ({ examId, isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[1000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-[#0f1419] border border-white/10 rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-[1000] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-[#FFFFFF] border border-slate-200 rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-8">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="text-2xl font-black text-white mb-2">Exam Results</h2>
-              <p className="text-slate-400 text-sm">Detailed performance analysis</p>
+              <h2 className="text-2xl font-black text-slate-900 mb-2">Exam Results</h2>
+              <p className="text-slate-500 text-sm">Detailed performance analysis</p>
             </div>
             <button
               onClick={onClose}
-              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+              className="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-900 transition-colors"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M18 6L6 18M6 6l12 12" />
@@ -268,18 +268,18 @@ const ResultsModal = ({ examId, isOpen, onClose }) => {
           {loading ? (
             <div className="py-20 text-center">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500 mb-4"></div>
-              <p className="text-slate-400">Loading results...</p>
+              <p className="text-slate-500">Loading results...</p>
             </div>
           ) : error ? (
             <div className="py-20 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 rounded-2xl bg-red-50 border-red-200 border border-red-200 flex items-center justify-center mx-auto mb-4">
                 <AlertTriangle className="text-red-500" size={32} />
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">Error Loading Results</h3>
-              <p className="text-slate-400 mb-6">{error}</p>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">Error Loading Results</h3>
+              <p className="text-slate-500 mb-6">{error}</p>
               <button
                 onClick={onClose}
-                className="px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-semibold transition-colors"
+                className="px-6 py-3 bg-slate-50 hover:bg-slate-100 text-slate-900 rounded-xl font-semibold transition-colors"
               >
                 Close
               </button>
@@ -288,46 +288,46 @@ const ResultsModal = ({ examId, isOpen, onClose }) => {
             <>
               {/* Summary Cards */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-6">
-                  <p className="text-emerald-400 text-sm font-bold uppercase tracking-widest mb-2">Score</p>
-                  <p className="text-3xl font-black text-white">{results.obtainedMarks}/{results.totalMarks}</p>
-                  <p className="text-slate-400 text-sm mt-2">{results.percentage}%</p>
+                <div className="bg-emerald-50 border-emerald-200 border border-emerald-200 rounded-2xl p-6">
+                  <p className="text-emerald-600 text-sm font-bold uppercase tracking-widest mb-2">Score</p>
+                  <p className="text-3xl font-black text-slate-900">{results.obtainedMarks}/{results.totalMarks}</p>
+                  <p className="text-slate-500 text-sm mt-2">{results.percentage}%</p>
                 </div>
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-6">
-                  <p className="text-blue-400 text-sm font-bold uppercase tracking-widest mb-2">Correct</p>
-                  <p className="text-3xl font-black text-white">{results.correctAnswers}/{results.totalQuestions}</p>
-                  <p className="text-slate-400 text-sm mt-2">Accuracy</p>
+                <div className="bg-blue-50 border-blue-200 border border-blue-200 rounded-2xl p-6">
+                  <p className="text-blue-600 text-sm font-bold uppercase tracking-widest mb-2">Correct</p>
+                  <p className="text-3xl font-black text-slate-900">{results.correctAnswers}/{results.totalQuestions}</p>
+                  <p className="text-slate-500 text-sm mt-2">Accuracy</p>
                 </div>
-                <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-6">
-                  <p className="text-amber-400 text-sm font-bold uppercase tracking-widest mb-2">Incorrect</p>
-                  <p className="text-3xl font-black text-white">{results.totalQuestions - results.correctAnswers}</p>
-                  <p className="text-slate-400 text-sm mt-2">Questions</p>
+                <div className="bg-slate-50mber-500/10 border border-amber-200 rounded-2xl p-6">
+                  <p className="text-amber-600 text-sm font-bold uppercase tracking-widest mb-2">Incorrect</p>
+                  <p className="text-3xl font-black text-slate-900">{results.totalQuestions - results.correctAnswers}</p>
+                  <p className="text-slate-500 text-sm mt-2">Questions</p>
                 </div>
-                <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6">
-                  <p className="text-red-400 text-sm font-bold uppercase tracking-widest mb-2">Negative Marks</p>
-                  <p className="text-3xl font-black text-white">-{results.negativeMarks}</p>
-                  <p className="text-slate-400 text-sm mt-2">Deductions</p>
+                <div className="bg-red-50 border-red-200 border border-red-200 rounded-2xl p-6">
+                  <p className="text-red-600 text-sm font-bold uppercase tracking-widest mb-2">Negative Marks</p>
+                  <p className="text-3xl font-black text-slate-900">-{results.negativeMarks}</p>
+                  <p className="text-slate-500 text-sm mt-2">Deductions</p>
                 </div>
               </div>
 
               {/* Questions Breakdown */}
               <div className="mb-8">
-                <h3 className="text-lg font-bold text-white mb-4">Question-wise Breakdown</h3>
+                <h3 className="text-lg font-bold text-slate-900 mb-4">Question-wise Breakdown</h3>
                 <div className="space-y-3">
                   {results.questions.slice(0, 5).map((q) => (
-                    <div key={q.id} className={`p-4 rounded-xl border ${q.isCorrect ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-red-500/20 bg-red-500/5'}`}>
+                    <div key={q.id} className={`p-4 rounded-xl border ${q.isCorrect ? 'border-emerald-200 bg-emerald-500/5' : 'border-red-200 bg-red-500/5'}`}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${q.isCorrect ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${q.isCorrect ? 'bg-emerald-500/20 text-emerald-600' : 'bg-red-500/20 text-red-600'}`}>
                             {q.isCorrect ? '✓' : '✗'}
                           </div>
                           <div>
-                            <p className="text-white font-medium">Q{q.id}: {q.question}</p>
-                            <p className="text-slate-400 text-sm">Your answer: {q.yourAnswer} • Correct: {q.correctAnswer}</p>
+                            <p className="text-slate-900 font-medium">Q{q.id}: {q.question}</p>
+                            <p className="text-slate-500 text-sm">Your answer: {q.yourAnswer} • Correct: {q.correctAnswer}</p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className={`text-sm font-bold ${q.isCorrect ? 'text-emerald-400' : 'text-red-400'}`}>
+                          <p className={`text-sm font-bold ${q.isCorrect ? 'text-emerald-600' : 'text-red-600'}`}>
                             {q.isCorrect ? `+${q.marks}` : `-${q.negativeMarks}`}
                           </p>
                         </div>
@@ -343,10 +343,10 @@ const ResultsModal = ({ examId, isOpen, onClose }) => {
               </div>
 
               {/* Actions */}
-              <div className="flex justify-end gap-3 pt-6 border-t border-white/10">
+              <div className="flex justify-end gap-3 pt-6 border-t border-slate-200">
                 <button
                   onClick={onClose}
-                  className="px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-semibold transition-colors"
+                  className="px-6 py-3 bg-slate-50 hover:bg-slate-100 text-slate-900 rounded-xl font-semibold transition-colors"
                 >
                   Close
                 </button>
@@ -355,7 +355,7 @@ const ResultsModal = ({ examId, isOpen, onClose }) => {
                     // TODO: Implement download PDF or share
                     toast.success('Results exported successfully');
                   }}
-                  className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold transition-colors"
+                  className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-semibold transition-colors"
                 >
                   Export Results
                 </button>
@@ -509,7 +509,7 @@ export default function StudentDashboard() {
   return (
     <>
     {/* Raw Internal Tool Wrapper */}
-    <div className="h-screen w-full bg-[#0B0F14] font-sans flex flex-col overflow-hidden text-slate-200 relative">
+    <div className="h-screen w-full bg-[#FFFFFF] font-sans flex flex-col overflow-hidden text-slate-700 relative">
       <div className="relative z-10 flex flex-col h-full w-full">
         <Navbar role="Student" />
         <style>{`html, body { overflow: hidden !important; height: 100% !important; overscroll-behavior: none !important; }`}</style>
@@ -527,10 +527,10 @@ export default function StudentDashboard() {
                  <ChevronRight size={10} />
                  <span>Candidate</span>
                  <ChevronRight size={10} />
-                 <span className="text-emerald-400">Assignments</span>
+                 <span className="text-emerald-600">Assignments</span>
                </div>
-               <h1 className="text-3xl lg:text-4xl font-extrabold text-white tracking-tight mb-2">My Assessments</h1>
-               <p className="text-xs text-slate-400 font-medium">
+               <h1 className="text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight mb-2">My Assessments</h1>
+               <p className="text-xs text-slate-500 font-medium">
                  {isLiveData 
                    ? `Synchronized with server (${exams.length} assignments).` 
                    : cacheTime 
@@ -548,15 +548,15 @@ export default function StudentDashboard() {
                      placeholder="Search exam or ID..."
                      value={searchQuery}
                      onChange={(e) => setSearchQuery(e.target.value)}
-                     className="w-full bg-[#12161f] border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all font-medium"
+                     className="w-full bg-[#F5F5F5] border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all font-medium"
                    />
                 </div>
-                <div className="flex items-center gap-1 bg-[#12161f] border border-slate-800 rounded-xl p-1 w-full sm:w-auto overflow-x-auto custom-scrollbar">
+                <div className="flex items-center gap-1 bg-[#F5F5F5] border border-slate-200 rounded-xl p-1 w-full sm:w-auto overflow-x-auto custom-scrollbar">
                   {['All', 'Live', 'Upcoming', 'Completed'].map(f => (
                     <button 
                       key={f}
                       onClick={() => setStatusFilter(f)}
-                      className={`px-4 py-1.5 rounded-lg text-[10px] uppercase tracking-widest font-bold whitespace-nowrap transition-all ${statusFilter === f ? 'bg-white text-black shadow-sm' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
+                      className={`px-4 py-1.5 rounded-lg text-[10px] uppercase tracking-widest font-bold whitespace-nowrap transition-all ${statusFilter === f ? 'bg-white text-black shadow-sm' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-50'}`}
                     >
                       {f}
                     </button>
@@ -596,12 +596,12 @@ export default function StudentDashboard() {
                     ))}
                  </div>
               ) : (
-                <div className="h-48 md:h-64 w-full flex flex-col items-center justify-center text-center bg-[#0d1017] border border-dashed border-white/10 rounded-3xl mt-4">
-                   <Filter size={32} className="text-zinc-700 mb-4" />
-                   <h3 className="text-sm font-black text-white uppercase tracking-widest mb-1">No Alignments Found</h3>
+                <div className="h-48 md:h-64 w-full flex flex-col items-center justify-center text-center bg-[#F5F5F5] border border-dashed border-slate-300 rounded-3xl mt-4">
+                   <Filter size={32} className="text-slate-400 mb-4" />
+                   <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-1">No Alignments Found</h3>
                    <p className="text-xs text-slate-500 font-medium max-w-[250px]">Adjust your search query or filters to reveal matching assignments.</p>
                    {(searchQuery || statusFilter !== 'All') && (
-                     <button onClick={() => {setSearchQuery(''); setStatusFilter('All');}} className="mt-4 text-[10px] text-emerald-400 font-bold uppercase tracking-widest hover:underline">Clear Filters</button>
+                     <button onClick={() => {setSearchQuery(''); setStatusFilter('All');}} className="mt-4 text-[10px] text-emerald-600 font-bold uppercase tracking-widest hover:underline">Clear Filters</button>
                    )}
                 </div>
               )}
@@ -614,20 +614,20 @@ export default function StudentDashboard() {
     {/* Support Chat Modal */}
     {showSupport && (
       <>
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]" onClick={() => setShowSupport(false)} />
-        <div className="fixed bottom-6 right-6 z-[101] w-80 lg:w-96 bg-[#0f1117] border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06] bg-[#0c0c0e]">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100]" onClick={() => setShowSupport(false)} />
+        <div className="fixed bottom-6 right-6 z-[101] w-80 lg:w-96 bg-[#FFFFFF] border border-slate-200 rounded-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 bg-[#F5F5F5]">
             <div className="flex items-center gap-2">
               <div className="relative w-2 h-2"><div className="absolute inset-0 bg-emerald-500 rounded-full animate-ping opacity-40" /><div className="w-2 h-2 rounded-full bg-emerald-500 relative" /></div>
-              <span className="text-xs font-bold text-white uppercase tracking-widest">Live Channel</span>
+              <span className="text-xs font-bold text-slate-900 uppercase tracking-widest">Live Channel</span>
             </div>
-            <button onClick={() => setShowSupport(false)} className="text-zinc-500 hover:text-white p-1 rounded hover:bg-white/5"><ChevronRight size={16} className="rotate-90" /></button>
+            <button onClick={() => setShowSupport(false)} className="text-zinc-500 hover:text-slate-900 p-1 rounded hover:bg-slate-50"><ChevronRight size={16} className="rotate-90" /></button>
           </div>
           <div className="px-5 py-4">
             {supportSent ? (
                <div className="text-center py-8">
-                 <CheckCircle2 size={36} className="text-emerald-400 mx-auto mb-3" />
-                 <p className="text-sm font-black tracking-widest uppercase text-white">Transmission Sent</p>
+                 <CheckCircle2 size={36} className="text-emerald-600 mx-auto mb-3" />
+                 <p className="text-sm font-black tracking-widest uppercase text-slate-900">Transmission Sent</p>
                  <p className="text-xs text-zinc-500 mt-2 font-medium">A supervisor will initiate proxy support shortly.</p>
                </div>
             ) : (
@@ -638,12 +638,12 @@ export default function StudentDashboard() {
                    onChange={e => setSupportMsg(e.target.value)}
                    placeholder="Describe what is happening on your node..."
                    rows={4}
-                   className="w-full bg-[#181a20] border border-white/[0.06] rounded-xl px-3 py-3 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-teal-600/40 resize-none font-medium"
+                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-3 text-xs text-slate-800 placeholder:text-zinc-600 focus:outline-none focus:border-teal-600/40 resize-none font-medium"
                  />
                  <button
                    onClick={handleSupport}
                    disabled={!supportMsg.trim()}
-                   className="mt-4 w-full py-3 rounded-xl bg-white text-[#0a0c10] text-xs font-black uppercase tracking-widest hover:bg-slate-200 transition-all shadow-lg active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
+                   className="mt-4 w-full py-3 rounded-xl bg-slate-900 text-slate-900 text-xs font-black uppercase tracking-widest hover:bg-slate-200 transition-all shadow-lg active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
                  >
                    Transmit Packet
                  </button>

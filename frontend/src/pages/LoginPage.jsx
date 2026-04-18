@@ -6,6 +6,7 @@ import {
   TerminalSquare, Video, BrainCircuit, Database,
   Globe, ScrollText, MapPin, AppWindow, AlertTriangle
 } from 'lucide-react';
+import { motion, useMotionValue, useSpring } from 'framer-motion';
 import VisionLogo from '../components/VisionLogo';
 
 /* ─────────────── Config & Constants ─────────────── */
@@ -49,28 +50,28 @@ const DiagnosticSidebar = ({ role, activeCount }) => {
   const data = ROLE_DATA[role];
   
   return (
-    <div className="w-full md:w-[45%] bg-[#0b0f19] p-10 flex flex-col justify-between relative overflow-hidden hidden md:flex h-full">
-      <div className="absolute inset-0 bg-gradient-to-br from-[#0b0f19] via-[#0f172a] to-[#0a0f1c]"></div>
+    <div className="w-full md:w-[45%] bg-slate-50 p-7 flex flex-col justify-between relative overflow-hidden hidden md:flex h-full border-r border-slate-200">
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-slate-100"></div>
       
       <div className="relative z-10 w-full flex flex-col flex-grow">
         <div className="flex items-center gap-2.5 mb-8 opacity-90 w-fit">
-          <VisionLogo className="w-8 h-8 text-white" />
-          <span className="text-[15px] font-black tracking-[0.28em] text-white uppercase">VISION</span>
+          <VisionLogo className="w-8 h-8 text-slate-900" />
+          <span className="text-[15px] font-black tracking-[0.28em] text-slate-900 uppercase">VISION</span>
         </div>
 
-        <h2 className="text-2xl font-black tracking-tight mb-1 text-white">System Health</h2>
-        <p className="text-slate-400 text-xs leading-relaxed mb-6">Verifying environment integrity protocols. Proceed securely.</p>
+        <h2 className="text-2xl font-black tracking-tight mb-1 text-slate-900">System Health</h2>
+        <p className="text-slate-500 text-xs leading-relaxed mb-6">Verifying environment integrity protocols. Proceed securely.</p>
 
         <div className="space-y-3 flex-grow">
           {data.diagnostics.map((check, idx) => {
             const isLoaded = activeCount > idx;
             return (
-              <div key={idx} className={`flex items-center justify-between p-3 rounded-xl border backdrop-blur-md transition-all duration-700 ${isLoaded ? 'bg-slate-800/40 border-emerald-500/30 shadow-lg' : 'bg-slate-800/20 border-slate-700/50 opacity-60'}`}>
+              <div key={idx} className={`flex items-center justify-between p-3 rounded-xl border transition-all duration-700 ${isLoaded ? 'bg-white border-emerald-200 shadow-sm' : 'bg-slate-100 border-slate-200 opacity-60'}`}>
                 <div className="flex items-center gap-3">
-                  <div className={`w-7 h-7 shrink-0 rounded-lg flex items-center justify-center border transition-all ${isLoaded ? 'bg-emerald-900/30 text-emerald-400 border-emerald-500/30' : 'bg-slate-900/80 text-slate-500 border-slate-700/50'}`}>
+                  <div className={`w-7 h-7 shrink-0 rounded-lg flex items-center justify-center border transition-all ${isLoaded ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-slate-100 text-slate-400 border-slate-200'}`}>
                     {check.icon}
                   </div>
-                  <span className={`text-[11px] font-bold tracking-wide ${isLoaded ? 'text-white' : 'text-slate-400'}`}>{check.label}</span>
+                  <span className={`text-[11px] font-bold tracking-wide ${isLoaded ? 'text-slate-800' : 'text-slate-400'}`}>{check.label}</span>
                 </div>
                 {isLoaded ? (
                   <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-widest font-black text-emerald-400">
@@ -87,7 +88,7 @@ const DiagnosticSidebar = ({ role, activeCount }) => {
           })}
         </div>
         
-        <div className="mt-6 w-full bg-[#05080f]/90 rounded-xl p-3 border border-slate-800 shadow-inner h-[90px] overflow-hidden">
+        <div className="mt-6 w-full bg-slate-900 rounded-xl p-3 border border-slate-700 shadow-inner h-[90px] overflow-hidden">
           <div className="flex items-center gap-1.5 mb-2 border-b border-slate-800/60 pb-1.5">
             <TerminalSquare size={10} className="text-emerald-500" />
             <span className="text-[8px] uppercase tracking-[0.2em] font-black text-slate-500">AI Vigilance Output</span>
@@ -109,16 +110,16 @@ const DiagnosticSidebar = ({ role, activeCount }) => {
 };
 
 const RoleSwitcher = ({ currentRole, setRole }) => (
-  <div className="relative flex p-1 bg-slate-950 border border-slate-800 rounded-xl mb-8 shadow-inner overflow-hidden">
+  <div className={`relative flex p-1 bg-slate-100 border border-slate-200 rounded-xl shadow-inner overflow-hidden ${currentRole === 'student' ? 'mb-4' : 'mb-10'}`}>
     <div 
-      className="absolute top-1 bottom-1 left-1 w-[calc(33.333%-2px)] bg-slate-800 rounded-lg border border-slate-700 shadow-sm transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
+      className="absolute top-1 bottom-1 left-1 w-[calc(33.333%-2px)] bg-white rounded-lg border border-slate-200 shadow-sm transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
       style={{ transform: `translateX(${currentRole === 'student' ? '0' : currentRole === 'mentor' ? '100%' : '200%'})` }}
     />
     {Object.keys(ROLE_DATA).map((r) => (
       <button
         key={r}
         type="button"
-        className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-[10px] uppercase tracking-widest font-black rounded-lg relative z-10 transition-colors duration-500 ${currentRole === r ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}
+        className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-[10px] uppercase tracking-widest font-black rounded-lg relative z-10 transition-colors duration-500 ${currentRole === r ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
         onClick={() => setRole(r)}
       >
         {ROLE_DATA[r].icon}
@@ -129,8 +130,8 @@ const RoleSwitcher = ({ currentRole, setRole }) => (
 );
 
 const BiometricScanner = ({ progress }) => (
-  <div className="mb-8 flex flex-col items-center">
-    <div className="relative w-20 h-20 mb-3">
+  <div className="mb-4 flex flex-col items-center">
+    <div className="relative w-16 h-16 mb-2">
       <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 100 100">
         <circle cx="50" cy="50" r="46" fill="none" stroke="#1e293b" strokeWidth="4" />
         <circle 
@@ -144,8 +145,8 @@ const BiometricScanner = ({ progress }) => (
           className="transition-all duration-300 ease-out"
         />
       </svg>
-      <div className="absolute inset-[6px] rounded-full bg-slate-950 flex items-center justify-center shadow-inner">
-        <User size={30} className={`transition-colors duration-500 ${progress === 100 ? 'text-white' : 'text-slate-600'}`} />
+      <div className="absolute inset-[6px] rounded-full bg-slate-100 flex items-center justify-center shadow-inner">
+        <User size={30} className={`transition-colors duration-500 ${progress === 100 ? 'text-slate-800' : 'text-slate-400'}`} />
       </div>
     </div>
     <span className={`text-[10px] font-black px-3 py-1 rounded-full border shadow-sm transition-all ${progress === 100 ? 'text-emerald-400 bg-emerald-950/30 border-emerald-900/50' : 'text-slate-400 bg-slate-950 border-slate-800 uppercase tracking-widest'}`}>
@@ -153,6 +154,50 @@ const BiometricScanner = ({ progress }) => (
     </span>
   </div>
 );
+
+/* ─────────────── Interactive Background ─────────────── */
+
+const VectorFieldBackground = () => {
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+
+  const smoothX = useSpring(mouseX, { stiffness: 40, damping: 20 });
+  const smoothY = useSpring(mouseY, { stiffness: 40, damping: 20 });
+
+  React.useEffect(() => {
+    const handleMouseMove = (e) => {
+      mouseX.set(e.clientX);
+      mouseY.set(e.clientY);
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, [mouseX, mouseY]);
+
+  return (
+    <div className="absolute inset-0 bg-[#0c0c0e] overflow-hidden pointer-events-none z-0">
+      {/* Visible Base Dot Grid */}
+      <div 
+        className="absolute inset-0 opacity-[0.4]"
+        style={{
+          backgroundImage: 'radial-gradient(rgba(255,255,255,0.7) 1px, transparent 1px)',
+          backgroundSize: '32px 32px'
+        }}
+      />
+      
+      {/* Brighter Interactive Spotlight tracking mouse */}
+      <motion.div
+        className="absolute w-[800px] h-[800px] rounded-full opacity-[0.4] mix-blend-screen"
+        style={{
+          background: 'radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 60%)',
+          x: smoothX,
+          y: smoothY,
+          translateX: '-50%',
+          translateY: '-50%'
+        }}
+      />
+    </div>
+  );
+};
 
 /* ─────────────── Main Page ─────────────── */
 
@@ -235,28 +280,28 @@ const LoginPage = () => {
       navigate(target);
     } catch (err) {
       console.error('Login Error:', err);
-      setError(err.response?.data?.error || 'Authorization Failed: Check Identity or Secure Key.');
+      setError(err.response?.data?.error || 'Authorization failed. Please check your identity or secure key.');
     } finally {
       setIsAuthenticating(false);
     }
   };
 
   return (
-    <div className="h-screen w-full flex items-center justify-center p-4 bg-black font-sans overflow-hidden select-none">
+    <div className="h-screen w-full flex items-center justify-center p-4 bg-[#09090B] font-sans overflow-hidden select-none relative z-0">
       <style>{`html, body { overflow: hidden !important; height: 100% !important; overscroll-behavior: none !important; }`}</style>
       
+      <VectorFieldBackground />
 
-      
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none opacity-40" />
-      <div className="absolute top-[10%] left-[20%] w-[500px] h-[500px] rounded-full blur-[120px] pointer-events-none bg-white/5" />
+      {/* Emissive Ambient Glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[600px] bg-white/5 rounded-full blur-[140px] pointer-events-none z-0" />
 
-      <div className="w-full max-w-[1000px] h-[90vh] max-h-[700px] bg-zinc-950 rounded-[2.5rem] shadow-2xl border border-zinc-800 flex overflow-hidden relative z-10">
+      <div className="w-full max-w-[1000px] bg-white rounded-[2rem] shadow-[0_32px_80px_rgba(0,0,0,0.6)] border border-white/10 flex items-stretch overflow-hidden relative z-10">
         <DiagnosticSidebar role={role} activeCount={activeDiagnostics} />
 
-        <div className="w-full md:w-[55%] bg-zinc-950 flex flex-col p-8 lg:p-12 relative h-full">
-          <div className="w-full max-w-sm mx-auto flex-grow flex flex-col justify-center">
-            <div className="text-center mb-8">
-              <h1 className="text-2xl font-black tracking-tight text-white mb-1 uppercase">Gateway Access</h1>
+        <div className="w-full md:w-[55%] bg-white flex flex-col p-7 relative self-stretch">
+          <div className="w-full max-w-sm mx-auto flex flex-col flex-1 justify-center">
+            <div className={`text-center ${role === 'student' ? 'mb-4' : 'mb-8'}`}>
+              <h1 className="text-2xl font-black tracking-tight text-slate-900 mb-1 uppercase">Gateway Access</h1>
               <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Please authenticate to continue.</p>
             </div>
 
@@ -264,20 +309,20 @@ const LoginPage = () => {
             {role === 'student' && <BiometricScanner progress={scanProgress} />}
 
             {error && (
-              <div className="mb-6 flex items-start gap-3 p-3.5 bg-red-950/40 border border-red-900/50 rounded-xl relative overflow-hidden group">
-                <div className="w-8 h-8 rounded-lg bg-red-900/30 flex items-center justify-center shrink-0 border border-red-500/20 shadow-inner">
-                  <AlertTriangle size={14} className="text-red-400 group-hover:scale-110 transition-transform" />
+              <div className="mb-4 flex items-start gap-3.5 p-3.5 bg-slate-900/50 border border-slate-800/60 rounded-xl relative overflow-hidden group shadow-lg">
+                <div className="w-7 h-7 rounded-full bg-rose-500/10 flex items-center justify-center shrink-0 border border-rose-500/20 mt-0.5">
+                  <AlertTriangle size={13} className="text-rose-400 group-hover:scale-110 transition-transform" />
                 </div>
-                <div>
-                  <h3 className="text-[10px] uppercase font-black tracking-widest text-red-400 mb-0.5">Authorization Failed</h3>
-                  <p className="text-xs font-bold text-red-200/70">{error}</p>
+                <div className="flex-1">
+                  <h3 className="text-[13px] font-semibold text-slate-200 mb-0.5 leading-snug">Authorization failed</h3>
+                  <p className="text-xs font-normal text-slate-400 leading-relaxed">{error}</p>
                 </div>
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className={role === 'student' ? 'space-y-3' : 'space-y-6'}>
               <div>
-                <label className="block text-[10px] font-black tracking-widest uppercase text-slate-500 mb-1.5 ml-1">Access Identity</label>
+                <label className="block text-[10px] font-black tracking-widest uppercase text-slate-400 mb-1.5 ml-1">Access Identity</label>
                 <div className="relative">
                   <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
                   <input
@@ -287,14 +332,14 @@ const LoginPage = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={role === 'student' ? "VSN-89241" : "system@vision.auth"}
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950/50 pl-10 pr-4 py-3.5 text-sm font-bold outline-none focus:bg-slate-900 focus:border-white/20 transition-all text-white placeholder:text-slate-700"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm font-bold outline-none focus:bg-white focus:border-slate-400 transition-all text-slate-900 placeholder:text-slate-300"
                     required
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[10px] font-black tracking-widest uppercase text-slate-500 mb-1.5 ml-1">Pin / Secure Key</label>
+                <label className="block text-[10px] font-black tracking-widest uppercase text-slate-400 mb-1.5 ml-1">Pin / Secure Key</label>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
                   <input
@@ -304,17 +349,17 @@ const LoginPage = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950/50 pl-10 pr-4 py-3.5 text-sm tracking-[0.3em] font-bold outline-none focus:bg-slate-900 focus:border-white/20 transition-all text-white placeholder:text-slate-700"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm tracking-[0.3em] font-bold outline-none focus:bg-white focus:border-slate-400 transition-all text-slate-900 placeholder:text-slate-300"
                     required
                   />
                 </div>
               </div>
 
-              <div className="mt-8">
+              <div className={role === 'student' ? 'mt-4' : 'mt-10'}>
                 <button
                   type="submit"
                   disabled={isAuthenticating}
-                  className="w-full bg-white text-black rounded-[2rem] py-5 mt-2 font-black text-xs tracking-[0.2em] uppercase hover:bg-slate-200 transition-all shadow-xl active:scale-[0.98] disabled:opacity-50"
+                  className="w-full bg-white text-black rounded-[2rem] py-3.5 font-black text-xs tracking-[0.2em] uppercase hover:bg-slate-200 transition-all shadow-xl active:scale-[0.98] disabled:opacity-50"
                 >
                   {isAuthenticating ? <span className="flex items-center justify-center gap-3"><span className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" /> Authenticating...</span> : 'Authorize & Enter'}
                 </button>
@@ -322,12 +367,12 @@ const LoginPage = () => {
             </form>
           </div>
 
-          <div className="mt-8 flex items-center justify-between text-[9px] font-mono font-bold text-slate-600 border-t border-slate-900 pt-4 uppercase">
+          <div className="mt-auto pt-4 flex items-center justify-between text-[9px] font-mono font-bold text-slate-400 border-t border-slate-100 uppercase">
             <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1.5"><TerminalSquare size={10} /> Node: BOM-01</span>
-              <span className="flex items-center gap-1.5"><Globe size={10} /> Asia-South</span>
+              <span className="flex items-center gap-1.5"><TerminalSquare size={10} /> Server: Mumbai</span>
+              <span className="flex items-center gap-1.5"><Globe size={10} /> Region: India</span>
             </div>
-            <div className="bg-slate-950 px-2.5 py-1 rounded border border-slate-800 text-white tabular-nums">
+            <div className="bg-slate-100 px-2.5 py-1 rounded border border-slate-200 text-slate-700 tabular-nums">
               {currentTime}
             </div>
           </div>
