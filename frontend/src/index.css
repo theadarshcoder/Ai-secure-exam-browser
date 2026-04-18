@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -14,7 +14,7 @@
   --color-primary-800: #3730a3;
   --color-primary-900: #312e81;
 
-  --font-sans: "Inter", system-ui, sans-serif;
+  --font-sans: "Outfit", system-ui, sans-serif;
 }
 
 @layer base {
@@ -123,18 +123,18 @@
 }
 
 /* Translucent Colored Dark Overlays to Light versions */
-[data-theme="light"] [class*="bg-emerald-900"],
+[data-theme="light"] [class*="bg-emerald-900"] { background-color: #a7f3d0 !important; } /* emerald-200 */
 [data-theme="light"] [class*="bg-emerald-950"] { background-color: #d1fae5 !important; } /* emerald-100 */
 
-[data-theme="light"] [class*="bg-red-900"],
+[data-theme="light"] [class*="bg-red-900"] { background-color: #fecaca !important; } /* red-200 */
 [data-theme="light"] [class*="bg-red-950"] { background-color: #fee2e2 !important; } /* red-100 */
 
-[data-theme="light"] [class*="bg-amber-900"],
+[data-theme="light"] [class*="bg-amber-900"] { background-color: #fde68a !important; } /* amber-200 */
 [data-theme="light"] [class*="bg-amber-950"] { background-color: #fef3c7 !important; } /* amber-100 */
 
 [data-theme="light"] [class*="bg-indigo-900"],
+[data-theme="light"] [class*="bg-blue-900"] { background-color: #c7d2fe !important; } /* indigo-200 */
 [data-theme="light"] [class*="bg-indigo-950"],
-[data-theme="light"] [class*="bg-blue-900"],
 [data-theme="light"] [class*="bg-blue-950"] { background-color: #e0e7ff !important; } /* indigo-100 */
 
 /* ── Overlays ── */
@@ -174,65 +174,72 @@
 /* ── Typography (Wildcard Catch-all for Light/Neon text) ── */
 
 /* Catch pure white or near whites */
-[data-theme="light"] [class~="text-white"],
-[data-theme="light"] [class~="text-gray-100"],
-[data-theme="light"] [class~="text-zinc-100"],
-[data-theme="light"] [class~="text-slate-100"] { color: #0f172a !important; }
+[data-theme="light"] [class*="text-white"],
+[data-theme="light"] [class*="text-gray-100"],
+[data-theme="light"] [class*="text-zinc-100"],
+[data-theme="light"] [class*="text-slate-100"] { color: #0f172a !important; }
 
 /* Removed broken critical fix causing text-white inversion errors */
 
 /* Catch light grays (200, 300, 400) */
-[data-theme="light"] [class~="text-gray-200"],
-[data-theme="light"] [class~="text-gray-300"],
-[data-theme="light"] [class~="text-gray-400"],
-[data-theme="light"] [class~="text-zinc-200"],
-[data-theme="light"] [class~="text-zinc-300"],
-[data-theme="light"] [class~="text-zinc-400"],
-[data-theme="light"] [class~="text-slate-200"],
-[data-theme="light"] [class~="text-slate-300"],
-[data-theme="light"] [class~="text-slate-400"],
+[data-theme="light"] [class*="text-gray-200"],
+[data-theme="light"] [class*="text-gray-300"],
+[data-theme="light"] [class*="text-gray-400"],
+[data-theme="light"] [class*="text-zinc-200"],
+[data-theme="light"] [class*="text-zinc-300"],
+[data-theme="light"] [class*="text-zinc-400"],
+[data-theme="light"] [class*="text-slate-200"],
+[data-theme="light"] [class*="text-slate-300"],
+[data-theme="light"] [class*="text-slate-400"],
 [data-theme="light"] .text-\[\#0f1117\] { color: #334155 !important; }
 
 /* Catch medium grays (500) */
-[data-theme="light"] [class~="text-gray-500"],
-[data-theme="light"] [class~="text-zinc-500"],
-[data-theme="light"] [class~="text-slate-500"] { color: #475569 !important; }
+[data-theme="light"] [class*="text-gray-500"],
+[data-theme="light"] [class*="text-zinc-500"],
+[data-theme="light"] [class*="text-slate-500"] { color: #475569 !important; }
 
 /* Catch medium-dark grays (600, 700) */
-[data-theme="light"] [class~="text-gray-600"],
-[data-theme="light"] [class~="text-gray-700"],
-[data-theme="light"] [class~="text-zinc-600"],
-[data-theme="light"] [class~="text-zinc-700"],
-[data-theme="light"] [class~="text-slate-600"],
-[data-theme="light"] [class~="text-slate-700"] { color: #64748b !important; }
+[data-theme="light"] [class*="text-gray-600"],
+[data-theme="light"] [class*="text-gray-700"],
+[data-theme="light"] [class*="text-zinc-600"],
+[data-theme="light"] [class*="text-zinc-700"],
+[data-theme="light"] [class*="text-slate-600"],
+[data-theme="light"] [class*="text-slate-700"] { color: #64748b !important; }
 
 /* Catch Neon Brand Colors (300, 400, 500) and map them to readable dark equivalents (600/700) */
-[data-theme="light"] [class~="text-emerald-300"],
-[data-theme="light"] [class~="text-emerald-400"],
-[data-theme="light"] [class~="text-emerald-500"] { color: #047857 !important; } /* emerald-700 */
+[data-theme="light"] [class*="text-emerald-200"],
+[data-theme="light"] [class*="text-emerald-300"],
+[data-theme="light"] [class*="text-emerald-400"],
+[data-theme="light"] [class*="text-emerald-500"] { color: #047857 !important; } /* emerald-700 */
 
-[data-theme="light"] [class~="text-amber-300"],
-[data-theme="light"] [class~="text-amber-400"],
-[data-theme="light"] [class~="text-amber-500"] { color: #b45309 !important; } /* amber-700 */
+[data-theme="light"] [class*="text-amber-200"],
+[data-theme="light"] [class*="text-amber-300"],
+[data-theme="light"] [class*="text-amber-400"],
+[data-theme="light"] [class*="text-amber-500"] { color: #b45309 !important; } /* amber-700 */
 
-[data-theme="light"] [class~="text-red-300"],
-[data-theme="light"] [class~="text-red-400"],
-[data-theme="light"] [class~="text-red-500"],
-[data-theme="light"] [class~="text-rose-300"],
-[data-theme="light"] [class~="text-rose-400"],
-[data-theme="light"] [class~="text-rose-500"] { color: #b91c1c !important; } /* red-700 */
+[data-theme="light"] [class*="text-red-200"],
+[data-theme="light"] [class*="text-red-300"],
+[data-theme="light"] [class*="text-red-400"],
+[data-theme="light"] [class*="text-red-500"],
+[data-theme="light"] [class*="text-rose-200"],
+[data-theme="light"] [class*="text-rose-300"],
+[data-theme="light"] [class*="text-rose-400"],
+[data-theme="light"] [class*="text-rose-500"] { color: #b91c1c !important; } /* red-700 */
 
-[data-theme="light"] [class~="text-indigo-300"],
-[data-theme="light"] [class~="text-indigo-400"],
-[data-theme="light"] [class~="text-indigo-500"] { color: #4338ca !important; } /* indigo-700 */
+[data-theme="light"] [class*="text-indigo-200"],
+[data-theme="light"] [class*="text-indigo-300"],
+[data-theme="light"] [class*="text-indigo-400"],
+[data-theme="light"] [class*="text-indigo-500"] { color: #4338ca !important; } /* indigo-700 */
 
-[data-theme="light"] [class~="text-violet-300"],
-[data-theme="light"] [class~="text-violet-400"],
-[data-theme="light"] [class~="text-violet-500"] { color: #6d28d9 !important; } /* violet-700 */
+[data-theme="light"] [class*="text-violet-200"],
+[data-theme="light"] [class*="text-violet-300"],
+[data-theme="light"] [class*="text-violet-400"],
+[data-theme="light"] [class*="text-violet-500"] { color: #6d28d9 !important; } /* violet-700 */
 
-[data-theme="light"] [class~="text-blue-300"],
-[data-theme="light"] [class~="text-blue-400"],
-[data-theme="light"] [class~="text-blue-500"] { color: #1d4ed8 !important; } /* blue-700 */
+[data-theme="light"] [class*="text-blue-200"],
+[data-theme="light"] [class*="text-blue-300"],
+[data-theme="light"] [class*="text-blue-400"],
+[data-theme="light"] [class*="text-blue-500"] { color: #1d4ed8 !important; } /* blue-700 */
 
 /* ── Dark Buttons inside light BG ── */
 [data-theme="light"] .bg-white.text-\[\#0a0c10\] {
@@ -324,6 +331,33 @@
 /* ── Scrollbar inside Light ── */
 [data-theme="light"] .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
 [data-theme="light"] .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; }
+
+/* ── Single right-to-left premium glow sweep ── */
+@keyframes glow-sweep {
+  0%   { background-position: 0% center; }
+  100% { background-position: 100% center; }
+}
+
+.text-glow-sweep {
+  background: linear-gradient(
+    90deg,
+    #52525b 0%,
+    #52525b 25%,
+    #a1a1aa 35%,
+    #e4e4e7 43%,
+    #ffffff 50%,
+    #e4e4e7 57%,
+    #a1a1aa 65%,
+    #ffffff 75%,
+    #ffffff 100%
+  );
+  background-size: 300% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: glow-sweep 2.5s ease-in-out 0s 1 forwards;
+}
 
 /* SaaS Style Utilities */
 .badge-capsule {

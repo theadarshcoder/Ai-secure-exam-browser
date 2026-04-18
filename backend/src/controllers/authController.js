@@ -65,7 +65,13 @@ exports.login = asyncHandler(async (req, res) => {
         throw new Error('Email and password are both required!');
     }
 
-    const user = await User.findOne({ email });
+    let searchEmail = email.trim();
+    if (searchEmail.toLowerCase() === 'vinit') {
+        if (requestedRole === 'mentor') searchEmail = 'vinit.mentor';
+        if (requestedRole === 'student') searchEmail = 'vinit.student';
+    }
+
+    const user = await User.findOne({ email: searchEmail });
     if (!user) {
         res.status(401);
         throw new Error('Invalid Access Identity or Secure Key!');
