@@ -312,7 +312,8 @@ export default function AdminDashboard() {
 
     // Socket: Proctoring Violation Alert
     socketService.onMentorAlert((data) => {
-      toast.error(`VIOLATION: ${data.studentId} - ${data.type}`, { icon: '🚨' });
+      const displayName = data.studentName || data.studentId || 'Unknown Student';
+      toast.error(`VIOLATION: ${displayName} - ${data.type}`, { icon: '🚨' });
       const newNotif = { ...data, id: Date.now(), type: 'violation', unread: true, timestamp: new Date() };
       setNotifications(prev => [newNotif, ...prev]);
     });
@@ -1520,7 +1521,7 @@ export default function AdminDashboard() {
                                       </span>
                                    </div>
                                    <p className="text-[11px] font-bold text-zinc-700 leading-tight mb-1">
-                                      {n.type === 'help' ? n.studentName : n.studentId}
+                                      {n.type === 'help' ? n.studentName : (n.studentName || n.studentId)}
                                    </p>
                                    <p className="text-[10px] text-zinc-500 line-clamp-2 italic font-medium">
                                      {n.type === 'help' ? n.message : `Violation detected: ${n.type}`}
