@@ -126,22 +126,174 @@ const SECURITY_EVENTS = [
 
 // --- Sub-components ---
 
-const HybridNavbar = () => (
-  <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-6 mix-blend-difference overflow-hidden text-white pointer-events-none">
-    <div className="flex items-center gap-3 pointer-events-auto cursor-pointer">
-      <VisionLogo className="w-12 h-12 text-white" />
-      <span className="text-white font-bold tracking-[0.2em] text-sm uppercase">Vision</span>
-    </div>
-    <div className="flex gap-4 items-center pointer-events-auto">
-      <button 
-        onClick={() => { window.location.href = '/login'; }}
-        className="bg-white text-black px-6 py-3 font-bold text-sm tracking-widest uppercase hover:bg-slate-200 transition-colors"
+const HybridNavbar = () => {
+  const [scrolled, setScrolled] = React.useState(false);
+  const [activeSection, setActiveSection] = React.useState('hero');
+
+  // Section definitions — map to the div ids in the page
+  const NAV_LINKS = [
+    { label: 'Home',     section: 'hero'     },
+    { label: 'Security', section: 'security' },
+    { label: 'Features', section: 'features' },
+    { label: 'Platform', section: 'stats'    },
+    { label: 'About',    section: 'trust'    },
+  ];
+
+  // Track scroll position for pill morph
+  React.useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 60);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // IntersectionObserver — highlight nav link matching visible section
+  React.useEffect(() => {
+    const observers = [];
+    NAV_LINKS.forEach(({ section }) => {
+      const el = document.getElementById(section);
+      if (!el) return;
+      const obs = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) setActiveSection(section);
+        },
+        { rootMargin: '-30% 0px -60% 0px', threshold: 0 }
+      );
+      obs.observe(el);
+      observers.push(obs);
+    });
+    return () => observers.forEach(o => o.disconnect());
+  }, []);
+
+  const scrollTo = (sectionId) => {
+    const el = document.getElementById(sectionId);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  return (
+    <motion.nav
+      initial={false}
+      animate={scrolled ? 'scrolled' : 'top'}
+      className="fixed top-0 left-0 right-0 z-50 flex justify-center pointer-events-none"
+      style={{ paddingTop: scrolled ? 14 : 0 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+    >
+      <motion.div
+        variants={{
+          top: {
+            width: '100%',
+            borderRadius: 0,
+            backgroundColor: 'transparent',
+            backdropFilter: 'blur(0px)',
+            boxShadow: 'none',
+            paddingLeft: 32,
+            paddingRight: 32,
+            paddingTop: 20,
+            paddingBottom: 20,
+            border: '1px solid transparent',
+          },
+          scrolled: {
+            width: '860px',
+            borderRadius: 100,
+            backgroundColor: 'rgba(10,10,10,0.80)',
+            backdropFilter: 'blur(20px)',
+            boxShadow: '0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.07)',
+            paddingLeft: 18,
+            paddingRight: 18,
+            paddingTop: 8,
+            paddingBottom: 8,
+            border: '1px solid rgba(255,255,255,0.08)',
+          },
+        }}
+        transition={{ type: 'spring', stiffness: 280, damping: 30, mass: 0.8 }}
+        className="flex items-center justify-between pointer-events-auto"
+        style={{ maxWidth: '100%' }}
       >
-        Login Options
-      </button>
-    </div>
-  </nav>
-);
+        {/* ── Logo — always shows VISION ── */}
+        <div
+          className="flex items-center gap-2.5 cursor-pointer shrink-0"
+          onClick={() => scrollTo('hero')}
+        >
+          <motion.div
+            variants={{
+              top:      { width: 38, height: 38 },
+              scrolled: { width: 26, height: 26 },
+            }}
+            transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+            style={{ flexShrink: 0 }}
+          >
+            <VisionLogo className="w-full h-full text-white" />
+          </motion.div>
+
+          <motion.span
+            variants={{
+              top:      { fontSize: '15px', letterSpacing: '0.18em' },
+              scrolled: { fontSize: '12px', letterSpacing: '0.16em' },
+            }}
+            transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+            className="text-white font-bold uppercase tracking-[0.18em] leading-none"
+          >
+            VISION
+          </motion.span>
+        </div>
+
+        {/* ── Center nav links ── */}
+        <div className="hidden md:flex items-center gap-0.5">
+          {NAV_LINKS.map(({ label, section }) => {
+            const isActive = activeSection === section;
+            return (
+              <motion.button
+                key={section}
+                onClick={() => scrollTo(section)}
+                whileTap={{ scale: 0.94 }}
+                className="relative px-4 py-2 rounded-full text-[13px] font-medium tracking-tight transition-all duration-150 outline-none"
+                style={{
+                  color: isActive ? '#ffffff' : 'rgba(255,255,255,0.55)',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                {/* active sliding underline / pill */}
+                {isActive && (
+                  <motion.span
+                    layoutId="navActivePill"
+                    className="absolute inset-0 rounded-full"
+                    style={{ background: 'rgba(255,255,255,0.10)' }}
+                    transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                  />
+                )}
+                <span className="relative z-10">{label}</span>
+
+                {/* active underline dot */}
+                {isActive && (
+                  <motion.span
+                    layoutId="navActiveDot"
+                    className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-teal-400"
+                    transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                  />
+                )}
+              </motion.button>
+            );
+          })}
+        </div>
+
+        {/* ── Right side ── */}
+        <div className="flex items-center shrink-0">
+          <motion.button
+            whileHover={{ scale: 1.04, backgroundColor: '#e4e4e7' }}
+            whileTap={{ scale: 0.96 }}
+            onClick={() => window.location.href = '/login'}
+            className="bg-white text-black text-[12px] font-bold tracking-tight px-4 py-2 rounded-full leading-none"
+          >
+            Get Started
+          </motion.button>
+        </div>
+      </motion.div>
+    </motion.nav>
+  );
+};
+
+
 
 const AnimatedStat = ({ target, suffix, label }) => {
   const [count, setCount] = useState(0);
@@ -312,17 +464,17 @@ const KineticTextSequence = () => {
     <div style={{ perspective: '2000px' }} className="relative z-30 flex flex-col items-center justify-center h-auto w-full px-6 py-8">
       <AnimatePresence mode="popLayout">
         {phase === 0 && (
-          <motion.h1 key="w1" variants={singleWordVariants} initial="initial" animate="animate" exit="exit" className={`absolute text-7xl md:text-9xl font-black tracking-tighter uppercase text-white`} style={{ transformStyle: 'preserve-3d' }}>
+          <motion.h1 key="w1" variants={singleWordVariants} initial="initial" animate="animate" exit="exit" className={`absolute text-7xl md:text-9xl font-semibold tracking-tight uppercase text-white`} style={{ transformStyle: 'preserve-3d' }}>
             JUST YOU
           </motion.h1>
         )}
         {phase === 1 && (
-          <motion.h1 key="w2" variants={singleWordVariants} initial="initial" animate="animate" exit="exit" className={`absolute text-7xl md:text-9xl font-black tracking-tighter uppercase text-white`} style={{ transformStyle: 'preserve-3d' }}>
+          <motion.h1 key="w2" variants={singleWordVariants} initial="initial" animate="animate" exit="exit" className={`absolute text-7xl md:text-9xl font-semibold tracking-tight uppercase text-white`} style={{ transformStyle: 'preserve-3d' }}>
             THE SCREEN
           </motion.h1>
         )}
         {phase === 2 && (
-          <motion.h1 key="w3" variants={singleWordVariants} initial="initial" animate="animate" exit="exit" className={`absolute text-7xl md:text-9xl font-black tracking-tighter uppercase text-white`} style={{ transformStyle: 'preserve-3d' }}>
+          <motion.h1 key="w3" variants={singleWordVariants} initial="initial" animate="animate" exit="exit" className={`absolute text-7xl md:text-9xl font-semibold tracking-tight uppercase text-white`} style={{ transformStyle: 'preserve-3d' }}>
             THE TRUTH
           </motion.h1>
         )}
@@ -331,7 +483,7 @@ const KineticTextSequence = () => {
       <AnimatePresence>
         {phase === 4 && (
           <motion.div key="final" variants={finalVariants} initial="initial" animate="animate" style={{ transformStyle: 'preserve-3d' }} className="flex flex-col items-center text-center">
-             <h1 className="text-5xl md:text-7xl lg:text-[6.5rem] font-black uppercase tracking-tighter text-glow-sweep flex items-center gap-2 md:gap-4 mb-4">
+             <h1 className="text-5xl md:text-7xl lg:text-[6.5rem] font-semibold uppercase tracking-tight text-glow-sweep flex items-center gap-2 md:gap-4 mb-4">
                 UNCOMPROMISED EXAMS<span className="w-4 h-4 md:w-6 md:h-6 bg-emerald-500 rounded-full shadow-[0_0_40px_rgba(16,185,129,1)] animate-pulse" style={{ flexShrink: 0, WebkitTextFillColor: 'initial', backgroundClip: 'unset', background: 'none' }}></span>
              </h1>
              <p className="text-zinc-400 text-lg md:text-xl font-medium max-w-2xl tracking-wide opacity-90 mt-4">
@@ -1007,7 +1159,7 @@ const CredMockupSequence = () => {
                 </div>
 
                 <MagneticText isActive={isActive}>
-                   <h3 className="text-white text-4xl lg:text-5xl font-black tracking-tight mb-4">{item.title}</h3>
+                   <h3 className="text-white text-4xl lg:text-5xl font-semibold tracking-tight mb-4">{item.title}</h3>
                 </MagneticText>
                 
                 <p className="text-white/60 text-lg md:text-xl font-light max-w-sm lg:max-w-md leading-relaxed">{item.desc}</p>
@@ -1099,7 +1251,7 @@ const CredStatsGrid = () => {
     <section id="stats" className="bg-black text-zinc-100 py-16 px-6 md:px-12 border-y border-zinc-800/60">
       <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-16 justify-between items-center">
         <div className="lg:w-1/3 flex flex-col justify-center">
-          <h2 className="text-4xl md:text-5xl font-bold mb-6 tracking-tight leading-tight text-slate-50">
+          <h2 className="text-4xl md:text-5xl font-semibold mb-6 tracking-tight leading-tight text-slate-50">
             Built for exams that actually matter
           </h2>
           <p className="text-slate-400 text-base font-normal leading-[1.7] max-w-sm">
@@ -1115,7 +1267,7 @@ const CredStatsGrid = () => {
              { stat: "100%", label: "Uptime SLA", icon: <Shield className="w-4 h-4 text-amber-400" /> }
            ].map((item, i) => (
              <div key={i} className="p-0 shadow-none border-none flex flex-col justify-center">
-               <div className="text-4xl md:text-5xl font-bold tracking-tight text-slate-50 mb-4 block">
+               <div className="text-4xl md:text-5xl font-semibold tracking-tight text-slate-50 mb-4 block">
                  {item.stat}
                </div>
 
@@ -1153,7 +1305,7 @@ const CredWhiteFeatures = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-          className="text-5xl md:text-7xl font-sans font-black tracking-tighter mb-16 max-w-3xl leading-[0.9] text-slate-900"
+          className="text-5xl md:text-7xl font-sans font-semibold tracking-tight mb-16 max-w-3xl leading-[0.9] text-slate-900"
         >
           Every exam detail <br />
           <span className="font-serif italic font-medium">Protected</span>
@@ -1183,70 +1335,191 @@ const CredWhiteFeatures = () => {
 };
 
 const CredTrustFooter = () => {
-  const { scrollYProgress } = useScroll();
+  const [email, setEmail] = React.useState('');
+  const [subscribed, setSubscribed] = React.useState(false);
+
+  const handleSubscribe = (e) => {
+    e.preventDefault();
+    if (email.trim()) { setSubscribed(true); setEmail(''); }
+  };
+
+  const cols = [
+    {
+      title: 'Platform',
+      links: ['Overview', 'Live Proctoring', 'AI Monitoring', 'Secure Browser', 'Exam Management', 'Analytics & Reports'],
+    },
+    {
+      title: 'Use Cases',
+      links: ['Universities', 'Coding Assessments', 'Corporate HR', 'Certification Bodies', 'Remote Hiring', 'Competitive Exams'],
+    },
+    {
+      title: 'Company',
+      links: ['About Vision', 'How It Works', 'Security & Privacy', 'Documentation', 'Contact Us', 'Changelog'],
+    },
+  ];
+
+  const socials = [
+    { label: 'GH', title: 'GitHub' },
+    { label: 'LI', title: 'LinkedIn' },
+    { label: 'TW', title: 'Twitter / X' },
+    { label: 'YT', title: 'YouTube' },
+  ];
 
   return (
-    <section id="trust" className="bg-black text-zinc-50 relative pt-16 pb-12 px-8 border-t border-zinc-800 overflow-hidden">
-      <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-indigo-600/5 rounded-full blur-[140px] pointer-events-none" style={{ transform: 'translateZ(0)', willChange: 'transform' }}></div>
-      
-      <div className="max-w-4xl mx-auto text-center relative z-10 mb-16">
-        
-        {/* Original Simple Lock Animation */}
-        <div className="relative mb-10 flex justify-center">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.5, y: 40 }}
-              whileInView={{ opacity: 1, scale: 1, y: 0 }}
-              viewport={{ once: true, margin: "-50px" }}
-              transition={{
-                type: "spring",
-                stiffness: 260,
-                damping: 20
-              }}
-              className="relative w-24 h-24 border border-white/20 p-6 rounded-3xl bg-indigo-500/10 backdrop-blur-md shadow-[0_0_50px_rgba(99,102,241,0.15)] flex items-center justify-center group cursor-pointer hover:border-indigo-400 transition-colors duration-500"
-            >
-                {/* Continuous Float Motion */}
-                <motion.div
-                  animate={{ y: [0, -8, 0] }}
-                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                >
-                  <Lock className="w-10 h-10 text-white group-hover:text-indigo-300 transition-colors duration-500" />
-                </motion.div>
-            </motion.div>
-        </div>
-        
-        <motion.h2 
-          initial={{ opacity: 0, tracking: "0.5em" }}
-          whileInView={{ opacity: 1, tracking: "0.2em" }}
-          viewport={{ once: true }}
-          transition={{ duration: 1, ease: "easeOut" }}
-          className="text-xs font-semibold uppercase mb-8 text-slate-400 tracking-[0.2em]"
-        >
-          YOUR FOCUS, YOUR FUTURE, NOT YOUR FILES
-        </motion.h2>
+    <section className="bg-[#080808] text-zinc-300 relative border-t border-white/[0.06] overflow-hidden">
 
-        <motion.p 
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="text-2xl md:text-4xl font-normal text-slate-500 leading-tight tracking-tight px-4 max-w-3xl mx-auto"
-        >
-          We prefer valuing your late nights over tracking your data, we <strong className="text-slate-50 font-bold">secure the test</strong>, then we <strong className="text-slate-50 font-bold">get out of your way</strong>
-        </motion.p>
+      {/* Subtle ambient glow */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[200px] bg-teal-600/5 blur-[100px] pointer-events-none rounded-full" />
+
+      {/* ── Trust quote band ── */}
+      <div className="border-b border-white/[0.06] py-12 px-8">
+        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7 }}
+            className="text-2xl md:text-3xl font-light text-zinc-400 leading-snug tracking-tight max-w-2xl"
+          >
+            We secure the test, then{' '}
+            <strong className="text-white font-semibold">get out of your way.</strong>
+          </motion.p>
+          <motion.button
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => window.location.href = '/login'}
+            className="shrink-0 bg-white text-black font-bold text-sm tracking-widest uppercase px-8 py-4 rounded-full hover:bg-zinc-100 transition-colors"
+          >
+            Get Started →
+          </motion.button>
+        </div>
       </div>
 
-      <div className="max-w-5xl mx-auto border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-6">
-        <div className="flex items-center gap-2">
-          <VisionLogo className="w-5 h-5 text-slate-400" />
-          <span className="font-semibold tracking-[0.2em] text-[10px] uppercase text-slate-400">Vision | 2026</span>
+      {/* ── Main footer grid ── */}
+      <div className="max-w-7xl mx-auto px-8 py-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12">
+
+        {/* Link columns */}
+        {cols.map((col) => (
+          <div key={col.title}>
+            <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-zinc-500 mb-5">
+              {col.title}
+            </p>
+            <ul className="flex flex-col gap-3">
+              {col.links.map((link) => (
+                <li key={link}>
+                  <a
+                    href="#"
+                    className="text-[15px] text-zinc-400 hover:text-white transition-colors duration-150 leading-none"
+                    onClick={e => e.preventDefault()}
+                  >
+                    {link}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+
+        {/* Newsletter + Social */}
+        <div className="lg:col-span-2">
+          <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-zinc-500 mb-5">
+            Stay in the loop
+          </p>
+
+          {subscribed ? (
+            <div className="flex items-center gap-2 text-emerald-400 text-sm font-medium mb-6">
+              <Check size={16} /> You're subscribed!
+            </div>
+          ) : (
+            <form onSubmit={handleSubscribe} className="flex items-center gap-0 mb-3">
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="Your email here"
+                className="flex-1 bg-transparent border-b border-zinc-700 focus:border-zinc-400 outline-none text-white text-sm py-2 pr-3 placeholder:text-zinc-600 transition-colors"
+              />
+              <button
+                type="submit"
+                className="ml-3 w-9 h-9 rounded-full bg-white text-black flex items-center justify-center hover:bg-zinc-200 transition-colors shrink-0"
+              >
+                <ChevronRight size={16} strokeWidth={2.5} />
+              </button>
+            </form>
+          )}
+
+          <p className="text-[11px] text-zinc-600 leading-relaxed mb-10">
+            By signing up, you agree to our{' '}
+            <a href="#" className="underline hover:text-zinc-400 transition-colors" onClick={e=>e.preventDefault()}>
+              Privacy Policy
+            </a>
+            . We respect your data. Unsubscribe anytime.
+          </p>
+
+          <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-zinc-500 mb-4">
+            Follow us on:
+          </p>
+          <div className="flex items-center gap-3">
+            {socials.map((s) => (
+              <motion.a
+                key={s.label}
+                href="#"
+                title={s.title}
+                onClick={e => e.preventDefault()}
+                whileHover={{ scale: 1.1, backgroundColor: '#fff', color: '#000' }}
+                whileTap={{ scale: 0.94 }}
+                className="w-10 h-10 rounded-full border border-zinc-700 flex items-center justify-center text-zinc-400 hover:text-white transition-colors text-[11px] font-black tracking-tight"
+                style={{ transition: 'background 0.15s, color 0.15s' }}
+              >
+                {s.label}
+              </motion.a>
+            ))}
+          </div>
         </div>
-        <div className="text-[10px] text-slate-600 font-semibold uppercase tracking-widest">
-          BUILT FOR STRUCTURAL INTEGRITY
+      </div>
+
+      {/* ── Bottom bar ── */}
+      <div className="border-t border-white/[0.06] px-8 py-6">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+          {/* Logo */}
+          <div className="flex items-center gap-2.5">
+            <VisionLogo className="w-5 h-5 text-zinc-500" />
+            <span className="text-[11px] font-semibold tracking-[0.18em] uppercase text-zinc-500">
+              Vision
+            </span>
+          </div>
+
+          {/* Copyright */}
+          <p className="text-[11px] text-zinc-600 font-medium">
+            © 2026 Vision Secure Exams. All rights reserved.
+          </p>
+
+          {/* Right links */}
+          <div className="flex items-center gap-6">
+            <span className="text-zinc-800 text-[10px]">•</span>
+            <a href="#" onClick={e=>e.preventDefault()} className="text-[11px] text-zinc-500 hover:text-white transition-colors font-medium">Privacy Policy</a>
+            <a href="#" onClick={e=>e.preventDefault()} className="text-[11px] text-zinc-500 hover:text-white transition-colors font-medium">Terms of Use</a>
+            <a href="#" onClick={e=>e.preventDefault()} className="text-[11px] text-zinc-500 hover:text-white transition-colors font-medium">Security</a>
+          </div>
+
+          {/* Scroll to top */}
+          <motion.button
+            whileHover={{ scale: 1.1, backgroundColor: '#fff', color: '#000' }}
+            whileTap={{ scale: 0.92 }}
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="w-10 h-10 rounded-full border border-zinc-700 text-zinc-400 flex items-center justify-center text-sm font-bold transition-colors"
+          >
+            ↑
+          </motion.button>
         </div>
       </div>
     </section>
   );
 };
+
 const CyclingPillHeadline = () => {
   const [idx, setIdx] = useState(0);
   const current = CYCLING_STATES[idx];
@@ -1261,11 +1534,11 @@ const CyclingPillHeadline = () => {
       <div
         className={`absolute w-[600px] h-[300px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 blur-[120px] opacity-20 rounded-full bg-gradient-to-r ${current.gradient} transition-all duration-1000`}
       />
-      <h2 className="text-5xl md:text-7xl font-black tracking-tighter text-white leading-tight mb-0">
+      <h2 className="text-5xl md:text-7xl font-semibold tracking-tight text-white leading-tight mb-0">
         The exam platform
       </h2>
       <div className="flex items-center gap-4 mt-1 flex-wrap justify-center">
-        <h2 className="text-5xl md:text-7xl font-black tracking-tighter text-white leading-tight">
+        <h2 className="text-5xl md:text-7xl font-semibold tracking-tight text-white leading-tight">
           built to
         </h2>
         <div

@@ -146,7 +146,7 @@ const QuestionPalette = React.memo(({ questions, currentQ, answers, visited, mar
 const ProctoringSidebar = React.memo(({ cameraActive, videoRef, faceActive, confidence, camError, onRetryCamera }) => (
   <div className="flex flex-col w-full gap-5">
     <div className="relative group">
-      <div className="absolute -inset-0.5 bg-gradient-to-r from-red-500 to-red-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000 animate-pulse"></div>
+
       <div className="relative aspect-square w-full rounded-2xl bg-slate-900 border border-slate-200 overflow-hidden shadow-2xl">
         {cameraActive ? (
           <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover scale-x-[-1]" />
@@ -1262,7 +1262,7 @@ export default function ExamCockpit() {
                             return (
                               <button key={i} onClick={() => setAnswers(p => ({ ...p, [currentQuestionId]: opt.originalIndex }))} className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all duration-200 text-left relative group ${isS ? 'bg-slate-100/60 border-slate-900 shadow-md shadow-slate-200/50' : 'bg-white border-slate-100 hover:border-slate-300 hover:bg-slate-50/50'}`}>
                                 <div className={`w-8 h-8 shrink-0 rounded-lg flex items-center justify-center text-[12px] font-black transition-all ${isS ? 'bg-slate-900 text-white shadow-md' : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'}`}>{String.fromCharCode(65 + i)}</div>
-                                <span className={`text-[15px] leading-snug flex-1 ${isS ? 'font-black text-slate-900' : 'font-medium text-slate-600'}`}>{opt.text}</span>
+                                <span className={`text-[15px] leading-snug flex-1 ${isS ? 'font-medium text-slate-900' : 'font-medium text-slate-600'}`}>{opt.text}</span>
                                 {isS && <CheckCircle2 size={20} className="text-slate-900 animate-in zoom-in duration-300 shrink-0" />}
                               </button>
                             );
