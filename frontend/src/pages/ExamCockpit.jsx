@@ -86,12 +86,12 @@ const QuestionPalette = React.memo(({ questions, currentQ, answers, visited, mar
   };
 
   const stateStyles = {
-    'current':         'bg-indigo-600 text-white border-indigo-600 shadow-md ring-2 ring-indigo-200 ring-offset-2 scale-110 z-10 font-black',
-    'answered':        'bg-emerald-50 text-emerald-700 border-emerald-200 font-bold',
-    'marked':          'bg-amber-50 text-amber-700 border-amber-200 font-bold',
-    'marked-answered': 'bg-amber-50 text-amber-700 border-amber-200 font-bold ring-2 ring-indigo-500 ring-offset-1',
-    'visited':         'bg-slate-50 text-slate-600 border-slate-200 font-bold',
-    'unseen':          'bg-white text-slate-400 border-slate-100 hover:border-slate-300',
+    'current':         'bg-slate-900 text-white border-slate-900 shadow-md ring-2 ring-slate-300 ring-offset-2 scale-110 z-10 font-bold',
+    'answered':        'bg-emerald-50 text-emerald-700 border-emerald-200 font-medium',
+    'marked':          'bg-amber-50 text-amber-700 border-amber-200 font-medium',
+    'marked-answered': 'bg-amber-50 text-amber-700 border-amber-200 font-medium ring-2 ring-slate-800 ring-offset-1',
+    'visited':         'bg-slate-50 text-slate-600 border-slate-200 font-medium',
+    'unseen':          'bg-white text-slate-500 border-slate-100 hover:border-slate-300 font-medium',
   };
 
   return (
@@ -106,7 +106,7 @@ const QuestionPalette = React.memo(({ questions, currentQ, answers, visited, mar
         </div>
         <div className="p-1 bg-slate-100 rounded-xl flex items-center gap-1">
           {sections.map(sec => (
-            <button key={sec.id} onClick={() => handleSectionClick(sec)} className={`flex-1 py-2 text-[10px] font-black rounded-lg uppercase tracking-wider transition-all ${activeSection === sec.id ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+            <button key={sec.id} onClick={() => handleSectionClick(sec)} className={`flex-1 py-2 text-[10px] font-black rounded-lg uppercase tracking-wider transition-all ${activeSection === sec.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
               {sec.label}
             </button>
           ))}
@@ -127,7 +127,7 @@ const QuestionPalette = React.memo(({ questions, currentQ, answers, visited, mar
       <div className="p-5 border-t border-slate-100 bg-slate-50/50 mt-auto">
         <div className="grid grid-cols-2 gap-x-4 gap-y-2">
           {[
-            { dot: 'bg-indigo-600', label: 'Current' },
+            { dot: 'bg-slate-900', label: 'Current' },
             { dot: 'bg-emerald-500', label: 'Solved' },
             { dot: 'bg-amber-500', label: 'Marked' },
             { dot: 'bg-slate-300', label: 'Unseen' },
@@ -172,32 +172,6 @@ const ProctoringSidebar = React.memo(({ cameraActive, videoRef, faceActive, conf
       </div>
     )}
     
-    <div className="flex flex-col items-center gap-2">
-      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Candidate Health</p>
-      <div className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 shadow-inner">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 border border-indigo-100"><Shield size={16} /></div>
-            <span className="text-[13px] font-black text-slate-900 tabular-nums">{confidence}%</span>
-          </div>
-          <div className="relative w-10 h-10">
-            <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
-              <circle cx="18" cy="18" r="16" fill="none" stroke="#e2e8f0" strokeWidth="3" />
-              <circle cx="18" cy="18" r="16" fill="none" stroke="#6366f1" strokeWidth="3"
-                strokeDasharray={`${confidence} ${100 - confidence}`} strokeLinecap="round" />
-            </svg>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          {[{ label: 'Eye', status: faceActive }, { label: 'Device', status: true }, { label: 'Audio', status: true }, { label: 'Env', status: true }].map((item, i) => (
-            <div key={i} className="flex items-center gap-1.5">
-              <div className={`w-1.5 h-1.5 rounded-full ${item.status ? 'bg-emerald-500' : 'bg-red-500 animate-pulse'}`} />
-              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">{item.label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
   </div>
 ));
 
@@ -206,7 +180,7 @@ const SubmitModal = React.memo(({ isOpen, onClose, onConfirm, stats }) => (
     {isOpen && (
       <div className="fixed inset-0 z-[110] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6">
         <motion.div initial={{ scale: 0.95, y: 10, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-white/20">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 mb-6 flex items-center justify-center shadow-sm"><Send size={28} /></div>
+          <div className="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200 text-slate-900 mb-6 flex items-center justify-center shadow-sm"><Send size={28} /></div>
           <h2 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">Hand In Assessment?</h2>
           <p className="text-[13px] font-medium text-slate-500 mb-8 leading-relaxed">You are about to submit your response. This action is final and your work will be graded as currently saved.</p>
           <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 mb-8 grid grid-cols-3 gap-4 text-center">
@@ -216,7 +190,7 @@ const SubmitModal = React.memo(({ isOpen, onClose, onConfirm, stats }) => (
           </div>
           <div className="flex gap-3">
             <button onClick={onClose} className="flex-1 py-3.5 px-4 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all text-[12px] font-black uppercase tracking-widest">Wait, I'll Review</button>
-            <button onClick={onConfirm} className="flex-1 py-3.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all text-[12px] font-black uppercase tracking-widest shadow-lg shadow-indigo-100">Confirm & Submit</button>
+            <button onClick={onConfirm} className="flex-1 py-3.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-900 text-white transition-all text-[12px] font-black uppercase tracking-widest shadow-lg shadow-slate-200">Confirm & Submit</button>
           </div>
         </motion.div>
       </div>
@@ -313,10 +287,10 @@ const ObjectivePanel = React.memo(({ question, index, markedForReview }) => (
     </div>
     <div className="flex-1 overflow-y-auto p-8 scroll-thin font-medium">
       <div className="flex items-center gap-3 mb-6">
-        <div className="px-2.5 py-1 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm">Q{index + 1}</div>
+        <div className="px-2.5 py-1 bg-slate-100 text-slate-900 border border-slate-200 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm">Q{index + 1}</div>
         <div className="px-2.5 py-1 bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-[10px] font-black uppercase tracking-widest">{question?.marks || 10} Marks</div>
       </div>
-      <h2 className="text-xl font-black text-slate-900 leading-snug tracking-tight mb-6">{question?.questionText}</h2>
+      <h2 className="text-xl font-semibold text-slate-900 leading-snug tracking-tight mb-6">{question?.questionText}</h2>
       <div className="prose prose-slate prose-sm text-slate-500 leading-relaxed space-y-4">
         <p>Implement the solution according to constraints. Standard input/output is supported.</p>
         <ul className="list-disc pl-5 text-[12px] font-semibold space-y-1">
@@ -354,7 +328,7 @@ const CodingEnvironment = React.memo(({
             {isLangDropdownOpen && (
               <div className="absolute top-full right-0 mt-1 w-32 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1 overflow-hidden">
                 {['javascript', 'python', 'cpp', 'java'].map(l => (
-                  <button key={l} onClick={() => { setSelectedLanguage(l); setIsLangDropdownOpen(false); }} className={`w-full text-left px-3 py-1.5 text-[11px] font-black uppercase tracking-wider transition-colors ${selectedLanguage === l ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'}`}>{l}</button>
+                  <button key={l} onClick={() => { setSelectedLanguage(l); setIsLangDropdownOpen(false); }} className={`w-full text-left px-3 py-1.5 text-[11px] font-black uppercase tracking-wider transition-colors ${selectedLanguage === l ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:bg-slate-50'}`}>{l}</button>
                 ))}
               </div>
             )}
@@ -368,18 +342,30 @@ const CodingEnvironment = React.memo(({
              theme="light" 
              value={typeof answer === 'object' ? answer.code : (answer ?? question?.initialCode)} 
              onChange={onCodeChange} 
-             options={{ fontSize: 13, minimap: { enabled: false }, automaticLayout: true, padding: { top: 16 } }} 
+             options={{ 
+               fontSize: 13, 
+               minimap: { enabled: false }, 
+               automaticLayout: true, 
+               padding: { top: 16 },
+               hover: { enabled: false },
+               lightbulb: { enabled: false },
+               codeLens: false,
+               renderValidationDecorations: 'off',
+               quickSuggestions: false,
+               contextmenu: false,
+               unicodeHighlight: { ambiguousCharacters: false, invisibleCharacters: false, nonBasicASCII: false }
+             }} 
           />
         </div>
       </div>
-      <div className="h-1 bg-slate-200 hover:bg-indigo-300 cursor-row-resize z-10 transition-all flex items-center justify-center group" onMouseDown={onMouseDown}><div className="w-12 h-1 bg-slate-300 group-hover:bg-indigo-500 rounded-full transition-colors" /></div>
+      <div className="h-1 bg-slate-200 hover:bg-slate-300 cursor-row-resize z-10 transition-all flex items-center justify-center group" onMouseDown={onMouseDown}><div className="w-12 h-1 bg-slate-300 group-hover:bg-slate-800 rounded-full transition-colors" /></div>
       <div className="flex-1 flex flex-col min-h-0 bg-white">
         <div className="flex items-center px-4 border-b border-slate-200 shrink-0 h-10 bg-white z-10">
-          <button onClick={() => setActiveTab('Test Cases')} className={`h-full px-4 text-[11px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'Test Cases' ? 'text-indigo-600 border-indigo-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>Test Cases</button>
-          <button onClick={() => setActiveTab('Execution Details')} className={`h-full px-4 text-[11px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'Execution Details' ? 'text-indigo-600 border-indigo-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>Output Log</button>
+          <button onClick={() => setActiveTab('Test Cases')} className={`h-full px-4 text-[11px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'Test Cases' ? 'text-slate-900 border-slate-900' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>Test Cases</button>
+          <button onClick={() => setActiveTab('Execution Details')} className={`h-full px-4 text-[11px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'Execution Details' ? 'text-slate-900 border-slate-900' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>Output Log</button>
         </div>
         <div className="flex-1 overflow-y-auto p-6 scroll-thin bg-slate-50/40">
-          {isExecuting ? <div className="h-full flex flex-col items-center justify-center gap-3 text-indigo-500"><RotateCcw size={24} className="animate-spin" /><span className="text-[10px] font-black uppercase tracking-widest animate-pulse">Processing Execution...</span></div> : executionResult ? (
+          {isExecuting ? <div className="h-full flex flex-col items-center justify-center gap-3 text-slate-800"><RotateCcw size={24} className="animate-spin" /><span className="text-[10px] font-black uppercase tracking-widest animate-pulse">Processing Execution...</span></div> : executionResult ? (
             <div className="space-y-4">
               {activeTab === 'Test Cases' ? (
                   <div className="grid grid-cols-1 gap-4">
@@ -1179,13 +1165,15 @@ export default function ExamCockpit() {
   }, []);
 
   if (terminated) return (
-    <div className="h-screen bg-[#08020a] flex items-center justify-center font-sans overflow-hidden">
+    <div className="h-screen bg-white flex items-center justify-center font-sans overflow-hidden">
       <div className="text-center relative z-10 max-w-lg mx-auto px-6">
-        <XCircle size={48} className="text-red-500 mx-auto mb-8" />
-        <h2 className="text-4xl font-black text-white mb-3 tracking-tight">Exam Terminated</h2>
-        <p className="text-zinc-400 text-sm mb-8 leading-relaxed">{terminated.reason || 'Session terminated by supervisor.'}</p>
-        <div className="flex items-center justify-center gap-3 text-sm text-red-400 font-bold border border-red-500/20 bg-red-500/5 px-6 py-3 rounded-2xl">
-          <span className="w-10 h-10 rounded-full border-2 border-red-500/30 flex items-center justify-center tabular-nums">{terminateCountdown}</span>
+        <div className="w-20 h-20 rounded-3xl bg-red-50 border border-red-200 flex items-center justify-center mx-auto mb-8">
+          <XCircle size={40} className="text-red-500" />
+        </div>
+        <h2 className="text-4xl font-black text-slate-900 mb-3 tracking-tight">Exam Terminated</h2>
+        <p className="text-slate-500 text-sm mb-8 leading-relaxed font-medium">{terminated.reason || 'Session terminated by supervisor.'}</p>
+        <div className="flex items-center justify-center gap-3 text-sm text-red-600 font-bold border border-red-200 bg-red-50 px-6 py-3 rounded-2xl">
+          <span className="w-10 h-10 rounded-full border-2 border-red-300 bg-white flex items-center justify-center tabular-nums text-red-600 font-black">{terminateCountdown}</span>
           <p className="uppercase tracking-widest text-[10px]">Redirecting to Portal</p>
         </div>
       </div>
@@ -1203,7 +1191,7 @@ export default function ExamCockpit() {
         
         <header className="shrink-0 bg-white border-b border-slate-200 shadow-sm px-5 h-[48px] flex items-center justify-between z-30">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-100"><VisionLogo className="w-5 h-5 text-white" /></div>
+            <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center shadow-lg shadow-slate-200"><VisionLogo className="w-5 h-5 text-white" /></div>
             <span className="text-[13px] font-black tracking-widest">VISION</span>
             <div className="h-4 w-px bg-slate-200" />
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest max-w-[200px] truncate">{exam?.title || 'Exam'}</span>
@@ -1215,12 +1203,12 @@ export default function ExamCockpit() {
                 <p className="text-[11px] font-bold leading-none">{sessionStorage.getItem('vision_name') || 'Candidate'}</p>
                 <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{sessionStorage.getItem('vision_email') || 'VSN-USER'}</p>
               </div>
-              <div className="w-8 h-8 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-[10px] font-black text-indigo-600 shadow-sm">
+              <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-black text-slate-900 shadow-sm">
                 {(sessionStorage.getItem('vision_name') || 'C').charAt(0)}
               </div>
             </div>
           </div>
-          <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-slate-50"><div className="h-full bg-indigo-600 transition-all duration-700" style={{ width: `${(answeredCount/Math.max(questions.length, 1))*100}%` }} /></div>
+          <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-slate-50"><div className="h-full bg-slate-900 transition-all duration-700" style={{ width: `${(answeredCount/Math.max(questions.length, 1))*100}%` }} /></div>
         </header>
 
         <div className="flex flex-1 overflow-hidden">
@@ -1245,10 +1233,7 @@ export default function ExamCockpit() {
                   {helpSent ? 'Request Sent' : helpError ? 'Request Failed' : 'Need Help?'}
                </button>
             </div>
-            <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1.5"><div className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse" /> Encrypted Session</span>
-              <button onClick={() => setShowExitPrompt(true)} className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors border border-red-100 shadow-sm active:scale-95"><Power size={14} /></button>
-            </div>
+              {/* Encrypted Session moved to global bottom bar */}
           </aside>
 
           <main className="flex-1 flex overflow-hidden bg-slate-50">
@@ -1263,29 +1248,29 @@ export default function ExamCockpit() {
                   <div className="max-w-3xl mx-auto w-full bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden mb-12">
                     <div className="p-10 border-b border-slate-100">
                       <div className="flex items-center gap-3 mb-6">
-                        <div className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-xl text-[11px] font-black uppercase tracking-widest border border-indigo-100">Q{currentQ + 1}</div>
+                        <div className="px-3 py-1 bg-slate-100 text-slate-900 rounded-xl text-[11px] font-black uppercase tracking-widest border border-slate-200">Q{currentQ + 1}</div>
                         <div className="px-3 py-1 bg-slate-100 text-slate-500 rounded-xl text-[11px] font-bold uppercase tracking-widest">{q?.type?.toLowerCase() === 'mcq' ? 'Choice Selection' : q?.type?.toLowerCase() === 'coding' ? 'Coding Challenge' : 'Written Case'}</div>
-                        {markedForReview[currentQuestionId] && <div className="ml-auto text-violet-600 bg-violet-50 px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest border border-violet-100 flex items-center gap-2"><Bookmark size={12} fill="currentColor" /> Flagged</div>}
+                        {markedForReview[currentQuestionId] && <div className="ml-auto text-amber-600 bg-amber-50 px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest border border-amber-200 flex items-center gap-2"><Bookmark size={12} fill="currentColor" /> Flagged</div>}
                       </div>
-                      <h2 className="text-3xl font-black text-slate-900 leading-tight tracking-tight">{q?.questionText}</h2>
+                      <h2 className="text-3xl font-semibold text-slate-900 leading-tight tracking-tight">{q?.questionText}</h2>
                     </div>
                     <div className="p-10 pb-12">
                       {q?.type?.toLowerCase() === 'mcq' ? (
-                        <div className="grid gap-4">
+                        <div className="grid gap-3">
                           {q?.displayOptions?.map((opt, i) => {
                             const isS = answers[currentQuestionId] === opt.originalIndex;
                             return (
-                              <button key={i} onClick={() => setAnswers(p => ({ ...p, [currentQuestionId]: opt.originalIndex }))} className={`w-full flex items-center gap-6 p-6 rounded-2xl border-2 transition-all duration-300 text-left relative group ${isS ? 'bg-indigo-50/50 border-indigo-600 shadow-lg shadow-indigo-100/50' : 'bg-white border-slate-100 hover:border-slate-300 hover:bg-slate-50/50'}`}>
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-[14px] font-black transition-all ${isS ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-100 text-slate-400'}`}>{String.fromCharCode(65 + i)}</div>
-                                <span className={`text-[17px] leading-relaxed flex-1 ${isS ? 'font-bold text-indigo-900' : 'font-medium text-slate-600'}`}>{opt.text}</span>
-                                {isS && <CheckCircle2 size={24} className="text-indigo-600 animate-in zoom-in duration-300" />}
+                              <button key={i} onClick={() => setAnswers(p => ({ ...p, [currentQuestionId]: opt.originalIndex }))} className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all duration-200 text-left relative group ${isS ? 'bg-slate-100/60 border-slate-900 shadow-md shadow-slate-200/50' : 'bg-white border-slate-100 hover:border-slate-300 hover:bg-slate-50/50'}`}>
+                                <div className={`w-8 h-8 shrink-0 rounded-lg flex items-center justify-center text-[12px] font-black transition-all ${isS ? 'bg-slate-900 text-white shadow-md' : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'}`}>{String.fromCharCode(65 + i)}</div>
+                                <span className={`text-[15px] leading-snug flex-1 ${isS ? 'font-black text-slate-900' : 'font-medium text-slate-600'}`}>{opt.text}</span>
+                                {isS && <CheckCircle2 size={20} className="text-slate-900 animate-in zoom-in duration-300 shrink-0" />}
                               </button>
                             );
                           })}
                         </div>
                       ) : (
                         <div className="relative group">
-                            <textarea value={answers[currentQuestionId] || ''} onChange={e => setAnswers(p => ({ ...p, [currentQuestionId]: e.target.value }))} placeholder="Type your structured response here..." className="w-full h-96 bg-slate-50/50 border-2 border-slate-100 rounded-3xl p-10 focus:bg-white focus:border-indigo-500 focus:ring-8 focus:ring-indigo-500/5 transition-all outline-none resize-none shadow-inner font-medium text-slate-700 leading-relaxed text-[17px]" />
+                            <textarea value={answers[currentQuestionId] || ''} onChange={e => setAnswers(p => ({ ...p, [currentQuestionId]: e.target.value }))} placeholder="Type your structured response here..." className="w-full h-96 bg-slate-50/50 border-2 border-slate-100 rounded-3xl p-10 focus:bg-white focus:border-slate-800 focus:ring-8 focus:ring-slate-800/5 transition-all outline-none resize-none shadow-inner font-medium text-slate-700 leading-relaxed text-[17px]" />
                         </div>
                       )}
                     </div>
@@ -1293,34 +1278,69 @@ export default function ExamCockpit() {
                 </div>
               )}
               
-              <footer className="bg-white border-t border-slate-200 px-8 h-[64px] flex items-center justify-between shrink-0 shadow-[0_-8px_20px_-8px_rgba(0,0,0,0.05)] z-20">
-                <div className="flex items-center gap-3">
-                  <button onClick={() => {
-                     const p = Math.max(0, currentQ - 1);
-                     setCurrentQ(p); 
-                     const qId = questions[p]?.originalId || questions[p]?._id;
-                     if (qId) setVisited(v => ({ ...v, [qId]: true }));
-                  }} disabled={currentQ === 0} className={`h-11 px-6 flex items-center gap-2.5 rounded-xl text-[12px] font-black uppercase tracking-widest border transition-all ${currentQ === 0 ? 'text-slate-300 border-slate-100 opacity-50' : 'text-slate-600 border-slate-200 hover:bg-slate-50 shadow-sm active:scale-95'}`}><ChevronLeft size={18} /> Back</button>
-                  <button onClick={() => setMarkedForReview(p => ({ ...p, [currentQuestionId]: !p[currentQuestionId] }))} className={`h-11 px-6 rounded-xl text-[12px] font-black uppercase tracking-widest border transition-all ${markedForReview[currentQuestionId] ? 'bg-violet-600 text-white border-violet-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>{markedForReview[currentQuestionId] ? 'Flagged' : 'Flag for Review'}</button>
-                </div>
-                <div className="flex items-center gap-4">
-                  {q?.type?.toLowerCase() === 'coding' && (
-                    <div className="flex gap-2">
-                      <button onClick={handleRunCode} disabled={isExecuting || cooldownSeconds > 0 || isOffline} className={`h-11 px-6 flex items-center gap-2.5 rounded-xl text-[12px] font-black uppercase tracking-widest border transition-all active:scale-95 ${isOffline ? 'bg-slate-100 text-slate-300 border-slate-100 cursor-not-allowed' : cooldownSeconds > 0 ? 'bg-slate-50 text-slate-400 border-slate-200' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:shadow-sm'}`}>{isExecuting ? <RotateCcw size={16} className="animate-spin" /> : <Play size={16} fill="currentColor" />} {isOffline ? 'Offline' : cooldownSeconds > 0 ? `Wait (${cooldownSeconds}s)` : 'Run'}</button>
-                      <button onClick={handleCheckTestCases} disabled={isExecuting || cooldownSeconds > 0 || isOffline} className={`h-11 px-8 flex items-center gap-2.5 rounded-xl text-[12px] font-black uppercase tracking-widest transition-all active:scale-95 ${isOffline ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : cooldownSeconds > 0 ? 'bg-indigo-400 text-white cursor-not-allowed opacity-80' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-100'}`}>{isOffline ? 'Internet Required' : cooldownSeconds > 0 ? `Ready in ${cooldownSeconds}s` : 'Submit Code'}</button>
-                    </div>
-                  )}
-                  <div className="h-8 w-px bg-slate-100 mx-2" />
-                  <button onClick={() => {
-                     if (currentQ < questions.length - 1) {
-                       const n = currentQ + 1;
-                       setCurrentQ(n); 
-                       const qId = questions[n]?.originalId || questions[n]?._id;
+              <footer className="bg-white border-t border-slate-200 shrink-0 shadow-[0_-8px_20px_-8px_rgba(0,0,0,0.05)] z-20 flex flex-col">
+                <div className="h-[56px] px-8 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => {
+                       const p = Math.max(0, currentQ - 1);
+                       setCurrentQ(p); 
+                       const qId = questions[p]?.originalId || questions[p]?._id;
                        if (qId) setVisited(v => ({ ...v, [qId]: true }));
-                     } else {
-                       setShowConfirm(true);
-                     }
-                  }} disabled={isOffline} className={`h-11 px-8 rounded-xl text-[12px] font-black uppercase tracking-widest transition-all ${isOffline ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : currentQ === questions.length - 1 ? 'bg-emerald-600 text-white shadow-lg' : 'bg-slate-900 text-white shadow-lg hover:bg-black'}`}>{isOffline ? 'Offline' : currentQ === questions.length - 1 ? 'Final Hand In' : 'Save & Next'} <ChevronRight size={18} className="ml-1" /></button>
+                    }} disabled={currentQ === 0} className={`h-9 px-4 flex items-center gap-2 rounded-lg text-[11px] font-bold uppercase tracking-widest border transition-all ${currentQ === 0 ? 'text-slate-300 border-slate-100 opacity-50' : 'text-slate-600 border-slate-200 hover:bg-slate-50 shadow-sm active:scale-95'}`}><ChevronLeft size={16} /> Back</button>
+                    <button onClick={() => {
+                      const isCurrentlyFlagged = !!markedForReview[currentQuestionId];
+                      setMarkedForReview(p => ({ ...p, [currentQuestionId]: !isCurrentlyFlagged }));
+                      
+                      // Auto-advance if we are flagging the question
+                      if (!isCurrentlyFlagged) {
+                        setTimeout(() => {
+                          if (currentQ < questions.length - 1) {
+                            const n = currentQ + 1;
+                            setCurrentQ(n); 
+                            const qId = questions[n]?.originalId || questions[n]?._id;
+                            if (qId) setVisited(v => ({ ...v, [qId]: true }));
+                          } else {
+                            setShowConfirm(true);
+                          }
+                        }, 200); // 200ms delay so they can visually see the button turn orange first
+                      }
+                    }} className={`h-9 px-4 rounded-lg text-[11px] font-bold uppercase tracking-widest border transition-all ${markedForReview[currentQuestionId] ? 'bg-amber-500 text-white border-amber-500 shadow-lg shadow-amber-500/20' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>{markedForReview[currentQuestionId] ? 'Flagged' : 'Flag for Review'}</button>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    {q?.type?.toLowerCase() === 'coding' && (
+                      <div className="flex gap-2">
+                        <button onClick={handleRunCode} disabled={isExecuting || cooldownSeconds > 0 || isOffline} className={`h-9 px-4 flex items-center gap-2 rounded-lg text-[11px] font-bold uppercase tracking-widest border transition-all active:scale-95 ${isOffline ? 'bg-slate-100 text-slate-300 border-slate-100 cursor-not-allowed' : cooldownSeconds > 0 ? 'bg-slate-50 text-slate-400 border-slate-200' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:shadow-sm'}`}>{isExecuting ? <RotateCcw size={14} className="animate-spin" /> : <Play size={14} fill="currentColor" />} {isOffline ? 'Offline' : cooldownSeconds > 0 ? `Wait (${cooldownSeconds}s)` : 'Run'}</button>
+                        <button onClick={handleCheckTestCases} disabled={isExecuting || cooldownSeconds > 0 || isOffline} className={`h-9 px-5 flex items-center gap-2 rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all active:scale-95 ${isOffline ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : cooldownSeconds > 0 ? 'bg-slate-700 text-white cursor-not-allowed opacity-80' : 'bg-slate-900 text-white hover:bg-slate-900 shadow-lg shadow-slate-200'}`}>{isOffline ? 'Internet Required' : cooldownSeconds > 0 ? `Ready in ${cooldownSeconds}s` : 'Submit Code'}</button>
+                      </div>
+                    )}
+                    <div className="h-6 w-px bg-slate-100 mx-2" />
+                    <button onClick={() => {
+                       if (currentQ < questions.length - 1) {
+                         const n = currentQ + 1;
+                         setCurrentQ(n); 
+                         const qId = questions[n]?.originalId || questions[n]?._id;
+                         if (qId) setVisited(v => ({ ...v, [qId]: true }));
+                       } else {
+                         setShowConfirm(true);
+                       }
+                    }} disabled={isOffline} className={`h-9 px-5 rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all ${isOffline ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : currentQ === questions.length - 1 ? 'bg-emerald-600 text-white shadow-lg hover:bg-emerald-700 active:scale-95' : 'bg-slate-900 text-white shadow-lg hover:bg-black active:scale-95'}`}>
+                      {isOffline ? 'Offline' : currentQ === questions.length - 1 ? 'Submit' : 'Save & Next'} 
+                      {currentQ === questions.length - 1 ? <CheckCircle2 size={14} className="ml-1.5 inline-block" /> : <ChevronRight size={16} className="ml-1 inline-block" />}
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="h-10 bg-slate-50 border-t border-slate-100 flex items-center justify-between px-8">
+                  <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Encrypted Session
+                  </span>
+                  <button 
+                    onClick={() => setShowExitPrompt(true)} 
+                    className="flex items-center justify-center w-7 h-7 rounded-full bg-white border border-slate-200 shadow-sm text-slate-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-all group active:scale-95" 
+                    title="Exit Session"
+                  >
+                    <Power size={13} className="stroke-[2.5px]" />
+                  </button>
                 </div>
               </footer>
             </div>
@@ -1369,9 +1389,9 @@ export default function ExamCockpit() {
       <AnimatePresence>
         {broadcastMessage && (
           <motion.div initial={{ opacity: 0, y: -50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -50 }} className="fixed top-16 left-1/2 -translate-x-1/2 z-[250] pointer-events-none">
-            <div className="bg-indigo-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-start gap-4 max-w-xl border border-white/10 ring-8 ring-indigo-500/10 pointer-events-auto">
+            <div className="bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-start gap-4 max-w-xl border border-white/10 ring-8 ring-slate-800/10 pointer-events-auto">
               <div className="bg-white/20 p-2 rounded-xl shrink-0 mt-0.5"><Radio size={20} className="animate-pulse" /></div>
-              <div><h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-100 mb-1">Live Announcement</h3><p className="text-sm font-semibold leading-relaxed text-white">{broadcastMessage}</p></div>
+              <div><h3 className="text-[10px] font-black uppercase tracking-widest text-slate-200 mb-1">Live Announcement</h3><p className="text-sm font-semibold leading-relaxed text-white">{broadcastMessage}</p></div>
               <button onClick={() => setBroadcastMessage(null)} className="ml-2 p-1 hover:bg-white/10 rounded-lg transition-colors"><XCircle size={18} /></button>
             </div>
           </motion.div>
@@ -1387,9 +1407,9 @@ export default function ExamCockpit() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[200] bg-slate-900 flex flex-col items-center justify-center p-6 text-center"
           >
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/10 via-transparent to-emerald-500/10" />
+              <div className="absolute inset-0 bg-gradient-to-br from-slate-900/10 via-transparent to-emerald-500/10" />
               <div className="relative z-10 max-w-md">
-                 <div className="w-20 h-20 rounded-3xl bg-indigo-600 flex items-center justify-center shadow-2xl mb-10 mx-auto animate-bounce">
+                 <div className="w-20 h-20 rounded-3xl bg-slate-900 flex items-center justify-center shadow-2xl mb-10 mx-auto animate-bounce">
                    <Shield size={40} className="text-white" />
                  </div>
                  <h1 className="text-4xl font-black text-white tracking-tighter mb-4 uppercase italic">Secure Environment</h1>
@@ -1398,7 +1418,7 @@ export default function ExamCockpit() {
                  </p>
                  <button
                    onClick={handleSecureEntry}
-                   className="w-full h-14 bg-white text-slate-900 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-2xl hover:bg-indigo-50 transition-all flex items-center justify-center gap-3 active:scale-95"
+                   className="w-full h-14 bg-white text-slate-900 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-2xl hover:bg-slate-100 transition-all flex items-center justify-center gap-3 active:scale-95"
                  >
                    <Lock size={18} /> Initialize Secure Entry
                  </button>

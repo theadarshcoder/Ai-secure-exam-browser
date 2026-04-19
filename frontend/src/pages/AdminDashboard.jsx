@@ -277,14 +277,25 @@ export default function AdminDashboard() {
   const [candidates, setCandidates] = useState([]);
   const [candidateSearch, setCandidateSearch] = useState('');
   const [selectedCandidate, setSelectedCandidate] = useState(null);
-  const [settings, setSettingsState] = useState({
-     maxTabSwitches: 5,
-     forceFullscreen: true,
-     allowLateSubmissions: false,
-     enableWebcam: true,
-     disableCopyPaste: true,
-     requireIDVerification: true
+  const [settings, setSettingsState] = useState(() => {
+     try {
+         const stored = sessionStorage.getItem('admin_unsaved_settings');
+         if (stored) return JSON.parse(stored);
+     } catch (e) {}
+     return {
+         maxTabSwitches: 5,
+         forceFullscreen: true,
+         allowLateSubmissions: false,
+         enableWebcam: true,
+         disableCopyPaste: true,
+         requireIDVerification: true
+     };
   });
+
+  // Sync to session storage whenever they toggle a UI element
+  useEffect(() => {
+      sessionStorage.setItem('admin_unsaved_settings', JSON.stringify(settings));
+  }, [settings]);
 
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'student' });
@@ -294,6 +305,18 @@ export default function AdminDashboard() {
   const [confirmModal, setConfirmModal] = useState({ show: false, msg: '', onConfirm: null });
   const showConfirm = (msg, onConfirm) => setConfirmModal({ show: true, msg, onConfirm });
   const closeConfirm = () => setConfirmModal({ show: false, msg: '', onConfirm: null });
+
+  // Load Settings Exactly Once On Mount
+  useEffect(() => {
+     // If we already have unsaved settings floating in session, don't overwrite them with DB states
+     if (!sessionStorage.getItem('admin_unsaved_settings')) {
+         getSettings().then(res => {
+             if (res && Object.keys(res).length > 0) {
+                 setSettingsState(prev => ({...prev, ...res}));
+             }
+         }).catch(() => console.log('Failed fetching early settings.'));
+     }
+  }, []);
 
   useEffect(() => {
     fetchDataForTab(activeTab);
@@ -369,8 +392,7 @@ export default function AdminDashboard() {
               const res = await getAdminResults();
               setAdminResults(res?.results || res || []);
           } else if (tab === 'Settings') {
-              const res = await getSettings();
-              if (res) setSettingsState(res);
+              // Settings are fetched independently on mount. No data required on tab switch.
           } else if (tab === 'Candidates') {
               const res = await getCandidates(candidateSearch).catch(() => []);
               setCandidates(res || []);
@@ -580,6 +602,7 @@ export default function AdminDashboard() {
   const handleSaveSettings = async () => {
       try {
           await saveSettings(settings);
+          sessionStorage.removeItem('admin_unsaved_settings'); // Clear unsaved flag after successful DB save
           toast.success('System settings saved successfully!');
       } catch (err) {
           console.error(err);
@@ -1023,8 +1046,8 @@ export default function AdminDashboard() {
          <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
             <h4 className="text-sm font-bold text-slate-900 uppercase tracking-tight">Proctoring Rules & Security</h4>
          </div>
-         <div className="p-6 space-y-6">
-            <div className="flex items-center justify-between">
+         <div className="flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 hover:bg-slate-50/50 transition-colors">
                <div>
                   <p className="text-sm font-semibold text-slate-900">Max Allowed Tab Switches</p>
                   <p className="text-xs text-slate-500 mt-0.5">Threshold before exam auto-terminates.</p>
@@ -1032,63 +1055,63 @@ export default function AdminDashboard() {
                <input 
                   type="number" 
                   value={settings.maxTabSwitches} 
-                  onChange={e => setSettingsState({...settings, maxTabSwitches: Number(e.target.value)})}
+                  onChange={e => setSettingsState(prev => ({...prev, maxTabSwitches: Number(e.target.value)}))}
                   className="w-20 px-3 py-2 border border-slate-200 text-sm focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-center rounded-xl transition-all" 
                />
             </div>
             
-            <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
                <div>
                   <p className="text-sm font-semibold text-slate-900">Force Strict Fullscreen</p>
                   <p className="text-xs text-slate-500 mt-0.5">Lock browser into fullscreen during exam sessions.</p>
                </div>
                <ToggleSwitch
                   checked={!!settings.forceFullscreen}
-                  onChange={() => setSettingsState({...settings, forceFullscreen: !settings.forceFullscreen})}
+                  onChange={() => setSettingsState(prev => ({...prev, forceFullscreen: !prev.forceFullscreen}))}
                />
             </div>
 
-            <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
                <div>
                   <p className="text-sm font-semibold text-slate-900">Allow Late Submissions</p>
                   <p className="text-xs text-slate-500 mt-0.5">Accept answers after timer expiry, flagged as late.</p>
                </div>
                <ToggleSwitch
                   checked={!!settings.allowLateSubmissions}
-                  onChange={() => setSettingsState({...settings, allowLateSubmissions: !settings.allowLateSubmissions})}
+                  onChange={() => setSettingsState(prev => ({...prev, allowLateSubmissions: !prev.allowLateSubmissions}))}
                />
             </div>
 
-            <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
                <div>
                   <p className="text-sm font-semibold text-slate-900">Enable Webcam Monitoring</p>
                   <p className="text-xs text-slate-500 mt-0.5">Track gaze and physical presence via webcam.</p>
                </div>
                <ToggleSwitch
                   checked={!!settings.enableWebcam}
-                  onChange={() => setSettingsState({...settings, enableWebcam: !settings.enableWebcam})}
+                  onChange={() => setSettingsState(prev => ({...prev, enableWebcam: !prev.enableWebcam}))}
                />
             </div>
 
-            <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
                <div>
                   <p className="text-sm font-semibold text-slate-900">Disable Copy/Paste & Context Menu</p>
                   <p className="text-xs text-slate-500 mt-0.5">Prevent students from using clipboard or right-click during exam.</p>
                </div>
                <ToggleSwitch
                   checked={!!settings.disableCopyPaste}
-                  onChange={() => setSettingsState({...settings, disableCopyPaste: !settings.disableCopyPaste})}
+                  onChange={() => setSettingsState(prev => ({...prev, disableCopyPaste: !prev.disableCopyPaste}))}
                />
             </div>
 
-            <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
                <div>
                   <p className="text-sm font-semibold text-slate-900">Require ID Verification (eKYC)</p>
                   <p className="text-xs text-slate-500 mt-0.5">Ensure students verify their identity via face-match before starting.</p>
                </div>
                <ToggleSwitch
                   checked={!!settings.requireIDVerification}
-                  onChange={() => setSettingsState({...settings, requireIDVerification: !settings.requireIDVerification})}
+                  onChange={() => setSettingsState(prev => ({...prev, requireIDVerification: !prev.requireIDVerification}))}
                />
             </div>
          </div>

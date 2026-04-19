@@ -7,7 +7,7 @@ import {
   PlayCircle, BookOpen, ShieldCheck, 
   ArrowRight, Clock, CheckCircle2, Lock, ListChecks, Calendar,
   Fingerprint, LifeBuoy, AlertTriangle, Search, Filter,
-  ChevronRight, Hash, Info, UserCircle, Activity, ClipboardList
+  ChevronRight, Hash, Info, UserCircle, Activity, ClipboardList, LogOut, X, Power
 } from 'lucide-react';
 
 
@@ -73,7 +73,7 @@ const Sidebar = ({ currentTime, userName, userEmail, onSupport }) => (
            </div>
            <div className="flex justify-between items-center text-[13px]">
              <span className="text-slate-500 font-medium">Connection</span>
-             <span className="text-slate-700 dark:text-slate-300 font-mono text-[12px] font-medium">{currentTime}</span>
+             <span className="text-slate-800 font-mono text-[12px] font-semibold">{currentTime}</span>
            </div>
            <div className="flex justify-between items-center text-[13px]">
              <span className="text-slate-500 font-medium">Biometrics</span>
@@ -150,7 +150,7 @@ const ExamCard = ({ exam, now, onLaunch, onViewResults, index }) => {
       
       {/* Primary Info */}
       <div className="flex gap-4 items-start sm:items-center">
-        <div className={`w-12 h-12 shrink-0 rounded-xl flex items-center justify-center border ${isLive ? 'border-emerald-200 bg-emerald-50 border-emerald-200 text-emerald-600' : 'border-slate-200 bg-white text-slate-500 group-hover:text-slate-300'} transition-colors`}>
+        <div className={`w-12 h-12 shrink-0 rounded-xl flex items-center justify-center border ${isLive ? 'border-emerald-200 bg-emerald-50 text-emerald-600' : 'border-slate-200 bg-white text-slate-500 group-hover:text-slate-800 group-hover:bg-slate-100 group-hover:border-slate-300'} transition-colors`}>
           <ClipboardList size={22} strokeWidth={1.5} />
         </div>
         
@@ -185,7 +185,7 @@ const ExamCard = ({ exam, now, onLaunch, onViewResults, index }) => {
             ? 'bg-transparent text-slate-600 cursor-not-allowed border border-slate-200' 
             : btnSecondary 
               ? 'bg-slate-50 text-slate-300 hover:bg-slate-100 border border-slate-200'
-              : 'bg-slate-900 text-slate-900 hover:bg-slate-200 border border-slate-200 shadow-sm hover:shadow active:scale-[0.98]'
+              : 'bg-slate-900 text-white hover:bg-slate-700 border border-slate-900 shadow-sm hover:shadow active:scale-[0.98]'
           }`}
       >
         {btnText}
@@ -383,6 +383,9 @@ export default function StudentDashboard() {
   const [showResultsModal, setShowResultsModal] = useState(false);
   const [selectedExamId, setSelectedExamId] = useState(null);
 
+  // Exit confirmation state
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All'); // All, Live, Upcoming, Completed
@@ -556,7 +559,7 @@ export default function StudentDashboard() {
                     <button 
                       key={f}
                       onClick={() => setStatusFilter(f)}
-                      className={`px-4 py-1.5 rounded-lg text-[10px] uppercase tracking-widest font-bold whitespace-nowrap transition-all ${statusFilter === f ? 'bg-white text-black shadow-sm' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-50'}`}
+                      className={`px-4 py-1.5 rounded-lg text-[10px] uppercase tracking-widest font-bold whitespace-nowrap transition-all ${statusFilter === f ? 'bg-white text-black shadow-sm' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200'}`}
                     >
                       {f}
                     </button>
@@ -660,6 +663,55 @@ export default function StudentDashboard() {
       isOpen={showResultsModal}
       onClose={() => setShowResultsModal(false)}
     />
+
+    {/* Exit FAB — Global Candidate Style */}
+    {!showExitConfirm && (
+      <button
+        onClick={() => setShowExitConfirm(true)}
+        className="fixed bottom-6 right-6 z-[90] w-[52px] h-[52px] bg-white border border-slate-200 shadow-[0_4px_16px_rgba(0,0,0,0.06)] rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 hover:border-slate-300 hover:shadow-lg transition-all active:scale-95 group"
+      >
+        <Power size={20} className="stroke-[2.5px]" />
+      </button>
+    )}
+
+    {/* Exit Confirmation Modal */}
+    {showExitConfirm && (
+      <div className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="bg-white border border-slate-200 rounded-2xl max-w-sm w-full p-6 shadow-2xl">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center shrink-0">
+                <LogOut size={18} className="text-red-500" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Exit Session</h3>
+                <p className="text-xs text-slate-500 mt-0.5">This will end your current session.</p>
+              </div>
+            </div>
+            <button onClick={() => setShowExitConfirm(false)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors">
+              <X size={16} />
+            </button>
+          </div>
+          <p className="text-xs text-slate-500 mb-5 font-medium">
+            Are you sure you want to exit? Your session will be cleared and you'll be redirected to the home page.
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowExitConfirm(false)}
+              className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs uppercase tracking-widest transition-colors"
+            >
+              Stay
+            </button>
+            <button
+              onClick={() => { sessionStorage.clear(); localStorage.clear(); navigate('/'); }}
+              className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
+            >
+              <LogOut size={13} /> Exit
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </>
   );
 }

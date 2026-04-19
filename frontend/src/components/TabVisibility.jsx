@@ -72,13 +72,13 @@ export const TabToast = ({ toast }) => (
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 16, scale: 0.97 }}
         transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-        className="fixed bottom-8 right-8 z-[1000] flex items-center gap-3 px-5 py-4 bg-slate-900 border border-amber-500/30 rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.5)] max-w-sm"
+        className="fixed bottom-24 right-8 z-[1000] flex flex-col gap-1.5 px-5 py-4 bg-slate-900 border border-amber-500/30 rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.5)] max-w-sm"
       >
-        <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
-        <div>
+        <div className="flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
           <p className="text-sm font-semibold text-slate-100">{toast.msg}</p>
-          <p className="text-xs text-slate-500 mt-0.5">This event has been recorded.</p>
         </div>
+        <p className="text-xs text-slate-500 mt-0.5">This event has been recorded.</p>
       </motion.div>
     )}
   </AnimatePresence>
