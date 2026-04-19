@@ -12,6 +12,7 @@ import {
   Code, MessageSquare, Star, CheckCircle, AlertOctagon, EyeOff
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
+import PremiumSidebar from '../components/PremiumSidebar';
 import { 
   getMentorStats, 
   getMentorExamList, 
@@ -950,41 +951,15 @@ export default function MentorDashboard() {
 
   return (
     <div className="flex h-screen bg-slate-50 font-sans text-slate-900 select-none antialiased">
-      {/* Light Sidebar */}
-      <aside className="w-[280px] bg-[#F5F5F5] flex flex-col z-30 shrink-0 border-r border-slate-100">
-        <div className="h-24 flex items-center px-8 border-b border-transparent">
-          <div className="flex items-center gap-2.5 w-full">
-             <VisionLogo className="h-7 w-7 text-[#0F0F0F]" />
-             <span className="text-[22px] font-bold tracking-[-0.02em] text-[#0F0F0F]">Vision</span>
-          </div>
-        </div>
-
-        <nav className="flex-1 px-4 space-y-1 mt-6">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`group flex w-full items-center gap-3 px-4 py-2.5 rounded-[10px] transition-all duration-200 ${
-                activeTab === item.id 
-                ? 'bg-[#EBEBEB] text-[#0F0F0F] font-semibold' 
-                : 'text-[#7A7A7A] hover:bg-[#EBEBEB]/60 hover:text-[#0F0F0F] font-medium'
-              }`}
-            >
-              <item.icon size={19} className={`${activeTab === item.id ? 'text-[#0F0F0F]' : 'text-[#A1A1A1] group-hover:text-[#7A7A7A]'}`} />
-              <span className="text-[14.5px] tracking-tight">{item.label}</span>
-            </button>
-          ))}
-        </nav>
-
-        <div className="p-4 mt-auto">
-          <button 
-            onClick={() => showConfirm('Are you sure you want to exit the mentor module? All active monitoring will continue to run.', handleLogout)}
-            className="w-full flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-red-600 rounded-lg text-sm font-medium transition-all hover:bg-red-50"
-          >
-            <LogOut size={18} /> Log Out
-          </button>
-        </div>
-      </aside>
+      <PremiumSidebar
+        navItems={navItems.map(n => ({ ...n, icon: n.icon }))}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        userName={userName}
+        userRole="Mentor"
+        onLogout={() => showConfirm('Are you sure you want to exit the mentor module? All active monitoring will continue to run.', handleLogout)}
+        brandLabel="VISION"
+      />
 
       {/* Main Container */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden">

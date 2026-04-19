@@ -88,15 +88,15 @@ const DiagnosticSidebar = ({ role, activeCount }) => {
           })}
         </div>
         
-        <div className="mt-6 w-full bg-slate-900 rounded-xl p-3 border border-slate-700 shadow-inner h-[90px] overflow-hidden">
-          <div className="flex items-center gap-1.5 mb-2 border-b border-slate-800/60 pb-1.5">
-            <TerminalSquare size={10} className="text-emerald-500" />
+        <div className="mt-6 w-full bg-slate-50 rounded-xl p-3 border border-slate-200 shadow-sm h-[95px] overflow-hidden">
+          <div className="flex items-center gap-1.5 mb-2 border-b border-slate-200 pb-1.5">
+            <TerminalSquare size={10} className="text-emerald-600" />
             <span className="text-[8px] uppercase tracking-[0.2em] font-black text-slate-500">AI Vigilance Output</span>
           </div>
-          <div className="font-mono text-[9px] space-y-0.5 text-emerald-400/80 uppercase">
-            <p className="flex items-center gap-1.5"><span className="text-slate-600">&gt;</span> Tracking gaze patterns: <span className="text-emerald-300">ACTIVE</span></p>
-            <p className="flex items-center gap-1.5"><span className="text-slate-600">&gt;</span> Noise cancelation hook: <span className="text-emerald-300">SECURE</span></p>
-            <p className="flex items-center gap-1.5"><span className="text-slate-600">&gt;</span> Environment integrity: <span className="text-emerald-300">100%</span></p>
+          <div className="font-mono text-[9px] space-y-1 text-slate-600 uppercase">
+            <p className="flex items-center gap-1.5 truncate"><span className="text-slate-400">&gt;</span> Tracking patterns: <span className="text-emerald-600 font-bold ml-auto">ACTIVE</span></p>
+            <p className="flex items-center gap-1.5 truncate"><span className="text-slate-400">&gt;</span> Detection hook: <span className="text-emerald-600 font-bold ml-auto">SECURE</span></p>
+            <p className="flex items-center gap-1.5 truncate"><span className="text-slate-400">&gt;</span> Environment lock: <span className="text-emerald-600 font-bold ml-auto">100%</span></p>
           </div>
         </div>
 
@@ -149,8 +149,8 @@ const BiometricScanner = ({ progress }) => (
         <User size={30} className={`transition-colors duration-500 ${progress === 100 ? 'text-slate-800' : 'text-slate-400'}`} />
       </div>
     </div>
-    <span className={`text-[10px] font-black px-3 py-1 rounded-full border shadow-sm transition-all ${progress === 100 ? 'text-emerald-400 bg-emerald-950/30 border-emerald-900/50' : 'text-slate-400 bg-slate-950 border-slate-800 uppercase tracking-widest'}`}>
-      {progress === 100 ? <><ShieldCheck size={10} className="inline mr-1" /> Biometric Verified</> : `Syncing Hardware... ${progress}%`}
+    <span className={`text-[10px] uppercase tracking-widest font-black px-3 py-1 rounded-full border shadow-sm transition-all duration-300 ${progress === 100 ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-slate-500 bg-slate-50 border-slate-200'}`}>
+      {progress === 100 ? <><ShieldCheck size={12} className="inline mr-1 mb-[2px]" /> Biometric Verified</> : `Syncing Hardware... ${progress}%`}
     </span>
   </div>
 );
@@ -174,12 +174,12 @@ const VectorFieldBackground = () => {
   }, [mouseX, mouseY]);
 
   return (
-    <div className="absolute inset-0 bg-[#0c0c0e] overflow-hidden pointer-events-none z-0">
+    <div className="absolute inset-0 overflow-hidden pointer-events-none z-0" style={{ backgroundColor: '#09090b' }}>
       {/* Visible Base Dot Grid */}
       <div 
         className="absolute inset-0 opacity-[0.4]"
         style={{
-          backgroundImage: 'radial-gradient(rgba(255,255,255,0.7) 1px, transparent 1px)',
+          backgroundImage: 'radial-gradient(rgba(255,255,255,0.7) 1.5px, transparent 1.5px)',
           backgroundSize: '32px 32px'
         }}
       />
@@ -287,7 +287,7 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="h-screen w-full flex items-center justify-center p-4 bg-[#09090B] font-sans overflow-hidden select-none relative z-0">
+    <div className="h-screen w-full flex items-center justify-center p-4 font-sans overflow-hidden select-none relative z-0" style={{ backgroundColor: '#09090b' }}>
       <style>{`html, body { overflow: hidden !important; height: 100% !important; overscroll-behavior: none !important; }`}</style>
       
       <VectorFieldBackground />
@@ -295,7 +295,7 @@ const LoginPage = () => {
       {/* Emissive Ambient Glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[600px] bg-white/5 rounded-full blur-[140px] pointer-events-none z-0" />
 
-      <div className="w-full max-w-[1000px] bg-white rounded-[2rem] shadow-[0_32px_80px_rgba(0,0,0,0.6)] border border-white/10 flex items-stretch overflow-hidden relative z-10">
+      <div className="w-full max-w-[1000px] bg-white rounded-[2rem] shadow-2xl border border-slate-200 flex items-stretch overflow-hidden relative z-10 hover:shadow-xl transition-shadow duration-500">
         <DiagnosticSidebar role={role} activeCount={activeDiagnostics} />
 
         <div className="w-full md:w-[55%] bg-white flex flex-col p-7 relative self-stretch">
@@ -309,47 +309,47 @@ const LoginPage = () => {
             {role === 'student' && <BiometricScanner progress={scanProgress} />}
 
             {error && (
-              <div className="mb-4 flex items-start gap-3.5 p-3.5 bg-slate-900/50 border border-slate-800/60 rounded-xl relative overflow-hidden group shadow-lg">
-                <div className="w-7 h-7 rounded-full bg-rose-500/10 flex items-center justify-center shrink-0 border border-rose-500/20 mt-0.5">
-                  <AlertTriangle size={13} className="text-rose-400 group-hover:scale-110 transition-transform" />
+              <div className="mb-4 flex items-start gap-3.5 p-3.5 bg-rose-50/50 border border-rose-200 rounded-xl relative overflow-hidden group shadow-sm">
+                <div className="w-7 h-7 rounded-full bg-rose-100 flex items-center justify-center shrink-0 border border-rose-200 mt-0.5">
+                  <AlertTriangle size={13} className="text-rose-500 group-hover:scale-110 transition-transform" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-[13px] font-semibold text-slate-200 mb-0.5 leading-snug">Authorization failed</h3>
-                  <p className="text-xs font-normal text-slate-400 leading-relaxed">{error}</p>
+                  <h3 className="text-[13px] font-semibold text-rose-900 mb-0.5 leading-snug">Authorization failed</h3>
+                  <p className="text-xs font-normal text-rose-600 leading-relaxed">{error}</p>
                 </div>
               </div>
             )}
 
             <form onSubmit={handleSubmit} className={role === 'student' ? 'space-y-3' : 'space-y-6'}>
               <div>
-                <label className="block text-[10px] font-black tracking-widest uppercase text-slate-400 mb-1.5 ml-1">Access Identity</label>
+                <label className="block text-[10px] font-black tracking-widest uppercase text-slate-500 mb-1.5 ml-1">Access Identity</label>
                 <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                   <input
                     type="text"
                     name="email"
-                    autocomplete="email"
+                    autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={role === 'student' ? "VSN-89241" : "system@vision.auth"}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm font-bold outline-none focus:bg-white focus:border-slate-400 transition-all text-slate-900 placeholder:text-slate-300"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm font-bold outline-none focus:bg-white focus:border-indigo-400 transition-all text-slate-900 placeholder:text-slate-400"
                     required
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[10px] font-black tracking-widest uppercase text-slate-400 mb-1.5 ml-1">Pin / Secure Key</label>
+                <label className="block text-[10px] font-black tracking-widest uppercase text-slate-500 mb-1.5 ml-1">Pin / Secure Key</label>
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                   <input
                     type="password"
                     name="password"
-                    autocomplete="current-password"
+                    autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm tracking-[0.3em] font-bold outline-none focus:bg-white focus:border-slate-400 transition-all text-slate-900 placeholder:text-slate-300"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm tracking-[0.3em] font-bold outline-none focus:bg-white focus:border-indigo-400 transition-all text-slate-900 placeholder:text-slate-400"
                     required
                   />
                 </div>
@@ -359,9 +359,10 @@ const LoginPage = () => {
                 <button
                   type="submit"
                   disabled={isAuthenticating}
-                  className="w-full bg-white text-black rounded-[2rem] py-3.5 font-black text-xs tracking-[0.2em] uppercase hover:bg-slate-200 transition-all shadow-xl active:scale-[0.98] disabled:opacity-50"
+                  className="w-full bg-white text-[#0a0c10] hover:bg-slate-200 rounded-[2rem] py-3.5 font-bold text-xs tracking-[0.1em] uppercase transition-all shadow-md active:scale-[0.98] disabled:opacity-50"
+                  style={{ backgroundColor: '#0f172a', color: '#ffffff' }}
                 >
-                  {isAuthenticating ? <span className="flex items-center justify-center gap-3"><span className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" /> Authenticating...</span> : 'Authorize & Enter'}
+                  {isAuthenticating ? <span className="flex items-center justify-center gap-3"><span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> Authenticating...</span> : 'Authorize & Enter'}
                 </button>
               </div>
             </form>

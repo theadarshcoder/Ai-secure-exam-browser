@@ -43,7 +43,7 @@ const StudentResult = () => {
         return (
             <div className="min-h-screen bg-[#0a0c10] flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
+                    <div className="w-12 h-12 border-4 border-slate-800/30 border-t-slate-800 rounded-full animate-spin"></div>
                     <p className="text-slate-400 font-medium animate-pulse">Calculating your achievements...</p>
                 </div>
             </div>
@@ -135,7 +135,7 @@ const StudentResult = () => {
                     
                     <div className="lg:col-span-2 space-y-6">
                         <h3 className="text-xl font-bold flex items-center gap-3">
-                            <BarChart3 className="w-5 h-5 text-indigo-400" />
+                            <BarChart3 className="w-5 h-5 text-slate-700" />
                             Section Performance
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -143,7 +143,7 @@ const StudentResult = () => {
                                 <div key={type} className="bg-slate-900/30 p-5 rounded-2xl border border-white/5">
                                     <div className="flex justify-between items-start mb-4">
                                         <div className="uppercase tracking-widest text-[10px] font-black text-slate-500">{type} QUESTIONS</div>
-                                        <div className="text-xs font-bold text-indigo-400">{Math.round((data.marks / (data.total * 5)) * 100)}%</div>
+                                        <div className="text-xs font-bold text-slate-700">{Math.round((data.marks / (data.total * 5)) * 100)}%</div>
                                     </div>
                                     <div className="space-y-4">
                                         <div className="flex justify-between items-end">
@@ -152,7 +152,7 @@ const StudentResult = () => {
                                         </div>
                                         <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
                                             <div 
-                                                className="h-full bg-indigo-500 rounded-full transition-all duration-1000" 
+                                                className="h-full bg-slate-800 rounded-full transition-all duration-1000" 
                                                 style={{ width: `${(data.correct / data.total) * 100}%` }}
                                             />
                                         </div>
@@ -164,7 +164,7 @@ const StudentResult = () => {
                         {/* Question Breakdown List */}
                         <div className="space-y-4 mt-8">
                             <h3 className="text-xl font-bold flex items-center gap-3">
-                                <Zap className="w-5 h-5 text-indigo-400" />
+                                <Zap className="w-5 h-5 text-slate-700" />
                                 Attempt Summary
                             </h3>
                             <div className="space-y-2">
@@ -200,15 +200,15 @@ const StudentResult = () => {
 
                     {/* Sidebar: Proctoring & Summary */}
                     <div className="space-y-6">
-                        <div className="bg-indigo-600 p-8 rounded-[2rem] text-white overflow-hidden relative group">
+                        <div className="bg-slate-900 p-8 rounded-[2rem] text-white overflow-hidden relative group">
                             <div className="relative z-10">
                                 <h4 className="text-lg font-bold mb-2">Great Work!</h4>
-                                <p className="text-indigo-100 text-sm leading-relaxed mb-6">
+                                <p className="text-slate-200 text-sm leading-relaxed mb-6">
                                     You have completed the exam. Your results are being processed and stored for certification.
                                 </p>
                                 <button 
                                     onClick={() => navigate('/student')}
-                                    className="w-full bg-white text-indigo-600 py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:shadow-xl transition-all active:scale-95"
+                                    className="w-full bg-white text-slate-900 py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:shadow-xl transition-all active:scale-95"
                                 >
                                     Return Home
                                 </button>
@@ -217,7 +217,7 @@ const StudentResult = () => {
                         </div>
 
                         <div className="bg-slate-900/50 p-6 rounded-3xl border border-white/5">
-                            <h4 className="text-sm font-black uppercase tracking-widest text-slate-500 mb-6 underline decoration-indigo-500 decoration-2 underline-offset-8">
+                            <h4 className="text-sm font-black uppercase tracking-widest text-slate-500 mb-6 underline decoration-slate-800 decoration-2 underline-offset-8">
                                 Security Report
                             </h4>
                             <div className="space-y-4">
