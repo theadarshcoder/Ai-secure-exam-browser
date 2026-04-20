@@ -149,7 +149,8 @@ export default function ExamWaitingRoom() {
         const response = await api.get(`/api/exams/${examId}`);
         setExam(response.data);
       } catch (err) {
-        const exams = JSON.parse(localStorage.getItem('published_exams') || '[]');
+        const cached = JSON.parse(localStorage.getItem('published_exams_v2') || 'null');
+        const exams = (cached && Array.isArray(cached.data)) ? cached.data : [];
         const found = exams.find(e => e.id === examId);
         if (found) setExam(found);
       } finally {

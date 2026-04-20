@@ -1146,7 +1146,7 @@ export default function ExamCockpit() {
         setIsFullscreen(true);
       }
       if (exam?.settings?.enableWebcam !== false) {
-        await requestCamera();
+        await initCamera();
       }
       setNeedsInteraction(false);
     } catch (err) {

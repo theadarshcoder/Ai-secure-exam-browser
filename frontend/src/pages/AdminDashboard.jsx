@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import socketService from '../services/socket';
@@ -16,8 +16,6 @@ import api, {
   getDashboardStats, 
   getStudents, 
   getMentors, 
-  removeStudent, 
-  removeMentor,
   addUser,
   bulkImportUsers,
   getSettings,
@@ -27,11 +25,9 @@ import api, {
   getAdminResults,
   getAdmins,
   getSessionDetail,
-  evaluateSession,
   getCandidates,
   verifyCandidate,
   unverifyCandidate,
-  deleteExam,
   togglePublishResults,
   deleteAuditLog,
   clearAllAuditLogs
@@ -272,7 +268,6 @@ export default function AdminDashboard() {
   const [showEvalModal, setShowEvalModal] = useState(false);
   const [evalSessionData, setEvalSessionData] = useState(null);
   const [evalLoading, setEvalLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Candidate eKYC states
   const [candidates, setCandidates] = useState([]);
@@ -282,7 +277,7 @@ export default function AdminDashboard() {
      try {
          const stored = sessionStorage.getItem('admin_unsaved_settings');
          if (stored) return JSON.parse(stored);
-     } catch (e) {}
+     } catch { /* ignore parse errors, fall through to defaults */ }
      return {
          maxTabSwitches: 5,
          forceFullscreen: true,
@@ -411,7 +406,7 @@ export default function AdminDashboard() {
       await deleteAuditLog(id);
       setAuditLogs(prev => prev.filter(l => l._id !== id));
       toast.success('Log entry removed');
-    } catch (err) {
+    } catch {
       toast.error('Failed to delete log');
     }
   };
@@ -423,7 +418,7 @@ export default function AdminDashboard() {
         setAuditLogs([]);
         toast.success('Audit trail cleared');
         closeConfirm();
-      } catch (err) {
+      } catch {
         toast.error('Failed to clear logs');
       }
     });
@@ -449,7 +444,7 @@ export default function AdminDashboard() {
          setUsers(users.filter(u => u._id !== id));
          toast.success('User deleted successfully.');
          closeConfirm();
-       } catch (err) {
+       } catch {
          toast.error('Failed to delete user.');
        }
     });
@@ -465,7 +460,7 @@ export default function AdminDashboard() {
         setSelectedUsers(new Set());
         toast.success(`Successfully deleted ${selectedUsers.size} users`);
         closeConfirm();
-      } catch (err) {
+      } catch {
         toast.error('Failed to delete selected users');
       }
     });
@@ -510,7 +505,7 @@ export default function AdminDashboard() {
           toast.success(newStatus ? 'Results published to students' : 'Results hidden from students');
           // Update local state without full refetch
           setExams(exams.map(e => String(e.id || e._id) === String(id) ? { ...e, resultsPublished: newStatus } : e));
-      } catch (err) {
+      } catch {
           toast.error("Failed to toggle results visibility.");
       }
   };
@@ -627,22 +622,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleGradeSubmit = async (gradeArray) => {
-    if (!evalSessionData) return;
-    setIsSubmitting(true);
-    try {
-      await evaluateSession(evalSessionData.sessionId, gradeArray);
-      toast.success('Session graded successfully!');
-      setShowEvalModal(false);
-      setEvalSessionData(null);
-      fetchDataForTab('Results');
-    } catch (err) {
-      console.error('Failed to submit grades:', err);
-      toast.error('Failed to submit grades: ' + (err.message || 'Unknown error'));
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  // Grade submission is handled by SessionReportModal inline if needed
 
   const handleExportCsv = () => {
     if (adminResults.length === 0) {
@@ -1439,7 +1419,7 @@ export default function AdminDashboard() {
     <div className="flex h-screen bg-slate-50 font-sans text-slate-900 select-none antialiased">
       
       <PremiumSidebar
-        navItems={visibleTabs.map(t => ({ id: t.id, label: t.label, icon: t.icon, badge: t.id === 'Integrity' && criticalIssues > 0 ? criticalIssues : undefined }))}
+        navItems={visibleTabs.map(t => ({ id: t.id, label: t.label, icon: t.icon }))}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         userName={userName}

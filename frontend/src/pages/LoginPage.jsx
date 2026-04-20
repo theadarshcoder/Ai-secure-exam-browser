@@ -6,6 +6,7 @@ import {
   TerminalSquare, Video, BrainCircuit, Database,
   Globe, ScrollText, MapPin, AppWindow, AlertTriangle
 } from 'lucide-react';
+// eslint-disable-next-line no-unused-vars
 import { motion, useMotionValue, useSpring } from 'framer-motion';
 import VisionLogo from '../components/VisionLogo';
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import socketService from '../services/socket';
@@ -168,6 +168,7 @@ const EvaluationModal = ({ sessionData, onClose, onGradeSubmit, isSubmitting }) 
           };
         }
       });
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setGrades(initial);
     }
   }, [sessionData]);
@@ -392,16 +393,14 @@ export default function MentorDashboard() {
   const [exams, setExams] = useState([]);
   const [results, setResults] = useState([]);
   const [resultFilter, setResultFilter] = useState('ALL');
-  const [sessionDetail, setSessionDetail] = useState(null);
+
   const [searchFilter, setSearchFilter] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
   // Evaluation Modal state
   const [showEvalModal, setShowEvalModal] = useState(false);
   const [evalSessionData, setEvalSessionData] = useState(null);
-  const [helpError, setHelpError] = useState(false);
-  const [isTabViolation, setIsTabViolation] = useState(false);
-  const [isBlocked, setIsBlocked] = useState(false);
+
   const [evalLoading, setEvalLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -413,7 +412,7 @@ export default function MentorDashboard() {
   // Confirm modal system
   const [confirmModal, setConfirmModal] = useState({ show: false, msg: '', onConfirm: null });
   const showConfirm = (msg, onConfirm) => setConfirmModal({ show: true, msg, onConfirm });
-  const closeConfirm = () => setConfirmModal({ show: false, msg, onConfirm: null });
+  const closeConfirm = () => setConfirmModal({ show: false, msg: '', onConfirm: null });
 
   // Setup search debouncing
   useEffect(() => {
@@ -451,7 +450,9 @@ export default function MentorDashboard() {
         const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
         audio.volume = 0.5;
         audio.play().catch(() => {});
-      } catch (err) {}
+      } catch (err) {
+        console.error('Audio playback error:', err);
+      }
     });
 
     return () => {
@@ -518,6 +519,7 @@ export default function MentorDashboard() {
           // Update local state without full refetch
           setExams(exams.map(e => String(e.id || e._id) === String(id) ? { ...e, resultsPublished: newStatus } : e));
       } catch (err) {
+          console.error(err);
           toast.error("Failed to toggle results visibility.");
       }
   };
@@ -763,7 +765,7 @@ export default function MentorDashboard() {
               <td className="px-6 py-4">
                  <div className="flex items-center gap-2">
                    <button 
-                     onClick={() => navigate(`/mentor/monitor?id=${session.sessionId || session._id}&name=${session.name}&exam=${session.exam}&risk=${session.isHighRisk ? 'High' : 'Low'}`)}
+                     onClick={() => navigate(`/admin/session?id=${session.sessionId || session._id}&name=${session.name}&exam=${session.exam}&risk=${session.isHighRisk ? 'High' : 'Low'}`)}
                      className="flex items-center gap-2 text-[11px] font-black uppercase text-emerald-600 hover:bg-emerald-50 px-3 py-1.5 rounded-[10px] transition-all border border-transparent hover:border-emerald-100 active:scale-95"
                    >
                       <Eye size={12} /> View

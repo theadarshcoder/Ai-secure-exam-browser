@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { motion, useScroll, useTransform, useSpring, AnimatePresence, useMotionValueEvent, useMotionValue, useInView } from 'framer-motion';
+import React, { useEffect, useRef, useState } from 'react';
+// eslint-disable-next-line no-unused-vars
+import { useScroll, useTransform, useSpring, AnimatePresence, useMotionValueEvent, useMotionValue, motion } from 'framer-motion';
 import { 
   Shield, Activity, ScanFace, Lock, MonitorCheck, 
   Server, ChevronRight, Cpu, Eye, QrCode, Check 
@@ -458,7 +459,7 @@ const KineticTextSequence = () => {
     animate: { opacity: 1, scale: 1, rotateX: 0, z: 0, transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] } }
   };
 
-  const metallicText = "bg-gradient-to-b from-zinc-100 via-zinc-400 to-zinc-600 bg-clip-text text-transparent drop-shadow-2xl";
+
 
   return (
     <div style={{ perspective: '2000px' }} className="relative z-30 flex flex-col items-center justify-center h-auto w-full px-6 py-8">
@@ -531,7 +532,7 @@ const CleanFeatureBlocks = () => {
         transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
       >
         {/* Identity Check Visual — Premium Redesign */}
-          {(() => {
+          {React.createElement(function IdentityVisual() {
             const [stepIndex, setStepIndex] = React.useState(0);
             const [clock, setClock] = React.useState('');
             
@@ -687,7 +688,7 @@ const CleanFeatureBlocks = () => {
               </div>
             </div>
           );
-        })()}
+          })}
 
         {/* Text */}
         <div className="w-full md:w-1/2 flex flex-col">
@@ -746,7 +747,7 @@ const CleanFeatureBlocks = () => {
           </ul>
         </div>
         {/* Feature 2 Visual — Lockdown */}
-        {(() => {
+        {React.createElement(function LockdownVisual() {
           const [lockStep, setLockStep] = React.useState(0);
           const [clock2, setClock2] = React.useState('');
           
@@ -874,7 +875,7 @@ const CleanFeatureBlocks = () => {
               </div>
             </div>
           );
-        })()}
+          })}
       </motion.section>
 
       {/* Feature 3: Monitor (Visual Left, Text Right) */}
@@ -886,7 +887,7 @@ const CleanFeatureBlocks = () => {
         transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.05 }}
       >
         {/* Feature 3 Visual — Monitor */}
-        {(() => {
+        {React.createElement(function MonitorVisual() {
           const [monStep, setMonStep] = React.useState(0);
           const [clock3, setClock3] = React.useState('');
           
@@ -1027,7 +1028,7 @@ const CleanFeatureBlocks = () => {
               </div>
             </div>
           );
-        })()}
+          })}
         {/* Text */}
         <div className="w-full md:w-1/2 flex flex-col">
           <span className="text-zinc-300 font-bold mb-4 font-mono tracking-wider text-sm flex items-center gap-4">
