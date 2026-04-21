@@ -6,6 +6,7 @@ import * as faceapi from '@vladmandic/face-api';
 import { Navbar } from '../components/Navbar';
 import api from '../services/api';
 import { toast } from 'react-hot-toast';
+import AnimatedStatusIcon from '../components/AnimatedStatusIcon';
 
 /* ─────────────── Sub-components ─────────────── */
 
@@ -118,7 +119,7 @@ export default function IDVerification() {
   const [faceBox,       setFaceBox]       = useState(null);
   const [capturedPhoto, setCapturedPhoto] = useState(null);
   const [camError,      setCamError]      = useState(false);
-  const [isUploading,   setIsUploading]   = useState(false);
+  const [uploadStatus,  setUploadStatus]  = useState('idle');
 
   const videoRef  = useRef(null);
   const canvasRef = useRef(null);
@@ -215,7 +216,7 @@ export default function IDVerification() {
   };
 
   const confirmPhoto = async () => {
-    setIsUploading(true);
+    setUploadStatus('loading');
     try {
       const res  = await fetch(capturedPhoto);
       const blob = await res.blob();
@@ -223,13 +224,18 @@ export default function IDVerification() {
       formData.append('image', blob, `${step === 1 ? 'face' : 'id'}_${Date.now()}.jpg`);
       const endpoint = step === 1 ? '/api/upload/profile' : '/api/upload/id-card';
       await api.post(endpoint, formData, { headers: { 'Content-Type': undefined } });
+      
+      setUploadStatus('success');
+      await new Promise(r => setTimeout(r, 1200));
+      
       setCapturedPhoto(null);
       if (step === 1) { setStep(2); } else { setStep(3); if (stream) stream.getTracks().forEach(t => t.stop()); }
+      setUploadStatus('idle');
     } catch (err) {
       console.error('Upload failed:', err);
       toast.error('Upload failed. Please retake.');
-    } finally {
-      setIsUploading(false);
+      setUploadStatus('error');
+      setTimeout(() => setUploadStatus('idle'), 2000);
     }
   };
 
@@ -358,13 +364,14 @@ export default function IDVerification() {
                 <div className="flex gap-2.5 w-1/3 justify-end items-center">
                   {capturedPhoto ? (
                     <>
-                      <button onClick={() => setCapturedPhoto(null)} disabled={isProcessing || isUploading}
+                      <button onClick={() => setCapturedPhoto(null)} disabled={isProcessing || uploadStatus !== 'idle'}
                         className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 text-[11px] font-bold uppercase tracking-wide flex items-center gap-2 transition-all">
                         <RotateCcw size={14} /> Retake
                       </button>
-                      <button onClick={confirmPhoto} disabled={isProcessing || isUploading}
-                        className="px-7 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold uppercase tracking-wide flex items-center gap-2 transition-all disabled:opacity-60 shadow-sm">
-                        {isUploading ? <><Loader2 size={14} className="animate-spin" /> Uploading</> : <>Confirm <CheckCircle2 size={14} /></>}
+                      <button onClick={confirmPhoto} disabled={isProcessing || uploadStatus !== 'idle'}
+                        className="min-w-[120px] px-7 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold uppercase tracking-wide flex items-center justify-center gap-2 transition-all disabled:opacity-60 shadow-sm">
+                        <AnimatedStatusIcon status={uploadStatus} icon={<CheckCircle2 size={14} />} size={14} />
+                        {uploadStatus === 'loading' ? 'Uploading' : uploadStatus === 'success' ? 'Confirmed' : 'Confirm'}
                       </button>
                     </>
                   ) : (

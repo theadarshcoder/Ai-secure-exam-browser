@@ -53,7 +53,7 @@ export default function PremiumSidebar({
       initial={false}
       className="relative shrink-0 flex flex-col z-30 overflow-visible"
       style={{
-        background: '#FFFFFF',
+        background: '#FAFAFA',
         borderRight: '1px solid #F0F0F0',
         height: '100vh',
         fontFamily: "'Inter', sans-serif",
@@ -110,7 +110,7 @@ export default function PremiumSidebar({
             width: 36,
             height: 36,
             borderRadius: 10,
-            background: '#0d9488',
+            background: '#111111',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -147,6 +147,7 @@ export default function PremiumSidebar({
 
       {/* ── Nav ── */}
       <nav
+        onMouseLeave={() => setHoveredId(null)}
         style={{
           flex: 1,
           padding: expanded ? '12px 10px' : '12px 8px',
@@ -157,6 +158,18 @@ export default function PremiumSidebar({
           overflowX: 'hidden',
         }}
       >
+        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {/* Faint Continuous Track Line (like Animate UI) */}
+          <div style={{
+            position: 'absolute',
+            left: expanded ? 9 : 5,
+            top: 4,
+            bottom: 4,
+            width: 1,
+            background: '#E5E7EB',
+            zIndex: 0,
+          }} />
+          
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
           const isHovered = hoveredId === item.id;
@@ -167,62 +180,73 @@ export default function PremiumSidebar({
               key={item.id}
               style={{ position: 'relative' }}
               onMouseEnter={() => setHoveredId(item.id)}
-              onMouseLeave={() => setHoveredId(null)}
             >
+              {/* Externalized Hover Slider Pill */}
+              {isHovered && (
+                <motion.div
+                  layoutId="hoverTracker"
+                  style={{
+                    position: 'absolute',
+                    left: expanded ? 8 : 4,
+                    top: '15%',
+                    bottom: '15%',
+                    width: 3,
+                    borderRadius: 3,
+                    background: '#CBD5E1',
+                    zIndex: 8,
+                  }}
+                  transition={{ type: 'spring', stiffness: 280, damping: 24, mass: 0.8 }}
+                />
+              )}
+
+              {/* Externalized Active Tracking Pill */}
+              {isActive && (
+                <motion.div
+                  layoutId="verticalTracker"
+                  style={{
+                    position: 'absolute',
+                    left: expanded ? 8 : 4,
+                    top: '15%',
+                    bottom: '15%',
+                    width: 3,
+                    borderRadius: 3,
+                    background: '#111111',
+                    zIndex: 10,
+                  }}
+                  transition={{ type: 'spring', stiffness: 280, damping: 24, mass: 0.8 }}
+                />
+              )}
+
               <motion.button
                 onClick={() => setActiveTab(item.id)}
                 whileTap={{ scale: 0.96 }}
+                title={!expanded ? item.label : undefined}
                 style={{
                   width: '100%',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 11,
-                  padding: expanded ? '9px 12px' : '9px 0',
+                  gap: 8,
+                  padding: expanded ? '6px 12px' : '10px 0',
                   justifyContent: expanded ? 'flex-start' : 'center',
-                  borderRadius: 12,
+                  borderRadius: 8,
                   border: 'none',
                   cursor: 'pointer',
-                  background: isActive
-                    ? '#EEF2FF'
-                    : isHovered
-                    ? '#F4F4F5'
-                    : 'transparent',
+                  background: 'transparent',
                   transition: 'background 0.15s ease',
                   outline: 'none',
                   position: 'relative',
                   overflow: 'hidden',
                 }}
               >
-                {/* Animated active background pill */}
-                <AnimatePresence>
-                  {isActive && (
-                    <motion.span
-                      layoutId="activeNavPill"
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        borderRadius: 12,
-                        background: '#EEF2FF',
-                        zIndex: 0,
-                      }}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ type: 'spring', stiffness: 400, damping: 36 }}
-                    />
-                  )}
-                </AnimatePresence>
-
-                {/* Icon container — rounded square card */}
+                {/* Icon container */}
                 <motion.div
                   animate={{
-                    background: isActive ? '#4F46E5' : isHovered ? '#E4E4E7' : '#F4F4F5',
+                    background: 'transparent',
                   }}
                   transition={{ duration: 0.15 }}
                   style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 9,
+                    width: 24,
+                    height: 24,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -232,7 +256,7 @@ export default function PremiumSidebar({
                   }}
                 >
                   <motion.span
-                    animate={{ color: isActive ? '#FFFFFF' : isHovered ? '#374151' : '#6B7280' }}
+                    animate={{ color: isActive ? '#111111' : isHovered ? '#374151' : '#6B7280' }}
                     transition={{ duration: 0.15 }}
                   >
                     <IconComp size={17} strokeWidth={isActive ? 2.2 : 1.8} />
@@ -290,57 +314,10 @@ export default function PremiumSidebar({
                 )}
               </motion.button>
 
-              {/* Collapsed tooltip */}
-              <AnimatePresence>
-                {!expanded && isHovered && (
-                  <motion.div
-                    initial={{ opacity: 0, x: -4 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -4 }}
-                    transition={{ duration: 0.14 }}
-                    style={{
-                      position: 'absolute',
-                      left: COLLAPSED_W - 6,
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      background: '#1E1E2E',
-                      color: '#fff',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      padding: '5px 10px',
-                      borderRadius: 8,
-                      whiteSpace: 'nowrap',
-                      pointerEvents: 'none',
-                      zIndex: 999,
-                      boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
-                    }}
-                  >
-                    {item.label}
-                    {item.badge > 0 && (
-                      <span style={{ marginLeft: 6, background: '#EF4444', borderRadius: 10, padding: '1px 5px', fontSize: 10 }}>
-                        {item.badge}
-                      </span>
-                    )}
-                    {/* Arrow */}
-                    <span
-                      style={{
-                        position: 'absolute',
-                        left: -5,
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        width: 0,
-                        height: 0,
-                        borderTop: '5px solid transparent',
-                        borderBottom: '5px solid transparent',
-                        borderRight: '5px solid #1E1E2E',
-                      }}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </div>
           );
         })}
+        </div>
       </nav>
 
       {/* ── Bottom: User + Logout ── */}
@@ -376,7 +353,7 @@ export default function PremiumSidebar({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontWeight: 800,
+              fontWeight: 500,
               fontSize: 13,
               flexShrink: 0,
             }}
