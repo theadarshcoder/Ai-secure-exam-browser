@@ -45,6 +45,7 @@ export default function VerifyInvite() {
             // Store session data (same as login flow)
             sessionStorage.setItem('vision_token', data.token);
             sessionStorage.setItem('vision_user', JSON.stringify(data.user));
+            sessionStorage.setItem('vision_role', data.user.role);
 
             setExamInfo({
                 examId: data.examId,
