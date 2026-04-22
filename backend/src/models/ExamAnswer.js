@@ -34,6 +34,18 @@ const examAnswerSchema = new mongoose.Schema({
     
     // Detail result (MCQ choices, test case results, AI feedback)
     result: { type: mongoose.Schema.Types.Mixed },
+
+    // Frontend React specific result
+    frontendResult: {
+        passed: Boolean,
+        score: Number,
+        executionTime: Number, // ms
+        testCaseResults: [{
+            description: String,
+            passed: Boolean,
+            errorMsg: String
+        }]
+    },
     
     // Metadata
     lastSavedAt: { type: Date, default: Date.now }

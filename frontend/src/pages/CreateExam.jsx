@@ -18,12 +18,13 @@ import { format } from 'date-fns';
 import VisionLogo from '../components/VisionLogo';
 import PremiumSidebar from '../components/PremiumSidebar';
 import AnimatedStatusIcon from '../components/AnimatedStatusIcon';
+import BulkInviteModal from '../components/BulkInviteModal';
 
 // AI Suggestions are now fetched from the backend live engine.
 
-const typeLabels = { mcq: 'MCQ', short: 'Short Answer', coding: 'Coding' };
-const typeColors = { mcq: '#3b82f6', short: '#8b5cf6', coding: '#10b981' };
-const typeIcons = { mcq: <ListChecks size={13} />, short: <AlignLeft size={13} />, coding: <Code size={13} /> };
+const typeLabels = { mcq: 'MCQ', short: 'Short Answer', coding: 'Coding', 'frontend-react': 'React Lab' };
+const typeColors = { mcq: '#3b82f6', short: '#8b5cf6', coding: '#10b981', 'frontend-react': '#6366f1' };
+const typeIcons = { mcq: <ListChecks size={13} />, short: <AlignLeft size={13} />, coding: <Code size={13} />, 'frontend-react': <LayoutDashboard size={13} /> };
 
 // --- Styles ---
 const INPUT_BASE = "w-full bg-white border border-zinc-200 rounded-xl px-4 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all shadow-sm";
@@ -256,6 +257,71 @@ const CodingEditor = ({ question, updateQ }) => (
   </div>
 );
 
+const FrontendReactEditor = ({ question, updateQ }) => (
+  <div className="space-y-4">
+    <div className="space-y-2">
+      <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest">Main File (App.jsx)</p>
+      <textarea 
+        value={question.frontendTemplate?.files?.['/App.jsx'] || ''} 
+        onChange={e => {
+          const files = { ...question.frontendTemplate?.files, '/App.jsx': e.target.value };
+          updateQ(question.id, { frontendTemplate: { ...question.frontendTemplate, files } });
+        }} 
+        placeholder="import React from 'react';\n\nexport default function App() {\n  return <div>Hello World</div>;\n}" 
+        rows={8} 
+        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-xs text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-indigo-500/50 font-mono resize-none shadow-inner" 
+      />
+    </div>
+    
+    <div className="space-y-2">
+      <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest">UI Test Cases (JSDOM based)</p>
+      {question.frontendTestCases?.map((test, ti) => (
+        <div key={ti} className="bg-white border border-zinc-100 rounded-xl p-4 space-y-3 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] font-black text-indigo-500 uppercase">Test Case {ti + 1}</span>
+            <button onClick={() => {
+              const tests = question.frontendTestCases.filter((_, i) => i !== ti);
+              updateQ(question.id, { frontendTestCases: tests });
+            }} className="text-zinc-400 hover:text-red-500 transition-colors">
+              <Trash2 size={12} />
+            </button>
+          </div>
+          <input 
+            value={test.description} 
+            onChange={e => {
+              const tests = [...question.frontendTestCases];
+              tests[ti] = { ...tests[ti], description: e.target.value };
+              updateQ(question.id, { frontendTestCases: tests });
+            }} 
+            placeholder="Description (e.g., Should render a button)" 
+            className="w-full bg-zinc-50 border-none text-[11px] font-bold text-zinc-800 placeholder:text-zinc-400 focus:ring-0"
+          />
+          <textarea 
+            value={test.testCode} 
+            onChange={e => {
+              const tests = [...question.frontendTestCases];
+              tests[ti] = { ...tests[ti], testCode: e.target.value };
+              updateQ(question.id, { frontendTestCases: tests });
+            }} 
+            placeholder="return document.querySelector('button') !== null" 
+            rows={2} 
+            className="w-full bg-zinc-50 border border-zinc-100 rounded-lg px-3 py-2 text-[10px] font-mono text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:border-indigo-500/50 resize-none" 
+          />
+        </div>
+      ))}
+      <button 
+        onClick={() => {
+          const tests = [...(question.frontendTestCases || []), { description: '', testCode: '', isHidden: true }];
+          updateQ(question.id, { frontendTestCases: tests });
+        }} 
+        className="text-[10px] text-indigo-500/70 hover:text-indigo-500 font-medium flex items-center gap-1"
+      >
+        <Plus size={10} /> Add UI Test Case
+      </button>
+    </div>
+  </div>
+);
+
 // --- Helpers ---
 const formatDateForInput = (dateStr) => {
   if (!dateStr) return '';
@@ -393,6 +459,7 @@ export default function CreateExam() {
   const [saveStatus, setSaveStatus] = useState('idle');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [publishedExamId, setPublishedExamId] = useState('');
+  const [showInviteModal, setShowInviteModal] = useState(false);
   const [editId, setEditId] = useState(null);
   const [initialLoading, setInitialLoading] = useState(false);
   const [toasts, setToasts] = useState([]);
@@ -703,6 +770,7 @@ export default function CreateExam() {
       if (!q.questionText || !q.questionText.trim()) {
         addToast(`Question ${qNum}: Question text is required.`, 'error');
         setIsPublishing(false);
+        setPublishStatus('idle');
         setExpandedQ(q.id);
         return;
       }
@@ -712,12 +780,14 @@ export default function CreateExam() {
         if (validOptions.length < 2) {
           addToast(`Question ${qNum} (MCQ): At least 2 options are required.`, 'error');
           setIsPublishing(false);
+        setPublishStatus('idle');
           setExpandedQ(q.id);
           return;
         }
         if (q.correctOption === undefined || q.correctOption < 0 || q.correctOption >= q.options.length) {
           addToast(`Question ${qNum} (MCQ): Please select a correct option.`, 'error');
           setIsPublishing(false);
+        setPublishStatus('idle');
           setExpandedQ(q.id);
           return;
         }
@@ -727,6 +797,7 @@ export default function CreateExam() {
         if (!q.testCases || q.testCases.length === 0 || !q.testCases[0].input.trim() || !q.testCases[0].expectedOutput.trim()) {
           addToast(`Question ${qNum} (Coding): At least one valid test case is required.`, 'error');
           setIsPublishing(false);
+        setPublishStatus('idle');
           setExpandedQ(q.id);
           return;
         }
@@ -736,7 +807,8 @@ export default function CreateExam() {
     // Validate negative marks
     if (exam.negativeMarks < 0) {
       addToast('Negative marks cannot be less than 0.', 'error');
-      setIsPublishing(false);
+        setIsPublishing(false);
+        setPublishStatus('idle');
       return;
     }
     
@@ -745,7 +817,9 @@ export default function CreateExam() {
       const q = questions[i];
       if (exam.negativeMarks > q.marks) {
         addToast(`Question ${i + 1}: Negative marks (${exam.negativeMarks}) cannot exceed question marks (${q.marks}).`, 'error');
-        setIsPublishing(false);
+          setIsPublishing(false);
+        setPublishStatus('idle');
+        setPublishStatus('idle');
         setExpandedQ(q.id);
         return;
       }
@@ -754,13 +828,15 @@ export default function CreateExam() {
     // Validate time limit constraints
     if (exam.duration < 5) {
       addToast('Exam duration must be at least 5 minutes.', 'error');
-      setIsPublishing(false);
+        setIsPublishing(false);
+        setPublishStatus('idle');
       return;
     }
     
     if (exam.duration > 300) {
       addToast('Exam duration cannot exceed 300 minutes (5 hours).', 'error');
-      setIsPublishing(false);
+        setIsPublishing(false);
+        setPublishStatus('idle');
       return;
     }
 
@@ -829,6 +905,7 @@ export default function CreateExam() {
     if (!exam.title || !exam.duration) {
       addToast('Please at least provide a Title and Duration to save a draft.', 'error');
       setIsSaving(false);
+      setSaveStatus('idle');
       return;
     }
     
@@ -836,12 +913,14 @@ export default function CreateExam() {
     if (exam.duration < 5) {
       addToast('Exam duration must be at least 5 minutes.', 'error');
       setIsSaving(false);
+      setSaveStatus('idle');
       return;
     }
     
     if (exam.duration > 300) {
       addToast('Exam duration cannot exceed 300 minutes (5 hours).', 'error');
       setIsSaving(false);
+      setSaveStatus('idle');
       return;
     }
     
@@ -849,6 +928,7 @@ export default function CreateExam() {
     if (exam.negativeMarks < 0) {
       addToast('Negative marks cannot be less than 0.', 'error');
       setIsSaving(false);
+      setSaveStatus('idle');
       return;
     }
 
@@ -892,6 +972,16 @@ export default function CreateExam() {
       mcq: { type: 'mcq', questionText: '', options: ['', '', '', ''], correctOption: 0, marks: 1 },
       short: { type: 'short', questionText: '', expectedAnswer: '', maxWords: 150, marks: 2 },
       coding: { type: 'coding', questionText: '', language: 'javascript', initialCode: '', testCases: [{ input: '', expectedOutput: '' }], marks: 5 },
+      'frontend-react': { 
+        type: 'frontend-react', 
+        questionText: '', 
+        marks: 10,
+        frontendTemplate: {
+          files: { '/App.jsx': "import React from 'react';\n\nexport default function App() {\n  return (\n    <div>\n      <h1>Hello World</h1>\n    </div>\n  );\n}" },
+          mainFile: '/App.jsx'
+        },
+        frontendTestCases: [{ description: 'Should render Hello World', testCode: "return document.querySelector('h1').textContent.includes('Hello World')", isHidden: true }]
+      },
     };
     const q = { ...tpl[type], id: Date.now() };
     setQuestions(p => [...p, q]);
@@ -1297,10 +1387,25 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                               </div>
                             )}
                           </div>
-                        ))}
-                      </div>
-                    );
-                  })()}
+
+                          {expandedQ === q.id && (
+                            <div className="px-8 pb-8 pt-4 border-t border-zinc-200 animate-in slide-in-from-top-2 duration-300">
+                               <div className="mb-6 flex items-center gap-4">
+                                  <div className="flex items-center bg-zinc-50 border border-zinc-200 rounded-2xl pr-4 overflow-hidden">
+                                     <input type="number" value={q.marks} onChange={e => updateQ(q.id, { marks: parseInt(e.target.value) || 0 })} className="w-14 h-12 bg-transparent border-none text-sm font-black text-zinc-900 text-center focus:ring-0 tabular-nums" />
+                                     <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Points</span>
+                                  </div>
+                               </div>
+                               {q.type === 'mcq' && <McqEditor question={q} updateQ={updateQ} />}
+                               {q.type === 'short' && <ShortEditor question={q} updateQ={updateQ} />}
+                               {q.type === 'coding' && <CodingEditor question={q} updateQ={updateQ} />}
+                               {q.type === 'frontend-react' && <FrontendReactEditor question={q} updateQ={updateQ} />}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </section>
               </div>
 
@@ -1357,6 +1462,15 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                           <Link size={16} />
                           URL Link
                         </button>
+                      </div>
+                      
+                      {/* CSV Helper for CreateExam */}
+                      <div className="mt-2 text-left bg-zinc-900/50 p-3 rounded-xl border border-white/[0.05]">
+                         <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><FileText size={12} /> CSV Expected Format</p>
+                         <p className="text-[9px] font-mono text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20 break-all leading-relaxed">
+                           Type, QuestionText, Marks, Option1, Option2, Option3, Option4, ExpectedAnswer
+                         </p>
+                         <p className="text-[9px] text-zinc-500 mt-1 italic">* Option columns are only required for MCQ.</p>
                       </div>
                       <button 
                         onClick={exportQuestions} 
@@ -1645,6 +1759,13 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
               </button>
             </div>
 
+            <button 
+              onClick={() => { setShowSuccessModal(false); setShowInviteModal(true); }}
+              className="group w-full mb-3 bg-indigo-600 text-white h-14 rounded-[20px] font-black text-xs uppercase tracking-[0.2em] hover:bg-indigo-700 transition-all active:scale-[0.98] flex items-center justify-center gap-3 shadow-lg shadow-indigo-900/20"
+            >
+              <Users size={16} /> Invite Students
+            </button>
+
             <button onClick={() => navigate(returnTo)} className="group w-full bg-white text-black h-14 rounded-[20px] font-black text-xs uppercase tracking-[0.2em] hover:bg-zinc-100 transition-all active:scale-[0.98] flex items-center justify-center gap-3 border border-zinc-200">
               Return to Module
               <ArrowLeft size={16} className="rotate-180 group-hover:translate-x-1 transition-transform" />
@@ -1653,16 +1774,26 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
         </div>
       )}
 
+      {/* Bulk Invite Modal */}
+      <BulkInviteModal 
+        isOpen={showInviteModal} 
+        onClose={() => { setShowInviteModal(false); navigate(returnTo); }}
+        examId={publishedExamId}
+        examTitle={exam.title}
+      />
+
       {/* Toasts */}
       <div className="fixed bottom-10 right-10 z-[200] space-y-4">
         {toasts.map(t => (
-          <div key={t.id} className={`flex items-center gap-4 px-6 py-5 rounded-[24px] border shadow-2xl animate-in slide-in-from-right-10 duration-500 ${t.type === 'error' ? 'bg-red-950/40 border-red-500/20 text-red-100' : 'bg-emerald-950/40 border-emerald-500/20 text-emerald-100'}`}>
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${t.type === 'error' ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
-               {t.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle size={18} />}
+          <div key={t.id} className={`flex items-center gap-4 px-6 py-5 rounded-[24px] border-2 shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-in slide-in-from-right-10 duration-500 bg-zinc-900 ${t.type === 'error' ? 'border-red-500 text-red-400' : 'border-emerald-500 text-emerald-400'}`}>
+            <div className={`w-10 h-10 rounded-[14px] flex items-center justify-center shrink-0 ${t.type === 'error' ? 'bg-red-500/20 text-red-500' : 'bg-emerald-500/20 text-emerald-500'}`}>
+               {t.type === 'error' ? <AlertCircle size={20} strokeWidth={2.5} /> : <CheckCircle size={20} strokeWidth={2.5} />}
             </div>
-            <div>
-               <p className="text-xs font-black uppercase tracking-widest mb-0.5 leading-none">{t.type === 'error' ? 'System Error' : 'Success'}</p>
-               <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-tight">{t.msg}</p>
+            <div className="pr-4">
+               <p className={`text-xs font-black uppercase tracking-[0.2em] mb-1 leading-none ${t.type === 'error' ? 'text-red-400' : 'text-emerald-400'}`}>
+                 {t.type === 'error' ? 'System Error' : 'Success'}
+               </p>
+               <p className="text-[11px] font-bold text-zinc-300 uppercase tracking-tight leading-relaxed">{t.msg}</p>
             </div>
           </div>
         ))}

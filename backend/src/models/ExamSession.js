@@ -94,18 +94,24 @@ const examSessionSchema = new mongoose.Schema({
         type: { type: String, enum: ['violation', 'random', 'id_verify'] }
     }],
     
-    // ─── Session Status ──────────────────────────────
+    // Session Status ──────────────────────────────
     // in_progress:    Exam currently being taken
     // submitted:      Exam fully graded and finalized
     // pending_review: Auto-graded but short answers need mentor evaluation
     // flagged:        System-flagged due to suspicious activity (multiple violations)
+    // blocked:        Hard locked out of the exam by the system or supervisor
     // reviewed:       Manually reviewed and approved by a mentor
     // auto_submitted: Submitted automatically upon timer expiration
     status: { 
         type: String, 
-        enum: ['in_progress', 'submitted', 'pending_review', 'flagged', 'reviewed', 'auto_submitted'],
+        enum: ['in_progress', 'submitted', 'pending_review', 'flagged', 'blocked', 'reviewed', 'auto_submitted'],
         default: 'in_progress' 
-    }
+    },
+    
+    // ─── Security & Auto-Blocking ────────────────────
+    isBlocked: { type: Boolean, default: false },
+    blockReason: { type: String, default: '' },
+    violationCount: { type: Number, default: 0 }
 }, { timestamps: true });
 
 // Ensure only one exam session exists per student per exam

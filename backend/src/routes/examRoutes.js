@@ -7,6 +7,7 @@ const router = express.Router();
 const { verifyToken, checkRole } = require('../middlewares/authMiddleware');
 const examController = require('../controllers/examController');
 const telemetryController = require('../controllers/telemetryController');
+const inviteController = require('../controllers/inviteController');
 const { codeExecutionLimiter, telemetryLimiter, importLimiter, autosaveLimiter } = require('../middlewares/rateLimiter');
 
 // ═══════════════════════════════════════════════════════════
@@ -95,5 +96,21 @@ router.get('/live-grid', verifyToken, checkRole(['mentor', 'admin']), examContro
 
 // 4. Run Code API (Rate Limited to protect Judge0)
 router.post('/run-code', verifyToken, codeExecutionLimiter, examController.runCode);
+
+// 5. Run Frontend React Lab API
+router.post('/run-frontend', verifyToken, codeExecutionLimiter, examController.runFrontendCode);
+
+// ═══════════════════════════════════════════════════════════
+//  📨 Bulk Invite System
+// ═══════════════════════════════════════════════════════════
+
+// Bulk invite students to an exam (CSV upload)
+router.post('/:examId/bulk-invite', verifyToken, checkRole(['admin', 'mentor']), inviteController.bulkInvite);
+
+// Get invite status for an exam
+router.get('/:examId/invites', verifyToken, checkRole(['admin', 'mentor']), inviteController.getInviteStatus);
+
+// Resend invite with new token (token rotation)
+router.post('/:examId/resend-invite', verifyToken, checkRole(['admin', 'mentor']), inviteController.resendInvite);
 
 module.exports = router;

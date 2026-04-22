@@ -142,6 +142,15 @@ export const getDashboardStats = async () => {
     }
 };
 
+export const getLiveSessions = async () => {
+    try {
+        const response = await api.get('/api/admin/live-sessions');
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
 export const bulkImportUsers = async (usersArray) => {
     try {
         const response = await api.post('/api/admin/bulk-import', { users: usersArray });
@@ -316,6 +325,46 @@ export const verifyCandidate = async (userId) => {
 export const unverifyCandidate = async (userId) => {
     try {
         const response = await api.put(`/api/admin/candidates/unverify/${userId}`);
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
+// ─────────────────────────────────────────────────────────
+// 📨 Bulk Invite System APIs
+// ─────────────────────────────────────────────────────────
+
+export const bulkInviteStudents = async (examId, students) => {
+    try {
+        const response = await api.post(`/api/exams/${examId}/bulk-invite`, { students });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
+export const verifyInviteToken = async (token, deviceId) => {
+    try {
+        const response = await api.post('/api/auth/verify-invite', { token, deviceId });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
+export const getInviteStatus = async (examId) => {
+    try {
+        const response = await api.get(`/api/exams/${examId}/invites`);
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
+export const resendInvite = async (examId, email) => {
+    try {
+        const response = await api.post(`/api/exams/${examId}/resend-invite`, { email });
         return response.data;
     } catch (error) {
         throw error.response?.data || error.message;

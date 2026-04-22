@@ -27,6 +27,8 @@ const sessionRoutes = require('./routes/sessionRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 const { setupCodeEvaluationWorker } = require('./queues/codeGradingQueue');
+const { setupFrontendEvaluationWorker } = require('./queues/frontendGradingQueue');
+const { setupInviteEmailWorker } = require('./queues/inviteEmailQueue');
 const traceMiddleware = require('./middlewares/traceMiddleware');
 
 const app = express();
@@ -191,6 +193,8 @@ app.set('io', io);
 
 // 🚀 Initialize Background Workers
 setupCodeEvaluationWorker(io);
+setupFrontendEvaluationWorker(io);
+setupInviteEmailWorker();
 
 // Socket.IO Authentication Middleware
 // Har connection se pehle JWT token verify hoga
@@ -288,6 +292,7 @@ app.use(errorHandler);
 // Ab yahan sirf authenticated users hi pahunchenge
 
 const ExamSession = require('./models/ExamSession');
+const Setting = require('./models/Setting');
 
 io.on('connection', (socket) => {
     console.log(`⚡ Connected: ${socket.id} | User: ${socket.user.email} (${socket.user.role})`);
@@ -463,9 +468,9 @@ io.on('connection', (socket) => {
             console.log(`🔒 Blocking student ${targetId}`);
             await ExamSession.findOneAndUpdate(
                 { $or: [{ student: targetId, exam: examId }, { _id: sessionId || targetId }] },
-                { status: 'blocked' }
+                { status: 'blocked', isBlocked: true, blockReason: data.reason || 'Blocked by supervisor' }
             );
-            io.to(`user_${targetId}`).emit('force_block_screen', { reason: 'Blocked by supervisor' });
+            io.to(`user_${targetId}`).emit('force_block_screen', { reason: data.reason || 'Blocked by supervisor' });
         } catch (err) {
             console.error('Block student DB fail:', err.message);
         }
@@ -487,11 +492,77 @@ io.on('connection', (socket) => {
             console.log(`🔓 Unblocking student ${targetId}`);
             await ExamSession.findOneAndUpdate(
                 { status: 'blocked', $or: [{ student: targetId, exam: examId }, { _id: sessionId || targetId }] },
-                { status: 'in_progress' }
+                { status: 'in_progress', isBlocked: false, blockReason: '' }
             );
             io.to(`user_${targetId}`).emit('unblock_screen');
         } catch (err) {
             console.error('Unblock student DB fail:', err.message);
+        }
+    });
+
+    // --- 🛡️ NEW: Backend-Authoritative Auto-Blocking Rule Engine ---
+    socket.on('violation_report', async (data) => {
+        if (socket.user.role !== 'student') return;
+        const { examId, type, duration } = data;
+        const studentId = socket.user.id;
+
+        try {
+            // Find active session
+            const session = await ExamSession.findOne({ student: studentId, exam: examId, status: { $in: ['in_progress', 'flagged'] } });
+            if (!session) return;
+
+            // Fetch Settings
+            const settings = await Setting.findOne() || new Setting();
+            const maxViolations = settings.maxViolations || 5;
+            const bgLimit = settings.backgroundLimitSeconds || 10;
+
+            let shouldBlock = false;
+            let blockReason = '';
+
+            if (type === 'TAB_HIDDEN') {
+                if (duration > bgLimit) {
+                    shouldBlock = true;
+                    blockReason = `Background limit exceeded (${duration}s > ${bgLimit}s)`;
+                } else {
+                    // Just a warning for minor bg switch
+                    session.violationCount += 1;
+                }
+            } else if (type === 'CHEATING_FLAG') {
+                session.violationCount += 1;
+            }
+
+            if (session.violationCount > maxViolations && !shouldBlock) {
+                shouldBlock = true;
+                blockReason = `Maximum violations limit exceeded (${session.violationCount} > ${maxViolations})`;
+            }
+
+            if (shouldBlock) {
+                session.isBlocked = true;
+                session.status = 'blocked';
+                session.blockReason = blockReason;
+                await session.save();
+
+                console.log(`🔒 Auto-Blocking student ${studentId}: ${blockReason}`);
+                io.to(`user_${studentId}`).emit('force_block_screen', { reason: blockReason });
+                
+                // Notify mentors
+                io.to(`exam_monitor_${examId}`).emit('exam_broadcast', {
+                    type: 'VIOLATION_BLOCK',
+                    studentId: session.student,
+                    reason: blockReason
+                });
+            } else {
+                await session.save();
+                // Send progressive warning based on violationCount vs maxViolations
+                if (session.violationCount > 0 && session.violationCount <= maxViolations) {
+                    const warningsLeft = maxViolations - session.violationCount + 1;
+                    const msg = `Security Warning: Suspicious activity detected. You have ${warningsLeft} warning(s) left before auto-termination.`;
+                    io.to(`user_${studentId}`).emit('warning', { message: msg, timestamp: new Date() });
+                }
+            }
+
+        } catch (err) {
+            console.error('Violation report processing error:', err);
         }
     });
 

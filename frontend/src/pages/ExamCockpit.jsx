@@ -17,6 +17,12 @@ import * as faceapi from '@vladmandic/face-api';
 import VisionLogo from '../components/VisionLogo';
 import AnimatedStatusIcon from '../components/AnimatedStatusIcon';
 import storageService from '../services/storageService';
+import { 
+  SandpackProvider, 
+  SandpackLayout, 
+  SandpackCodeEditor, 
+  SandpackPreview 
+} from "@codesandbox/sandpack-react";
 
 /* ────────────────────────────────────────────── Config ────────────────────────────────────────────── */
 
@@ -447,6 +453,97 @@ const CodingEnvironment = React.memo(({
   );
 });
 
+const FrontendReactEnvironment = React.memo(({ 
+  question, 
+  answer, 
+  onCodeChange, 
+  isExecuting, 
+  executionResult, 
+  activeTab, 
+  setActiveTab 
+}) => {
+  const files = typeof answer === 'object' && answer.files 
+    ? answer.files 
+    : (question?.frontendTemplate?.files || { '/App.jsx': "import React from 'react';\n\nexport default function App() {\n  return <div>Hello World</div>;\n}" });
+
+  return (
+    <div className="flex-1 flex flex-col min-h-0 relative bg-slate-50">
+      <div className="absolute inset-0 flex flex-col">
+        <div className="flex-1 flex min-h-0 bg-white">
+          <SandpackProvider 
+            template="react" 
+            theme="light"
+            files={files}
+            options={{
+              activeFile: question?.frontendTemplate?.mainFile || '/App.jsx',
+              recompileMode: 'immediate',
+              recompileDelay: 300,
+            }}
+            onCodeUpdate={(newFiles) => {
+              // Custom logic to sync Sandpack files back to answers state
+              onCodeChange({ files: newFiles });
+            }}
+          >
+            <SandpackLayout style={{ height: '100%', border: 'none', borderRadius: 0 }}>
+              <div className="flex-1 border-r border-slate-200">
+                <SandpackCodeEditor 
+                  showTabs={true} 
+                  showLineNumbers={true} 
+                  showInlineErrors={true}
+                  style={{ height: '100%' }}
+                />
+              </div>
+              <div className="flex-1 bg-white">
+                <SandpackPreview 
+                  showOpenInCodeSandbox={false}
+                  showRefreshButton={false}
+                  showRestartButton={false}
+                  additionalIframeProps={{
+                    sandbox: "allow-scripts allow-forms allow-popups" 
+                  }}
+                  style={{ height: '100%' }}
+                />
+              </div>
+            </SandpackLayout>
+          </SandpackProvider>
+        </div>
+        
+        {/* Results Panel */}
+        <div className="h-48 border-t border-slate-200 flex flex-col bg-white">
+          <div className="flex items-center px-4 border-b border-slate-200 shrink-0 h-10 bg-slate-50">
+            <button onClick={() => setActiveTab('Test Cases')} className={`h-full px-4 text-[11px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'Test Cases' ? 'text-slate-900 border-slate-900' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>UI Validation Results</button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 scroll-thin bg-slate-50/40">
+            {isExecuting ? (
+              <div className="h-full flex flex-col items-center justify-center gap-2 text-slate-800">
+                <RotateCcw size={20} className="animate-spin" />
+                <span className="text-[9px] font-black uppercase tracking-widest animate-pulse">Running UI Verification...</span>
+              </div>
+            ) : executionResult ? (
+              <div className="space-y-3">
+                {executionResult.testCaseResults?.map((res, i) => (
+                  <div key={i} className={`bg-white border rounded-xl p-3 flex items-center justify-between border-slate-200 shadow-sm ${res.passed ? 'border-l-4 border-l-emerald-500' : 'border-l-4 border-l-red-500'}`}>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-black text-slate-900">{res.description}</span>
+                      {res.errorMsg && <span className="text-[9px] text-red-500 font-mono">{res.errorMsg}</span>}
+                    </div>
+                    <span className="text-[9px] font-black uppercase shrink-0">{res.passed ? 'PASSED ✅' : 'FAILED ❌'}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-2">
+                <Play size={32} className="opacity-20" />
+                <span className="text-[9px] font-black uppercase tracking-widest">Submit to Validate UI</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 const ExamTimer = React.memo(({ seconds, isCritical }) => {
   const fmtTime = (s) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
   return (
@@ -515,6 +612,7 @@ export default function ExamCockpit() {
   const [headerAlert, setHeaderAlert] = useState(null);
   const headerAlertTimer = useRef(null);
   const prevQTypeRef = useRef(null);
+  const bgHiddenTimeRef = useRef(null);
 
   useEffect(() => {
     if (questions && questions.length > 0 && questions[currentQ]) {
@@ -717,7 +815,10 @@ export default function ExamCockpit() {
     try {
       await api.post('/api/exams/incident', incident);
       socketService.emitViolation(incident);
+      
+      // Telemetry for Backend Rule Engine
       if (severity === 'high' || severity === 'critical') {
+          socketService.emitViolationReport('CHEATING_FLAG', 0, examId);
           captureAndUploadSnapshot('violation');
       }
     } catch (_err) { console.warn('Incident log failed'); }
@@ -802,22 +903,18 @@ export default function ExamCockpit() {
       return false; 
     };
     
-    // Bug 8: Tab Switch Incident Logging
+    // Bug 8: Tab Switch Incident Logging (Backend Authoritative)
     const handleVisibilityChange = () => {
-      if (document.hidden && !submitted && !terminated) {
-        const currentCount = tabSwitchCount + 1;
-        setTabSwitchCount(currentCount);
-
-        const maxAllowed = exam?.settings?.maxTabSwitches ?? 5;
-        logIncident('Tab Switch', 'high', `Student switched tabs. Count: ${currentCount}/${maxAllowed}`);
-        
-        if (currentCount >= maxAllowed) {
-            setTerminated({ type: 'policy_violation', reason: 'Maximum tab switch limit exceeded' });
-            return;
+      if (submitted || terminated) return;
+      
+      if (document.hidden) {
+        bgHiddenTimeRef.current = Date.now();
+      } else {
+        if (bgHiddenTimeRef.current) {
+          const duration = Math.floor((Date.now() - bgHiddenTimeRef.current) / 1000);
+          socketService.emitViolationReport('TAB_HIDDEN', duration, examId);
+          bgHiddenTimeRef.current = null;
         }
-
-        setIsTabViolation(true);
-        toast.error(`SECURITY ALERT: Tab switch violation (${currentCount}/${maxAllowed})`, { id: 'tab-switch-warning' });
       }
     };
 
@@ -1235,7 +1332,15 @@ export default function ExamCockpit() {
   // ⚙️ Code Execution Handlers
   const handleRunCode = async () => {
     const q = questions[currentQ];
-    if (q?.type !== 'coding' || cooldownSeconds > 0) return;
+    if (q?.type !== 'coding' && q?.type !== 'frontend-react') return;
+    if (cooldownSeconds > 0) return;
+
+    if (q.type === 'frontend-react') {
+      // For React labs, "Run" is just "Verify"
+      handleCheckTestCases();
+      return;
+    }
+
     setIsExecuting(true); setActiveTab('Execution Details');
     try {
       const qId = q.originalId || q.id || q._id;
@@ -1259,7 +1364,9 @@ export default function ExamCockpit() {
 
   const handleCheckTestCases = async () => {
     const q = questions[currentQ];
-    if (q?.type !== 'coding' || cooldownSeconds > 0) return;
+    if (q?.type !== 'coding' && q?.type !== 'frontend-react') return;
+    if (cooldownSeconds > 0) return;
+    
     setIsExecuting(true); setActiveTab('Test Cases');
     try {
       const qId = q.originalId || q.id || q._id;
@@ -1269,6 +1376,25 @@ export default function ExamCockpit() {
         return next;
       });
       const answer = answers[qId];
+
+      if (q.type === 'frontend-react') {
+        const files = typeof answer === 'object' && answer.files ? answer.files : (q.frontendTemplate?.files || {});
+        const res = await api.post(`/api/exams/run-frontend`, {
+          examId,
+          questionId: q.id || q._id,
+          files
+        });
+        
+        if (res.data.status === 'queued') {
+          toast.loading("UI verification queued...", { id: 'code-queued', duration: 3000 });
+        } else {
+          setExecutionResultsByQuestion((prev) => ({ ...prev, [qId]: res.data }));
+          setIsExecuting(false);
+          setCooldownSeconds(5);
+        }
+        return;
+      }
+
       const sourceCode = typeof answer === 'object' && answer !== null ? answer.code : (answer || q.initialCode || "");
       const res = await runCodingQuestion(examId, q.id || q._id, sourceCode, selectedLanguage, true);
       
@@ -1317,7 +1443,13 @@ export default function ExamCockpit() {
   const onCodeChange = useCallback(v => {
     if (!q) return;
     const qId = q.originalId || q.id || q._id;
-    if (qId) setAnswers(p => ({ ...p, [qId]: { code: v, language: selectedLanguage } }));
+    if (qId) {
+      if (q.type === 'frontend-react') {
+        setAnswers(p => ({ ...p, [qId]: { files: v.files } }));
+      } else {
+        setAnswers(p => ({ ...p, [qId]: { code: v, language: selectedLanguage } }));
+      }
+    }
   }, [q, selectedLanguage]);
 
   const onMouseDown = useCallback(() => { 
@@ -1495,6 +1627,11 @@ export default function ExamCockpit() {
                   </div>
                   <CodingEnvironment question={q} answer={answers[currentQuestionId]} onCodeChange={onCodeChange} selectedLanguage={selectedLanguage} setSelectedLanguage={handleSetLanguage} isLangDropdownOpen={isLangDropdownOpen} setIsLangDropdownOpen={setIsLangDropdownOpen} editorHeight={editorHeight} setEditorHeight={setEditorHeight} isExecuting={isExecuting} executionResult={executionResult} activeTab={activeTab} setActiveTab={setActiveTab} onMouseDown={onMouseDown} />
                 </div>
+              ) : q?.type?.toLowerCase() === 'frontend-react' ? (
+                <div className="flex-1 flex min-h-0 overflow-hidden">
+                  <ObjectivePanel question={q} index={currentQ} markedForReview={markedForReview} />
+                  <FrontendReactEnvironment question={q} answer={answers[currentQuestionId]} onCodeChange={onCodeChange} isExecuting={isExecuting} executionResult={executionResult} activeTab={activeTab} setActiveTab={setActiveTab} />
+                </div>
               ) : (
                 <div className="flex-1 flex flex-col bg-slate-50 px-8 py-8 min-h-0 overflow-hidden">
                   <div className="max-w-4xl mx-auto w-full flex flex-col flex-1 bg-white rounded-[2rem] border border-slate-200 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] overflow-hidden min-h-0">
@@ -1570,10 +1707,10 @@ export default function ExamCockpit() {
                     }} className={`h-9 px-4 rounded-lg text-[11px] font-bold uppercase tracking-widest border transition-all ${markedForReview[currentQuestionId] ? 'bg-amber-500 text-white border-amber-500 shadow-lg shadow-amber-500/20' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>{markedForReview[currentQuestionId] ? 'Flagged' : 'Flag for Review'}</button>
                   </div>
                   <div className="flex items-center gap-4">
-                    {q?.type?.toLowerCase() === 'coding' && (
+                    {(q?.type?.toLowerCase() === 'coding' || q?.type?.toLowerCase() === 'frontend-react') && (
                       <div className="flex gap-2">
-                        <button onClick={handleRunCode} disabled={isExecuting || cooldownSeconds > 0 || isOffline} className={`h-9 px-4 flex items-center gap-2 rounded-lg text-[11px] font-bold uppercase tracking-widest border transition-all active:scale-95 ${isOffline ? 'bg-slate-100 text-slate-300 border-slate-100 cursor-not-allowed' : cooldownSeconds > 0 ? 'bg-slate-50 text-slate-400 border-slate-200' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:shadow-sm'}`}>{isExecuting ? <RotateCcw size={14} className="animate-spin" /> : <Play size={14} fill="currentColor" />} {isOffline ? 'Offline' : cooldownSeconds > 0 ? `Wait (${cooldownSeconds}s)` : 'Run'}</button>
-                        <button onClick={handleCheckTestCases} disabled={isExecuting || cooldownSeconds > 0 || isOffline} className={`h-9 px-5 flex items-center gap-2 rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all active:scale-95 ${isOffline ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : cooldownSeconds > 0 ? 'bg-slate-700 text-white cursor-not-allowed opacity-80' : 'bg-slate-900 text-white hover:bg-slate-900 shadow-lg shadow-slate-200'}`}>{isOffline ? 'Internet Required' : cooldownSeconds > 0 ? `Ready in ${cooldownSeconds}s` : 'Submit Code'}</button>
+                        <button onClick={handleRunCode} disabled={isExecuting || cooldownSeconds > 0 || isOffline} className={`h-9 px-4 flex items-center gap-2 rounded-lg text-[11px] font-bold uppercase tracking-widest border transition-all active:scale-95 ${isOffline ? 'bg-slate-100 text-slate-300 border-slate-100 cursor-not-allowed' : cooldownSeconds > 0 ? 'bg-slate-50 text-slate-400 border-slate-200' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:shadow-sm'}`}>{isExecuting ? <RotateCcw size={14} className="animate-spin" /> : <Play size={14} fill="currentColor" />} {isOffline ? 'Offline' : cooldownSeconds > 0 ? `Wait (${cooldownSeconds}s)` : q?.type === 'frontend-react' ? 'Verify UI' : 'Run'}</button>
+                        <button onClick={handleCheckTestCases} disabled={isExecuting || cooldownSeconds > 0 || isOffline} className={`h-9 px-5 flex items-center gap-2 rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all active:scale-95 ${isOffline ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : cooldownSeconds > 0 ? 'bg-slate-700 text-white cursor-not-allowed opacity-80' : 'bg-slate-900 text-white hover:bg-slate-900 shadow-lg shadow-slate-200'}`}>{isOffline ? 'Internet Required' : cooldownSeconds > 0 ? `Ready in ${cooldownSeconds}s` : q?.type === 'frontend-react' ? 'Check Results' : 'Submit Code'}</button>
                       </div>
                     )}
                     <div className="h-6 w-px bg-slate-100 mx-2" />

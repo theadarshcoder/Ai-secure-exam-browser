@@ -1,6 +1,7 @@
 const Exam = require('../models/Exam');
 const ExamSession = require('../models/ExamSession');
 const ExamAnswer = require('../models/ExamAnswer');
+const ExamInvite = require('../models/ExamInvite');
 const User = require('../models/User');
 const { getRedisClient } = require('../config/redis');
 const { executeCode } = require('../services/judge0');
@@ -8,6 +9,7 @@ const { asyncHandler } = require('../middlewares/errorMiddleware');
 const { getTimeAgo, parseLeetCode, parseCodeChef } = require('../utils/helpers');
 const { gradeMCQ, gradeCoding, gradeShortAnswer } = require('../services/gradingService');
 const { addCodeEvaluationJob } = require('../queues/codeGradingQueue');
+const { addFrontendEvaluationJob } = require('../queues/frontendGradingQueue');
 const { getCache, setCache, TTL_API_CACHE } = require('../services/cacheService');
 const Setting = require('../models/Setting');
 
@@ -42,7 +44,7 @@ exports.createExam = asyncHandler(async (req, res) => {
     }
 
     // Question Type & Marks Validation
-    const allowedTypes = ['mcq', 'short', 'coding'];
+    const allowedTypes = ['mcq', 'short', 'coding', 'frontend-react'];
     const negMarks = Number(negativeMarks) || 0;
 
     if (negMarks < 0) {
@@ -138,7 +140,7 @@ exports.updateExam = asyncHandler(async (req, res) => {
     }
 
     // Question Type & Marks Validation
-    const allowedTypes = ['mcq', 'short', 'coding'];
+    const allowedTypes = ['mcq', 'short', 'coding', 'frontend-react'];
     const negMarks = Number(negativeMarks) || 0;
 
     if (negMarks < 0) {
@@ -606,6 +608,12 @@ exports.startExam = asyncHandler(async (req, res) => {
     });
     await session.save();
 
+    // ─── Update ExamInvite Status → exam_started ─────
+    ExamInvite.findOneAndUpdate(
+        { exam: examId, student: studentId, status: { $in: ['opened', 'sent', 'pending'] } },
+        { status: 'exam_started' }
+    ).catch(err => console.error('[Invite] Status update (exam_started) failed:', err.message));
+
     // --- Cache Initialization ---
     const redisClient = getRedisClient();
     if (redisClient) {
@@ -933,6 +941,27 @@ exports.submitExam = asyncHandler(async (req, res) => {
                         result: { error: 'AI Service Unavailable' }
                     };
                 }
+            } else if (q.type === 'frontend-react') {
+                // For UI labs, we use the score from the background worker
+                // Check if an existing ExamAnswer has a frontendResult
+                const existingAnswer = await ExamAnswer.findOne({ sessionId: session._id, questionId: qId });
+                if (existingAnswer && existingAnswer.frontendResult) {
+                    evaluation = {
+                        marksObtained: existingAnswer.frontendResult.score || 0,
+                        maxMarks: q.marks || existingAnswer.frontendResult.maxMarks || 0,
+                        status: existingAnswer.frontendResult.passed ? 'correct' : 'incorrect',
+                        result: existingAnswer.frontendResult
+                    };
+                    autoScore += evaluation.marksObtained;
+                } else {
+                    hasShortAnswers = true; // Mark for review if not graded yet
+                    evaluation = {
+                        marksObtained: 0,
+                        maxMarks: q.marks || 0,
+                        status: 'pending_review',
+                        result: { message: 'UI Verification Pending' }
+                    };
+                }
             }
         }
 
@@ -983,6 +1012,12 @@ exports.submitExam = asyncHandler(async (req, res) => {
     session.submittedAt = new Date();
     await session.save();
 
+    // ─── Update ExamInvite Status → completed ────────
+    ExamInvite.findOneAndUpdate(
+        { exam: examId, student: studentId, status: { $in: ['exam_started', 'opened'] } },
+        { status: 'completed' }
+    ).catch(err => console.error('[Invite] Status update (completed) failed:', err.message));
+
     res.json({
         message: hasShortAnswers 
             ? 'Exam submitted! Some answers require mentor evaluation.'
@@ -1026,6 +1061,7 @@ exports.getSessionDetail = asyncHandler(async (req, res) => {
         const result = savedAnswer?.result || {};
 
         const detail = {
+            questionId: qId,
             index,
             type: q.type,
             questionText: q.questionText,
@@ -1056,6 +1092,13 @@ exports.getSessionDetail = asyncHandler(async (req, res) => {
             detail.aiSuggestedMarks = result.aiSuggestedMarks;
             detail.aiReasoning = result.aiReasoning;
             detail.mentorFeedback = result.mentorFeedback || '';
+        }
+
+        if (q.type === 'frontend-react') {
+            detail.testCaseResults = result.testCaseResults || [];
+            detail.totalTestCases = (q.frontendTestCases || []).length;
+            detail.passedTestCases = (result.testCaseResults || []).filter(t => t.passed).length;
+            detail.files = savedAnswer?.answer?.files || {};
         }
 
         return detail;
@@ -1783,4 +1826,30 @@ exports.importQuestionFromLink = asyncHandler(async (req, res) => {
         res.status(422);
         throw new Error(`Failed to extract problem details. The platform might be blocking requests or the URL is invalid.`);
     }
+});
+
+// ─────────────── POST /api/exams/run-frontend ───────────────
+// Evaluates a React/UI lab submission using BullMQ background worker
+exports.runFrontendCode = asyncHandler(async (req, res) => {
+    const { examId, questionId, files } = req.body;
+    const studentId = req.user.email;
+
+    if (!examId || !questionId || !files) {
+        res.status(400);
+        throw new Error("Missing parameters for UI evaluation.");
+    }
+
+    // Add to Background Queue
+    const job = await addFrontendEvaluationJob({
+        examId,
+        questionId,
+        studentId,
+        files
+    });
+
+    res.status(200).json({
+        status: 'queued',
+        jobId: job.id,
+        message: "Your UI submission is being evaluated. Results will be broadcasted via socket."
+    });
 });
