@@ -612,6 +612,7 @@ export default function ExamCockpit() {
   const [headerAlert, setHeaderAlert] = useState(null);
   const headerAlertTimer = useRef(null);
   const prevQTypeRef = useRef(null);
+  const bgHiddenTimeRef = useRef(null);
 
   useEffect(() => {
     if (questions && questions.length > 0 && questions[currentQ]) {
@@ -814,7 +815,10 @@ export default function ExamCockpit() {
     try {
       await api.post('/api/exams/incident', incident);
       socketService.emitViolation(incident);
+      
+      // Telemetry for Backend Rule Engine
       if (severity === 'high' || severity === 'critical') {
+          socketService.emitViolationReport('CHEATING_FLAG', 0, examId);
           captureAndUploadSnapshot('violation');
       }
     } catch (_err) { console.warn('Incident log failed'); }
@@ -899,22 +903,18 @@ export default function ExamCockpit() {
       return false; 
     };
     
-    // Bug 8: Tab Switch Incident Logging
+    // Bug 8: Tab Switch Incident Logging (Backend Authoritative)
     const handleVisibilityChange = () => {
-      if (document.hidden && !submitted && !terminated) {
-        const currentCount = tabSwitchCount + 1;
-        setTabSwitchCount(currentCount);
-
-        const maxAllowed = exam?.settings?.maxTabSwitches ?? 5;
-        logIncident('Tab Switch', 'high', `Student switched tabs. Count: ${currentCount}/${maxAllowed}`);
-        
-        if (currentCount >= maxAllowed) {
-            setTerminated({ type: 'policy_violation', reason: 'Maximum tab switch limit exceeded' });
-            return;
+      if (submitted || terminated) return;
+      
+      if (document.hidden) {
+        bgHiddenTimeRef.current = Date.now();
+      } else {
+        if (bgHiddenTimeRef.current) {
+          const duration = Math.floor((Date.now() - bgHiddenTimeRef.current) / 1000);
+          socketService.emitViolationReport('TAB_HIDDEN', duration, examId);
+          bgHiddenTimeRef.current = null;
         }
-
-        setIsTabViolation(true);
-        toast.error(`SECURITY ALERT: Tab switch violation (${currentCount}/${maxAllowed})`, { id: 'tab-switch-warning' });
       }
     };
 

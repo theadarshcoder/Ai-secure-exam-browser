@@ -1170,6 +1170,32 @@ export default function AdminDashboard() {
                   className="w-20 px-3 py-2 border border-slate-200 text-sm focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-center rounded-xl transition-all" 
                />
             </div>
+
+            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
+               <div>
+                  <p className="text-sm font-semibold text-slate-900">Max Total Violations</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Total cheating flags allowed before strict block.</p>
+               </div>
+               <input 
+                  type="number" 
+                  value={settings.maxViolations || 5} 
+                  onChange={e => setSettingsState(prev => ({...prev, maxViolations: Number(e.target.value)}))}
+                  className="w-20 px-3 py-2 border border-slate-200 text-sm focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-center rounded-xl transition-all" 
+               />
+            </div>
+
+            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
+               <div>
+                  <p className="text-sm font-semibold text-slate-900">Background Limit (Seconds)</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Time allowed outside the tab before block.</p>
+               </div>
+               <input 
+                  type="number" 
+                  value={settings.backgroundLimitSeconds || 10} 
+                  onChange={e => setSettingsState(prev => ({...prev, backgroundLimitSeconds: Number(e.target.value)}))}
+                  className="w-20 px-3 py-2 border border-slate-200 text-sm focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-center rounded-xl transition-all" 
+               />
+            </div>
             
             <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
                <div>

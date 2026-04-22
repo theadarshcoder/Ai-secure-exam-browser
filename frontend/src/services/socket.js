@@ -107,6 +107,12 @@ class SocketService {
 
   // --- 🛡️ PROCTORING EMITS ---
 
+  emitViolationReport(type, duration, examId) {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('violation_report', { type, duration, examId });
+    }
+  }
+
   blockStudent(studentId, examId) {
     if (this.socket && this.socket.connected) {
       this.socket.emit('block_student', { studentId, examId });
