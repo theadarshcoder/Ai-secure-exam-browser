@@ -28,6 +28,7 @@ const aiRoutes = require('./routes/aiRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 const { setupCodeEvaluationWorker } = require('./queues/codeGradingQueue');
 const { setupFrontendEvaluationWorker } = require('./queues/frontendGradingQueue');
+const { setupInviteEmailWorker } = require('./queues/inviteEmailQueue');
 const traceMiddleware = require('./middlewares/traceMiddleware');
 
 const app = express();
@@ -193,6 +194,7 @@ app.set('io', io);
 // 🚀 Initialize Background Workers
 setupCodeEvaluationWorker(io);
 setupFrontendEvaluationWorker(io);
+setupInviteEmailWorker();
 
 // Socket.IO Authentication Middleware
 // Har connection se pehle JWT token verify hoga

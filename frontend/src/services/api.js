@@ -322,4 +322,44 @@ export const unverifyCandidate = async (userId) => {
     }
 };
 
+// ─────────────────────────────────────────────────────────
+// 📨 Bulk Invite System APIs
+// ─────────────────────────────────────────────────────────
+
+export const bulkInviteStudents = async (examId, students) => {
+    try {
+        const response = await api.post(`/api/exams/${examId}/bulk-invite`, { students });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
+export const verifyInviteToken = async (token, deviceId) => {
+    try {
+        const response = await api.post('/api/auth/verify-invite', { token, deviceId });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
+export const getInviteStatus = async (examId) => {
+    try {
+        const response = await api.get(`/api/exams/${examId}/invites`);
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
+export const resendInvite = async (examId, email) => {
+    try {
+        const response = await api.post(`/api/exams/${examId}/resend-invite`, { email });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
 export default api;

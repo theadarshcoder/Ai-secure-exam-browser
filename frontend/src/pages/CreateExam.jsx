@@ -15,6 +15,7 @@ import {
 import VisionLogo from '../components/VisionLogo';
 import PremiumSidebar from '../components/PremiumSidebar';
 import AnimatedStatusIcon from '../components/AnimatedStatusIcon';
+import BulkInviteModal from '../components/BulkInviteModal';
 
 // AI Suggestions are now fetched from the backend live engine.
 
@@ -418,6 +419,7 @@ export default function CreateExam() {
   const [saveStatus, setSaveStatus] = useState('idle');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [publishedExamId, setPublishedExamId] = useState('');
+  const [showInviteModal, setShowInviteModal] = useState(false);
   const [editId, setEditId] = useState(null);
   const [initialLoading, setInitialLoading] = useState(false);
   const [toasts, setToasts] = useState([]);
@@ -1693,6 +1695,13 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
               </button>
             </div>
 
+            <button 
+              onClick={() => { setShowSuccessModal(false); setShowInviteModal(true); }}
+              className="group w-full mb-3 bg-indigo-600 text-white h-14 rounded-[20px] font-black text-xs uppercase tracking-[0.2em] hover:bg-indigo-700 transition-all active:scale-[0.98] flex items-center justify-center gap-3 shadow-lg shadow-indigo-900/20"
+            >
+              <Users size={16} /> Invite Students
+            </button>
+
             <button onClick={() => navigate(returnTo)} className="group w-full bg-white text-black h-14 rounded-[20px] font-black text-xs uppercase tracking-[0.2em] hover:bg-zinc-100 transition-all active:scale-[0.98] flex items-center justify-center gap-3 border border-zinc-200">
               Return to Module
               <ArrowLeft size={16} className="rotate-180 group-hover:translate-x-1 transition-transform" />
@@ -1700,6 +1709,14 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
           </div>
         </div>
       )}
+
+      {/* Bulk Invite Modal */}
+      <BulkInviteModal 
+        isOpen={showInviteModal} 
+        onClose={() => { setShowInviteModal(false); navigate(returnTo); }}
+        examId={publishedExamId}
+        examTitle={exam.title}
+      />
 
       {/* Toasts */}
       <div className="fixed bottom-10 right-10 z-[200] space-y-4">

@@ -1,0 +1,91 @@
+// ═══════════════════════════════════════════════════════════
+//  📨 Invite Email Queue — BullMQ
+//  Handles bulk email sending via background workers.
+//  Uses addBulk for batch processing (Edge Case Fix #3).
+// ═══════════════════════════════════════════════════════════
+
+const { Queue, Worker } = require('bullmq');
+const { sendInviteEmail } = require('../services/emailService');
+const ExamInvite = require('../models/ExamInvite');
+
+const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+
+// ─── Queue (Producer) ────────────────────────────────────
+const inviteEmailQueue = new Queue('InviteEmail', {
+    connection: { url: redisUrl }
+});
+
+/**
+ * Add multiple invite email jobs in a single Redis transaction.
+ * Edge Case Fix #3: Uses addBulk instead of individual adds.
+ * 
+ * @param {Array} jobs - Array of { inviteId, email, studentName, password, examName, verifyLink, expiresAt }
+ */
+const addBulkInviteJobs = async (jobs) => {
+    const bulkJobs = jobs.map(job => ({
+        name: 'sendInviteEmail',
+        data: job,
+        opts: {
+            attempts: 3,
+            backoff: { type: 'exponential', delay: 2000 },
+            removeOnComplete: true,  // Auto cleanup from Redis memory
+            removeOnFail: false      // Keep failed jobs for debugging
+        }
+    }));
+
+    await inviteEmailQueue.addBulk(bulkJobs);
+    console.log(`📨 [Queue] ${bulkJobs.length} invite email jobs added (addBulk)`);
+};
+
+// ─── Worker (Consumer) ───────────────────────────────────
+const setupInviteEmailWorker = () => {
+    const worker = new Worker('InviteEmail', async (job) => {
+        const { inviteId, email, studentName, password, examName, verifyLink, expiresAt } = job.data;
+        
+        console.log(`📧 [Worker] Processing invite for: ${email}`);
+
+        const result = await sendInviteEmail({
+            to: email,
+            studentName,
+            password,
+            examName,
+            verifyLink,
+            expiresAt
+        });
+
+        // Update ExamInvite status based on email delivery
+        if (result.success) {
+            await ExamInvite.findByIdAndUpdate(inviteId, {
+                status: 'sent',
+                sentAt: new Date()
+            });
+            console.log(`✅ [Worker] Email sent to ${email}`);
+        } else {
+            // Mark as failed only on final attempt
+            if (job.attemptsMade >= 2) { // 0-indexed, so 2 = 3rd attempt
+                await ExamInvite.findByIdAndUpdate(inviteId, {
+                    status: 'failed'
+                });
+            }
+            throw new Error(`Email delivery failed: ${result.error}`);
+        }
+
+        return result;
+    }, {
+        connection: { url: redisUrl },
+        concurrency: 3  // Process 3 emails in parallel (Resend free tier friendly)
+    });
+
+    worker.on('completed', (job) => {
+        console.log(`✅ [Invite Worker] Job ${job.id} completed for ${job.data.email}`);
+    });
+
+    worker.on('failed', (job, err) => {
+        console.error(`❌ [Invite Worker] Job ${job.id} failed (attempt ${job.attemptsMade}): ${err.message}`);
+    });
+
+    console.log('📨 [Invite Worker] Email worker initialized and ready.');
+    return worker;
+};
+
+module.exports = { inviteEmailQueue, addBulkInviteJobs, setupInviteEmailWorker };

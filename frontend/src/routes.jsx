@@ -13,6 +13,7 @@ import IDVerification from './pages/IDVerification';
 import ExamWaitingRoom from './pages/ExamWaitingRoom';
 import SessionMonitor from './pages/SessionMonitor';
 import StudentResult from './pages/StudentResult';
+import VerifyInvite from './pages/VerifyInvite';
 
 const ThemeEnforcer = () => {
   const { pathname } = useLocation();
@@ -86,6 +87,7 @@ export default function AppRouter() {
         <Route element={<MainLayout />}>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginRedirect />} />
+          <Route path="/verify" element={<VerifyInvite />} />
           
           <Route path="/admin" element={
             <ProtectedRoute allowedRoles={['admin', 'super_mentor']}>

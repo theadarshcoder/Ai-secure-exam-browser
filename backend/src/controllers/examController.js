@@ -1,6 +1,7 @@
 const Exam = require('../models/Exam');
 const ExamSession = require('../models/ExamSession');
 const ExamAnswer = require('../models/ExamAnswer');
+const ExamInvite = require('../models/ExamInvite');
 const User = require('../models/User');
 const { getRedisClient } = require('../config/redis');
 const { executeCode } = require('../services/judge0');
@@ -607,6 +608,12 @@ exports.startExam = asyncHandler(async (req, res) => {
     });
     await session.save();
 
+    // ─── Update ExamInvite Status → exam_started ─────
+    ExamInvite.findOneAndUpdate(
+        { exam: examId, student: studentId, status: { $in: ['opened', 'sent', 'pending'] } },
+        { status: 'exam_started' }
+    ).catch(err => console.error('[Invite] Status update (exam_started) failed:', err.message));
+
     // --- Cache Initialization ---
     const redisClient = getRedisClient();
     if (redisClient) {
@@ -1004,6 +1011,12 @@ exports.submitExam = asyncHandler(async (req, res) => {
     session.requiresManualGrading = hasShortAnswers;
     session.submittedAt = new Date();
     await session.save();
+
+    // ─── Update ExamInvite Status → completed ────────
+    ExamInvite.findOneAndUpdate(
+        { exam: examId, student: studentId, status: { $in: ['exam_started', 'opened'] } },
+        { status: 'completed' }
+    ).catch(err => console.error('[Invite] Status update (completed) failed:', err.message));
 
     res.json({
         message: hasShortAnswers 
