@@ -58,12 +58,13 @@ exports.getDashboardStats = asyncHandler(async (req, res) => {
     const cached = await getCache(cacheKey);
     if (cached) return res.json(cached);
 
-    const [totalExams, totalAttempts, liveExams, liveStudents, totalViolations] = await Promise.all([
+    const [totalExams, totalAttempts, liveExams, liveStudents, totalViolations, totalStudents] = await Promise.all([
         Exam.countDocuments().lean(),
         ExamSession.countDocuments().lean(),
         Exam.countDocuments({ status: 'published' }).lean(),
         ExamSession.countDocuments({ status: 'in_progress' }).lean(),
-        ExamSession.countDocuments({ 'violations.0': { $exists: true } }).lean()
+        ExamSession.countDocuments({ 'violations.0': { $exists: true } }).lean(),
+        User.countDocuments({ role: 'student' }).lean()
     ]);
 
     const result = { 
@@ -71,6 +72,7 @@ exports.getDashboardStats = asyncHandler(async (req, res) => {
         totalAttempts,
         liveExams,
         liveStudents, 
+        totalStudents,
         flaggedSessions: totalViolations
     };
 

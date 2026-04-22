@@ -10,8 +10,11 @@ import {
   Upload, FilePlus, FileSpreadsheet, Lock,
   LayoutDashboard, Users, BarChart3, Settings, Bell,
   ChevronRight, LogOut, Eye, Edit3, Star, RefreshCw,
-  Download, UploadCloud, Link
+  Download, UploadCloud, Link, Calendar
 } from 'lucide-react';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { format } from 'date-fns';
 import VisionLogo from '../components/VisionLogo';
 import PremiumSidebar from '../components/PremiumSidebar';
 import AnimatedStatusIcon from '../components/AnimatedStatusIcon';
@@ -29,26 +32,23 @@ const LABEL_BASE = "text-[10px] font-bold text-zinc-500 uppercase tracking-wides
 // --- Components ---
 
 function StepperInput({ value, onChange, min = 0, max = 999, step = 1, icon: Icon, unit }) {
-  const [display, setDisplay] = useState(String(value));
+  const [display, setDisplay] = useState(String(value ?? 0));
   const [isFocused, setIsFocused] = useState(false);
 
   useEffect(() => {
     if (!isFocused) {
-      setDisplay(String(value));
+      setDisplay(String(value ?? 0));
     }
   }, [value, isFocused]);
 
   const handleChange = (e) => {
     const raw = e.target.value;
-    // Allow digits and at most one decimal point
     const clean = raw.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1');
     setDisplay(clean);
     
     if (clean !== '' && clean !== '.') {
       const v = parseFloat(clean);
       if (!isNaN(v)) {
-        // We update the parent state immediately for a better UX,
-        // but we don't clamp it to min/max yet so the user can finish typing.
         onChange(v);
       }
     }
@@ -56,25 +56,23 @@ function StepperInput({ value, onChange, min = 0, max = 999, step = 1, icon: Ico
 
   const handleBlur = () => {
     setIsFocused(false);
-    let v = parseInt(display, 10);
-    if (display === '' || isNaN(v)) v = value;
+    let v = parseFloat(display);
+    if (display === '' || isNaN(v)) v = value ?? 0;
     v = Math.min(max, Math.max(min, v));
     setDisplay(String(v));
     onChange(v);
   };
 
   const handleStep = (delta) => {
-    const next = Math.min(max, Math.max(min, value + delta));
+    const next = Math.min(max, Math.max(min, (value ?? 0) + delta));
     onChange(next);
   };
 
   return (
-    <div className={`relative flex items-center bg-white border h-12 rounded-xl transition-all duration-300 shadow-sm ${isFocused ? 'border-emerald-500 ring-2 ring-emerald-500/10' : 'border-zinc-200 hover:border-zinc-300'}`}>
-      {Icon && (
-        <div className="pl-4 pr-1 text-zinc-400">
-          <Icon size={16} className={isFocused ? 'text-emerald-500' : ''} />
-        </div>
-      )}
+    <div className={`relative flex items-center bg-white border h-11 rounded-xl transition-all duration-300 shadow-sm ${isFocused ? 'border-emerald-500 ring-2 ring-emerald-500/10' : 'border-slate-200 hover:border-slate-300'}`}>
+      <div className="w-10 flex items-center justify-center shrink-0">
+        {Icon && <Icon size={14} className={`text-slate-400 ${isFocused ? 'text-emerald-500' : ''}`} />}
+      </div>
       <input
         type="text"
         inputMode="numeric"
@@ -82,34 +80,63 @@ function StepperInput({ value, onChange, min = 0, max = 999, step = 1, icon: Ico
         onChange={handleChange}
         onFocus={() => setIsFocused(true)}
         onBlur={handleBlur}
-        className="flex-1 min-w-[40px] bg-transparent border-none focus:ring-0 text-sm font-bold text-zinc-900 px-2 h-full"
+        className="flex-1 min-w-0 bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-sm font-semibold text-slate-900 h-full text-center"
       />
-      <div className="flex items-center pr-1 gap-1">
-        {unit && (
-          <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest bg-zinc-50 px-2 py-1 rounded-md border border-zinc-100 hidden sm:inline-block">
-            {unit}
-          </span>
-        )}
-        <div className="flex flex-col border-l border-zinc-100 pl-1">
-          <button 
-            type="button" 
-            onClick={() => handleStep(step)} 
-            className="p-1 hover:text-emerald-500 text-zinc-400 transition-colors"
-          >
-            <ChevronUp size={12} strokeWidth={3} />
+      <div className="w-10 flex items-center justify-center shrink-0">
+        <div className="flex flex-col">
+          <button type="button" onClick={() => handleStep(step)} className="p-0.5 hover:text-emerald-500 text-slate-300 transition-colors">
+            <ChevronUp size={12} strokeWidth={2.5} />
           </button>
-          <button 
-            type="button" 
-            onClick={() => handleStep(-step)} 
-            className="p-1 hover:text-red-500 text-zinc-400 transition-colors"
-          >
-            <ChevronDown size={12} strokeWidth={3} />
+          <button type="button" onClick={() => handleStep(-step)} className="p-0.5 hover:text-red-400 text-slate-300 transition-colors">
+            <ChevronDown size={12} strokeWidth={2.5} />
           </button>
         </div>
       </div>
     </div>
   );
 }
+
+const CustomDatePicker = ({ selected, onChange }) => {
+  // Premium custom trigger for the date picker
+  const CustomInput = React.forwardRef(({ value, onClick }, ref) => (
+    <button 
+      type="button"
+      onClick={onClick} 
+      ref={ref}
+      className="w-full h-12 bg-white hover:bg-slate-50 border border-slate-200 hover:border-emerald-300 rounded-xl transition-all duration-300 shadow-sm flex items-center justify-between px-3 group"
+    >
+      <div className="flex-1 min-w-0 flex items-center gap-3 overflow-hidden">
+        <div className={`shrink-0 p-1.5 rounded-lg transition-colors ${value ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400 group-hover:text-emerald-500 group-hover:bg-emerald-50'}`}>
+          <Calendar size={14} />
+        </div>
+        <span className={`text-sm font-bold tracking-tight truncate ${value ? 'text-slate-900' : 'text-slate-400'}`}>
+          {value || 'Set Schedule'}
+        </span>
+      </div>
+      {value ? (
+        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse shrink-0 ml-2" />
+      ) : (
+        <div className="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0 ml-2" />
+      )}
+    </button>
+  ));
+  
+  // Assign display name for React DevTools
+  CustomInput.displayName = 'CustomInput';
+
+  return (
+    <DatePicker
+      selected={selected ? new Date(selected) : null}
+      onChange={(date) => onChange(date)}
+      showTimeSelect
+      dateFormat="yyyy MMM d - h:mm aa"
+      customInput={<CustomInput />}
+      wrapperClassName="w-full"
+      popperClassName="!z-50 shadow-2xl rounded-2xl border border-slate-200"
+      portalId="root"
+    />
+  );
+};
 
 const McqEditor = ({ question, updateQ }) => (
   <div className="space-y-2">
@@ -136,22 +163,35 @@ const McqEditor = ({ question, updateQ }) => (
 );
 
 const ShortEditor = ({ question, updateQ }) => (
-  <div className="space-y-3">
-    <textarea 
-      value={question.expectedAnswer} 
-      onChange={e => updateQ(question.id, { expectedAnswer: e.target.value })} 
-      placeholder="Expected keywords..." 
-      rows={2} 
-      className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-emerald-500/50 resize-none shadow-sm" 
-    />
-    <div className="flex items-center gap-2 text-[9px] text-zinc-500 font-bold uppercase tracking-widest">
-      Word limit: 
-      <input 
-        type="number" 
-        value={question.maxWords} 
-        onChange={e => updateQ(question.id, { maxWords: parseInt(e.target.value) || 0 })} 
-        className="w-16 bg-white border border-zinc-200 rounded px-2 py-1 text-xs text-zinc-900 focus:outline-none focus:border-emerald-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-center shadow-sm" 
+  <div className="space-y-4">
+    <div>
+      <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5 block">Expected Answer / Keywords</label>
+      <textarea 
+        value={question.expectedAnswer} 
+        onChange={e => updateQ(question.id, { expectedAnswer: e.target.value })} 
+        placeholder="Enter expected keywords or a model answer for AI evaluation..." 
+        rows={3} 
+        className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all resize-none shadow-sm" 
       />
+    </div>
+    
+    <div className="flex items-end justify-between gap-6 pt-2">
+      <div className="flex-1 max-w-[160px]">
+        <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-2 block">Word Limit</label>
+        <StepperInput 
+          value={question.maxWords || 150} 
+          onChange={v => updateQ(question.id, { maxWords: v })} 
+          min={10} 
+          max={1000} 
+          step={10}
+          unit="words"
+        />
+      </div>
+      <div className="flex-1 text-right">
+        <p className="text-[9px] text-zinc-400 font-medium leading-relaxed italic">
+          AI will use this limit to <br/> evaluate the student's response.
+        </p>
+      </div>
     </div>
   </div>
 );
@@ -356,6 +396,7 @@ export default function CreateExam() {
   const [editId, setEditId] = useState(null);
   const [initialLoading, setInitialLoading] = useState(false);
   const [toasts, setToasts] = useState([]);
+  const [activeQTab, setActiveQTab] = useState('mcq');
   
   // Link Import States
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -742,7 +783,7 @@ export default function CreateExam() {
       setShowSuccessModal(true);
     } catch (err) {
       if (err.response) {
-        // Server rejected the request — do NOT show success
+        // Server rejected the request Ã¢â‚¬â€ do NOT show success
         console.error('Server side rejection:', err.response.data);
         const errorMsg = err.response.data.error || err.response.data.message || 'Validation failed';
         addToast(`Failed to publish exam: ${errorMsg}`, 'error');
@@ -753,7 +794,7 @@ export default function CreateExam() {
       }
 
       console.warn('Backend offline. Saving exam locally for demo mode.');
-      // Resilient offline fallback — save locally and show success
+      // Resilient offline fallback Ã¢â‚¬â€ save locally and show success
       const localId = 'EX-' + Math.random().toString(36).substr(2, 6).toUpperCase();
       const localExam = {
         ...payload,
@@ -1030,7 +1071,7 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
               {/* Left Column: Build Flow */}
               <div className="flex-1 space-y-12 min-w-0 pb-32">
                 
-                {/* ═══ SECTION 1: Details ═══ */}
+                {/* Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â SECTION 1: Details Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â */}
                 <section className="bg-white/80 backdrop-blur-xl rounded-[32px] border border-zinc-200 p-10 shadow-2xl relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent" />
                   <div className="mb-8 items-center flex justify-between">
@@ -1060,11 +1101,10 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mt-10 pt-10 border-t border-zinc-100">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mt-10 pt-10 border-t border-slate-100">
                     <div>
                       <label className={LABEL_BASE}>Duration</label>
                       <StepperInput value={exam.duration} onChange={v => setExam({...exam, duration: v})} icon={Clock} unit="min" step={5} max={300} />
-                      <p className="text-[9px] text-zinc-400 mt-2 uppercase font-black tracking-tighter">5‑300 minutes</p>
                     </div>
                     <div>
                       <label className={LABEL_BASE}>Total Marks</label>
@@ -1077,50 +1117,35 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                     <div>
                       <label className={LABEL_BASE}>Negative Marks</label>
                       <StepperInput value={exam.negativeMarks} onChange={v => setExam({...exam, negativeMarks: v})} icon={Minus} step={0.25} min={0} max={10} />
-                      <p className="text-[9px] text-zinc-400 mt-2 uppercase font-black tracking-tighter">per wrong answer</p>
                     </div>
-                    <div>
+                    <div className="xl:col-span-2">
                       <label className={LABEL_BASE}>Schedule</label>
-                      <div className="relative group cursor-pointer">
-                        <input 
-                          type="datetime-local" 
-                          value={exam.scheduledDate} 
-                          onChange={e => setExam({...exam, scheduledDate: e.target.value})} 
-                          className="w-full h-12 bg-white border border-zinc-200 rounded-xl px-4 text-xs font-bold text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all cursor-pointer [color-scheme:light] hover:border-zinc-300" 
-                        />
-                        <Clock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none group-hover:text-emerald-500 transition-colors" />
-                      </div>
+                      <CustomDatePicker 
+                        selected={exam.scheduledDate} 
+                        onChange={(date) => setExam({...exam, scheduledDate: date ? date.toISOString() : ''})} 
+                      />
                     </div>
                   </div>
                 </section>
 
-                {/* ═══ SECTION 2: AI Engine ═══ */}
-                <section className="bg-white/80 backdrop-blur-xl rounded-[32px] border border-violet-500/20 p-10 shadow-2xl relative overflow-hidden group/ai">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-violet-500/30 to-transparent" />
-                  <div className="flex items-center justify-between mb-8">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-violet-600/10 border border-violet-500/20 flex items-center justify-center text-violet-400">
-                        <Sparkles size={24} />
-                      </div>
-                      <div>
-                        <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-wider flex items-center gap-3">
-                          AI Question Engine
-                          <span className="text-[9px] px-2 py-0.5 rounded bg-violet-500 text-zinc-900 font-black">BETA</span>
-                        </h2>
-                        <p className="text-[10px] text-zinc-500 mt-1 uppercase font-semibold">Generate from syllabus or documentation</p>
-                      </div>
+                {/* Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â SECTION 2: AI Engine Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â */}
+                <section className="bg-white rounded-xl border border-slate-200 p-5 relative">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2.5">
+                      <Sparkles size={15} className="text-slate-400" />
+                      <span className="text-xs font-medium text-slate-700">Auto-generate questions</span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-400 font-medium">Beta</span>
                     </div>
-                    <button onClick={() => setShowAI(!showAI)} className="px-4 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-[10px] font-black uppercase text-zinc-500 hover:text-zinc-900 hover:bg-zinc-800 transition-all">
-                      {showAI ? 'Close Engine' : 'Open Engine'}
+                    <button onClick={() => setShowAI(!showAI)} className="text-[11px] font-medium text-slate-500 hover:text-slate-800 transition-colors">
+                      {showAI ? 'Close' : 'Open'}
                     </button>
                   </div>
 
                   {showAI && (
-                    <div className="space-y-8 animate-in slide-in-from-top-4 duration-500">
-                       {/* Tabs */}
-                       <div className="flex items-center gap-1.5 p-1.5 bg-white border border-zinc-200 rounded-2xl w-fit">
-                          {[{id:'text', label:'Syllabus Text'}, {id:'file', label:'File Upload'}].map(t => (
-                            <button key={t.id} onClick={() => setInputMode(t.id)} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${inputMode === t.id ? 'bg-violet-600 text-zinc-900 shadow-lg shadow-violet-900/40' : 'text-zinc-400 hover:text-zinc-500'}`}>
+                    <div className="space-y-4">
+                       <div className="flex gap-4 border-b border-slate-100 pb-3">
+                          {[{id:'text', label:'Paste text'}, {id:'file', label:'Upload file'}].map(t => (
+                            <button key={t.id} onClick={() => setInputMode(t.id)} className={`text-xs font-medium pb-1 transition-all ${inputMode === t.id ? 'text-slate-800 border-b-2 border-slate-800' : 'text-slate-400 hover:text-slate-600'}`}>
                               {t.label}
                             </button>
                           ))}
@@ -1128,68 +1153,67 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
 
                        {inputMode === 'text' ? (
                          <div className="space-y-4">
-                           <label className={LABEL_BASE}>Input Knowledge Base</label>
-                           <textarea value={syllabus} onChange={e => setSyllabus(e.target.value)} placeholder="Paste your syllabus, lecture notes, or specific topics here..." rows={6} className={INPUT_BASE + " resize-none p-5 text-sm leading-relaxed"} />
+                            <label className="text-[11px] font-medium text-slate-500 mb-1.5 block">Paste your content</label>
+                            <textarea value={syllabus} onChange={e => setSyllabus(e.target.value)} placeholder="Syllabus, lecture notes, topics..." rows={3} className={INPUT_BASE + " resize-none p-3 text-xs"} />
                          </div>
                        ) : (
                          <div className="space-y-4">
-                            <label className={LABEL_BASE}>Document Processor</label>
+                            <label className="text-[11px] font-medium text-slate-500 mb-1.5 block">Upload document</label>
                             <div className="grid grid-cols-2 gap-4 mb-4">
-                               {[{id:'syllabus', label:'Topics Only', icon: ListChecks}, {id:'import', label:'Direct Questions', icon: FileSpreadsheet}].map(t => (
-                                 <button key={t.id} onClick={() => setUploadIntent(t.id)} className={`flex items-center gap-3 p-4 rounded-2xl border transition-all text-left ${uploadIntent === t.id ? 'bg-violet-600/10 border-violet-500/40' : 'bg-zinc-50 border-zinc-200 hover:bg-white/[0.05]'}`}>
-                                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${uploadIntent === t.id ? 'bg-violet-600 text-zinc-900' : 'bg-zinc-100 text-zinc-500'}`}><t.icon size={18} /></div>
-                                   <div><p className={`text-xs font-bold ${uploadIntent === t.id ? 'text-zinc-900' : 'text-zinc-500'}`}>{t.label}</p><p className="text-[10px] text-zinc-400">PDF / CSV format</p></div>
-                                 </button>
-                               ))}
-                            </div>
-                            
-                            {!uploadedFile ? (
-                              <div onDragOver={e => {e.preventDefault(); setIsDragOver(true)}} onDragLeave={() => setIsDragOver(false)} onDrop={onDropFile} onClick={() => document.getElementById('ai-file').click()} className={`py-12 border-2 border-dashed rounded-[32px] flex flex-col items-center justify-center gap-4 transition-all cursor-pointer ${isDragOver ? 'border-violet-500 bg-violet-600/5' : 'border-zinc-200 hover:border-violet-500/30 bg-white'}`}>
-                                <input id="ai-file" type="file" className="hidden" onChange={e => handleFile(e.target.files[0])} />
-                                <Upload size={32} className="text-violet-500/40" />
-                                <div className="text-center">
-                                  <p className="text-sm font-bold text-zinc-500 uppercase tracking-widest">Drop secure file</p>
-                                  <p className="text-[10px] text-zinc-400 mt-2">Maximum size 10MB</p>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="p-4 bg-violet-600/5 border border-violet-500/20 rounded-2xl flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                  <div className="w-12 h-12 bg-violet-600/20 rounded-xl flex items-center justify-center text-violet-400">{uploadedFile.name.endsWith('.pdf') ? <FileText size={20} /> : <FileSpreadsheet size={20} />}</div>
-                                  <div><p className="text-sm font-bold text-zinc-900 truncate max-w-[200px]">{uploadedFile.name}</p><p className="text-[10px] text-zinc-500 uppercase">File Verified</p></div>
-                                </div>
-                                <button onClick={() => setUploadedFile(null)} className="p-2 hover:bg-red-500/10 text-zinc-400 hover:text-red-400 transition-colors"><X size={18} /></button>
-                              </div>
-                            )}
+                                {[{id:'syllabus', label:'Topics Only', icon: ListChecks}, {id:'import', label:'Direct Questions', icon: FileSpreadsheet}].map(t => (
+                                  <button key={t.id} onClick={() => setUploadIntent(t.id)} className={`flex items-center gap-2.5 p-3 rounded-xl border transition-all text-left ${uploadIntent === t.id ? 'bg-slate-50 border-slate-300' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
+                                    <t.icon size={15} className={uploadIntent === t.id ? 'text-slate-700' : 'text-slate-400'} />
+                                    <div><p className={`text-xs font-medium ${uploadIntent === t.id ? 'text-slate-800' : 'text-slate-500'}`}>{t.label}</p><p className="text-[10px] text-slate-400">PDF / CSV</p></div>
+                                  </button>
+                                ))}
+                             </div>
+                               {!uploadedFile ? (
+                               <div onDragOver={e => {e.preventDefault(); setIsDragOver(true)}} onDragLeave={() => setIsDragOver(false)} onDrop={onDropFile} onClick={() => document.getElementById('ai-file').click()} className={`py-6 border border-dashed rounded-xl flex flex-col items-center justify-center gap-2 transition-all cursor-pointer ${isDragOver ? 'border-slate-400 bg-slate-50' : 'border-slate-200 hover:border-slate-300 bg-white'}`}>
+                                 <input id="ai-file" type="file" className="hidden" onChange={e => handleFile(e.target.files[0])} />
+                                 <Upload size={18} className="text-slate-300" />
+                                 <div className="text-center">
+                                   <p className="text-[11px] text-slate-400">Drop file or click to browse</p>
+                                   <p className="text-[10px] text-slate-300 mt-0.5">Max 10MB</p>
+                                 </div>
+                               </div>
+                             ) : (
+                               <div className="p-4 bg-white border border-emerald-200 shadow-sm rounded-2xl flex items-center justify-between">
+                                 <div className="flex items-center gap-4">
+                                   <div className="w-12 h-12 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center justify-center text-emerald-500">{uploadedFile.name.endsWith('.pdf') ? <FileText size={20} /> : <FileSpreadsheet size={20} />}</div>
+                                   <div><p className="text-sm font-bold text-slate-900 truncate max-w-[200px]">{uploadedFile.name}</p><p className="text-[10px] text-emerald-600 uppercase font-bold mt-0.5">File Verified</p></div>
+                                 </div>
+                                 <button onClick={() => setUploadedFile(null)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-red-500 transition-colors"><X size={18} /></button>
+                               </div>
+                             )}
                          </div>
                        )}
 
-                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-zinc-200">
-                          <div><label className={LABEL_BASE}>MCQs Count</label><StepperInput value={aiConfig.mcq} onChange={v => setAiConfig({...aiConfig, mcq:v})} min={0} /></div>
-                          <div><label className={LABEL_BASE}>Short Qs Count</label><StepperInput value={aiConfig.short} onChange={v => setAiConfig({...aiConfig, short:v})} min={0} /></div>
-                          <div><label className={LABEL_BASE}>Coding Logic</label><StepperInput value={aiConfig.coding} onChange={v => setAiConfig({...aiConfig, coding:v})} min={0} /></div>
+                       <div className="grid grid-cols-3 gap-3 pt-4 border-t border-slate-100">
+                          <div><label className={LABEL_BASE}>MCQs</label><StepperInput value={aiConfig.mcq} onChange={v => setAiConfig({...aiConfig, mcq:v})} min={0} /></div>
+                          <div><label className={LABEL_BASE}>Short Qs</label><StepperInput value={aiConfig.short} onChange={v => setAiConfig({...aiConfig, short:v})} min={0} /></div>
+                          <div><label className={LABEL_BASE}>Coding</label><StepperInput value={aiConfig.coding} onChange={v => setAiConfig({...aiConfig, coding:v})} min={0} /></div>
                        </div>
 
-                       <button onClick={generateAI} disabled={aiLoading} className="w-full h-14 bg-zinc-900 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:bg-zinc-200 transition-all flex items-center justify-center gap-3">
-                          {aiLoading ? <Loader2 size={18} className="animate-spin" /> : <Wand2 size={18} />}
-                          {aiLoading ? 'Synthesizing...' : 'Initialize AI Generation'}
+                       <button onClick={generateAI} disabled={aiLoading} className="w-full h-9 bg-slate-800 text-white rounded-lg text-[11px] font-medium hover:bg-slate-700 transition-colors flex items-center justify-center gap-2">
+                          {aiLoading ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
+                          <span>{aiLoading ? 'Generating...' : 'Generate'}</span>
                        </button>
 
                        {/* Suggestions Area */}
                        {aiSuggestions.length > 0 && (
-                         <div className="pt-6 border-t border-zinc-200 space-y-4">
+                         <div className="pt-5 border-t border-slate-100 space-y-3">
                             <div className="flex items-center justify-between mb-4 px-2">
-                               <p className="text-[10px] font-black text-violet-400 uppercase tracking-widest">{aiSuggestions.length} engine suggestions</p>
-                               <button onClick={acceptAll} className="text-[10px] font-black text-emerald-400 hover:text-emerald-300 uppercase underline decoration-2 underline-offset-4">Accept All Candidates</button>
+                               <p className="text-[10px] font-semibold text-slate-500 uppercase">{aiSuggestions.length} suggestions</p>
+                               <button onClick={acceptAll} className="text-[10px] font-semibold text-emerald-600 hover:text-emerald-500 uppercase">Accept All</button>
                             </div>
-                            <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                            <div className="grid grid-cols-1 gap-2 max-h-[360px] overflow-y-auto pr-1 custom-scrollbar">
                                {aiSuggestions.map((s, idx) => (
-                                 <div key={idx} className="p-5 bg-zinc-50 border border-zinc-200 rounded-3xl group flex items-start gap-4 hover:border-violet-500/30 transition-all">
-                                    <div className="w-8 h-8 rounded-xl bg-zinc-100 flex items-center justify-center text-[10px] font-black text-zinc-400 group-hover:bg-violet-600 group-hover:text-zinc-900 transition-all shrink-0">{idx+1}</div>
+                                 <div key={idx} className="p-4 bg-slate-50 border border-slate-200 rounded-xl group flex items-start gap-3 hover:border-emerald-200 hover:bg-emerald-50/20 transition-all">
+                                    <div className="w-8 h-8 rounded-xl border border-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-400 shrink-0">{idx+1}</div>
                                     <div className="flex-1 min-w-0">
                                        <div className="flex items-center gap-2 mb-2">
-                                          <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-violet-600/20 text-violet-400">{typeLabels[s.type]}</span>
-                                          <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">{s.marks} PTS</span>
+                                          <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-slate-200 text-slate-600">{typeLabels[s.type]}</span>
+                                          <span className="text-[8px] font-semibold text-slate-400 uppercase">{s.marks} PTS</span>
                                        </div>
                                        <p className="text-xs font-semibold text-zinc-700 leading-relaxed mb-3">{s.questionText}</p>
                                        <button onClick={() => acceptSuggestion(s)} className="text-[10px] font-black uppercase text-emerald-500 hover:text-emerald-400">Add to Exam</button>
@@ -1204,75 +1228,79 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                   )}
                 </section>
 
-                {/* ═══ SECTION 3: Questions Builder ═══ */}
-                <section className="bg-transparent space-y-8">
-                  <div className="flex items-center justify-between px-2">
+                {/* Questions - Tabbed by Type */}
+                <section className="space-y-4">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <h2 className="text-lg font-black text-zinc-900 uppercase tracking-tight">Active Assessment Set</h2>
-                      <p className="text-[10px] text-zinc-400 mt-1 uppercase font-bold tracking-widest">Constructing {questions.length} modules</p>
+                      <h2 className="text-sm font-semibold text-slate-800">Questions</h2>
+                      <p className="text-[11px] text-slate-400 mt-0.5">{questions.length} total</p>
                     </div>
                   </div>
 
-                  {questions.length === 0 ? (
-                    <div className="py-24 border-2 border-dashed border-zinc-200 rounded-[40px] flex flex-col items-center justify-center gap-5 group">
-                      <div className="w-20 h-20 rounded-3xl bg-zinc-50 border border-zinc-200 flex items-center justify-center text-zinc-800 group-hover:text-emerald-500 transition-all group-hover:scale-105 duration-500">
-                        <FilePlus size={32} />
+                  {/* 3 Section Tabs */}
+                  <div className="grid grid-cols-3 gap-2">
+                    {['mcq', 'short', 'coding'].map(type => {
+                      const count = questions.filter(q => q.type === type).length;
+                      const isActive = activeQTab === type;
+                      return (
+                        <button key={type} onClick={() => setActiveQTab(type)} className={`flex items-center justify-center gap-2 py-3 rounded-lg border text-[12px] font-semibold transition-all ${isActive ? 'bg-white border-slate-300 text-slate-900 shadow-md ring-1 ring-slate-200' : 'bg-white border-slate-200 text-slate-500 hover:text-slate-700 hover:border-slate-300 hover:shadow-sm'}`}>
+                          <span style={{ color: typeColors[type] }}>{typeIcons[type]}</span>
+                          <span>{typeLabels[type]}</span>
+                          {count > 0 && <span className={`text-[10px] min-w-[20px] text-center px-1.5 py-0.5 rounded-full font-semibold ${isActive ? 'text-white' : 'bg-slate-100 text-slate-500'}`} style={isActive ? { background: typeColors[type] } : {}}>{count}</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Questions for active tab */}
+                  {(() => {
+                    const filtered = questions.filter(q => q.type === activeQTab);
+                    if (filtered.length === 0) return (
+                      <div className="py-10 border border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-2">
+                        <FilePlus size={20} className="text-slate-300" />
+                        <p className="text-[11px] text-slate-400">No {typeLabels[activeQTab]} questions yet</p>
                       </div>
-                      <div className="text-center">
-                        <p className="text-sm font-bold text-zinc-500 uppercase tracking-widest">Library is empty</p>
-                        <p className="text-[10px] text-zinc-700 mt-2 uppercase font-black">Begin by adding questions manually or via AI</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-6">
-                      {questions.map((q, i) => (
-                        <div key={q.id} className={`group bg-white/80 backdrop-blur-xl border rounded-[32px] transition-all relative overflow-hidden ${expandedQ === q.id ? 'ring-2 ring-emerald-500/20 border-emerald-500/30' : 'border-zinc-200 hover:border-white/[0.12]'}`}>
-                          <div className="flex items-center justify-between p-8">
-                            <div className="flex items-center gap-6 min-w-0">
-                               <div className="w-12 h-12 rounded-2xl bg-zinc-50 border border-zinc-200 flex items-center justify-center text-xs font-black text-zinc-700 group-hover:text-zinc-900 transition-all shrink-0 select-none">
-                                  {i + 1}
-                               </div>
-                               <div className="min-w-0">
-                                 <div className="flex items-center gap-3 mb-2">
-                                    <span className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider" style={{ background: `${typeColors[q.type]}20`, color: typeColors[q.type], border: `1px solid ${typeColors[q.type]}30` }}>
-                                      {typeLabels[q.type]}
-                                    </span>
-                                    <span className="text-[9px] font-black text-zinc-400 uppercase tracking-[0.2em]">{q.marks} Marks assigned</span>
+                    );
+                    return (
+                      <div className="space-y-1.5">
+                        {filtered.map((q, i) => (
+                          <div key={q.id} className={`group bg-white border rounded-lg transition-all ${expandedQ === q.id ? 'ring-1 ring-emerald-500/20 border-emerald-200' : 'border-slate-200 hover:border-slate-300'}`}>
+                            <div className="flex items-center justify-between px-3 py-2.5">
+                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                 <span className="text-[10px] font-semibold text-slate-400 w-5 text-center shrink-0">{i + 1}</span>
+                                 <input value={q.questionText} onChange={e => updateQ(q.id, { questionText: e.target.value })} placeholder="Enter question..." className="bg-transparent border-none text-[13px] font-medium text-slate-800 placeholder:text-slate-300 focus:ring-0 w-full p-0" />
+                                 <span className="text-[10px] text-slate-400 shrink-0 tabular-nums">{q.marks}pts</span>
+                              </div>
+                              <div className="flex items-center gap-0.5 ml-2">
+                                 <button onClick={() => setExpandedQ(expandedQ === q.id ? null : q.id)} className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition-colors">
+                                   {expandedQ === q.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                 </button>
+                                 <button onClick={() => dupQ(q.id)} className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-emerald-500 hover:bg-slate-50 transition-colors opacity-0 group-hover:opacity-100">
+                                   <Copy size={12} />
+                                 </button>
+                                 <button onClick={() => removeQ(q.id)} className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-red-500 hover:bg-slate-50 transition-colors opacity-0 group-hover:opacity-100">
+                                   <Trash2 size={12} />
+                                 </button>
+                              </div>
+                            </div>
+                            {expandedQ === q.id && (
+                              <div className="px-3 pb-3 pt-2.5 border-t border-slate-100">
+                                 <div className="mb-3 flex items-center gap-2">
+                                    <div className="flex items-center bg-slate-50 border border-slate-200 rounded-md overflow-hidden">
+                                       <input type="number" value={q.marks} onChange={e => updateQ(q.id, { marks: parseInt(e.target.value) || 0 })} className="w-10 h-8 bg-transparent border-none text-[11px] font-semibold text-slate-800 text-center focus:ring-0" />
+                                       <span className="text-[10px] text-slate-400 pr-2">pts</span>
+                                    </div>
                                  </div>
-                                 <input value={q.questionText} onChange={e => updateQ(q.id, { questionText: e.target.value })} placeholder="Type assessment focus..." className="bg-transparent border-none text-base font-bold text-zinc-900 placeholder:text-zinc-800 focus:ring-0 w-full lg:w-[450px]" />
-                               </div>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                               <button onClick={() => setExpandedQ(expandedQ === q.id ? null : q.id)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-500 hover:text-zinc-900 transition-colors">
-                                 {expandedQ === q.id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                               </button>
-                               <button onClick={() => dupQ(q.id)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-500 hover:text-emerald-400 transition-colors">
-                                 <Copy size={16} />
-                               </button>
-                               <button onClick={() => removeQ(q.id)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-500 hover:text-red-400 transition-colors">
-                                 <Trash2 size={16} />
-                               </button>
-                            </div>
+                                 {q.type === 'mcq' && <McqEditor question={q} updateQ={updateQ} />}
+                                 {q.type === 'short' && <ShortEditor question={q} updateQ={updateQ} />}
+                                 {q.type === 'coding' && <CodingEditor question={q} updateQ={updateQ} />}
+                              </div>
+                            )}
                           </div>
-
-                          {expandedQ === q.id && (
-                            <div className="px-8 pb-8 pt-4 border-t border-zinc-200 animate-in slide-in-from-top-2 duration-300">
-                               <div className="mb-6 flex items-center gap-4">
-                                  <div className="flex items-center bg-zinc-50 border border-zinc-200 rounded-2xl pr-4 overflow-hidden">
-                                     <input type="number" value={q.marks} onChange={e => updateQ(q.id, { marks: parseInt(e.target.value) || 0 })} className="w-14 h-12 bg-transparent border-none text-sm font-black text-zinc-900 text-center focus:ring-0 tabular-nums" />
-                                     <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Points</span>
-                                  </div>
-                               </div>
-                               {q.type === 'mcq' && <McqEditor question={q} updateQ={updateQ} />}
-                               {q.type === 'short' && <ShortEditor question={q} updateQ={updateQ} />}
-                               {q.type === 'coding' && <CodingEditor question={q} updateQ={updateQ} />}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </section>
               </div>
 
@@ -1280,27 +1308,27 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
               <aside className="w-full lg:w-80 space-y-8 lg:sticky lg:top-10 shrink-0 pb-10">
                 
                 {/* Master Actions */}
-                <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-[40px] p-8 space-y-8 shadow-2xl relative overflow-hidden group/actions">
-                  <div className="absolute -top-10 -right-10 w-32 h-32 bg-emerald-500/10 blur-[60px] rounded-full group-hover/actions:scale-150 transition-transform duration-700" />
+                <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-2xl p-5 space-y-4 shadow-sm relative overflow-hidden group/actions">
+                  
                   
                   <div className="space-y-5">
                     <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em] ml-1">Add Content</p>
                     <div className="grid grid-cols-1 gap-3">
                        {Object.entries(typeLabels).map(([type, label]) => (
-                         <button key={type} onClick={() => addQ(type)} className="w-full flex items-center gap-4 p-4 bg-zinc-50 border border-zinc-200 rounded-2xl hover:bg-zinc-800 hover:border-emerald-500/30 group/btn transition-all text-left">
-                            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 group-hover/btn:scale-110 transition-transform">
+                         <button key={type} onClick={() => addQ(type)} className="w-full flex items-center gap-4 p-4 bg-white border border-slate-200 rounded-2xl hover:bg-emerald-50 hover:border-emerald-200 hover:shadow-md group/btn transition-all text-left active:scale-95">
+                            <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-emerald-600 group-hover/btn:bg-emerald-500 group-hover/btn:text-white group-hover/btn:border-emerald-500 group-hover/btn:scale-110 transition-all shadow-sm">
                               {typeIcons[type]}
                             </div>
                             <div>
-                               <p className="text-xs font-black text-zinc-900 uppercase tracking-wider">{label}</p>
-                               <p className="text-[9px] text-zinc-400 uppercase font-bold">New Module</p>
+                               <p className="text-xs font-black text-slate-900 group-hover/btn:text-emerald-700 transition-colors uppercase tracking-wider">{label}</p>
+                               <p className="text-[9px] text-slate-400 group-hover/btn:text-emerald-600/70 transition-colors uppercase font-bold">New Module</p>
                             </div>
                          </button>
                        ))}
                     </div>
                   </div>
 
-                  <div className="h-px bg-white/[0.06]" />
+                  
 
                   {/* File Import Hidden Input */}
                   <input 
@@ -1317,14 +1345,14 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                       <div className="flex gap-2">
                         <button 
                           onClick={() => document.getElementById('direct-import-file').click()} 
-                          className="flex-1 h-12 bg-white/[0.05] border border-white/10 hover:bg-zinc-800 text-zinc-900 rounded-[16px] font-black text-[10px] uppercase tracking-[0.1em] flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm shadow-black/5"
+                          className="flex-1 h-12 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 hover:text-slate-900 rounded-[16px] font-black text-[10px] uppercase tracking-[0.1em] flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm"
                         >
                           <UploadCloud size={16} />
                           File
                         </button>
                         <button 
                           onClick={() => setShowLinkModal(true)} 
-                          className="flex-1 h-12 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 text-emerald-500 rounded-[16px] font-black text-[10px] uppercase tracking-[0.1em] flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm shadow-emerald-900/10"
+                          className="flex-1 h-12 bg-emerald-50 border border-emerald-100 hover:bg-emerald-100 text-emerald-600 rounded-[16px] font-black text-[10px] uppercase tracking-[0.1em] flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm"
                         >
                           <Link size={16} />
                           URL Link
@@ -1332,17 +1360,17 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                       </div>
                       <button 
                         onClick={exportQuestions} 
-                        className="w-full h-10 bg-white/[0.02] border border-white/[0.05] hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600 rounded-[12px] font-bold text-[9px] uppercase tracking-[0.1em] flex items-center justify-center gap-2 transition-all active:scale-95"
+                        className="w-full h-10 bg-white border border-slate-200 hover:bg-slate-50 text-slate-500 hover:text-slate-700 rounded-[12px] font-bold text-[9px] uppercase tracking-[0.1em] flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm"
                       >
                         <Download size={14} />
                         Download JSON Data
                       </button>
                     </div>
-                    <button onClick={handlePublish} disabled={isPublishing || questions.length === 0 || publishStatus !== 'idle'} className="w-full h-16 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-[#0a0c10] rounded-[24px] font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-3 transition-all active:scale-95 group/pub">
+                    <button onClick={handlePublish} disabled={isPublishing || questions.length === 0 || publishStatus !== 'idle'} className="w-full h-10 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl font-semibold text-[11px] tracking-wide shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95 group/pub">
                       <AnimatedStatusIcon status={publishStatus} icon={<Send size={18} className="group-hover/pub:translate-x-1 group-hover/pub:-translate-y-1 transition-transform" />} size={18} />
                       {publishStatus === 'loading' ? 'Deploying...' : publishStatus === 'success' ? 'Deployed' : 'Deploy Now'}
                     </button>
-                    <button onClick={handleSaveDraft} disabled={isSaving || saveStatus !== 'idle'} className="w-full h-16 bg-white/[0.05] border border-white/[0.08] hover:bg-zinc-800 text-zinc-900 rounded-[24px] font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all active:scale-95">
+                    <button onClick={handleSaveDraft} disabled={isSaving || saveStatus !== 'idle'} className="w-full h-10 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl font-semibold text-[11px] tracking-wide flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm">
                       <AnimatedStatusIcon status={saveStatus} icon={<Save size={18} />} size={18} />
                       {saveStatus === 'loading' ? 'Saving...' : saveStatus === 'success' ? 'Saved' : 'Save Progress'}
                     </button>
@@ -1374,7 +1402,7 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
         </div>
       </main>
 
-      {/* 🔗 URL-Based Import Modal (Source Link) */}
+      {/* Ã°Å¸â€â€” URL-Based Import Modal (Source Link) */}
       {showLinkModal && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 backdrop-blur-md bg-black/60 animate-in fade-in duration-200">
           <div className="bg-white rounded-[32px] p-8 w-full max-w-md shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-zinc-200 relative overflow-hidden animate-in zoom-in-95 duration-300">
@@ -1445,7 +1473,7 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
         </div>
       )}
 
-      {/* 🧪 Preview & Validation Sidebar Workspace */}
+      {/* Ã°Å¸Â§Âª Preview & Validation Sidebar Workspace */}
       {showPreviewModal && previewQuestion && (
         <div className="fixed inset-0 z-[160] flex items-center justify-center p-6 backdrop-blur-sm bg-black/60 animate-in fade-in duration-300">
           <div className="bg-white rounded-[40px] w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-[0_30px_100px_-20px_rgba(0,0,0,0.5)] border border-zinc-200 flex flex-col animate-in slide-in-from-bottom-12 duration-500">
