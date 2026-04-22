@@ -1408,6 +1408,15 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                           URL Link
                         </button>
                       </div>
+                      
+                      {/* CSV Helper for CreateExam */}
+                      <div className="mt-2 text-left bg-zinc-900/50 p-3 rounded-xl border border-white/[0.05]">
+                         <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><FileText size={12} /> CSV Expected Format</p>
+                         <p className="text-[9px] font-mono text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20 break-all leading-relaxed">
+                           Type, QuestionText, Marks, Option1, Option2, Option3, Option4, ExpectedAnswer
+                         </p>
+                         <p className="text-[9px] text-zinc-500 mt-1 italic">* Option columns are only required for MCQ.</p>
+                      </div>
                       <button 
                         onClick={exportQuestions} 
                         className="w-full h-10 bg-white/[0.02] border border-white/[0.05] hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600 rounded-[12px] font-bold text-[9px] uppercase tracking-[0.1em] flex items-center justify-center gap-2 transition-all active:scale-95"

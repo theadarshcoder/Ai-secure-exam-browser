@@ -119,7 +119,10 @@ export default function BulkInviteModal({ isOpen, onClose, examId, examTitle }) 
                     >
                         <Upload size={32} color="#10b981" style={{ marginBottom: 12 }} />
                         <p style={S.dropText}>Drop CSV file here or click to browse</p>
-                        <p style={S.dropHint}>File should have: name, email columns</p>
+                        <div style={{ marginTop: '12px', display: 'inline-block', textAlign: 'left', background: 'rgba(0,0,0,0.2)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                            <p style={{ fontSize: '10px', color: '#a1a1aa', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '0.5px' }}>Expected CSV Format:</p>
+                            <code style={{ fontSize: '11px', color: '#10b981', fontFamily: 'monospace' }}>name, email</code>
+                        </div>
                         <input ref={fileRef} type="file" accept=".csv" hidden onChange={e => handleFile(e.target.files[0])} />
                     </div>
                 )}
