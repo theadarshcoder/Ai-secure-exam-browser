@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import {
   ArrowLeft, Camera, Monitor, Shield, ShieldAlert, AlertTriangle,
   Eye, EyeOff, Clock, Activity, Wifi, WifiOff, Zap,
   Volume2, VolumeX, Mic, MicOff, Maximize2, Minimize2,
   OctagonX, Flag, MessageSquare, ChevronRight, ChevronDown,
   User, BookOpen, BarChart3, Radio, Send, X, CheckCircle2,
-  Mouse, Keyboard, Globe, FileWarning, Brain, Cpu
+  Mouse, Keyboard, Globe, FileWarning, Brain, Cpu, Lock
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import socketService from '../services/socket';
@@ -388,7 +389,7 @@ export default function SessionMonitor() {
   const [isConnected, setIsConnected] = useState(true);
   const [isBlocked, setIsBlocked] = useState(searchParams.get('status') === 'blocked');
   const [elapsedTime, setElapsedTime] = useState(0);
-  const [showActivityPanel, setShowActivityPanel] = useState(true);
+
   const [selectedLogFilter, setSelectedLogFilter] = useState('all');
   const [screenExpanded, setScreenExpanded] = useState(false);
   const [messageInput, setMessageInput] = useState('');
@@ -398,12 +399,12 @@ export default function SessionMonitor() {
   const [broadcastMessage, setBroadcastMessage] = useState('');
 
   // Risk metrics with sparkline data
-  const [metrics, setMetrics] = useState({
+  const [metrics, setMetrics] = useState(() => ({
     trustScore: { value: sessionData.score, history: Array.from({ length: 20 }, () => 70 + Math.random() * 30) },
     gazeDeviation: { value: 12, history: Array.from({ length: 20 }, () => Math.random() * 35) },
     audioLevel: { value: 28, history: Array.from({ length: 20 }, () => 20 + Math.random() * 30) },
     tabSwitches: { value: 0, history: Array.from({ length: 20 }, () => Math.floor(Math.random() * 3)) },
-  });
+  }));
 
   // Elapsed time ticker
   useEffect(() => {
@@ -491,7 +492,8 @@ export default function SessionMonitor() {
       timestamp: new Date().toISOString(),
     };
     localStorage.setItem('vision_terminated_sessions', JSON.stringify([entry, ...existing]));
-    navigate('/admin');
+    const role = sessionStorage.getItem('vision_role')?.toLowerCase();
+    navigate(role === 'mentor' ? '/mentor' : '/admin');
   };
 
   const handleSendMessage = () => {
@@ -533,9 +535,6 @@ export default function SessionMonitor() {
     localStorage.setItem('vision_incidents', JSON.stringify([incident, ...existing]));
   };
 
-  const riskColor = sessionData.risk === 'High' ? 'text-red-500' : sessionData.risk === 'Medium' ? 'text-amber-500' : 'text-emerald-500';
-  const riskBg = sessionData.risk === 'High' ? 'bg-red-500' : sessionData.risk === 'Medium' ? 'bg-amber-500' : 'bg-emerald-500';
-
   const filteredLogs = selectedLogFilter === 'all'
     ? activityLogs
     : activityLogs.filter(l => l.severity === selectedLogFilter);
@@ -556,7 +555,7 @@ export default function SessionMonitor() {
         <header className="flex h-12 items-center justify-between border-b border-white/5 bg-[#0f1117]/90 px-5 backdrop-blur-md shrink-0">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate('/admin')}
+              onClick={() => navigate(-1)}
               className="flex items-center gap-1.5 text-zinc-500 hover:text-white transition-colors text-xs font-semibold"
             >
               <ArrowLeft size={14} /> Back

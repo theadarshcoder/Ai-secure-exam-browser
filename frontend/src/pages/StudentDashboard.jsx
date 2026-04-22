@@ -396,6 +396,7 @@ export default function StudentDashboard() {
       const cached = JSON.parse(localStorage.getItem('published_exams_v2'));
       return (cached && Array.isArray(cached.data)) ? cached.data : [];
     } catch (e) {
+      console.error(e);
       return [];
     }
   });
@@ -406,6 +407,7 @@ export default function StudentDashboard() {
       const cached = JSON.parse(localStorage.getItem('published_exams_v2'));
       return cached?.timestamp ? new Date(cached.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null;
     } catch (e) {
+      console.error(e);
       return null;
     }
   });
@@ -584,7 +586,12 @@ export default function StudentDashboard() {
                         exam={exam}
                         now={now}
                       onLaunch={(id) => {
-                          navigate(`/exam/${id}/verify`);
+                        const examObj = exams.find(e => e.id === id);
+                        if (examObj?.settings?.requireIDVerification === false) {
+                            navigate(`/exam/${id}/waiting`);
+                        } else {
+                            navigate(`/exam/${id}/verify`);
+                        }
                       }}
                         onViewResults={() => {
                           setSelectedExamId(exam.id);
@@ -641,7 +648,7 @@ export default function StudentDashboard() {
                  <button
                    onClick={handleSupport}
                    disabled={!supportMsg.trim()}
-                   className="mt-4 w-full py-3 rounded-xl bg-slate-900 text-slate-900 text-xs font-black uppercase tracking-widest hover:bg-slate-200 transition-all shadow-lg active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
+                   className="mt-4 w-full py-3 rounded-xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
                  >
                    Transmit Packet
                  </button>

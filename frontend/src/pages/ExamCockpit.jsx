@@ -708,6 +708,7 @@ export default function ExamCockpit() {
       id: `INC-${Date.now()}`,
       examId,
       studentId,
+      studentName: sessionStorage.getItem('vision_name') || studentId,
       type,
       severity,
       details,
@@ -991,12 +992,16 @@ export default function ExamCockpit() {
             const questionId = q.id || q._id;
             const processedQ = { ...q, originalId: questionId };
             
-            if (processedQ.type === 'mcq' && processedQ.options) {
+            if (processedQ.type === 'mcq' && processedQ.options && Array.isArray(processedQ.options)) {
               const optionsWithIndex = processedQ.options.map((optText, optIndex) => ({
                 text: optText,
                 originalIndex: optIndex
               }));
               processedQ.displayOptions = seededShuffle(optionsWithIndex, getRNG(questionId));
+            } else if (processedQ.type === 'mcq') {
+              // Handle MCQ with missing options gracefully
+              processedQ.displayOptions = [];
+              console.warn(`MCQ Question ${questionId} has no options!`);
             }
             return processedQ;
           });
@@ -1297,7 +1302,7 @@ export default function ExamCockpit() {
         setIsFullscreen(true);
       }
       if (exam?.settings?.enableWebcam !== false) {
-        await requestCamera();
+        await initCamera();
       }
       setNeedsInteraction(false);
     } catch (err) {

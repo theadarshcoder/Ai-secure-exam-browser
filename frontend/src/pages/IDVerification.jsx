@@ -123,6 +123,7 @@ export default function IDVerification() {
 
   const videoRef  = useRef(null);
   const canvasRef = useRef(null);
+  const streamRef = useRef(null);
 
   const startCamera = async () => {
     setIsConnecting(true);
@@ -133,6 +134,7 @@ export default function IDVerification() {
         audio: false,
       });
       setStream(mediaStream);
+      streamRef.current = mediaStream;
       setCamError(false);
     } catch (err) {
       console.error('Camera access failed:', err);
@@ -164,7 +166,7 @@ export default function IDVerification() {
     loadModels();
     document.body.style.overflow = 'hidden';
     return () => {
-      if (stream) stream.getTracks().forEach(t => t.stop());
+      if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
       document.body.style.overflow = 'auto';
     };
   }, []);

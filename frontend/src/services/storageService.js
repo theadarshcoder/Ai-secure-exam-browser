@@ -84,6 +84,7 @@ class StorageService {
             const decoded = JSON.parse(decodeURIComponent(atob(request.result.data)));
             resolve(decoded);
           } catch (e) {
+            console.error('Failed to parse decoded IndexedDB data:', e);
             resolve(null);
           }
         };
