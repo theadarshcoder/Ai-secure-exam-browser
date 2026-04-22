@@ -927,7 +927,6 @@ export default function CreateExam() {
         frontendTestCases: [{ description: 'Should render Hello World', testCode: "return document.querySelector('h1').textContent.includes('Hello World')", isHidden: true }]
       },
     };
-    };
     const q = { ...tpl[type], id: Date.now() };
     setQuestions(p => [...p, q]);
     setExpandedQ(q.id);
