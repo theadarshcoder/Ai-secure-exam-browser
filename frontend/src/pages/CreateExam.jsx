@@ -1721,13 +1721,15 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
       {/* Toasts */}
       <div className="fixed bottom-10 right-10 z-[200] space-y-4">
         {toasts.map(t => (
-          <div key={t.id} className={`flex items-center gap-4 px-6 py-5 rounded-[24px] border shadow-2xl animate-in slide-in-from-right-10 duration-500 ${t.type === 'error' ? 'bg-red-950/40 border-red-500/20 text-red-100' : 'bg-emerald-950/40 border-emerald-500/20 text-emerald-100'}`}>
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${t.type === 'error' ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
-               {t.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle size={18} />}
+          <div key={t.id} className={`flex items-center gap-4 px-6 py-5 rounded-[24px] border-2 shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-in slide-in-from-right-10 duration-500 bg-zinc-900 ${t.type === 'error' ? 'border-red-500 text-red-400' : 'border-emerald-500 text-emerald-400'}`}>
+            <div className={`w-10 h-10 rounded-[14px] flex items-center justify-center shrink-0 ${t.type === 'error' ? 'bg-red-500/20 text-red-500' : 'bg-emerald-500/20 text-emerald-500'}`}>
+               {t.type === 'error' ? <AlertCircle size={20} strokeWidth={2.5} /> : <CheckCircle size={20} strokeWidth={2.5} />}
             </div>
-            <div>
-               <p className="text-xs font-black uppercase tracking-widest mb-0.5 leading-none">{t.type === 'error' ? 'System Error' : 'Success'}</p>
-               <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-tight">{t.msg}</p>
+            <div className="pr-4">
+               <p className={`text-xs font-black uppercase tracking-[0.2em] mb-1 leading-none ${t.type === 'error' ? 'text-red-400' : 'text-emerald-400'}`}>
+                 {t.type === 'error' ? 'System Error' : 'Success'}
+               </p>
+               <p className="text-[11px] font-bold text-zinc-300 uppercase tracking-tight leading-relaxed">{t.msg}</p>
             </div>
           </div>
         ))}
