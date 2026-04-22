@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ShieldCheck, Clock, CalendarDays, AlertCircle, Radio,
-  Lock, BookOpen, Power, Fingerprint, CheckCircle2
+  Lock as LockIcon, BookOpen, Power, Fingerprint, CheckCircle2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as faceapi from '@vladmandic/face-api';
@@ -113,7 +113,7 @@ const CountdownTimer = ({ hours, minutes, seconds, isStarted, onStart }) => (
           className="w-full py-4 text-center"
         >
           <p className="text-[11px] font-medium text-slate-400 flex items-center justify-center gap-2">
-            <Lock size={13} /> Exam locked until start time
+            <LockIcon size={13} /> Exam locked until start time
           </p>
         </motion.div>
       )}

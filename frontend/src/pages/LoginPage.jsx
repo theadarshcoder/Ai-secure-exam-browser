@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { 
-  Shield, User, Lock, ShieldCheck, Webcam, MonitorCheck, Activity,
+  Shield, User, Lock as LockIcon, ShieldCheck, Webcam, MonitorCheck, Activity,
   TerminalSquare, Video, BrainCircuit, Database,
   Globe, ScrollText, MapPin, AppWindow, AlertTriangle
 } from 'lucide-react';
@@ -20,7 +20,7 @@ const ROLE_DATA = {
       { id: 'webcam', label: 'Webcam Hardware Active', icon: <Webcam size={16} /> },
       { id: 'ext', label: 'Display Configuration Verified', icon: <MonitorCheck size={16} /> },
       { id: 'tabs', label: 'Environment Isolated', icon: <AppWindow size={16} /> },
-      { id: 'lock', label: 'Secure Browser Sandbox', icon: <Lock size={16} /> }
+      { id: 'lock', label: 'Secure Browser Sandbox', icon: <LockIcon size={16} /> }
     ]
   },
   mentor: {
@@ -30,7 +30,7 @@ const ROLE_DATA = {
       { id: 'cam', label: 'Live Room View Engaged', icon: <Video size={16} /> },
       { id: 'fraud', label: 'Fraud Detection Active', icon: <BrainCircuit size={16} /> },
       { id: 'ai', label: 'AI Behavior Analytics', icon: <Activity size={16} /> },
-      { id: 'enc', label: 'P2P Encrypted Channel', icon: <Lock size={16} /> }
+      { id: 'enc', label: 'P2P Encrypted Channel', icon: <LockIcon size={16} /> }
     ]
   },
   admin: {
@@ -342,7 +342,7 @@ const LoginPage = () => {
               <div>
                 <label className="block text-[10px] font-black tracking-widest uppercase text-slate-500 mb-1.5 ml-1">Pin / Secure Key</label>
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <LockIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                   <input
                     type="password"
                     name="password"

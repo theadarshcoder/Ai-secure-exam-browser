@@ -5,7 +5,7 @@ import socketService from '../services/socket';
 import api, { runCodingQuestion, requestHelp } from '../services/api';
 import Editor from '@monaco-editor/react';
 import {
-  CameraOff, Clock, Shield, CheckCircle, CheckCircle2, Lock,
+  CameraOff, Clock, Shield, CheckCircle, CheckCircle2, Lock as LockIcon,
   ChevronRight, ChevronLeft, ChevronDown, Send, XCircle,
   Bookmark, Terminal, Power, Check,
   Loader2, RotateCcw, Play, Monitor, ShieldAlert, AlertCircle,
@@ -218,7 +218,7 @@ const TabViolationOverlay = React.memo(({ isOpen, onResume }) => (
             Acknowledge & Resume
           </button>
           <div className="mt-6 flex items-center justify-center gap-2 text-[11px] font-semibold text-slate-400">
-            <Lock size={12} />
+            <LockIcon size={12} />
             <span>Secure Environment Enforced</span>
           </div>
         </motion.div>
@@ -260,7 +260,7 @@ const FullBlockOverlay = React.memo(({ isOpen, reason }) => (
       >
         <div className="text-center max-w-md">
           <div className="w-24 h-24 rounded-full bg-red-500/10 border-2 border-red-500 flex items-center justify-center mx-auto mb-8 animate-pulse">
-            <Lock size={48} className="text-red-500" />
+            <LockIcon size={48} className="text-red-500" />
           </div>
           <h1 className="text-4xl font-black text-white mb-4 uppercase tracking-tighter">Access Resticted</h1>
           <p className="text-zinc-400 text-lg mb-10 leading-relaxed font-medium">
@@ -1777,7 +1777,7 @@ export default function ExamCockpit() {
               Restore Secure Session
             </button>
             <div className="mt-6 flex items-center justify-center gap-2 text-[11px] font-semibold text-slate-400">
-              <Lock size={12} />
+              <LockIcon size={12} />
               <span>Secure Environment Enforced</span>
             </div>
           </div>
@@ -1839,7 +1839,7 @@ export default function ExamCockpit() {
                    onClick={handleSecureEntry}
                    className="w-full h-14 bg-white text-slate-900 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-2xl hover:bg-slate-100 transition-all flex items-center justify-center gap-3 active:scale-95"
                  >
-                   <Lock size={18} /> Initialize Secure Entry
+                   <LockIcon size={18} /> Initialize Secure Entry
                  </button>
                  <p className="mt-8 text-[9px] font-black text-slate-600 uppercase tracking-widest flex items-center justify-center gap-2">
                     <Monitor size={12} /> Encrypted Session • Biometric Link Enabled

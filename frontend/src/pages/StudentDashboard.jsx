@@ -6,7 +6,7 @@ import BouncingDotLoader from '../components/BouncingDotLoader';
 import api from '../services/api';
 import { 
   PlayCircle, BookOpen, ShieldCheck, 
-  ArrowRight, Clock, CheckCircle2, Lock, ListChecks, Calendar,
+  ArrowRight, Clock, CheckCircle2, Lock as LockIcon, ListChecks, Calendar,
   Fingerprint, LifeBuoy, AlertTriangle, Search, Filter,
   ChevronRight, Hash, Info, UserCircle, Activity, ClipboardList, LogOut, X, Power
 } from 'lucide-react';
@@ -78,7 +78,7 @@ const Sidebar = ({ currentTime, userName, userEmail, onSupport }) => (
            </div>
            <div className="flex justify-between items-center text-[13px]">
              <span className="text-slate-500 font-medium">Biometrics</span>
-             <span className="text-emerald-500 font-semibold flex items-center gap-1.5"><Lock size={13} strokeWidth={2.5}/> Authenticated</span>
+             <span className="text-emerald-500 font-semibold flex items-center gap-1.5"><LockIcon size={13} strokeWidth={2.5}/> Authenticated</span>
            </div>
          </div>
       </div>

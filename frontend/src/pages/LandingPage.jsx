@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 // eslint-disable-next-line no-unused-vars
 import { useScroll, useTransform, useSpring, AnimatePresence, useMotionValueEvent, useMotionValue, motion } from 'framer-motion';
 import { 
-  Shield, Activity, ScanFace, Lock, MonitorCheck, 
+  Shield, Activity, ScanFace, Lock as LockIcon, MonitorCheck, 
   Server, ChevronRight, Cpu, Eye, QrCode, Check 
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
@@ -17,7 +17,7 @@ const CYCLING_STATES = [
     bg: 'bg-blue-500/15',
     border: 'border-blue-500/30',
     text: 'text-blue-300',
-    icon: <Lock className="w-5 h-5 text-blue-300" />,
+    icon: <LockIcon className="w-5 h-5 text-blue-300" />,
   },
   {
     label: 'SEAL',
@@ -59,7 +59,7 @@ const MOCKUP_STATES = [
   },
   {
     id: 1,
-    icon: <Lock className="text-emerald-400 w-12 h-12" />,
+    icon: <LockIcon className="text-emerald-400 w-12 h-12" />,
     color: "emerald",
     text: "SHIELD ACTIVE",
     bg: "bg-emerald-500/10",
@@ -800,14 +800,14 @@ const CleanFeatureBlocks = () => {
                     {/* Lock status panel */}
                     <div className="flex-1 bg-black/30 rounded-xl border border-emerald-500/10 flex flex-col overflow-hidden">
                       <div className="flex items-center gap-2 px-3 pt-2.5 pb-2 border-b border-white/[0.04]">
-                        <Lock className="w-3 h-3 text-emerald-400" strokeWidth={1.5} />
+                        <LockIcon className="w-3 h-3 text-emerald-400" strokeWidth={1.5} />
                         <span className="text-emerald-400/70 text-[9px] font-mono tracking-widest uppercase">Lockdown</span>
                       </div>
                       <div className="flex-1 relative flex items-center justify-center">
                         <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.3, 0.1] }} transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
                           style={{ willChange: 'transform, opacity' }}
                           className="absolute w-12 h-12 rounded-full bg-emerald-500/20 blur-lg" />
-                        <Lock strokeWidth={1.1} className="w-7 h-7 text-emerald-400 drop-shadow-[0_0_12px_rgba(16,185,129,0.9)] relative z-10" />
+                        <LockIcon strokeWidth={1.1} className="w-7 h-7 text-emerald-400 drop-shadow-[0_0_12px_rgba(16,185,129,0.9)] relative z-10" />
                       </div>
                     </div>
                     {/* Network panel */}
@@ -1293,7 +1293,7 @@ const CredWhiteFeatures = () => {
     { title: "Screen-share blocking", desc: "Detects and prevents virtual machines, RDP sessions, and screen mirroring instantly", icon: <MonitorCheck className="text-white group-hover:text-emerald-400 transition-colors duration-500" size={24}/> },
     { title: "Offline resilience", desc: "Seamless continuation during brief network interruptions with automatic sync-back", icon: <Server className="text-white group-hover:text-rose-400 transition-colors duration-500" size={24}/> },
     { title: "Smart behavior tracking", desc: "Tracks multiple signals carefully: gaze deviation, audio spikes, and keystroke patterns", icon: <Cpu className="text-white group-hover:text-amber-400 transition-colors duration-500" size={24}/> },
-    { title: "Strict access control", desc: "Exam links are time-locked and single-use with no sharing, replay, or re-entry", icon: <Lock className="text-white group-hover:text-cyan-400 transition-colors duration-500" size={24}/> },
+    { title: "Strict access control", desc: "Exam links are time-locked and single-use with no sharing, replay, or re-entry", icon: <LockIcon className="text-white group-hover:text-cyan-400 transition-colors duration-500" size={24}/> },
     { title: "Room environment scan", desc: "Detects additional faces, mobile phones, and unauthorized materials in view", icon: <Eye className="text-white group-hover:text-fuchsia-400 transition-colors duration-500" size={24}/> }
   ];
 

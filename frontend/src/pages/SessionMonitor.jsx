@@ -7,7 +7,7 @@ import {
   Volume2, VolumeX, Mic, MicOff, Maximize2, Minimize2,
   OctagonX, Flag, MessageSquare, ChevronRight, ChevronDown,
   User, BookOpen, BarChart3, Radio, Send, X, CheckCircle2,
-  Mouse, Keyboard, Globe, FileWarning, Brain, Cpu, Lock
+  Mouse, Keyboard, Globe, FileWarning, Brain, Cpu, Lock as LockIcon
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import socketService from '../services/socket';
@@ -644,7 +644,7 @@ export default function SessionMonitor() {
                    : 'text-zinc-900 bg-white hover:bg-zinc-100 border border-zinc-200'
                }`}
              >
-               {isBlocked ? <CheckCircle2 size={11} /> : <Lock size={11} />}
+               {isBlocked ? <CheckCircle2 size={11} /> : <LockIcon size={11} />}
                {isBlocked ? 'Unblock Student' : 'Block Student'}
              </button>
            </div>

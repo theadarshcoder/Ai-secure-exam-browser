@@ -7,7 +7,7 @@ import {
   Search, FileUp, UserPlus, Trash2, Eye,
   ShieldCheck, Activity, AlertOctagon,
   ChevronRight, LogOut, Bell, RefreshCw, Edit3,
-  BarChart3, Download, Clock, Check, X, Star, CheckCircle, AlertCircle, Plus, ScanFace, Radio, ShieldAlert, User, EyeOff, MessageCircle, AlertTriangle, Unlock
+  BarChart3, Download, Clock, Check, X, Star, CheckCircle, AlertCircle, Plus, ScanFace, Radio, ShieldAlert, User, EyeOff, MessageCircle, AlertTriangle, Unlock, Lock as LockIcon
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import PremiumSidebar from '../components/PremiumSidebar';
@@ -1629,7 +1629,7 @@ export default function AdminDashboard() {
               {session.isBlocked && (
                 <div className="absolute top-0 right-0 p-3">
                    <div className="bg-red-500 text-white px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1">
-                      <Lock size={8} /> Blocked
+                      <LockIcon size={8} /> Blocked
                    </div>
                 </div>
               )}
@@ -1698,7 +1698,7 @@ export default function AdminDashboard() {
                     session.isBlocked ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-100' : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-100'
                   }`}
                 >
-                  {session.isBlocked ? <Unlock size={16} /> : <Lock size={16} />}
+                  {session.isBlocked ? <Unlock size={16} /> : <LockIcon size={16} />}
                 </button>
               </div>
             </div>
