@@ -117,7 +117,7 @@ const SessionReportModal = ({ sessionData, onClose }) => {
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className="text-xl font-bold text-slate-900 tabular-nums">{sessionData.score ?? 0}/{sessionData.totalMarks ?? 0}</p>
+              <p className="text-xl font-semibold text-slate-900 tabular-nums">{sessionData.score ?? 0}/{sessionData.totalMarks ?? 0}</p>
               <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">{sessionData.percentage ?? 0}% — {sessionData.passed ? 'PASSED' : 'FAILED'}</p>
             </div>
             <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-all active:scale-95">
@@ -158,7 +158,7 @@ const SessionReportModal = ({ sessionData, onClose }) => {
                       q.status === 'partial' ? 'amber' : 'zinc'
                     }>{q.status || 'evaluated'}</Badge>
                   </div>
-                  <span className="text-sm font-bold text-slate-900 tabular-nums bg-white px-3 py-1 rounded-lg border border-slate-100">
+                  <span className="text-sm font-semibold text-slate-900 tabular-nums bg-white px-3 py-1 rounded-lg border border-slate-100">
                     {q.marksObtained ?? 0} <span className="text-slate-300 font-bold mx-0.5">/</span> {q.maxMarks || q.marks || 0}
                   </span>
                 </div>
@@ -690,7 +690,7 @@ export default function AdminDashboard() {
                 <stat.icon size={20} />
               </div>
             </div>
-            <h3 className="text-[32px] font-bold text-[#0F0F0F]">{stat.value}</h3>
+            <h3 className="text-[32px] font-semibold text-[#0F0F0F]">{stat.value}</h3>
             <p className="text-sm font-medium text-[#7A7A7A] mt-1">{stat.label}</p>
           </div>
         ))}
@@ -1193,7 +1193,7 @@ export default function AdminDashboard() {
                  <div className="max-w-[100px] flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
                     <div className={`h-full rounded-full ${(res.percentage || 0) >= 80 ? 'bg-emerald-500' : 'bg-amber-400'}`} style={{ width: `${res.percentage || 0}%` }} />
                  </div>
-                 <span className={`text-xs font-black tabular-nums ${(res.percentage || 0) >= 80 ? 'text-emerald-700' : 'text-amber-700'}`}>{res.percentage || 0}%</span>
+                 <span className={`text-xs font-bold tabular-nums ${(res.percentage || 0) >= 80 ? 'text-emerald-700' : 'text-amber-700'}`}>{res.percentage || 0}%</span>
                </div>
             </td>
             <td className="px-6 py-4">
@@ -1207,7 +1207,7 @@ export default function AdminDashboard() {
                   res.status}
                </Badge>
             </td>
-            <td className="px-6 py-4 text-xs font-bold text-red-500 tabular-nums">{res.totalViolations || 0} Flags</td>
+            <td className="px-6 py-4 text-xs font-semibold text-red-500 tabular-nums">{res.totalViolations || 0} Flags</td>
             <td className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                {res.submittedAt ? new Date(res.submittedAt).toLocaleString() : 'N/A'}
             </td>

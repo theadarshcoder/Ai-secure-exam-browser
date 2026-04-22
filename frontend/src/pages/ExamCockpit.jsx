@@ -7,7 +7,7 @@ import Editor from '@monaco-editor/react';
 import {
   CameraOff, Clock, Shield, CheckCircle, CheckCircle2, Lock,
   ChevronRight, ChevronLeft, ChevronDown, Send, XCircle,
-  Bookmark, Terminal, Power,
+  Bookmark, Terminal, Power, Check,
   Loader2, RotateCcw, Play, Monitor, ShieldAlert, AlertCircle,
   MessageSquare, Radio
 } from 'lucide-react';
@@ -57,20 +57,6 @@ const QuestionPalette = React.memo(({ questions, currentQ, answers, visited, mar
     const firstIdx = questions.findIndex(q => sec.types.includes(q.type));
     if (firstIdx !== -1) {
       navigateTo(firstIdx);
-      toast.success(`Switched to ${sec.label}`, {
-        icon: '✅',
-        duration: 1500,
-        style: {
-          background: '#10b981',
-          color: 'white',
-          fontSize: '12px',
-          fontWeight: 'bold'
-        }
-      });
-    } else {
-      toast.error(`No questions found in ${sec.label}`, {
-        duration: 2000
-      });
     }
   };
 
@@ -182,7 +168,7 @@ const SubmitModal = React.memo(({ isOpen, onClose, onConfirm, stats }) => (
       <div className="fixed inset-0 z-[110] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6">
         <motion.div initial={{ scale: 0.95, y: 10, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-white/20">
           <div className="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200 text-slate-900 mb-6 flex items-center justify-center shadow-sm"><Send size={28} /></div>
-          <h2 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">Hand In Assessment?</h2>
+          <h2 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">Confirm Exam Submission?</h2>
           <p className="text-[13px] font-medium text-slate-500 mb-8 leading-relaxed">You are about to submit your response. This action is final and your work will be graded as currently saved.</p>
           <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 mb-8 grid grid-cols-3 gap-4 text-center">
             <div><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Answered</p><p className="text-xl font-black text-slate-900 tabular-nums">{stats.answered}</p></div>
@@ -191,7 +177,7 @@ const SubmitModal = React.memo(({ isOpen, onClose, onConfirm, stats }) => (
           </div>
           <div className="flex gap-3">
             <button onClick={onClose} className="flex-1 py-3.5 px-4 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all text-[12px] font-black uppercase tracking-widest">Wait, I'll Review</button>
-            <button onClick={onConfirm} className="flex-1 py-3.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-900 text-white transition-all text-[12px] font-black uppercase tracking-widest shadow-lg shadow-slate-200">Confirm & Submit</button>
+            <button onClick={onConfirm} className="flex-1 py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition-all text-[12px] font-bold uppercase tracking-widest shadow-lg shadow-emerald-900/10">Confirm & Submit</button>
           </div>
         </motion.div>
       </div>
@@ -202,28 +188,31 @@ const SubmitModal = React.memo(({ isOpen, onClose, onConfirm, stats }) => (
 const TabViolationOverlay = React.memo(({ isOpen, onResume }) => (
   <AnimatePresence>
     {isOpen && (
-      <div className="fixed inset-0 z-[200] bg-slate-900/40 backdrop-blur-2xl flex items-center justify-center p-6">
+      <div className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6">
         <motion.div 
-          initial={{ scale: 0.9, opacity: 0 }} 
-          animate={{ scale: 1, opacity: 1 }} 
-          className="bg-white rounded-3xl p-10 max-w-sm w-full shadow-[0_0_50px_rgba(239,68,68,0.2)] border border-red-100 text-center"
+          initial={{ scale: 0.95, y: 10, opacity: 0 }} 
+          animate={{ scale: 1, y: 0, opacity: 1 }} 
+          className="bg-white rounded-[2rem] p-8 max-w-sm w-full shadow-2xl border border-white/20 text-center"
         >
-          <div className="w-20 h-20 rounded-3xl bg-red-50 text-red-600 mb-8 mx-auto flex items-center justify-center animate-pulse border border-red-100 shadow-sm">
-            <ShieldAlert size={40} />
+          <div className="w-16 h-16 rounded-2xl bg-red-50 text-red-500 mb-6 mx-auto flex items-center justify-center border border-red-100 shadow-sm relative">
+            <ShieldAlert size={28} strokeWidth={2.5} />
+            <div className="absolute top-0 right-0 -mt-1 -mr-1 w-3 h-3 bg-red-500 rounded-full animate-ping" />
+            <div className="absolute top-0 right-0 -mt-1 -mr-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
           </div>
-          <h2 className="text-2xl font-black text-slate-900 mb-4 tracking-tighter uppercase italic">Violation Recorded</h2>
-          <p className="text-[13px] font-bold text-zinc-500 mb-10 leading-relaxed uppercase tracking-wider">
-            You switched tabs or minimized the window. This security breach has been <span className="text-red-600 font-black">Logged & Broadcast</span> to the mentor dashboard.
+          <h2 className="text-2xl font-bold text-slate-900 mb-3 tracking-tight">Navigation Alert</h2>
+          <p className="text-[14px] font-medium text-slate-500 mb-8 leading-relaxed px-2">
+            Leaving the exam environment is prohibited. This incident has been recorded and securely flagged for the examiner.
           </p>
           <button 
             onClick={onResume} 
-            className="w-full py-4 rounded-2xl bg-red-600 hover:bg-red-700 text-white transition-all text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-red-100 active:scale-95 flex items-center justify-center gap-3"
+            className="w-full h-12 rounded-xl bg-slate-900 hover:bg-slate-800 text-white transition-all text-[13px] font-bold shadow-xl shadow-slate-900/20 active:scale-95 flex items-center justify-center gap-2"
           >
-            <Lock size={16} /> Resume Session
+            Acknowledge & Resume
           </button>
-          <p className="mt-8 text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-center gap-2">
-             Vision monitoring is active
-          </p>
+          <div className="mt-6 flex items-center justify-center gap-2 text-[11px] font-semibold text-slate-400">
+            <Lock size={12} />
+            <span>Secure Environment Enforced</span>
+          </div>
         </motion.div>
       </div>
     )}
@@ -291,7 +280,7 @@ const ObjectivePanel = React.memo(({ question, index, markedForReview, panelWidt
         <div className="px-2.5 py-1 bg-slate-100 text-slate-900 border border-slate-200 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm">Q{index + 1}</div>
         <div className="px-2.5 py-1 bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-[10px] font-black uppercase tracking-widest">{question?.marks || 10} Marks</div>
       </div>
-      <h2 className="text-xl font-semibold text-slate-900 leading-snug tracking-tight mb-6">{question?.questionText}</h2>
+      <h2 className="text-xl font-medium text-slate-900 leading-snug tracking-tight mb-6">{question?.questionText}</h2>
       <div className="prose prose-slate prose-sm text-slate-500 leading-relaxed space-y-4">
         <p>Implement the solution according to constraints. Standard input/output is supported.</p>
         <ul className="list-disc pl-5 text-[12px] font-semibold space-y-1">
@@ -322,10 +311,13 @@ const CodingEnvironment = React.memo(({
   const [showResetConfirm, setShowResetConfirm] = React.useState(false);
 
   return (
-  <div id="coding-right-panel" className="flex-1 flex flex-col min-h-0 relative bg-slate-50">
-    <div className="absolute inset-0 flex flex-col">
-      <div style={{ height: `${editorHeight}%` }} className="flex flex-col shrink-0 min-h-0 bg-white">
-        <div className="flex items-center justify-between px-4 h-10 bg-slate-50 border-b border-slate-200 shrink-0">
+  <div id="coding-right-panel" className="flex-1 flex flex-col min-h-0 relative bg-slate-50 overflow-hidden">
+    <div className="absolute inset-0 flex flex-col overflow-hidden">
+      <div 
+        style={{ height: `${editorHeight}%` }} 
+        className="flex flex-col shrink-0 min-h-0 bg-white overflow-hidden relative z-0 border-b border-slate-100"
+      >
+        <div className="flex items-center justify-between px-4 h-10 bg-slate-50 border-b border-slate-200 shrink-0 z-10">
           <div className="flex items-center gap-2 text-slate-400"><Terminal size={14} /><span className="text-[11px] font-black uppercase tracking-widest">Environment</span></div>
           <div className="flex items-center gap-2">
             <button 
@@ -350,7 +342,7 @@ const CodingEnvironment = React.memo(({
             </div>
           </div>
         </div>
-        <div className="flex-1 shadow-inner">
+        <div className="flex-1 relative overflow-hidden bg-white shadow-inner">
           <Editor 
              key={`editor-${question?.originalId || question?.id || question?._id}`}
              height="100%" 
@@ -369,6 +361,8 @@ const CodingEnvironment = React.memo(({
                renderValidationDecorations: 'off',
                quickSuggestions: false,
                contextmenu: false,
+               scrollBeyondLastLine: false,
+               lineNumbersMinChars: 3,
                unicodeHighlight: { ambiguousCharacters: false, invisibleCharacters: false, nonBasicASCII: false }
              }} 
           />
@@ -382,7 +376,7 @@ const CodingEnvironment = React.memo(({
           <div className="w-1 h-1 rounded-full bg-slate-400" />
         </div>
       </div>
-      <div className="flex-1 flex flex-col min-h-0 bg-white">
+      <div className="flex-1 flex flex-col min-h-0 bg-white relative z-10 overflow-hidden">
         <div className="flex items-center px-4 border-b border-slate-200 shrink-0 h-10 bg-white z-10">
           <button onClick={() => setActiveTab('Test Cases')} className={`h-full px-4 text-[11px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'Test Cases' ? 'text-slate-900 border-slate-900' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>Test Cases</button>
           <button onClick={() => setActiveTab('Execution Details')} className={`h-full px-4 text-[11px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'Execution Details' ? 'text-slate-900 border-slate-900' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>Output Log</button>
@@ -517,6 +511,23 @@ export default function ExamCockpit() {
   const isResizing = useRef(false);
   const isPanelResizing = useRef(false);
   const progressRef = useRef({ answers, currentQ, visited, secondsLeft });
+
+  const [headerAlert, setHeaderAlert] = useState(null);
+  const headerAlertTimer = useRef(null);
+  const prevQTypeRef = useRef(null);
+
+  useEffect(() => {
+    if (questions && questions.length > 0 && questions[currentQ]) {
+       const qType = questions[currentQ].type;
+       if (prevQTypeRef.current && prevQTypeRef.current !== qType) {
+           const typeStr = qType === 'mcq' ? 'Sec A' : qType === 'short' ? 'Sec B' : 'Sec C';
+           setHeaderAlert(`Switched to ${typeStr}`);
+           if(headerAlertTimer.current) clearTimeout(headerAlertTimer.current);
+           headerAlertTimer.current = setTimeout(() => setHeaderAlert(null), 3000);
+       }
+       prevQTypeRef.current = qType;
+    }
+  }, [currentQ, questions]);
 
   // 🛡️ Refs for Lifecycle & Reliability (Bug Fix 6 & 7)
   const endRef = useRef(null);
@@ -946,9 +957,22 @@ export default function ExamCockpit() {
   // 🏢 Fetch Exam + Seeded Shuffle + Resume Data
   useEffect(() => {
     const fetchExam = async (retryCount = 0) => {
+      // Clear any previous retry toasts
+      toast.dismiss('exam-retry');
+      
+      // On first attempt, show a professional loading indicator instead of waiting for error
+      let loadingToast = null;
+      if (retryCount === 0) {
+        loadingToast = toast.loading("Connecting to secure server...", { id: 'exam-init' });
+      }
+
       try {
-        // Fetch session start/resume data
         const response = await api.post('/api/exams/start', { examId });
+        
+        // Success! Clean up all initialization toasts
+        if (loadingToast) toast.dismiss(loadingToast);
+        toast.dismiss('exam-init');
+
         if (response.data.status === 'submitted' || response.data.status === 'auto_submitted') {
           setSubmitted(true);
           return;
@@ -1044,16 +1068,29 @@ export default function ExamCockpit() {
         }
       } catch (err) {
         console.error('Fetch exam failed:', err);
+        toast.dismiss('exam-init');
+
+        // If it's a 403/401, don't retry, just kick them out
+        if (err.response?.status === 401 || err.response?.status === 403) {
+            toast.error("Session expired. Redirection to portal.");
+            navigate('/student');
+            return;
+        }
+
         if (retryCount < 3) {
-          toast.error(`Network hiccup. Retrying connection (${retryCount + 1}/3)...`, { 
-            id: 'exam-retry',
-            duration: 2000
-          });
-          setTimeout(() => fetchExam(retryCount + 1), 2000);
+          const delay = retryCount === 0 ? 500 : 2500; // Fast retry first, then steady
+          
+          // No more red error toasts. We keep the 'exam-init' loading state active.
+          // Optional: We can update the loading toast message to show persistence
+          if (retryCount === 1) {
+            toast.loading("Establishing secure connection...", { id: 'exam-init' });
+          }
+          
+          setTimeout(() => fetchExam(retryCount + 1), delay);
           return;
         }
 
-        toast.error(err.response?.data?.message || "Critical error: Failed to load exam data. Redirecting to dashboard...", {
+        toast.error(err.response?.data?.message || "Critical error: Connection failed. Please check your internet.", {
           duration: 5000,
           id: 'exam-load-failure'
         });
@@ -1377,13 +1414,27 @@ export default function ExamCockpit() {
       <div className={`flex flex-col h-full w-full transition-all duration-700 ${(isTabViolation || !isFullscreen) ? 'blur-xl grayscale pointer-events-none' : ''}`}>
         <style>{`.scroll-thin::-webkit-scrollbar { width: 4px; } .scroll-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }`}</style>
         
-        <header className="shrink-0 bg-white border-b border-slate-200 shadow-sm px-5 h-[48px] flex items-center justify-between z-30">
+        <header className="shrink-0 bg-white border-b border-slate-200 shadow-sm px-5 h-[48px] flex items-center justify-between z-30 relative">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center shadow-lg shadow-slate-200"><VisionLogo className="w-5 h-5 text-white" /></div>
             <span className="text-[13px] font-black tracking-widest">VISION</span>
             <div className="h-4 w-px bg-slate-200" />
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest max-w-[200px] truncate">{exam?.title || 'Exam'}</span>
           </div>
+
+          <AnimatePresence>
+            {headerAlert && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                exit={{ opacity: 0, y: 5 }} 
+                className="absolute left-1/2 -translate-x-1/2 flex items-center bg-slate-950 text-white px-5 py-1.5 rounded-full border border-white/10 shadow-2xl z-50 pointer-events-none"
+              >
+                <span className="text-[11px] font-bold uppercase tracking-[0.1em]">{headerAlert}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <div className="flex items-center gap-6">
             <ExamTimer seconds={secondsLeft} isCritical={isTimeCritical} />
             <div className="flex items-center gap-3 pl-4 border-l border-slate-100 text-right">
@@ -1440,33 +1491,37 @@ export default function ExamCockpit() {
                   <CodingEnvironment question={q} answer={answers[currentQuestionId]} onCodeChange={onCodeChange} selectedLanguage={selectedLanguage} setSelectedLanguage={handleSetLanguage} isLangDropdownOpen={isLangDropdownOpen} setIsLangDropdownOpen={setIsLangDropdownOpen} editorHeight={editorHeight} setEditorHeight={setEditorHeight} isExecuting={isExecuting} executionResult={executionResult} activeTab={activeTab} setActiveTab={setActiveTab} onMouseDown={onMouseDown} />
                 </div>
               ) : (
-                <div className="flex-1 overflow-y-auto scroll-thin px-8 py-10">
-                  <div className="max-w-3xl mx-auto w-full bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden mb-12">
-                    <div className="p-10 border-b border-slate-100">
+                <div className="flex-1 flex flex-col bg-slate-50 px-8 py-8 min-h-0 overflow-hidden">
+                  <div className="max-w-4xl mx-auto w-full flex flex-col flex-1 bg-white rounded-[2rem] border border-slate-200 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] overflow-hidden min-h-0">
+                    <div className="px-10 py-10 border-b border-slate-100 shrink-0 bg-white">
                       <div className="flex items-center gap-3 mb-6">
-                        <div className="px-3 py-1 bg-slate-100 text-slate-900 rounded-xl text-[11px] font-black uppercase tracking-widest border border-slate-200">Q{currentQ + 1}</div>
-                        <div className="px-3 py-1 bg-slate-100 text-slate-500 rounded-xl text-[11px] font-bold uppercase tracking-widest">{q?.type?.toLowerCase() === 'mcq' ? 'Choice Selection' : q?.type?.toLowerCase() === 'coding' ? 'Coding Challenge' : 'Written Case'}</div>
-                        {markedForReview[currentQuestionId] && <div className="ml-auto text-amber-600 bg-amber-50 px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest border border-amber-200 flex items-center gap-2"><Bookmark size={12} fill="currentColor" /> Flagged</div>}
+                        <div className="px-3 py-1 bg-slate-100 text-slate-900 rounded-xl text-[11px] font-black uppercase tracking-widest border border-slate-200 shadow-sm">Q{currentQ + 1}</div>
+                        <div className="px-3 py-1 bg-slate-100 text-slate-500 rounded-xl text-[11px] font-bold uppercase tracking-widest border border-slate-100">{q?.type?.toLowerCase() === 'mcq' ? 'Choice Selection' : q?.type?.toLowerCase() === 'coding' ? 'Coding Challenge' : 'Written Case'}</div>
+                        {markedForReview[currentQuestionId] && <div className="ml-auto text-amber-600 bg-amber-50 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border border-amber-200 shadow-sm flex items-center gap-2"><Bookmark size={14} fill="currentColor" /> Flagged</div>}
                       </div>
-                      <h2 className="text-3xl font-semibold text-slate-900 leading-tight tracking-tight">{q?.questionText}</h2>
+                      <h2 className="text-[26px] font-medium text-slate-900 leading-snug tracking-tight">{q?.questionText}</h2>
                     </div>
-                    <div className="p-10 pb-12">
+                    <div className="flex-1 p-10 flex flex-col min-h-0 bg-white">
                       {q?.type?.toLowerCase() === 'mcq' ? (
-                        <div className="grid gap-3">
+                        <div className="grid gap-3 max-w-3xl overflow-y-auto scroll-thin pr-4 pb-4">
                           {q?.displayOptions?.map((opt, i) => {
                             const isS = answers[currentQuestionId] === opt.originalIndex;
                             return (
-                              <button key={i} onClick={() => setAnswers(p => ({ ...p, [currentQuestionId]: opt.originalIndex }))} className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all duration-200 text-left relative group ${isS ? 'bg-slate-100/60 border-slate-900 shadow-md shadow-slate-200/50' : 'bg-white border-slate-100 hover:border-slate-300 hover:bg-slate-50/50'}`}>
-                                <div className={`w-8 h-8 shrink-0 rounded-lg flex items-center justify-center text-[12px] font-black transition-all ${isS ? 'bg-slate-900 text-white shadow-md' : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'}`}>{String.fromCharCode(65 + i)}</div>
-                                <span className={`text-[15px] leading-snug flex-1 ${isS ? 'font-medium text-slate-900' : 'font-medium text-slate-600'}`}>{opt.text}</span>
-                                {isS && <CheckCircle2 size={20} className="text-slate-900 animate-in zoom-in duration-300 shrink-0" />}
+                              <button key={i} onClick={() => setAnswers(p => ({ ...p, [currentQuestionId]: opt.originalIndex }))} className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all duration-200 text-left relative group outline-none ${isS ? 'bg-slate-50 border-slate-900 shadow-md' : 'bg-white border-slate-100 hover:border-slate-300 hover:bg-slate-50/50 hover:shadow-sm'}`}>
+                                <div className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-[14px] font-bold transition-all shadow-sm ${isS ? 'bg-slate-900 text-white shadow-slate-900/20' : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'}`}>{String.fromCharCode(65 + i)}</div>
+                                <span className={`text-[15px] leading-relaxed flex-1 ${isS ? 'font-semibold text-slate-900' : 'font-medium text-slate-600'}`}>{opt.text}</span>
+                                {isS && <div className="shrink-0 w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center shadow-lg animate-in zoom-in duration-300"><Check size={16} className="text-white" strokeWidth={2} /></div>}
                               </button>
                             );
                           })}
                         </div>
                       ) : (
-                        <div className="relative group">
-                            <textarea value={answers[currentQuestionId] || ''} onChange={e => setAnswers(p => ({ ...p, [currentQuestionId]: e.target.value }))} placeholder="Type your structured response here..." className="w-full h-96 bg-slate-50/50 border-2 border-slate-100 rounded-3xl p-10 focus:bg-white focus:border-slate-800 focus:ring-8 focus:ring-slate-800/5 transition-all outline-none resize-none shadow-inner font-medium text-slate-700 leading-relaxed text-[17px]" />
+                        <div className="flex-1 relative flex flex-col min-h-0 animate-in fade-in duration-500">
+                            <textarea value={answers[currentQuestionId] || ''} onChange={e => setAnswers(p => ({ ...p, [currentQuestionId]: e.target.value }))} placeholder="Type your structured response here..." className="flex-1 w-full bg-slate-50/50 border-2 border-slate-100 rounded-3xl p-8 focus:bg-white focus:border-slate-800 focus:ring-4 focus:ring-slate-800/5 transition-all outline-none resize-none shadow-inner font-medium text-slate-700 leading-relaxed text-[16px] scroll-thin" />
+                            <div className="absolute bottom-6 right-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-white/95 backdrop-blur-md px-4 py-2 rounded-xl border border-slate-200 shadow-lg select-none pointer-events-none flex items-center gap-2">
+                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                              {((answers[currentQuestionId] || '').match(/\S+/g) || []).length} / {q?.maxWords || 150} Words
+                            </div>
                         </div>
                       )}
                     </div>
@@ -1519,9 +1574,9 @@ export default function ExamCockpit() {
                        } else {
                          setShowConfirm(true);
                        }
-                    }} disabled={isOffline} className={`h-9 px-5 rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all ${isOffline ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : currentQ === questions.length - 1 ? 'bg-emerald-600 text-white shadow-lg hover:bg-emerald-700 active:scale-95' : 'bg-slate-900 text-white shadow-lg hover:bg-black active:scale-95'}`}>
+                    }} disabled={isOffline} className={`h-9 px-6 rounded-lg text-[12px] font-black uppercase tracking-[0.15em] transition-all ${isOffline ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : currentQ === questions.length - 1 ? 'bg-emerald-600 text-white shadow-lg hover:bg-emerald-700 active:scale-95' : 'bg-slate-900 text-white shadow-lg hover:bg-black active:scale-95'}`}>
                       {isOffline ? 'Offline' : currentQ === questions.length - 1 ? 'Submit' : 'Save & Next'} 
-                      {currentQ === questions.length - 1 ? <CheckCircle2 size={14} className="ml-1.5 inline-block" /> : <ChevronRight size={16} className="ml-1 inline-block" />}
+                      {currentQ !== questions.length - 1 && <ChevronRight size={16} className="ml-2 inline-block opacity-70" />}
                     </button>
                   </div>
                 </div>

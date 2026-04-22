@@ -96,7 +96,7 @@ const SuccessState = ({ onProceed, onRetake }) => (
       </button>
       <button
         onClick={onProceed}
-        className="flex-1 py-3.5 px-4 rounded-xl bg-slate-900 text-white hover:bg-slate-700 transition-all text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-sm hover:scale-[1.02]"
+        className="flex-1 py-3.5 px-4 rounded-xl bg-slate-900 text-white hover:bg-slate-800 transition-all text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-sm"
       >
         Proceed <ArrowRight size={14} />
       </button>
@@ -252,14 +252,25 @@ export default function IDVerification() {
         <aside className="h-full flex flex-col gap-4 overflow-y-auto pr-1 custom-scrollbar">
 
           {/* Brand card */}
-          <div className="bg-[#F5F5F5] rounded-2xl p-6 border border-slate-200 flex flex-col items-center text-center shadow-sm">
-            <div className="w-14 h-14 rounded-2xl bg-slate-100 border border-slate-200 text-slate-500 mb-4 flex items-center justify-center relative">
-              <ScanFace size={24} />
-              <div className="absolute inset-0 rounded-2xl border border-slate-400 animate-ping opacity-10" />
+          <div className="bg-[#F5F5F5] rounded-2xl p-5 border border-slate-200 flex flex-col items-center text-center shadow-sm">
+            <div className="relative w-12 h-12 mb-4 group">
+              <div className="absolute inset-0 bg-emerald-500/5 rounded-xl blur-lg" />
+              
+              <div className="relative w-full h-full bg-slate-900 rounded-xl border border-white/5 shadow-xl flex items-center justify-center overflow-hidden">
+                {/* Minimalist Professional Icon */}
+                <ShieldCheck size={20} className="text-emerald-400 opacity-90" />
+
+                {/* The Green Motion Line */}
+                <motion.div 
+                  className="absolute inset-x-0 h-[1px] bg-emerald-400 shadow-[0_0_8px_#34d399] z-20"
+                  animate={{ top: ['0%', '100%', '0%'] }}
+                  transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                />
+              </div>
             </div>
-            <h2 className="text-lg font-black text-slate-900 tracking-tight mb-1.5">Gatekeeper</h2>
+            <h2 className="text-base font-bold text-slate-900 tracking-tight mb-1 uppercase">Identity Verification</h2>
             <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
-              Scan biometric identifiers to initialize secure exam environment.
+              Confirming your identity to start the exam
             </p>
           </div>
 

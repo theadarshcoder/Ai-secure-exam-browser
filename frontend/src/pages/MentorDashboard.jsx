@@ -199,7 +199,7 @@ const EvaluationModal = ({ sessionData, onClose, onGradeSubmit, submitStatus }) 
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className="text-xl font-bold text-slate-900">{sessionData.score}/{sessionData.totalMarks}</p>
+              <p className="text-xl font-semibold text-slate-900">{sessionData.score}/{sessionData.totalMarks}</p>
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{sessionData.percentage}% — {sessionData.passed ? 'Passed' : 'Failed'}</p>
             </div>
             <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
@@ -233,7 +233,7 @@ const EvaluationModal = ({ sessionData, onClose, onGradeSubmit, submitStatus }) 
                   </span>
                   <StatusBadge status={q.status} />
                 </div>
-                <span className="text-sm font-black tabular-nums text-slate-700">{q.marksObtained}/{q.maxMarks}</span>
+                <span className="text-sm font-bold tabular-nums text-slate-700">{q.marksObtained}/{q.maxMarks}</span>
               </div>
 
               <p className="text-sm text-slate-800 font-medium mb-3">{q.questionText}</p>
@@ -609,7 +609,7 @@ export default function MentorDashboard() {
                 {stat.trendType === 'down' && <ArrowDownRight size={14} />}
               </span>
             </div>
-            <h3 className="text-[32px] font-bold text-[#0F0F0F]">{stat.value}</h3>
+            <h3 className="text-[32px] font-semibold text-[#0F0F0F]">{stat.value}</h3>
             <p className="text-sm font-medium text-[#7A7A7A] mt-1">{stat.label}</p>
           </div>
         ))}
@@ -750,7 +750,7 @@ export default function MentorDashboard() {
               </td>
               <td className="px-6 py-4">
                 <div className="flex flex-col gap-1">
-                  <span className={`text-xs font-black tabular-nums ${(session.score || 0) >= 80 ? 'text-emerald-700' : 'text-amber-700'}`}>
+                  <span className={`text-xs font-bold tabular-nums ${(session.score || 0) >= 80 ? 'text-emerald-700' : 'text-amber-700'}`}>
                     {session.score != null ? `${session.score}%` : 'Pending'}
                   </span>
                   <div className="flex items-center gap-2">
