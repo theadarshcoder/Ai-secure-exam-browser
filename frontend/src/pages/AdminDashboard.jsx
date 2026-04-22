@@ -382,7 +382,7 @@ export default function AdminDashboard() {
 
   // App States
   const [loading, setLoading] = useState(false);
-  const [stats, setStats] = useState({ totalUsers: 0, activeExams: 0, systemHealth: '100%', totalViolations: 0 });
+  const [stats, setStats] = useState({ totalStudents: 0, activeExams: 0, systemHealth: '100%', totalViolations: 0 });
   const [auditLogs, setAuditLogs] = useState([]);
   const [helpRequests, setHelpRequests] = useState([]);
   const [notifications, setNotifications] = useState([]);
@@ -499,7 +499,7 @@ export default function AdminDashboard() {
                   getAuditLogs().catch(() => [])
               ]);
               setStats({
-                  totalUsers: res.totalAttempts || 0,
+                  totalStudents: res.totalStudents || 0,
                   activeExams: res.liveExams || 0,
                   systemHealth: '100%',
                   totalViolations: res.flaggedSessions || 0
@@ -793,7 +793,7 @@ export default function AdminDashboard() {
   // ────────── Tab Views ──────────
 
   const STAT_CARDS = [
-     { label: 'Total Users', value: stats.totalUsers, icon: Users },
+     { label: 'Total Students', value: stats.totalStudents, icon: Users },
      { label: 'Active Live Exams', value: stats.activeExams, icon: FileText },
      { label: 'System Health', value: stats.systemHealth, icon: ShieldCheck },
      { label: 'Total Violations', value: stats.totalViolations, icon: AlertOctagon },
@@ -1128,28 +1128,62 @@ export default function AdminDashboard() {
             <td className="px-6 py-4 text-sm text-slate-500">{exam.creatorName || exam.creator?.name || 'Unknown'}</td>
             <td className="px-6 py-4 text-sm text-slate-500">{exam.category || 'Standard'}</td>
             <td className="px-6 py-4">
-               <Badge color={exam.status === 'live' || exam.status === 'published' ? 'emerald' : 'zinc'}>
-                 {exam.status || 'Draft'}
-               </Badge>
+               {(() => {
+                 const now = new Date();
+                 const startDateStr = exam.time || exam.scheduledDate;
+                 const start = startDateStr ? new Date(startDateStr) : null;
+                 const end = start ? new Date(start.getTime() + (exam.duration || 60) * 60 * 1000) : null;
+
+                 // Draft → always amber
+                 if (exam.status === 'draft') {
+                   return <Badge color="amber">Draft</Badge>;
+                 }
+                 // Scheduled in the future → upcoming
+                 if (start && now < start) {
+                   return <Badge color="zinc">Upcoming</Badge>;
+                 }
+                 // Has a strict end window and it's passed → ended
+                 if (end && now > end && startDateStr) {
+                   return <Badge color="zinc">Ended</Badge>;
+                 }
+                 // Published (running now, or no date set) → Live
+                 return (
+                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200">
+                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
+                     Live
+                   </span>
+                 );
+               })()}
             </td>
             <td className="px-6 py-4">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
                 <button 
                   onClick={() => handleTogglePublishResults(exam.id || exam._id, exam.resultsPublished)} 
-                  className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95 ${exam.resultsPublished ? 'text-emerald-600 hover:text-emerald-700' : 'text-slate-400 hover:text-emerald-600'}`}
-                  title={exam.resultsPublished ? "Results visible to students" : "Results hidden from students"}
+                  className={`p-2 rounded-xl transition-all active:scale-95 ${exam.resultsPublished ? 'text-emerald-600 hover:bg-emerald-50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
+                  title={exam.resultsPublished ? "Results Published (Visible to Students)" : "Results Hidden from Students"}
                 >
-                  {exam.resultsPublished ? <CheckCircle size={14} /> : <EyeOff size={14} />} 
-                  {exam.resultsPublished ? 'Published' : 'Hidden'}
+                  {exam.resultsPublished ? <CheckCircle size={16} /> : <EyeOff size={16} />} 
                 </button>
-                <button onClick={() => navigate(`/mentor/create-exam?id=${exam.id || exam._id}&view=true&returnTo=/admin`)} className="text-xs font-bold text-slate-500 hover:text-emerald-600 uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95">
-                  <Eye size={14} /> View
+                <button 
+                  onClick={() => navigate(`/mentor/create-exam?id=${exam.id || exam._id}&view=true&returnTo=/admin`)} 
+                  className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all active:scale-95"
+                  title="View Exam"
+                >
+                  <Eye size={16} />
                 </button>
-                <button onClick={() => navigate(`/mentor/create-exam?id=${exam.id || exam._id}&returnTo=/admin`)} className="text-xs font-bold text-slate-500 hover:text-amber-600 uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95">
-                  <Edit3 size={14} /> Edit
+                <button 
+                  onClick={() => navigate(`/mentor/create-exam?id=${exam.id || exam._id}&returnTo=/admin`)} 
+                  className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all active:scale-95"
+                  title="Edit Exam"
+                >
+                  <Edit3 size={16} />
                 </button>
-                <button onClick={() => handleDeleteExam(exam.id || exam._id)} className="text-xs font-bold text-slate-400 hover:text-red-600 uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95">
-                  <Trash2 size={14} /> Delete
+                <button 
+                  onClick={() => handleDeleteExam(exam.id || exam._id)} 
+                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all active:scale-95"
+                  title="Delete Exam"
+                >
+                  <Trash2 size={16} />
                 </button>
               </div>
             </td>
@@ -1423,7 +1457,7 @@ export default function AdminDashboard() {
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {candidates.map((c) => (
+          {candidates.filter(c => c.profilePicture || c.idCardUrl || c.isVerified || c.isLive).map((c) => (
             <div
               key={c._id}
               onClick={() => setSelectedCandidate(c)}
@@ -1543,7 +1577,7 @@ export default function AdminDashboard() {
                 {selectedCandidate.isVerified ? (
                   <button
                     onClick={() => handleVerifyCandidate(selectedCandidate._id, false)}
-                    className="px-5 py-2.5 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-black uppercase tracking-wider rounded-xl transition-all border border-red-100 active:scale-95"
+                    className="px-5 py-2.5 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-semibold uppercase tracking-wider rounded-xl transition-all border border-red-100 active:scale-95"
                   >
                     Revoke Verification
                   </button>
@@ -1551,7 +1585,7 @@ export default function AdminDashboard() {
                   <button
                     onClick={() => handleVerifyCandidate(selectedCandidate._id, true)}
                     disabled={!selectedCandidate.profilePicture || !selectedCandidate.idCardUrl}
-                    className="px-6 py-2.5 bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-emerald-900/20 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="px-6 py-2.5 bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-semibold uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-emerald-900/20 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     ✅ Verify Identity
                   </button>

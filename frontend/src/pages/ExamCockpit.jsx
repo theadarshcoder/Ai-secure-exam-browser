@@ -117,17 +117,17 @@ const QuestionPalette = React.memo(({ questions, currentQ, answers, visited, mar
           ))}
         </div>
       </div>
-      <div className="p-5 border-t border-slate-100 bg-slate-50/50 mt-auto">
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+      <div className="px-4 pb-5 pt-4 border-t border-slate-100 mt-auto">
+        <div className="grid grid-cols-2 gap-2">
           {[
-            { dot: 'bg-slate-900', label: 'Current' },
-            { dot: 'bg-emerald-500', label: 'Solved' },
-            { dot: 'bg-amber-500', label: 'Marked' },
-            { dot: 'bg-slate-300', label: 'Unseen' },
+            { color: 'bg-slate-900',    text: 'text-slate-700',  bg: 'bg-slate-100',    border: 'border-slate-200',   label: 'Current'  },
+            { color: 'bg-emerald-500',  text: 'text-emerald-700', bg: 'bg-emerald-50',  border: 'border-emerald-100', label: 'Solved'   },
+            { color: 'bg-amber-400',    text: 'text-amber-700',  bg: 'bg-amber-50',     border: 'border-amber-100',   label: 'Marked'   },
+            { color: 'bg-slate-300',    text: 'text-slate-500',  bg: 'bg-slate-50',     border: 'border-slate-100',   label: 'Unseen'   },
           ].map((item, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <div className={`w-1.5 h-1.5 rounded-full ${item.dot}`} />
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{item.label}</span>
+            <div key={i} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg border ${item.bg} ${item.border}`}>
+              <div className={`w-2 h-2 rounded-sm shrink-0 ${item.color}`} />
+              <span className={`text-[10px] font-bold uppercase tracking-wide ${item.text}`}>{item.label}</span>
             </div>
           ))}
         </div>
@@ -1548,7 +1548,7 @@ export default function ExamCockpit() {
     <div className="h-screen w-full bg-slate-50 relative font-sans text-slate-900 overflow-hidden">
       
       {/* 1. LAYER BASE: Content with Blur Wrapper */}
-      <div className={`flex flex-col h-full w-full transition-all duration-700 ${(isTabViolation || !isFullscreen) ? 'blur-xl grayscale pointer-events-none' : ''}`}>
+      <div className={`flex flex-col h-full w-full bg-white transition-all duration-700 ${(isTabViolation || !isFullscreen) ? 'blur-xl grayscale pointer-events-none' : ''}`}>
         <style>{`.scroll-thin::-webkit-scrollbar { width: 4px; } .scroll-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }`}</style>
         
         <header className="shrink-0 bg-white border-b border-slate-200 shadow-sm px-5 h-[48px] flex items-center justify-between z-30 relative">
@@ -1649,7 +1649,7 @@ export default function ExamCockpit() {
                           {q?.displayOptions?.map((opt, i) => {
                             const isS = answers[currentQuestionId] === opt.originalIndex;
                             return (
-                              <button key={i} onClick={() => setAnswers(p => ({ ...p, [currentQuestionId]: opt.originalIndex }))} className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all duration-200 text-left relative group outline-none ${isS ? 'bg-slate-50 border-slate-900 shadow-md' : 'bg-white border-slate-100 hover:border-slate-300 hover:bg-slate-50/50 hover:shadow-sm'}`}>
+                              <button key={i} onClick={() => setAnswers(p => ({ ...p, [currentQuestionId]: opt.originalIndex }))} className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all duration-200 text-left relative group outline-none ${isS ? 'bg-slate-50 border-slate-900 shadow-md' : 'bg-white border-slate-100 hover:border-slate-50 hover:border-slate-300 hover:shadow-sm'}`}>
                                 <div className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-[14px] font-bold transition-all shadow-sm ${isS ? 'bg-slate-900 text-white shadow-slate-900/20' : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'}`}>{String.fromCharCode(65 + i)}</div>
                                 <span className={`text-[15px] leading-relaxed flex-1 ${isS ? 'font-semibold text-slate-900' : 'font-medium text-slate-600'}`}>{opt.text}</span>
                                 {isS && <div className="shrink-0 w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center shadow-lg animate-in zoom-in duration-300"><Check size={16} className="text-white" strokeWidth={2} /></div>}
@@ -1659,11 +1659,18 @@ export default function ExamCockpit() {
                         </div>
                       ) : (
                         <div className="flex-1 relative flex flex-col min-h-0 animate-in fade-in duration-500">
-                            <textarea value={answers[currentQuestionId] || ''} onChange={e => setAnswers(p => ({ ...p, [currentQuestionId]: e.target.value }))} placeholder="Type your structured response here..." className="flex-1 w-full bg-slate-50/50 border-2 border-slate-100 rounded-3xl p-8 focus:bg-white focus:border-slate-800 focus:ring-4 focus:ring-slate-800/5 transition-all outline-none resize-none shadow-inner font-medium text-slate-700 leading-relaxed text-[16px] scroll-thin" />
-                            <div className="absolute bottom-6 right-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-white/95 backdrop-blur-md px-4 py-2 rounded-xl border border-slate-200 shadow-lg select-none pointer-events-none flex items-center gap-2">
-                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                              {((answers[currentQuestionId] || '').match(/\S+/g) || []).length} / {q?.maxWords || 150} Words
-                            </div>
+                            <textarea value={answers[currentQuestionId] || ''} onChange={e => setAnswers(p => ({ ...p, [currentQuestionId]: e.target.value }))} placeholder="Type your structured response here..." className="flex-1 w-full bg-slate-50 border-2 border-slate-100 rounded-3xl p-8 focus:bg-white focus:border-slate-300 focus:ring-4 focus:ring-slate-100 transition-all outline-none resize-none font-medium text-slate-700 leading-relaxed text-[16px] scroll-thin placeholder:text-slate-300" />
+                            {(() => {
+                              const words = ((answers[currentQuestionId] || '').match(/\S+/g) || []).length;
+                              const limit = q?.maxWords || 150;
+                              const isOver = words > limit;
+                              return (
+                                <div className={`absolute bottom-6 right-6 text-[10px] font-bold uppercase tracking-widest bg-white/95 backdrop-blur-md px-4 py-2 rounded-xl border shadow-lg select-none pointer-events-none flex items-center gap-2 transition-colors duration-300 ${isOver ? 'text-red-500 border-red-200' : 'text-slate-500 border-slate-200'}`}>
+                                  <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${isOver ? 'bg-red-500' : 'bg-emerald-500'}`}></div>
+                                  {words} / {limit} Words
+                                </div>
+                              );
+                            })()}
                         </div>
                       )}
                     </div>
@@ -1716,7 +1723,7 @@ export default function ExamCockpit() {
                        } else {
                          setShowConfirm(true);
                        }
-                    }} disabled={isOffline} className={`h-9 px-6 rounded-lg text-[12px] font-black uppercase tracking-[0.15em] transition-all ${isOffline ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : currentQ === questions.length - 1 ? 'bg-emerald-600 text-white shadow-lg hover:bg-emerald-700 active:scale-95' : 'bg-slate-900 text-white shadow-lg hover:bg-black active:scale-95'}`}>
+                    }} disabled={isOffline} className={`h-9 px-6 rounded-lg text-[12px] font-bold uppercase tracking-widest transition-all ${isOffline ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : currentQ === questions.length - 1 ? 'bg-emerald-600 text-white shadow-lg hover:bg-emerald-700 active:scale-95' : 'bg-slate-900 text-white shadow-lg hover:bg-black active:scale-95'}`}>
                       {isOffline ? 'Offline' : currentQ === questions.length - 1 ? 'Submit' : 'Save & Next'} 
                       {currentQ !== questions.length - 1 && <ChevronRight size={16} className="ml-2 inline-block opacity-70" />}
                     </button>
@@ -1747,18 +1754,35 @@ export default function ExamCockpit() {
       <TabViolationOverlay isOpen={isTabViolation} onResume={() => setIsTabViolation(false)} />
       <TabToast toast={tabToast} />
 
+
       {/* Fullscreen Guard */}
       {!isFullscreen && !submitted && !terminated && (
-        <div className="fixed inset-0 z-[200] bg-slate-900/98 backdrop-blur-2xl flex items-center justify-center p-8 text-center">
-          <div className="max-w-md w-full bg-slate-900 border border-red-500/20 p-10 rounded-[40px] shadow-2xl ring-1 ring-white/5">
-            <div className="w-20 h-20 bg-red-500/10 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-inner ring-1 ring-red-500/20"><ShieldAlert size={40} className="text-red-500" /></div>
-            <h2 className="text-3xl font-black text-white mb-3 uppercase tracking-tighter">Security Violation</h2>
-            <p className="text-slate-400 text-sm mb-10 leading-relaxed font-medium">Fullscreen mode is mandatory for exam integrity. Your activity has been logged and flagged for supervisor review.</p>
-            <button onClick={() => document.documentElement.requestFullscreen()} className="w-full py-5 bg-red-600 hover:bg-red-500 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[12px] transition-all shadow-xl shadow-red-900/40 transform active:scale-95">Restore Secure Session</button>
+        <div className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6">
+          <div className="bg-white rounded-[2rem] p-8 max-w-sm w-full shadow-2xl border border-white/20 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-red-50 text-red-500 mb-6 mx-auto flex items-center justify-center border border-red-100 shadow-sm relative">
+              <ShieldAlert size={28} strokeWidth={2.5} />
+              <div className="absolute top-0 right-0 -mt-1 -mr-1 w-3 h-3 bg-red-500 rounded-full animate-ping" />
+              <div className="absolute top-0 right-0 -mt-1 -mr-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900 mb-3 tracking-tight">Security Violation</h2>
+            <p className="text-[14px] font-medium text-slate-500 mb-8 leading-relaxed px-2">
+              Fullscreen mode is mandatory for exam integrity. This incident has been recorded and flagged for the examiner.
+            </p>
+            <button
+              onClick={() => document.documentElement.requestFullscreen()}
+              className="w-full h-12 rounded-xl bg-slate-900 hover:bg-slate-800 text-white transition-all text-[13px] font-bold shadow-xl shadow-slate-900/20 active:scale-95 flex items-center justify-center gap-2"
+            >
+              Restore Secure Session
+            </button>
+            <div className="mt-6 flex items-center justify-center gap-2 text-[11px] font-semibold text-slate-400">
+              <Lock size={12} />
+              <span>Secure Environment Enforced</span>
+            </div>
           </div>
         </div>
       )}
-      {/* Floating Warnings */}
+
+
       <AnimatePresence>
         {activeWarning && (
           <motion.div 
