@@ -729,6 +729,7 @@ export default function CreateExam() {
       if (!q.questionText || !q.questionText.trim()) {
         addToast(`Question ${qNum}: Question text is required.`, 'error');
         setIsPublishing(false);
+        setPublishStatus('idle');
         setExpandedQ(q.id);
         return;
       }
@@ -738,12 +739,14 @@ export default function CreateExam() {
         if (validOptions.length < 2) {
           addToast(`Question ${qNum} (MCQ): At least 2 options are required.`, 'error');
           setIsPublishing(false);
+        setPublishStatus('idle');
           setExpandedQ(q.id);
           return;
         }
         if (q.correctOption === undefined || q.correctOption < 0 || q.correctOption >= q.options.length) {
           addToast(`Question ${qNum} (MCQ): Please select a correct option.`, 'error');
           setIsPublishing(false);
+        setPublishStatus('idle');
           setExpandedQ(q.id);
           return;
         }
@@ -753,6 +756,7 @@ export default function CreateExam() {
         if (!q.testCases || q.testCases.length === 0 || !q.testCases[0].input.trim() || !q.testCases[0].expectedOutput.trim()) {
           addToast(`Question ${qNum} (Coding): At least one valid test case is required.`, 'error');
           setIsPublishing(false);
+        setPublishStatus('idle');
           setExpandedQ(q.id);
           return;
         }
@@ -762,7 +766,8 @@ export default function CreateExam() {
     // Validate negative marks
     if (exam.negativeMarks < 0) {
       addToast('Negative marks cannot be less than 0.', 'error');
-      setIsPublishing(false);
+        setIsPublishing(false);
+        setPublishStatus('idle');
       return;
     }
     
@@ -771,7 +776,9 @@ export default function CreateExam() {
       const q = questions[i];
       if (exam.negativeMarks > q.marks) {
         addToast(`Question ${i + 1}: Negative marks (${exam.negativeMarks}) cannot exceed question marks (${q.marks}).`, 'error');
-        setIsPublishing(false);
+          setIsPublishing(false);
+        setPublishStatus('idle');
+        setPublishStatus('idle');
         setExpandedQ(q.id);
         return;
       }
@@ -780,13 +787,15 @@ export default function CreateExam() {
     // Validate time limit constraints
     if (exam.duration < 5) {
       addToast('Exam duration must be at least 5 minutes.', 'error');
-      setIsPublishing(false);
+        setIsPublishing(false);
+        setPublishStatus('idle');
       return;
     }
     
     if (exam.duration > 300) {
       addToast('Exam duration cannot exceed 300 minutes (5 hours).', 'error');
-      setIsPublishing(false);
+        setIsPublishing(false);
+        setPublishStatus('idle');
       return;
     }
 
@@ -855,6 +864,7 @@ export default function CreateExam() {
     if (!exam.title || !exam.duration) {
       addToast('Please at least provide a Title and Duration to save a draft.', 'error');
       setIsSaving(false);
+      setSaveStatus('idle');
       return;
     }
     
@@ -862,12 +872,14 @@ export default function CreateExam() {
     if (exam.duration < 5) {
       addToast('Exam duration must be at least 5 minutes.', 'error');
       setIsSaving(false);
+      setSaveStatus('idle');
       return;
     }
     
     if (exam.duration > 300) {
       addToast('Exam duration cannot exceed 300 minutes (5 hours).', 'error');
       setIsSaving(false);
+      setSaveStatus('idle');
       return;
     }
     
@@ -875,6 +887,7 @@ export default function CreateExam() {
     if (exam.negativeMarks < 0) {
       addToast('Negative marks cannot be less than 0.', 'error');
       setIsSaving(false);
+      setSaveStatus('idle');
       return;
     }
 
