@@ -51,6 +51,34 @@ exports.getAllResults = asyncHandler(async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
+// Fetch all active/live exam sessions
+// ═══════════════════════════════════════════════════════════
+exports.getLiveSessions = asyncHandler(async (req, res) => {
+    const sessions = await ExamSession.find({
+        status: { $in: ['in_progress', 'flagged', 'blocked'] }
+    })
+    .populate('student', 'name email profilePicture')
+    .populate('exam', 'title duration category')
+    .sort({ startedAt: -1 })
+    .lean();
+
+    const formatted = sessions.map(s => ({
+        _id: s._id,
+        studentName: s.student?.name || 'Unknown',
+        studentEmail: s.student?.email || 'N/A',
+        studentPhoto: s.student?.profilePicture,
+        examTitle: s.exam?.title || 'Unknown Exam',
+        status: s.status,
+        isBlocked: s.isBlocked,
+        violationCount: s.violationCount || 0,
+        startedAt: s.startedAt,
+        risk: s.violationCount > 5 ? 'High' : s.violationCount > 2 ? 'Medium' : 'Low'
+    }));
+
+    res.json(formatted);
+});
+
+// ═══════════════════════════════════════════════════════════
 // Get Stats for Top Cards (Total Exams, Total Students, Total Live)
 // ═══════════════════════════════════════════════════════════
 exports.getDashboardStats = asyncHandler(async (req, res) => {

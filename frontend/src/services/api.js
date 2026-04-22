@@ -142,6 +142,15 @@ export const getDashboardStats = async () => {
     }
 };
 
+export const getLiveSessions = async () => {
+    try {
+        const response = await api.get('/api/admin/live-sessions');
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
 export const bulkImportUsers = async (usersArray) => {
     try {
         const response = await api.post('/api/admin/bulk-import', { users: usersArray });

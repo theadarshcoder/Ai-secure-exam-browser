@@ -7,7 +7,7 @@ import {
   Search, FileUp, UserPlus, Trash2, Eye,
   ShieldCheck, Activity, AlertOctagon,
   ChevronRight, LogOut, Bell, RefreshCw, Edit3,
-  BarChart3, Download, Clock, Check, X, Star, CheckCircle, AlertCircle, Plus, ScanFace, Radio, ShieldAlert, User, EyeOff, MessageCircle, AlertTriangle
+  BarChart3, Download, Clock, Check, X, Star, CheckCircle, AlertCircle, Plus, ScanFace, Radio, ShieldAlert, User, EyeOff, MessageCircle, AlertTriangle, Unlock
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import PremiumSidebar from '../components/PremiumSidebar';
@@ -32,7 +32,8 @@ import api, {
   togglePublishResults,
   evaluateSession,
   deleteAuditLog,
-  clearAllAuditLogs
+  clearAllAuditLogs,
+  getLiveSessions
 } from '../services/api';
 
 // ─────────────────────────────────────────────────────────
@@ -398,6 +399,9 @@ export default function AdminDashboard() {
   const [evalSessionData, setEvalSessionData] = useState(null);
   const [evalLoading, setEvalLoading] = useState(false);
 
+  // Live Proctoring states
+  const [liveSessions, setLiveSessions] = useState([]);
+
   // Candidate eKYC states
   const [candidates, setCandidates] = useState([]);
   const [candidateSearch, setCandidateSearch] = useState('');
@@ -522,6 +526,9 @@ export default function AdminDashboard() {
           } else if (tab === 'Candidates') {
               const res = await getCandidates(candidateSearch).catch(() => []);
               setCandidates(res || []);
+          } else if (tab === 'Monitor') {
+              const res = await getLiveSessions().catch(() => []);
+              setLiveSessions(res || []);
           }
       } catch (err) {
           console.error("Failed fetching data:", err);
@@ -776,6 +783,7 @@ export default function AdminDashboard() {
     { id: 'Users', label: 'User Management', icon: Users, access: ['admin', 'super_mentor'] },
     { id: 'Candidates', label: 'Candidates', icon: ScanFace, access: ['admin', 'super_mentor'] },
     { id: 'Exams', label: 'Exam Library', icon: FileText, access: ['admin', 'super_mentor'] },
+    { id: 'Monitor', label: 'Live Monitoring', icon: Radio, access: ['admin', 'super_mentor', 'mentor'] },
     { id: 'Results', label: 'Results & Reports', icon: BarChart3, access: ['admin', 'super_mentor'] },
     { id: 'Settings', label: 'System Settings', icon: Settings, access: ['admin'] },
   ];
@@ -1556,11 +1564,122 @@ export default function AdminDashboard() {
     </div>
   );
 
+  const renderLiveMonitor = () => (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-bold text-slate-900 tracking-tight">Live Proctoring Command Center</h2>
+          <p className="text-xs text-slate-400 font-medium mt-1">Real-time oversight of all active exam sessions and security status.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => fetchDataForTab('Monitor')}
+            className="p-2.5 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-all active:scale-95"
+          >
+            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+          </button>
+        </div>
+      </div>
+
+      {liveSessions.length === 0 ? (
+        <div className="h-96 flex flex-col items-center justify-center bg-white rounded-3xl border border-slate-100 text-slate-300 gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center">
+            <Radio size={32} className="opacity-20" />
+          </div>
+          <p className="text-sm font-medium text-slate-400">No active exam sessions at the moment.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {liveSessions.map(session => (
+            <div key={session._id} className={`bg-white rounded-3xl border ${session.isBlocked ? 'border-red-200' : 'border-slate-200'} p-6 shadow-sm hover:shadow-xl transition-all duration-300 group relative`}>
+              {session.isBlocked && (
+                <div className="absolute top-0 right-0 p-3">
+                   <div className="bg-red-500 text-white px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1">
+                      <Lock size={8} /> Blocked
+                   </div>
+                </div>
+              )}
+              
+              <div className="flex items-start justify-between mb-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
+                    {session.studentPhoto ? (
+                      <img src={session.studentPhoto} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <User size={24} className="text-slate-300" />
+                    )}
+                  </div>
+                  <div className="max-w-[140px]">
+                    <h4 className="text-sm font-bold text-slate-900 leading-tight truncate">{session.studentName}</h4>
+                    <p className="text-[10px] text-slate-400 font-medium mt-0.5 truncate">{session.studentEmail}</p>
+                  </div>
+                </div>
+                <div className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${
+                  session.risk === 'High' ? 'bg-red-50 text-red-600' : session.risk === 'Medium' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'
+                }`}>
+                  {session.risk}
+                </div>
+              </div>
+
+              <div className="space-y-4 mb-6">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-slate-400 font-bold uppercase tracking-widest">Active Exam</span>
+                  <span className="text-slate-900 font-bold truncate max-w-[120px] text-right">{session.examTitle}</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-slate-400 font-bold uppercase tracking-widest">Violations</span>
+                  <span className={`font-mono font-bold ${session.violationCount > 0 ? 'text-red-500' : 'text-slate-900'}`}>
+                    {session.violationCount}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-slate-400 font-bold uppercase tracking-widest">Start Time</span>
+                  <span className="text-slate-500 font-medium">
+                    {new Date(session.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-4 border-t border-slate-50">
+                <button 
+                  onClick={() => navigate(`/admin/session?id=${session._id}&name=${encodeURIComponent(session.studentName)}&exam=${encodeURIComponent(session.examTitle)}&status=${session.status}`)}
+                  className="flex-1 h-10 rounded-xl bg-slate-900 text-white text-[10px] font-bold uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-900/10 active:scale-95"
+                >
+                  <Eye size={14} /> Investigate
+                </button>
+                <button 
+                  onClick={() => {
+                    const sid = session.studentId || session.studentEmail;
+                    if (session.isBlocked) {
+                      socketService.unblockStudent(sid, session.examId);
+                      toast.success("Unblock signal sent");
+                    } else {
+                      socketService.blockStudent(sid, session.examId);
+                      toast.error("Block signal sent");
+                    }
+                    // Optimistic update local session if possible or just refresh
+                    setTimeout(() => fetchDataForTab('Monitor'), 500);
+                  }}
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-sm active:scale-95 ${
+                    session.isBlocked ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-100' : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-100'
+                  }`}
+                >
+                  {session.isBlocked ? <Unlock size={16} /> : <Lock size={16} />}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   const renderContent = () => {
     switch (activeTab) {
       case 'Overview': return renderOverview();
       case 'Users': return renderUsers();
       case 'Candidates': return renderCandidates();
+      case 'Monitor': return renderLiveMonitor();
       case 'Exams': return renderExams();
       case 'Results': return renderResults();
       case 'Settings': return renderSettings();
