@@ -895,7 +895,7 @@ export default function AdminDashboard() {
                        <p className="text-xs font-bold text-slate-900 leading-relaxed">
                           <span className="text-red-600">{notif.studentId}</span> triggered a <span className="underline decoration-red-200">{notif.type}</span> violation.
                        </p>
-                       <button className="mt-3 text-[10px] font-black text-red-500 uppercase tracking-widest flex items-center gap-1 hover:gap-2 transition-all">
+                       <button onClick={() => navigate('/admin/session')} className="mt-3 text-[10px] font-black text-red-500 uppercase tracking-widest flex items-center gap-1 hover:gap-2 transition-all">
                           Investigate Session <ChevronRight size={12} />
                        </button>
                     </div>

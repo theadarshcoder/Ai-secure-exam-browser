@@ -56,9 +56,9 @@ export default function VerifyInvite() {
 
             setStatus('success');
 
-            // Auto-redirect directly to the Exam Cockpit after 2 seconds
+            // Auto-redirect directly to the ID Verification / Exam Cockpit after 2 seconds
             setTimeout(() => {
-                navigate(`/exam/${data.examId}`);
+                navigate(`/exam/${data.examId}/verify`);
             }, 2500);
 
         } catch (err) {
