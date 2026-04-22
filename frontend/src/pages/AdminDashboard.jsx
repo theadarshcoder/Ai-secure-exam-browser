@@ -30,6 +30,7 @@ import api, {
   verifyCandidate,
   unverifyCandidate,
   togglePublishResults,
+  evaluateSession,
   deleteAuditLog,
   clearAllAuditLogs
 } from '../services/api';
