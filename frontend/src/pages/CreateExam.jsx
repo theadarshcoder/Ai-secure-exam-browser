@@ -18,9 +18,9 @@ import AnimatedStatusIcon from '../components/AnimatedStatusIcon';
 
 // AI Suggestions are now fetched from the backend live engine.
 
-const typeLabels = { mcq: 'MCQ', short: 'Short Answer', coding: 'Coding' };
-const typeColors = { mcq: '#3b82f6', short: '#8b5cf6', coding: '#10b981' };
-const typeIcons = { mcq: <ListChecks size={13} />, short: <AlignLeft size={13} />, coding: <Code size={13} /> };
+const typeLabels = { mcq: 'MCQ', short: 'Short Answer', coding: 'Coding', 'frontend-react': 'React Lab' };
+const typeColors = { mcq: '#3b82f6', short: '#8b5cf6', coding: '#10b981', 'frontend-react': '#6366f1' };
+const typeIcons = { mcq: <ListChecks size={13} />, short: <AlignLeft size={13} />, coding: <Code size={13} />, 'frontend-react': <LayoutDashboard size={13} /> };
 
 // --- Styles ---
 const INPUT_BASE = "w-full bg-white border border-zinc-200 rounded-xl px-4 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all shadow-sm";
@@ -211,6 +211,71 @@ const CodingEditor = ({ question, updateQ }) => (
         className="text-[10px] text-emerald-400/70 hover:text-emerald-400 font-medium flex items-center gap-1"
       >
         <Plus size={10} /> Add case
+      </button>
+    </div>
+  </div>
+);
+
+const FrontendReactEditor = ({ question, updateQ }) => (
+  <div className="space-y-4">
+    <div className="space-y-2">
+      <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest">Main File (App.jsx)</p>
+      <textarea 
+        value={question.frontendTemplate?.files?.['/App.jsx'] || ''} 
+        onChange={e => {
+          const files = { ...question.frontendTemplate?.files, '/App.jsx': e.target.value };
+          updateQ(question.id, { frontendTemplate: { ...question.frontendTemplate, files } });
+        }} 
+        placeholder="import React from 'react';\n\nexport default function App() {\n  return <div>Hello World</div>;\n}" 
+        rows={8} 
+        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-xs text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-indigo-500/50 font-mono resize-none shadow-inner" 
+      />
+    </div>
+    
+    <div className="space-y-2">
+      <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest">UI Test Cases (JSDOM based)</p>
+      {question.frontendTestCases?.map((test, ti) => (
+        <div key={ti} className="bg-white border border-zinc-100 rounded-xl p-4 space-y-3 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] font-black text-indigo-500 uppercase">Test Case {ti + 1}</span>
+            <button onClick={() => {
+              const tests = question.frontendTestCases.filter((_, i) => i !== ti);
+              updateQ(question.id, { frontendTestCases: tests });
+            }} className="text-zinc-400 hover:text-red-500 transition-colors">
+              <Trash2 size={12} />
+            </button>
+          </div>
+          <input 
+            value={test.description} 
+            onChange={e => {
+              const tests = [...question.frontendTestCases];
+              tests[ti] = { ...tests[ti], description: e.target.value };
+              updateQ(question.id, { frontendTestCases: tests });
+            }} 
+            placeholder="Description (e.g., Should render a button)" 
+            className="w-full bg-zinc-50 border-none text-[11px] font-bold text-zinc-800 placeholder:text-zinc-400 focus:ring-0"
+          />
+          <textarea 
+            value={test.testCode} 
+            onChange={e => {
+              const tests = [...question.frontendTestCases];
+              tests[ti] = { ...tests[ti], testCode: e.target.value };
+              updateQ(question.id, { frontendTestCases: tests });
+            }} 
+            placeholder="return document.querySelector('button') !== null" 
+            rows={2} 
+            className="w-full bg-zinc-50 border border-zinc-100 rounded-lg px-3 py-2 text-[10px] font-mono text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:border-indigo-500/50 resize-none" 
+          />
+        </div>
+      ))}
+      <button 
+        onClick={() => {
+          const tests = [...(question.frontendTestCases || []), { description: '', testCode: '', isHidden: true }];
+          updateQ(question.id, { frontendTestCases: tests });
+        }} 
+        className="text-[10px] text-indigo-500/70 hover:text-indigo-500 font-medium flex items-center gap-1"
+      >
+        <Plus size={10} /> Add UI Test Case
       </button>
     </div>
   </div>
@@ -851,6 +916,17 @@ export default function CreateExam() {
       mcq: { type: 'mcq', questionText: '', options: ['', '', '', ''], correctOption: 0, marks: 1 },
       short: { type: 'short', questionText: '', expectedAnswer: '', maxWords: 150, marks: 2 },
       coding: { type: 'coding', questionText: '', language: 'javascript', initialCode: '', testCases: [{ input: '', expectedOutput: '' }], marks: 5 },
+      'frontend-react': { 
+        type: 'frontend-react', 
+        questionText: '', 
+        marks: 10,
+        frontendTemplate: {
+          files: { '/App.jsx': "import React from 'react';\n\nexport default function App() {\n  return (\n    <div>\n      <h1>Hello World</h1>\n    </div>\n  );\n}" },
+          mainFile: '/App.jsx'
+        },
+        frontendTestCases: [{ description: 'Should render Hello World', testCode: "return document.querySelector('h1').textContent.includes('Hello World')", isHidden: true }]
+      },
+    };
     };
     const q = { ...tpl[type], id: Date.now() };
     setQuestions(p => [...p, q]);
@@ -1267,6 +1343,7 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                                {q.type === 'mcq' && <McqEditor question={q} updateQ={updateQ} />}
                                {q.type === 'short' && <ShortEditor question={q} updateQ={updateQ} />}
                                {q.type === 'coding' && <CodingEditor question={q} updateQ={updateQ} />}
+                               {q.type === 'frontend-react' && <FrontendReactEditor question={q} updateQ={updateQ} />}
                             </div>
                           )}
                         </div>

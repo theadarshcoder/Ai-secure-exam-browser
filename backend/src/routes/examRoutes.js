@@ -96,4 +96,7 @@ router.get('/live-grid', verifyToken, checkRole(['mentor', 'admin']), examContro
 // 4. Run Code API (Rate Limited to protect Judge0)
 router.post('/run-code', verifyToken, codeExecutionLimiter, examController.runCode);
 
+// 5. Run Frontend React Lab API
+router.post('/run-frontend', verifyToken, codeExecutionLimiter, examController.runFrontendCode);
+
 module.exports = router;

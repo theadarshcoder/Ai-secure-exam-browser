@@ -10,7 +10,7 @@ const testCaseSchema = new mongoose.Schema({
 const questionSchema = new mongoose.Schema({
     type: { 
         type: String, 
-        enum: ['mcq', 'short', 'coding'], 
+        enum: ['mcq', 'short', 'coding', 'frontend-react'], 
         required: true 
     },
     questionText: { type: String, required: true },
@@ -27,7 +27,18 @@ const questionSchema = new mongoose.Schema({
     // Coding fields
     language: { type: String, default: 'javascript' },
     initialCode: { type: String },
-    testCases: [testCaseSchema]
+    testCases: [testCaseSchema],
+
+    // Frontend React fields
+    frontendTemplate: {
+        files: { type: Map, of: String }, // e.g., {'/App.jsx': 'code...'}
+        mainFile: { type: String, default: '/App.jsx' }
+    },
+    frontendTestCases: [{
+        description: String,
+        testCode: String, // Code to run against JSDOM
+        isHidden: { type: Boolean, default: true }
+    }]
 }, { _id: true });
 
 const examSchema = new mongoose.Schema({
