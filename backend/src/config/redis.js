@@ -37,6 +37,6 @@ const connectRedis = async () => {
     }
 };
 
-const getRedisClient = () => redisClient;
+const getRedisClient = () => (redisClient && redisClient.isOpen ? redisClient : null);
 
 module.exports = { connectRedis, getRedisClient };

@@ -7,6 +7,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import * as faceapi from '@vladmandic/face-api';
 import Navbar from '../components/Navbar';
+import BouncingDotLoader from '../components/BouncingDotLoader';
 import api from '../services/api';
 
 /* ─────────────── Sub-components ─────────────── */
@@ -165,10 +166,7 @@ export default function ExamWaitingRoom() {
 
   if (loading) return (
     <div className="h-screen w-full bg-white flex items-center justify-center">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-10 h-10 border-2 border-t-slate-800 border-slate-200 rounded-full animate-spin" />
-        <span className="text-[11px] font-medium text-slate-400 uppercase tracking-widest">Syncing with server...</span>
-      </div>
+      <BouncingDotLoader text="Syncing with server..." />
     </div>
   );
 

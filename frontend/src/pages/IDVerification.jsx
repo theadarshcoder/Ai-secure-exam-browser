@@ -6,6 +6,7 @@ import * as faceapi from '@vladmandic/face-api';
 import { Navbar } from '../components/Navbar';
 import api from '../services/api';
 import { toast } from 'react-hot-toast';
+import AnimatedStatusIcon from '../components/AnimatedStatusIcon';
 
 /* ─────────────── Sub-components ─────────────── */
 
@@ -95,7 +96,7 @@ const SuccessState = ({ onProceed, onRetake }) => (
       </button>
       <button
         onClick={onProceed}
-        className="flex-1 py-3.5 px-4 rounded-xl bg-slate-900 text-white hover:bg-slate-700 transition-all text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-sm hover:scale-[1.02]"
+        className="flex-1 py-3.5 px-4 rounded-xl bg-slate-900 text-white hover:bg-slate-800 transition-all text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-sm"
       >
         Proceed <ArrowRight size={14} />
       </button>
@@ -118,7 +119,7 @@ export default function IDVerification() {
   const [faceBox,       setFaceBox]       = useState(null);
   const [capturedPhoto, setCapturedPhoto] = useState(null);
   const [camError,      setCamError]      = useState(false);
-  const [isUploading,   setIsUploading]   = useState(false);
+  const [uploadStatus,  setUploadStatus]  = useState('idle');
 
   const videoRef  = useRef(null);
   const canvasRef = useRef(null);
@@ -217,7 +218,7 @@ export default function IDVerification() {
   };
 
   const confirmPhoto = async () => {
-    setIsUploading(true);
+    setUploadStatus('loading');
     try {
       const res  = await fetch(capturedPhoto);
       const blob = await res.blob();
@@ -225,13 +226,18 @@ export default function IDVerification() {
       formData.append('image', blob, `${step === 1 ? 'face' : 'id'}_${Date.now()}.jpg`);
       const endpoint = step === 1 ? '/api/upload/profile' : '/api/upload/id-card';
       await api.post(endpoint, formData, { headers: { 'Content-Type': undefined } });
+      
+      setUploadStatus('success');
+      await new Promise(r => setTimeout(r, 1200));
+      
       setCapturedPhoto(null);
       if (step === 1) { setStep(2); } else { setStep(3); if (stream) stream.getTracks().forEach(t => t.stop()); }
+      setUploadStatus('idle');
     } catch (err) {
       console.error('Upload failed:', err);
       toast.error('Upload failed. Please retake.');
-    } finally {
-      setIsUploading(false);
+      setUploadStatus('error');
+      setTimeout(() => setUploadStatus('idle'), 2000);
     }
   };
 
@@ -248,14 +254,25 @@ export default function IDVerification() {
         <aside className="h-full flex flex-col gap-4 overflow-y-auto pr-1 custom-scrollbar">
 
           {/* Brand card */}
-          <div className="bg-[#F5F5F5] rounded-2xl p-6 border border-slate-200 flex flex-col items-center text-center shadow-sm">
-            <div className="w-14 h-14 rounded-2xl bg-slate-100 border border-slate-200 text-slate-500 mb-4 flex items-center justify-center relative">
-              <ScanFace size={24} />
-              <div className="absolute inset-0 rounded-2xl border border-slate-400 animate-ping opacity-10" />
+          <div className="bg-[#F5F5F5] rounded-2xl p-5 border border-slate-200 flex flex-col items-center text-center shadow-sm">
+            <div className="relative w-12 h-12 mb-4 group">
+              <div className="absolute inset-0 bg-emerald-500/5 rounded-xl blur-lg" />
+              
+              <div className="relative w-full h-full bg-slate-900 rounded-xl border border-white/5 shadow-xl flex items-center justify-center overflow-hidden">
+                {/* Minimalist Professional Icon */}
+                <ShieldCheck size={20} className="text-emerald-400 opacity-90" />
+
+                {/* The Green Motion Line */}
+                <motion.div 
+                  className="absolute inset-x-0 h-[1px] bg-emerald-400 shadow-[0_0_8px_#34d399] z-20"
+                  animate={{ top: ['0%', '100%', '0%'] }}
+                  transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                />
+              </div>
             </div>
-            <h2 className="text-lg font-black text-slate-900 tracking-tight mb-1.5">Gatekeeper</h2>
+            <h2 className="text-base font-bold text-slate-900 tracking-tight mb-1 uppercase">Identity Verification</h2>
             <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
-              Scan biometric identifiers to initialize secure exam environment.
+              Confirming your identity to start the exam
             </p>
           </div>
 
@@ -360,13 +377,14 @@ export default function IDVerification() {
                 <div className="flex gap-2.5 w-1/3 justify-end items-center">
                   {capturedPhoto ? (
                     <>
-                      <button onClick={() => setCapturedPhoto(null)} disabled={isProcessing || isUploading}
+                      <button onClick={() => setCapturedPhoto(null)} disabled={isProcessing || uploadStatus !== 'idle'}
                         className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 text-[11px] font-bold uppercase tracking-wide flex items-center gap-2 transition-all">
                         <RotateCcw size={14} /> Retake
                       </button>
-                      <button onClick={confirmPhoto} disabled={isProcessing || isUploading}
-                        className="px-7 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold uppercase tracking-wide flex items-center gap-2 transition-all disabled:opacity-60 shadow-sm">
-                        {isUploading ? <><Loader2 size={14} className="animate-spin" /> Uploading</> : <>Confirm <CheckCircle2 size={14} /></>}
+                      <button onClick={confirmPhoto} disabled={isProcessing || uploadStatus !== 'idle'}
+                        className="min-w-[120px] px-7 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold uppercase tracking-wide flex items-center justify-center gap-2 transition-all disabled:opacity-60 shadow-sm">
+                        <AnimatedStatusIcon status={uploadStatus} icon={<CheckCircle2 size={14} />} size={14} />
+                        {uploadStatus === 'loading' ? 'Uploading' : uploadStatus === 'success' ? 'Confirmed' : 'Confirm'}
                       </button>
                     </>
                   ) : (

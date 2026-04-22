@@ -172,11 +172,8 @@ const HybridNavbar = () => {
 
   return (
     <motion.nav
-      initial={false}
-      animate={scrolled ? 'scrolled' : 'top'}
       className="fixed top-0 left-0 right-0 z-50 flex justify-center pointer-events-none"
-      style={{ paddingTop: scrolled ? 14 : 0 }}
-      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      style={{ paddingTop: 14 }}
     >
       <motion.div
         variants={{
@@ -188,8 +185,8 @@ const HybridNavbar = () => {
             boxShadow: 'none',
             paddingLeft: 32,
             paddingRight: 32,
-            paddingTop: 20,
-            paddingBottom: 20,
+            paddingTop: 10,
+            paddingBottom: 10,
             border: '1px solid transparent',
           },
           scrolled: {
@@ -200,12 +197,14 @@ const HybridNavbar = () => {
             boxShadow: '0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.07)',
             paddingLeft: 18,
             paddingRight: 18,
-            paddingTop: 8,
-            paddingBottom: 8,
+            paddingTop: 10,
+            paddingBottom: 10,
             border: '1px solid rgba(255,255,255,0.08)',
           },
         }}
         transition={{ type: 'spring', stiffness: 280, damping: 30, mass: 0.8 }}
+        initial="top"
+        animate={scrolled ? 'scrolled' : 'top'}
         className="flex items-center justify-between pointer-events-auto"
         style={{ maxWidth: '100%' }}
       >

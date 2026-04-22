@@ -13,6 +13,8 @@ import {
   Download, UploadCloud, Link
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
+import PremiumSidebar from '../components/PremiumSidebar';
+import AnimatedStatusIcon from '../components/AnimatedStatusIcon';
 
 // AI Suggestions are now fetched from the backend live engine.
 
@@ -346,7 +348,9 @@ export default function CreateExam() {
   const [inputMode, setInputMode] = useState('text'); // 'text' | 'file'
   const [uploadIntent, setUploadIntent] = useState('import'); // 'import' | 'syllabus'
   const [isPublishing, setIsPublishing] = useState(false);
+  const [publishStatus, setPublishStatus] = useState('idle');
   const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState('idle');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [publishedExamId, setPublishedExamId] = useState('');
   const [editId, setEditId] = useState(null);
@@ -359,6 +363,7 @@ export default function CreateExam() {
   const [isImportingLink, setIsImportingLink] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewQuestion, setPreviewQuestion] = useState(null);
+  const returnTo = new URLSearchParams(location.search).get('returnTo') || '/mentor';
 
   const navItems = [
     { id: 'Overview', label: 'Overview', icon: LayoutDashboard },
@@ -588,13 +593,14 @@ export default function CreateExam() {
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
     const id = queryParams.get('id');
+    const returnTo = queryParams.get('returnTo') || '/mentor';
     if (id) {
       setEditId(id);
-      loadDraft(id);
+      loadDraft(id, returnTo);
     }
   }, [location.search]);
 
-  const loadDraft = async (id) => {
+  const loadDraft = async (id, returnTo = '/mentor') => {
     setInitialLoading(true);
     try {
       const response = await api.get(`/api/exams/mentor/${id}`);
@@ -620,7 +626,7 @@ export default function CreateExam() {
     } catch (err) {
       console.error("Failed to load draft:", err);
       addToast("Failed to load draft. It may have been deleted.", 'error');
-      navigate('/mentor/create-exam'); // Clear query param
+      navigate(returnTo); // Return to correct dashboard
     } finally {
       setInitialLoading(false);
     }
@@ -629,6 +635,7 @@ export default function CreateExam() {
   const handlePublish = async () => {
     if (questions.length === 0) return;
     setIsPublishing(true);
+    setPublishStatus('loading');
     
     const payload = {
       title: exam.title || 'Untitled Exam',
@@ -729,8 +736,9 @@ export default function CreateExam() {
       // Update local state and persistence for frontend components
       const existing = JSON.parse(localStorage.getItem('published_exams') || '[]');
       localStorage.setItem('published_exams', JSON.stringify([serverExam, ...existing]));
-      
       setPublishedExamId(serverExam.id || serverExam._id || 'EX-' + Math.random().toString(36).substr(2, 6).toUpperCase());
+      setPublishStatus('success');
+      await new Promise(r => setTimeout(r, 1200));
       setShowSuccessModal(true);
     } catch (err) {
       if (err.response) {
@@ -738,6 +746,8 @@ export default function CreateExam() {
         console.error('Server side rejection:', err.response.data);
         const errorMsg = err.response.data.error || err.response.data.message || 'Validation failed';
         addToast(`Failed to publish exam: ${errorMsg}`, 'error');
+        setPublishStatus('error');
+        setTimeout(() => setPublishStatus('idle'), 2000);
         setIsPublishing(false);
         return;
       }
@@ -760,14 +770,18 @@ export default function CreateExam() {
       localStorage.setItem('published_exams', JSON.stringify([localExam, ...existing]));
       
       setPublishedExamId(localId);
+      setPublishStatus('success');
+      await new Promise(r => setTimeout(r, 1200));
       setShowSuccessModal(true);
     } finally {
       setIsPublishing(false);
+      setTimeout(() => setPublishStatus('idle'), 500);
     }
   };
 
   const handleSaveDraft = async () => {
     setIsSaving(true);
+    setSaveStatus('loading');
     
     // Drafts don't need strict validation on questions,
     // but we need the basic exam info.
@@ -817,12 +831,16 @@ export default function CreateExam() {
       } else {
         await api.post('/api/exams/create', payload);
       }
+      setSaveStatus('success');
+      await new Promise(r => setTimeout(r, 1200));
       // Navigate to dashboard where they can see the draft
-      navigate('/mentor');
+      navigate(returnTo);
     } catch (err) {
       console.error('Draft save failure:', err);
       const msg = err.response?.data?.message || 'Failed to save draft.';
       addToast(msg, 'error');
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 2000);
     } finally {
       setIsSaving(false);
     }
@@ -945,54 +963,26 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
   const totalM = questions.reduce((s, q) => s + (q.marks || 0), 0);
 
   return (
-    <div className="flex h-screen bg-[#0a0c10] font-sans text-zinc-200 select-none antialiased overflow-hidden">
-      {/* Fixed Sidebar */}
-      <aside className="w-64 bg-zinc-950 flex flex-col z-30 shadow-2xl shrink-0 border-r border-white/5">
-        <div className="h-20 flex items-center px-8 border-b border-white/5">
-          <div className="flex items-center gap-3">
-             <VisionLogo className="h-6 w-6 text-emerald-500" />
-             <span className="text-sm font-black uppercase tracking-[0.3em] text-white">VISION <span className="text-zinc-500 font-bold">PRO</span></span>
-          </div>
-        </div>
-
-        <nav className="flex-1 p-6 space-y-1.5">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => navigate('/mentor')}
-              className={`group flex w-full items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 relative ${
-                item.id === 'Exam Management' 
-                ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-900/40' 
-                : 'text-zinc-400 hover:bg-white/5 hover:text-white'
-              }`}
-            >
-              <item.icon size={18} className={`transition-transform duration-300 ${item.id === 'Exam Management' ? 'scale-110' : 'group-hover:scale-110'}`} />
-              <span className="text-xs font-bold uppercase tracking-wider">{item.label}</span>
-              {item.id === 'Exam Management' && (
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 w-1 h-3 bg-white/30 rounded-full" />
-              )}
-            </button>
-          ))}
-        </nav>
-
-        <div className="p-6 mt-auto border-t border-white/5">
-          <button 
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 p-3 bg-white/5 hover:bg-red-500/10 text-zinc-400 hover:text-red-400 rounded-xl text-xs font-bold transition-all uppercase tracking-widest active:scale-95 border border-white/5"
-          >
-            <LogOut size={16} /> Exit Module
-          </button>
-        </div>
-      </aside>
+    <div className="flex h-screen bg-slate-50 font-sans text-slate-900 select-none antialiased overflow-hidden">
+      {/* Premium Sidebar (Aligned with Admin/Mentor Dashboards) */}
+      <PremiumSidebar
+        navItems={navItems}
+        activeTab="Exam Management"
+        setActiveTab={() => navigate(returnTo)}
+        userName={sessionStorage.getItem('vision_name') || 'Admin'}
+        userRole={sessionStorage.getItem('vision_role') || 'Admin'}
+        onLogout={handleLogout}
+        brandLabel="VISION"
+      />
 
       {/* Main Container */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative bg-zinc-50">
         {/* Header (Breadcrumbs) */}
         <header className="h-20 bg-zinc-50/80 backdrop-blur-md border-b border-zinc-200 flex items-center justify-between px-10 relative z-20">
           <div className="flex items-center gap-3 text-xs font-bold text-zinc-500 uppercase tracking-widest leading-none">
-            <span onClick={() => navigate('/mentor')} className="hover:text-emerald-500 transition-colors cursor-pointer">Mentor</span>
+            <span onClick={() => navigate(returnTo)} className="hover:text-emerald-500 transition-colors cursor-pointer">{returnTo === '/admin' ? 'Admin' : 'Mentor'}</span>
             <ChevronRight size={14} className="opacity-30" />
-            <span className="hover:text-emerald-500 transition-colors cursor-pointer" onClick={() => navigate('/mentor')}>Exam Library</span>
+            <span className="hover:text-emerald-500 transition-colors cursor-pointer" onClick={() => navigate(returnTo)}>Exam Library</span>
             <ChevronRight size={14} className="opacity-30" />
             <span className="text-zinc-900">{editId ? 'Edit' : 'Create'} Assessment</span>
           </div>
@@ -1348,13 +1338,13 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                         Download JSON Data
                       </button>
                     </div>
-                    <button onClick={handlePublish} disabled={isPublishing || questions.length === 0} className="w-full h-16 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-[#0a0c10] rounded-[24px] font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-3 transition-all active:scale-95 group/pub">
-                      {isPublishing ? <Loader2 size={18} className="animate-spin text-[#0a0c10]" /> : <Send size={18} className="group-hover/pub:translate-x-1 group-hover/pub:-translate-y-1 transition-transform" />}
-                      {isPublishing ? 'Deploying...' : 'Deploy Now'}
+                    <button onClick={handlePublish} disabled={isPublishing || questions.length === 0 || publishStatus !== 'idle'} className="w-full h-16 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-[#0a0c10] rounded-[24px] font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-3 transition-all active:scale-95 group/pub">
+                      <AnimatedStatusIcon status={publishStatus} icon={<Send size={18} className="group-hover/pub:translate-x-1 group-hover/pub:-translate-y-1 transition-transform" />} size={18} />
+                      {publishStatus === 'loading' ? 'Deploying...' : publishStatus === 'success' ? 'Deployed' : 'Deploy Now'}
                     </button>
-                    <button onClick={handleSaveDraft} disabled={isSaving} className="w-full h-16 bg-white/[0.05] border border-white/[0.08] hover:bg-zinc-800 text-zinc-900 rounded-[24px] font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all active:scale-95">
-                      {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                      Save Progress
+                    <button onClick={handleSaveDraft} disabled={isSaving || saveStatus !== 'idle'} className="w-full h-16 bg-white/[0.05] border border-white/[0.08] hover:bg-zinc-800 text-zinc-900 rounded-[24px] font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all active:scale-95">
+                      <AnimatedStatusIcon status={saveStatus} icon={<Save size={18} />} size={18} />
+                      {saveStatus === 'loading' ? 'Saving...' : saveStatus === 'success' ? 'Saved' : 'Save Progress'}
                     </button>
                   </div>
                 </div>
@@ -1627,7 +1617,7 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
               </button>
             </div>
 
-            <button onClick={() => navigate('/mentor')} className="group w-full bg-white text-black h-14 rounded-[20px] font-black text-xs uppercase tracking-[0.2em] hover:bg-zinc-100 transition-all active:scale-[0.98] flex items-center justify-center gap-3 border border-zinc-200">
+            <button onClick={() => navigate(returnTo)} className="group w-full bg-white text-black h-14 rounded-[20px] font-black text-xs uppercase tracking-[0.2em] hover:bg-zinc-100 transition-all active:scale-[0.98] flex items-center justify-center gap-3 border border-zinc-200">
               Return to Module
               <ArrowLeft size={16} className="rotate-180 group-hover:translate-x-1 transition-transform" />
             </button>

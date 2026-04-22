@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import PremiumSidebar from '../components/PremiumSidebar';
+import BouncingDotLoader from '../components/BouncingDotLoader';
 import { 
   getMentorStats, 
   getMentorExamList, 
@@ -22,6 +23,7 @@ import {
   togglePublishResults,
   deleteExam
 } from '../services/api';
+import AnimatedStatusIcon from '../components/AnimatedStatusIcon';
 
 /* ─────────────────────────────────────────────────────────
    Components
@@ -128,10 +130,8 @@ const DataTable = ({ headers, data, renderRow, loading }) => (
         <tbody className="divide-y divide-slate-100">
           {loading ? (
             <tr>
-              <td colSpan={headers.length} className="px-6 py-12 text-center text-slate-400">
-                <div className="flex items-center justify-center gap-2">
-                  <RefreshCw size={16} className="animate-spin" /> Syncing with server...
-                </div>
+              <td colSpan={headers.length} className="bg-white p-0">
+                <BouncingDotLoader text="Syncing system data..." />
               </td>
             </tr>
           ) : data.length === 0 ? (
@@ -154,7 +154,7 @@ const DataTable = ({ headers, data, renderRow, loading }) => (
    Evaluation Modal Component
    ───────────────────────────────────────────────────────── */
 
-const EvaluationModal = ({ sessionData, onClose, onGradeSubmit, isSubmitting }) => {
+const EvaluationModal = ({ sessionData, onClose, onGradeSubmit, submitStatus }) => {
   const [grades, setGrades] = useState({});
 
   useEffect(() => {
@@ -200,7 +200,7 @@ const EvaluationModal = ({ sessionData, onClose, onGradeSubmit, isSubmitting }) 
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className="text-xl font-bold text-slate-900">{sessionData.score}/{sessionData.totalMarks}</p>
+              <p className="text-xl font-semibold text-slate-900">{sessionData.score}/{sessionData.totalMarks}</p>
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{sessionData.percentage}% — {sessionData.passed ? 'Passed' : 'Failed'}</p>
             </div>
             <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
@@ -234,7 +234,7 @@ const EvaluationModal = ({ sessionData, onClose, onGradeSubmit, isSubmitting }) 
                   </span>
                   <StatusBadge status={q.status} />
                 </div>
-                <span className="text-sm font-black tabular-nums text-slate-700">{q.marksObtained}/{q.maxMarks}</span>
+                <span className="text-sm font-bold tabular-nums text-slate-700">{q.marksObtained}/{q.maxMarks}</span>
               </div>
 
               <p className="text-sm text-slate-800 font-medium mb-3">{q.questionText}</p>
@@ -362,11 +362,11 @@ const EvaluationModal = ({ sessionData, onClose, onGradeSubmit, isSubmitting }) 
             </button>
             <button
               onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="px-5 py-2.5 bg-emerald-600 text-white text-xs font-bold uppercase hover:bg-emerald-700 rounded-xl transition-all shadow-lg shadow-emerald-900/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              disabled={submitStatus !== 'idle'}
+              className="min-w-[150px] px-5 py-2.5 bg-emerald-600 text-white text-xs font-bold uppercase hover:bg-emerald-700 rounded-xl transition-all shadow-lg shadow-emerald-900/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {isSubmitting ? <RefreshCw size={14} className="animate-spin" /> : <Check size={14} />}
-              Submit Grades
+              <AnimatedStatusIcon status={submitStatus} icon={<Check size={14} />} size={14} />
+              {submitStatus === 'loading' ? 'Submitting' : submitStatus === 'success' ? 'Submitted' : 'Submit Grades'}
             </button>
           </div>
         )}
@@ -402,7 +402,7 @@ export default function MentorDashboard() {
   const [evalSessionData, setEvalSessionData] = useState(null);
 
   const [evalLoading, setEvalLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState('idle');
 
   // Real-time violation alerts state (via Socket.IO)
   const [violations, setViolations] = useState([]);
@@ -541,9 +541,11 @@ export default function MentorDashboard() {
 
   const handleGradeSubmit = async (gradeArray) => {
     if (!evalSessionData) return;
-    setIsSubmitting(true);
+    setSubmitStatus('loading');
     try {
       await evaluateSession(evalSessionData.sessionId, gradeArray);
+      setSubmitStatus('success');
+      await new Promise(r => setTimeout(r, 1200));
       toast.success('Session graded successfully!');
       setShowEvalModal(false);
       setEvalSessionData(null);
@@ -553,7 +555,7 @@ export default function MentorDashboard() {
       console.error('Failed to submit grades:', err);
       toast.error('Failed to submit grades: ' + (err.message || 'Unknown error'));
     } finally {
-      setIsSubmitting(false);
+      setTimeout(() => setSubmitStatus('idle'), 500);
     }
   };
 
@@ -609,7 +611,7 @@ export default function MentorDashboard() {
                 {stat.trendType === 'down' && <ArrowDownRight size={14} />}
               </span>
             </div>
-            <h3 className="text-[32px] font-bold text-[#0F0F0F]">{stat.value}</h3>
+            <h3 className="text-[32px] font-semibold text-[#0F0F0F]">{stat.value}</h3>
             <p className="text-sm font-medium text-[#7A7A7A] mt-1">{stat.label}</p>
           </div>
         ))}
@@ -750,7 +752,7 @@ export default function MentorDashboard() {
               </td>
               <td className="px-6 py-4">
                 <div className="flex flex-col gap-1">
-                  <span className={`text-xs font-black tabular-nums ${(session.score || 0) >= 80 ? 'text-emerald-700' : 'text-amber-700'}`}>
+                  <span className={`text-xs font-bold tabular-nums ${(session.score || 0) >= 80 ? 'text-emerald-700' : 'text-amber-700'}`}>
                     {session.score != null ? `${session.score}%` : 'Pending'}
                   </span>
                   <div className="flex items-center gap-2">
@@ -952,7 +954,7 @@ export default function MentorDashboard() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans text-slate-900 select-none antialiased">
+    <div className="flex h-screen bg-white font-sans text-slate-900 select-none antialiased">
       <PremiumSidebar
         navItems={navItems.map(n => ({ ...n, icon: n.icon }))}
         activeTab={activeTab}
@@ -1004,17 +1006,16 @@ export default function MentorDashboard() {
       {showEvalModal && (
         evalLoading ? (
           <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center">
-            <div className="bg-white rounded-2xl p-8 flex items-center gap-3 shadow-2xl">
-              <RefreshCw size={20} className="animate-spin text-emerald-600" />
-              <span className="text-sm font-bold text-slate-700">Loading session details...</span>
-            </div>
+             <div className="bg-white rounded-3xl p-8 flex items-center justify-center shadow-2xl animate-in zoom-in-95 h-[300px] w-[300px]">
+                <BouncingDotLoader text="Loading session details..." />
+             </div>
           </div>
         ) : (
           <EvaluationModal
             sessionData={evalSessionData}
             onClose={() => { setShowEvalModal(false); setEvalSessionData(null); }}
             onGradeSubmit={handleGradeSubmit}
-            isSubmitting={isSubmitting}
+            submitStatus={submitStatus}
           />
         )
       )}

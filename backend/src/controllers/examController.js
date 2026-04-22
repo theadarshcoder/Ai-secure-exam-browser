@@ -1541,6 +1541,12 @@ exports.runCode = asyncHandler(async (req, res) => {
 
     // FORMAL SUBMISSION - Evaluate against all test cases via Background Queue (with Sync Fallback)
     try {
+        const { getRedisClient } = require('../config/redis');
+        const redisClient = getRedisClient();
+        if (!redisClient) {
+            throw new Error('Redis not connected. Forcing local sync execution.');
+        }
+
         await addCodeEvaluationJob({
             sourceCode,
             language,
