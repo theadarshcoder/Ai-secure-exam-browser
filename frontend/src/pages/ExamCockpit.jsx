@@ -37,10 +37,12 @@ const QuestionPalette = React.memo(({ questions, currentQ, answers, visited, mar
   const hasMCQ    = questions.some(q => q.type === 'mcq');
   const hasShort  = questions.some(q => q.type === 'short');
   const hasCoding = questions.some(q => q.type === 'coding');
+  const hasReact  = questions.some(q => q.type === 'frontend-react');
 
   if (hasMCQ)   sections.push({ id: 'a', label: 'Sec A', types: ['mcq'] });
   if (hasShort) sections.push({ id: 'b', label: 'Sec B', types: ['short'] });
   if (hasCoding) sections.push({ id: 'c', label: 'Sec C', types: ['coding'] });
+  if (hasReact)  sections.push({ id: 'd', label: 'Sec D', types: ['frontend-react'] });
 
   const [activeSection, setActiveSection] = React.useState(sections[0]?.id || 'a');
 

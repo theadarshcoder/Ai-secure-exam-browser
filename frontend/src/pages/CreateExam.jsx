@@ -1327,9 +1327,9 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                     </div>
                   </div>
 
-                  {/* 3 Section Tabs */}
-                  <div className="grid grid-cols-3 gap-2">
-                    {['mcq', 'short', 'coding'].map(type => {
+                  {/* 4 Section Tabs */}
+                  <div className="grid grid-cols-4 gap-2">
+                    {['mcq', 'short', 'coding', 'frontend-react'].map(type => {
                       const count = questions.filter(q => q.type === type).length;
                       const isActive = activeQTab === type;
                       return (
@@ -1354,59 +1354,48 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                     return (
                       <div className="space-y-1.5">
                         {filtered.map((q, i) => (
-                          <div key={q.id} className={`group bg-white border rounded-lg transition-all ${expandedQ === q.id ? 'ring-1 ring-emerald-500/20 border-emerald-200' : 'border-slate-200 hover:border-slate-300'}`}>
-                            <div className="flex items-center justify-between px-3 py-2.5">
-                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                 <span className="text-[10px] font-semibold text-slate-400 w-5 text-center shrink-0">{i + 1}</span>
-                                 <input value={q.questionText} onChange={e => updateQ(q.id, { questionText: e.target.value })} placeholder="Enter question..." className="bg-transparent border-none text-[13px] font-medium text-slate-800 placeholder:text-slate-300 focus:ring-0 w-full p-0" />
-                                 <span className="text-[10px] text-slate-400 shrink-0 tabular-nums">{q.marks}pts</span>
-                              </div>
-                              <div className="flex items-center gap-0.5 ml-2">
-                                 <button onClick={() => setExpandedQ(expandedQ === q.id ? null : q.id)} className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition-colors">
-                                   {expandedQ === q.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                                 </button>
-                                 <button onClick={() => dupQ(q.id)} className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-emerald-500 hover:bg-slate-50 transition-colors opacity-0 group-hover:opacity-100">
-                                   <Copy size={12} />
-                                 </button>
-                                 <button onClick={() => removeQ(q.id)} className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-red-500 hover:bg-slate-50 transition-colors opacity-0 group-hover:opacity-100">
-                                   <Trash2 size={12} />
-                                 </button>
+                          <React.Fragment key={q.id}>
+                            <div className={`group bg-white border rounded-lg transition-all ${expandedQ === q.id ? 'ring-1 ring-emerald-500/20 border-emerald-200' : 'border-slate-200 hover:border-slate-300'}`}>
+                              <div className="flex items-center justify-between px-3 py-2.5">
+                                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                   <span className="text-[10px] font-semibold text-slate-400 w-5 text-center shrink-0">{i + 1}</span>
+                                   <input value={q.questionText} onChange={e => updateQ(q.id, { questionText: e.target.value })} placeholder="Enter question..." className="bg-transparent border-none text-[13px] font-medium text-slate-800 placeholder:text-slate-300 focus:ring-0 w-full p-0" />
+                                   <span className="text-[10px] text-slate-400 shrink-0 tabular-nums">{q.marks}pts</span>
+                                </div>
+                                <div className="flex items-center gap-0.5 ml-2">
+                                   <button onClick={() => setExpandedQ(expandedQ === q.id ? null : q.id)} className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition-colors">
+                                     {expandedQ === q.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                   </button>
+                                   <button onClick={() => dupQ(q.id)} className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-emerald-500 hover:bg-slate-50 transition-colors opacity-0 group-hover:opacity-100">
+                                     <Copy size={12} />
+                                   </button>
+                                   <button onClick={() => removeQ(q.id)} className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-red-500 hover:bg-slate-50 transition-colors opacity-0 group-hover:opacity-100">
+                                     <Trash2 size={12} />
+                                   </button>
+                                </div>
                               </div>
                             </div>
+
                             {expandedQ === q.id && (
-                              <div className="px-3 pb-3 pt-2.5 border-t border-slate-100">
-                                 <div className="mb-3 flex items-center gap-2">
-                                    <div className="flex items-center bg-slate-50 border border-slate-200 rounded-md overflow-hidden">
-                                       <input type="number" value={q.marks} onChange={e => updateQ(q.id, { marks: parseInt(e.target.value) || 0 })} className="w-10 h-8 bg-transparent border-none text-[11px] font-semibold text-slate-800 text-center focus:ring-0" />
-                                       <span className="text-[10px] text-slate-400 pr-2">pts</span>
+                              <div className="px-8 pb-8 pt-4 border-t border-zinc-200 animate-in slide-in-from-top-2 duration-300 bg-white rounded-b-lg border-x border-b">
+                                 <div className="mb-6 flex items-center gap-4">
+                                    <div className="flex items-center bg-zinc-50 border border-zinc-200 rounded-2xl pr-4 overflow-hidden">
+                                       <input type="number" value={q.marks} onChange={e => updateQ(q.id, { marks: parseInt(e.target.value) || 0 })} className="w-14 h-12 bg-transparent border-none text-sm font-black text-zinc-900 text-center focus:ring-0 tabular-nums" />
+                                       <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Points</span>
                                     </div>
                                  </div>
                                  {q.type === 'mcq' && <McqEditor question={q} updateQ={updateQ} />}
                                  {q.type === 'short' && <ShortEditor question={q} updateQ={updateQ} />}
                                  {q.type === 'coding' && <CodingEditor question={q} updateQ={updateQ} />}
+                                 {q.type === 'frontend-react' && <FrontendReactEditor question={q} updateQ={updateQ} />}
                               </div>
                             )}
-                          </div>
-
-                          {expandedQ === q.id && (
-                            <div className="px-8 pb-8 pt-4 border-t border-zinc-200 animate-in slide-in-from-top-2 duration-300">
-                               <div className="mb-6 flex items-center gap-4">
-                                  <div className="flex items-center bg-zinc-50 border border-zinc-200 rounded-2xl pr-4 overflow-hidden">
-                                     <input type="number" value={q.marks} onChange={e => updateQ(q.id, { marks: parseInt(e.target.value) || 0 })} className="w-14 h-12 bg-transparent border-none text-sm font-black text-zinc-900 text-center focus:ring-0 tabular-nums" />
-                                     <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Points</span>
-                                  </div>
-                               </div>
-                               {q.type === 'mcq' && <McqEditor question={q} updateQ={updateQ} />}
-                               {q.type === 'short' && <ShortEditor question={q} updateQ={updateQ} />}
-                               {q.type === 'coding' && <CodingEditor question={q} updateQ={updateQ} />}
-                               {q.type === 'frontend-react' && <FrontendReactEditor question={q} updateQ={updateQ} />}
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                          </React.Fragment>
+                        ))}
                     </div>
-                  )}
-                </section>
+                  );
+                })()}
+              </section>
               </div>
 
               {/* Right Column: Actions / Summary */}
