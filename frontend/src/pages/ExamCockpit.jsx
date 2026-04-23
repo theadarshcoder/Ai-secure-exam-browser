@@ -274,7 +274,7 @@ const ProctoringSidebar = React.memo(
   ),
 );
 
-const SubmitModal = React.memo(({ isOpen, onClose, onConfirm, stats }) => (
+const SubmitModal = React.memo(({ isOpen, onClose, onConfirm, stats, password, setPassword, error }) => (
   <AnimatePresence>
     {isOpen && (
       <div className="fixed inset-0 z-[110] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6">
@@ -289,11 +289,11 @@ const SubmitModal = React.memo(({ isOpen, onClose, onConfirm, stats }) => (
           <h2 className="text-2xl font-bold text-slate-900 mb-2 tracking-tight">
             Confirm Exam Submission?
           </h2>
-          <p className="text-[13px] font-medium text-slate-500 mb-8 leading-relaxed">
+          <p className="text-[13px] font-medium text-slate-500 mb-6 leading-relaxed">
             You are about to submit your response. This action is final and your
             work will be graded as currently saved.
           </p>
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 mb-8 grid grid-cols-3 gap-4 text-center">
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 mb-6 grid grid-cols-3 gap-4 text-center">
             <div>
               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
                 Answered
@@ -318,6 +318,22 @@ const SubmitModal = React.memo(({ isOpen, onClose, onConfirm, stats }) => (
                 {stats.total}
               </p>
             </div>
+          </div>
+          <div className="relative mb-6">
+             <input
+               type="password"
+               value={password}
+               onChange={(e) => setPassword(e.target.value)}
+               placeholder="Supervisor Password"
+               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-center text-slate-900 font-mono text-[14px] tracking-[0.4em] focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10 transition-all"
+             />
+             {error && (
+               <div className="absolute top-full left-0 right-0 mt-2 text-center">
+                 <span className="text-[10px] font-bold text-red-600 uppercase tracking-widest">
+                   {error}
+                 </span>
+               </div>
+             )}
           </div>
           <div className="flex gap-3">
             <button
@@ -2552,7 +2568,17 @@ export default function ExamCockpit() {
           total: questions.length,
           marked: Object.values(markedForReview).filter(Boolean).length,
         }}
-        onConfirm={handleFinalSubmit}
+        password={exitPassword}
+        setPassword={setExitPassword}
+        error={exitError}
+        onConfirm={() => {
+          const targetPass = settings?.exitPassword || "12345";
+          if (!settings?.exitPassword || exitPassword === targetPass) {
+            handleFinalSubmit();
+          } else {
+            setExitError("Incorrect Password");
+          }
+        }}
       />
       <ExitModal
         isOpen={showExitPrompt}

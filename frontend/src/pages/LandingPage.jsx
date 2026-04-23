@@ -365,70 +365,85 @@ const FloatingCard = ({ delay, duration, x, y, rotate, children, className }) =>
   </motion.div>
 );
 
-const CurvedNeonGrid = () => {
+const UltraPremiumSilkBackground = () => {
   return (
-    <div className="absolute inset-x-0 bottom-0 h-[45%] md:h-[65%] overflow-hidden z-0 pointer-events-none">
-      <svg
-        viewBox="0 0 1000 450"
-        className="w-full h-full"
-        preserveAspectRatio="none"
-      >
+    <div className="absolute inset-0 z-0 overflow-hidden bg-[#020202] flex items-center justify-center pointer-events-none">
+      {/* Optimized Abstract Silk Waves (Removed heavy SVG filters, reduced layer count) */}
+      <svg className="absolute inset-0 w-full h-full opacity-80 will-change-transform" preserveAspectRatio="none" viewBox="0 0 1440 800">
         <defs>
-          <linearGradient id="glowBlue" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%"   stopColor="transparent" />
-            <stop offset="30%"  stopColor="transparent" />
-            <stop offset="50%"  stopColor="#60a5fa" stopOpacity="1" />
-            <stop offset="70%"  stopColor="transparent" />
+          <linearGradient id="silkGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="transparent" />
+            <stop offset="20%" stopColor="#818cf8" stopOpacity="0.8" />
+            <stop offset="50%" stopColor="#34d399" stopOpacity="0.8" />
+            <stop offset="80%" stopColor="#c084fc" stopOpacity="0.8" />
             <stop offset="100%" stopColor="transparent" />
-          </linearGradient>
-          <linearGradient id="glowViolet" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%"   stopColor="transparent" />
-            <stop offset="30%"  stopColor="transparent" />
-            <stop offset="50%"  stopColor="#818cf8" stopOpacity="1" />
-            <stop offset="70%"  stopColor="transparent" />
-            <stop offset="100%" stopColor="transparent" />
-          </linearGradient>
-          <linearGradient id="glowEmerald" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%"   stopColor="transparent" />
-            <stop offset="30%"  stopColor="transparent" />
-            <stop offset="50%"  stopColor="#34d399" stopOpacity="1" />
           </linearGradient>
         </defs>
 
-        {[...Array(16)].map((_, i) => {
-          const yEdge   = 220 + i * 16;
-          const yCenter = 60  + i * 12;
-          const pathD = `M -50,${yEdge} Q 500,${yCenter} 1050,${yEdge}`;
-          const glowId = i % 3 === 0 ? "glowEmerald" : i % 3 === 1 ? "glowBlue" : "glowViolet";
-          const dur = 5 + (i % 4) * 1.2;
-
+        {[...Array(6)].map((_, i) => {
+          const delay = i * 0.5;
+          const startY = 350 + i * 30;
+          const endY = 450 - i * 25;
+          
           return (
-            <g key={i}>
-              {/* Static dim baseline */}
-              <path d={pathD} fill="none" stroke="rgba(51,65,85,0.35)" strokeWidth="1.2" />
-              {/* Moving glow slug */}
-              <motion.path
-                d={pathD}
-                fill="none"
-                stroke={`url(#${glowId})`}
-                strokeWidth="3"
-                pathLength={1}
-                strokeDasharray="0.18 1"
-                initial={{ strokeDashoffset: 1.2 }}
-                animate={{ strokeDashoffset: -0.2 }}
-                transition={{
-                  duration: dur,
-                  repeat: Infinity,
-                  ease: "linear",
-                  delay: i * 0.35,
-                }}
-              />
-            </g>
+            <motion.path
+              key={i}
+              d={`M -100,${startY} C 300,${startY - 250} 1000,${endY + 300} 1540,${endY}`}
+              fill="none"
+              stroke="url(#silkGrad)"
+              strokeWidth={i % 2 === 0 ? "4" : "2"}
+              initial={{ opacity: 0.1 }}
+              animate={{ 
+                d: [
+                  `M -100,${startY} C 300,${startY - 250} 1000,${endY + 300} 1540,${endY}`,
+                  `M -100,${startY + 100} C 400,${startY + 200} 900,${endY - 250} 1540,${endY - 100}`,
+                  `M -100,${startY} C 300,${startY - 250} 1000,${endY + 300} 1540,${endY}`
+                ],
+                opacity: [0.1, 0.4, 0.1]
+              }}
+              transition={{
+                duration: 20 + i * 2,
+                repeat: Infinity,
+                ease: "linear",
+                delay: delay
+              }}
+            />
           );
         })}
       </svg>
-      {/* Fade out bottom so lines dissolve into black floor */}
-      <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black via-black/70 to-transparent" />
+      
+      {/* Optimized Micro-particles (Hardware-accelerated CSS shadow instead of SVG filters) */}
+      {Array.from({ length: 25 }).map((_, i) => (
+        <motion.div
+          key={`star-${i}`}
+          className="absolute rounded-full bg-white will-change-transform"
+          style={{
+            width: Math.random() * 2 + 1,
+            height: Math.random() * 2 + 1,
+            left: `${Math.random() * 100}%`,
+            top: `${Math.random() * 100}%`,
+            boxShadow: '0 0 6px rgba(255,255,255,0.8)'
+          }}
+          animate={{
+            y: [0, Math.random() * -200 - 50],
+            opacity: [0, Math.random() * 0.6 + 0.1, 0]
+          }}
+          transition={{
+            duration: Math.random() * 12 + 10,
+            repeat: Infinity,
+            ease: "linear",
+            delay: Math.random() * 5
+          }}
+        />
+      ))}
+
+      {/* Cinematic noise grain overlay - optimized opacity */}
+      <div 
+        className="absolute inset-0 z-10 opacity-[0.03] mix-blend-overlay" 
+        style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%221%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }}
+      />
+
+      <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-[#020202] via-[#020202]/80 to-transparent z-20" />
     </div>
   );
 };
@@ -483,8 +498,8 @@ const KineticTextSequence = () => {
       <AnimatePresence>
         {phase === 4 && (
           <motion.div key="final" variants={finalVariants} initial="initial" animate="animate" style={{ transformStyle: 'preserve-3d' }} className="flex flex-col items-center text-center">
-             <h1 className="text-5xl md:text-7xl lg:text-[6.5rem] font-semibold uppercase tracking-tight text-glow-sweep flex items-center gap-2 md:gap-4 mb-4">
-                UNCOMPROMISED EXAMS<span className="w-4 h-4 md:w-6 md:h-6 bg-emerald-500 rounded-full shadow-[0_0_40px_rgba(16,185,129,1)] animate-pulse" style={{ flexShrink: 0, WebkitTextFillColor: 'initial', backgroundClip: 'unset', background: 'none' }}></span>
+             <h1 className="text-5xl md:text-7xl lg:text-[6.5rem] font-semibold uppercase tracking-tight text-glow-sweep flex items-center justify-center mb-4">
+                UNCOMPROMISED EXAMS
              </h1>
              <p className="text-zinc-400 text-lg md:text-xl font-medium max-w-2xl tracking-wide opacity-90 mt-4">
                A perfect score means nothing if the process is broken<br />We protect the integrity of the test so your hard work actually matters
@@ -499,14 +514,14 @@ const KineticTextSequence = () => {
 const CredHeroParallax = () => {
   
   return (
-    <section id="hero" style={{ backgroundColor: '#000000' }} className="w-full h-screen overflow-hidden relative flex flex-col">
+    <section id="hero" style={{ backgroundColor: '#030303' }} className="w-full h-screen overflow-hidden relative flex flex-col">
       <style>
         {`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,800;0,900;1,700&display=swap');
           .font-playfair { font-family: 'Playfair Display', serif; }`}
       </style>
 
-      {/* Neon Base Floor — positioned absolutely at bottom */}
-      <CurvedNeonGrid />
+      {/* Ultra Premium Silk Waves Background */}
+      <UltraPremiumSilkBackground />
 
       {/* Center content — fills the screen minus navbar height */}
       <div className="flex-1 flex items-center justify-center pt-20 pb-8 relative z-30">
