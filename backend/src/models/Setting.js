@@ -9,7 +9,8 @@ const settingSchema = new mongoose.Schema({
     enableWebcam: { type: Boolean, default: true },
     disableCopyPaste: { type: Boolean, default: true },
     requireIDVerification: { type: Boolean, default: true },
-    exitPassword: { type: String, default: '' }
+    exitPassword: { type: String, default: '' },
+    anomalyThreshold: { type: Number, default: 20 } // Threshold for score spike detection
 }, { timestamps: true });
 
 module.exports = mongoose.model('Setting', settingSchema);

@@ -31,6 +31,7 @@ const uploadRoutes = require('./routes/uploadRoutes');
 const { setupCodeEvaluationWorker } = require('./queues/codeGradingQueue');
 const { setupFrontendEvaluationWorker } = require('./queues/frontendGradingQueue');
 const { setupInviteEmailWorker } = require('./queues/inviteEmailQueue');
+const { startIntelligenceWorker } = require('./queues/intelligenceWorker');
 const traceMiddleware = require('./middlewares/traceMiddleware');
 
 const app = express();
@@ -197,6 +198,8 @@ app.set('io', io);
 setupCodeEvaluationWorker(io);
 setupFrontendEvaluationWorker(io);
 setupInviteEmailWorker();
+startIntelligenceWorker();
+startHealthMonitor(io);
 
 // Socket.IO Authentication Middleware
 // Har connection se pehle JWT token verify hoga
@@ -294,9 +297,7 @@ app.use(errorHandler);
 // ═══════════════════════════════════════════════════════════
 // Ab yahan sirf authenticated users hi pahunchenge
 
-const ExamSession = require('./models/ExamSession');
-const Exam = require('./models/Exam');
-const Setting = require('./models/Setting');
+
 
 io.on('connection', (socket) => {
     console.log(`⚡ Connected: ${socket.id} | User: ${socket.user.email} (${socket.user.role})`);
@@ -352,6 +353,8 @@ io.on('connection', (socket) => {
             socket.emit('session_expired', { message: 'Session expired. Please re-authenticate.' });
             return socket.disconnect(true);
         }
+
+
 
         // Validation: Only students should report violations
         if (socket.user.role !== 'student') {

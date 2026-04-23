@@ -65,7 +65,6 @@ exports.getLiveSessions = asyncHandler(async (req, res) => {
     .sort({ startedAt: -1 })
     .lean();
 
-    // Filter out sessions with missing relational data to prevent "Unknown" entries
     const formatted = sessions.filter(s => s.student && s.exam).map(s => ({
         _id: s._id,
         studentId: s.student?._id || null,
@@ -176,7 +175,6 @@ exports.deleteStudent = asyncHandler(async (req, res) => {
         throw new Error('Student not found');
     }
 
-    // Log the action
     await AuditLog.create({
         adminId: req.user.id,
         action: 'DELETE_STUDENT',
@@ -195,7 +193,6 @@ exports.deleteMentor = asyncHandler(async (req, res) => {
         throw new Error('Mentor not found');
     }
 
-    // Log the action
     await AuditLog.create({
         adminId: req.user.id,
         action: 'DELETE_MENTOR',
@@ -208,12 +205,8 @@ exports.deleteMentor = asyncHandler(async (req, res) => {
 // ═══════════════════════════════════════════════════════════
 // System Health & Logs
 // ═══════════════════════════════════════════════════════════
-
 exports.getSystemHealth = asyncHandler(async (req, res) => {
-    // 1. Database Health
     const dbStatus = mongoose.connection.readyState === 1 ? 'healthy' : 'degraded';
-    
-    // 2. Judge0 Health (Ping the default or configured URL)
     const judge0Url = process.env.JUDGE0_API_URL || 'https://ce.judge0.com';
     let judge0Status = 'unknown';
     try {
@@ -225,7 +218,6 @@ exports.getSystemHealth = asyncHandler(async (req, res) => {
         judge0Status = 'unreachable';
     }
 
-    // 3. Current Live Sessions
     const liveSessionsCount = await ExamSession.countDocuments({ status: 'in_progress' });
 
     res.json({
@@ -244,7 +236,6 @@ exports.getAuditLogs = asyncHandler(async (req, res) => {
     res.json(logs);
 });
 
-// Delete a single audit log
 exports.deleteAuditLog = asyncHandler(async (req, res) => {
     const log = await AuditLog.findByIdAndDelete(req.params.id);
     if (!log) {
@@ -254,19 +245,16 @@ exports.deleteAuditLog = asyncHandler(async (req, res) => {
     res.json({ message: 'Audit log deleted' });
 });
 
-// Clear all audit logs
 exports.clearAuditLogs = asyncHandler(async (req, res) => {
     await AuditLog.deleteMany({});
     res.json({ message: 'All audit logs cleared' });
 });
 
 // ═══════════════════════════════════════════════════════════
-// Bulk Import Users
+// Bulk Operations
 // ═══════════════════════════════════════════════════════════
-
 exports.bulkImportUsers = asyncHandler(async (req, res) => {
     const { users } = req.body;
-    
     if (!users || !Array.isArray(users)) {
         res.status(400);
         throw new Error('Please provide a valid array of users');
@@ -275,11 +263,8 @@ exports.bulkImportUsers = asyncHandler(async (req, res) => {
     const results = [];
     const validUsersToInsert = [];
     const bcrypt = require('bcryptjs');
-
-    // Generate a shared salt for this batch to optimize hashing
     const salt = await bcrypt.genSalt(10);
 
-    // Fetch existing emails to avoid individual DB calls
     const emailsToImport = users.map(u => u.email);
     const existingUsers = await User.find({ email: { $in: emailsToImport } }).select('email');
     const existingEmailsSet = new Set(existingUsers.map(u => u.email));
@@ -290,7 +275,6 @@ exports.bulkImportUsers = asyncHandler(async (req, res) => {
             continue;
         }
 
-        // Use password from CSV if provided, else generate 6-digit random one
         let plainPassword = userData.password;
         if (!plainPassword || String(plainPassword).trim() === '') {
             const randNum = Math.floor(100000 + Math.random() * 899999);
@@ -303,58 +287,38 @@ exports.bulkImportUsers = asyncHandler(async (req, res) => {
             name: userData.name,
             email: userData.email,
             role: userData.role ? String(userData.role).toLowerCase().trim() : 'student',
-            password: hashedPassword // Pre-hashed
+            password: hashedPassword
         });
 
-        results.push({
-            email: userData.email,
-            password: plainPassword,
-            status: 'success'
-        });
-        
-        // Add to set to prevent duplicates within the same batch
+        results.push({ email: userData.email, password: plainPassword, status: 'success' });
         existingEmailsSet.add(userData.email);
     }
 
     if (validUsersToInsert.length > 0) {
-        // bypass middleware hook using insertMany
         await User.insertMany(validUsersToInsert, { ordered: false });
     }
 
-    const successCount = results.filter(r => r.status === 'success').length;
-    const failureCount = results.filter(r => r.status === 'failed').length;
-    res.json({ message: 'Bulk import processed', results, successCount, failureCount });
+    res.json({ message: 'Bulk import processed', results });
 });
-
-// ═══════════════════════════════════════════════════════════
-// Bulk Delete Users
-// ═══════════════════════════════════════════════════════════
 
 exports.bulkDeleteUsers = asyncHandler(async (req, res) => {
     const { userIds } = req.body;
-    
     if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
         res.status(400);
         throw new Error('Please provide an array of user IDs to delete');
     }
 
-    // Prevent admin from deleting themselves
     const filteredIds = userIds.filter(id => id.toString() !== req.user.id.toString());
-    
     const result = await User.deleteMany({ _id: { $in: filteredIds } });
-
     res.json({ message: `${result.deletedCount} users deleted successfully` });
 });
 
 // ═══════════════════════════════════════════════════════════
 // Global Settings
 // ═══════════════════════════════════════════════════════════
-
 exports.getSettings = asyncHandler(async (req, res) => {
     let setting = await Setting.findOne();
-    if (!setting) {
-        setting = await Setting.create({});
-    }
+    if (!setting) setting = await Setting.create({});
     res.json(setting);
 });
 
@@ -368,11 +332,12 @@ exports.saveSettings = asyncHandler(async (req, res) => {
         setting.disableCopyPaste = req.body.disableCopyPaste ?? setting.disableCopyPaste;
         setting.requireIDVerification = req.body.requireIDVerification ?? setting.requireIDVerification;
         setting.exitPassword = req.body.exitPassword !== undefined ? req.body.exitPassword : setting.exitPassword;
+        setting.anomalyThreshold = req.body.anomalyThreshold ?? setting.anomalyThreshold;
         await setting.save();
     } else {
         setting = await Setting.create(req.body);
     }
-    res.json({ message: 'Settings saved successfully', setting });
+    res.json({ message: 'Settings saved successfully', settings: setting });
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -387,52 +352,24 @@ exports.getCandidates = asyncHandler(async (req, res) => {
             { email: { $regex: search, $options: 'i' } }
         ];
     }
-
-    const candidates = await User.find(query)
-        .select('name email profilePicture idCardUrl isVerified createdAt')
-        .lean();
-
-    // Enrich with active exam session info (Only those active in the last 3 minutes)
+    const candidates = await User.find(query).select('name email profilePicture idCardUrl isVerified createdAt').lean();
     const studentIds = candidates.map(c => c._id);
     const LIVE_THRESHOLD = new Date(Date.now() - 3 * 60 * 1000);
-    const activeSessions = await ExamSession.find({ 
-        student: { $in: studentIds }, 
-        status: 'in_progress',
-        updatedAt: { $gte: LIVE_THRESHOLD }
-    })
-        .populate('exam', 'title')
-        .lean();
-
+    const activeSessions = await ExamSession.find({ student: { $in: studentIds }, status: 'in_progress', updatedAt: { $gte: LIVE_THRESHOLD } }).populate('exam', 'title').lean();
     const sessionMap = {};
     activeSessions.forEach(s => { sessionMap[s.student.toString()] = s; });
-
-    const enriched = candidates.map(c => ({
-        ...c,
-        isLive: !!sessionMap[c._id.toString()],
-        currentExam: sessionMap[c._id.toString()]?.exam?.title || null
-    }));
-
+    const enriched = candidates.map(c => ({ ...c, isLive: !!sessionMap[c._id.toString()], currentExam: sessionMap[c._id.toString()]?.exam?.title || null }));
     res.json(enriched);
 });
 
 exports.verifyCandidate = asyncHandler(async (req, res) => {
-    const user = await User.findByIdAndUpdate(
-        req.params.userId,
-        { isVerified: true },
-        { new: true }
-    ).select('name email isVerified');
-
+    const user = await User.findByIdAndUpdate(req.params.userId, { isVerified: true }, { new: true }).select('name email isVerified');
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json({ success: true, user });
 });
 
 exports.unverifyCandidate = asyncHandler(async (req, res) => {
-    const user = await User.findByIdAndUpdate(
-        req.params.userId,
-        { isVerified: false },
-        { new: true }
-    ).select('name email isVerified');
-
+    const user = await User.findByIdAndUpdate(req.params.userId, { isVerified: false }, { new: true }).select('name email isVerified');
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json({ success: true, user });
 });
@@ -443,42 +380,29 @@ exports.unverifyCandidate = asyncHandler(async (req, res) => {
 exports.getStudentIntelligenceReport = asyncHandler(async (req, res) => {
     const studentId = req.params.studentId;
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
+    const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    // Separate Cache Keys for modularity
     const statsCacheKey = `student_stats_${studentId}`;
-    const timelineCacheKey = `student_timeline_${studentId}_p${page}_l${limit}`;
+    const timelineCacheKey = `student_timeline_${studentId}_p${page}`;
 
-    // 1. DYNAMIC CONFIGURATION (No Hardcoding)
-    const systemSettings = await Setting.findOne().lean() || {};
-    const ANOMALY_THRESHOLD = systemSettings.anomalyThreshold || 20; 
-    const TAB_SWITCH_LIMIT = systemSettings.maxTabSwitches || 5;
+    let globalStats = await getCache(statsCacheKey);
+    let timelineData = await getCache(timelineCacheKey);
 
-    // 2. REDIS CACHE CHECK (Parallel Fetch)
-    const [cachedStats, cachedTimeline] = await Promise.all([
-        getCache(statsCacheKey),
-        getCache(timelineCacheKey)
-    ]);
+    if (!globalStats) {
+        console.log(`🧠 AI Sync: Triggering background pre-computation for ${studentId}`);
+        const { addIntelligenceJob } = require('../queues/intelligenceQueue');
+        addIntelligenceJob(studentId).catch(err => console.error('Queue trigger failed:', err.message));
+        
+        const systemSettings = await Setting.findOne().lean() || {};
+        const ANOMALY_THRESHOLD = systemSettings.anomalyThreshold || 20;
+        const TAB_SWITCH_LIMIT = systemSettings.maxTabSwitches || 5;
 
-    let globalStats = cachedStats;
-    let timelineData = cachedTimeline;
-
-    // 3. THE REUSABLE AGGREGATION BLOCK
-    const matchStage = { 
-        $match: { 
-            student: new mongoose.Types.ObjectId(studentId),
-            status: { $in: ['submitted', 'reviewed', 'auto_submitted', 'flagged'] }
-        } 
-    };
-
-    if (!globalStats || !timelineData) {
-        const aggregationResult = await ExamSession.aggregate([
-            matchStage,
-            {
+        const reports = await ExamSession.aggregate([
+            { 
                 $facet: {
-                    // PIPELINE 1: Global Stats (Processes ALL historical data)
-                    globalData: [
+                    "globalData": [
+                        { $match: { student: new mongoose.Types.ObjectId(studentId), status: { $in: ['submitted', 'reviewed', 'auto_submitted', 'flagged'] } } },
                         {
                             $group: {
                                 _id: null,
@@ -490,64 +414,61 @@ exports.getStudentIntelligenceReport = asyncHandler(async (req, res) => {
                             }
                         }
                     ],
-                    // PIPELINE 2: Paginated Timeline
-                    timeline: [
+                    "timeline": [
+                        { $match: { student: new mongoose.Types.ObjectId(studentId) } },
                         { $sort: { startedAt: -1 } },
                         { $skip: skip },
                         { $limit: limit },
-                        { 
-                            $lookup: { 
-                                from: 'exams', localField: 'exam', foreignField: '_id', as: 'examData' 
-                            } 
+                        {
+                            $lookup: {
+                                from: 'exams',
+                                localField: 'exam',
+                                foreignField: '_id',
+                                as: 'examInfo'
+                            }
                         },
-                        { $unwind: '$examData' },
-                        { 
+                        { $unwind: "$examInfo" },
+                        {
                             $project: {
-                                score: 1, percentage: 1, passed: 1, 
-                                tabSwitchCount: 1, startedAt: 1, status: 1, violations: 1,
-                                examTitle: '$examData.title', examCategory: '$examData.category'
-                            } 
+                                examTitle: "$examInfo.title",
+                                category: "$examInfo.category",
+                                score: 1,
+                                percentage: 1,
+                                passed: 1,
+                                status: 1,
+                                tabSwitches: "$tabSwitchCount",
+                                totalViolations: { $size: "$violations" },
+                                startedAt: 1,
+                                submittedAt: 1
+                            }
                         }
                     ]
                 }
             }
         ]);
 
-        const rawGlobal = aggregationResult[0].globalData[0] || { 
-            totalExams: 0, totalPercentage: 0, passedExams: 0, totalTabSwitches: 0, allViolations: [] 
-        };
-        timelineData = aggregationResult[0].timeline;
-
-        // 4. INTELLIGENCE PROCESSING
-        let weightedRiskScore = 0;
-        const violationsBreakdown = {};
-
+        const rawGlobal = reports[0].globalData[0] || { totalExams: 0, totalPercentage: 0, passedExams: 0, totalTabSwitches: 0, allViolations: [] };
+        let weightedRisk = 0;
         rawGlobal.allViolations.flat().forEach(v => {
             if (!v) return;
-            violationsBreakdown[v.type] = (violationsBreakdown[v.type] || 0) + 1;
-            if (v.severity === 'critical') weightedRiskScore += 5;
-            else if (v.severity === 'high') weightedRiskScore += 3;
-            else if (v.severity === 'medium') weightedRiskScore += 2;
-            else weightedRiskScore += 1;
+            if (v.severity === 'critical') weightedRisk += 5;
+            else if (v.severity === 'high') weightedRisk += 3;
+            else weightedRisk += 1;
         });
-        weightedRiskScore += (rawGlobal.totalTabSwitches * 1);
+        weightedRisk += (rawGlobal.totalTabSwitches * 1);
 
         const avgPercentage = rawGlobal.totalExams > 0 ? (rawGlobal.totalPercentage / rawGlobal.totalExams).toFixed(1) : 0;
         const passRate = rawGlobal.totalExams > 0 ? ((rawGlobal.passedExams / rawGlobal.totalExams) * 100).toFixed(0) : 0;
-        
-        const MAX_RISK_PER_EXAM = 15;
-        const maxPossibleRisk = rawGlobal.totalExams * MAX_RISK_PER_EXAM;
-        const normalizedRisk = maxPossibleRisk > 0 ? Math.min((weightedRiskScore / maxPossibleRisk) * 100, 100).toFixed(0) : 0;
+        const normalizedRisk = rawGlobal.totalExams > 0 ? Math.min((weightedRisk / (rawGlobal.totalExams * 15)) * 100, 100).toFixed(0) : 0;
 
         let anomalyDetected = null;
-        if (timelineData.length >= 2) {
-            const latestExam = timelineData[0];
-            const prevAvg = (rawGlobal.totalPercentage - latestExam.percentage) / (rawGlobal.totalExams - 1 || 1);
-            
-            if ((latestExam.percentage - prevAvg) > ANOMALY_THRESHOLD && latestExam.tabSwitchCount >= TAB_SWITCH_LIMIT) {
+        if (reports[0].timeline.length >= 2) {
+            const latest = reports[0].timeline[0];
+            const prevAvg = (rawGlobal.totalPercentage - latest.percentage) / (rawGlobal.totalExams - 1 || 1);
+            if ((latest.percentage - prevAvg) > ANOMALY_THRESHOLD && latest.tabSwitches >= TAB_SWITCH_LIMIT) {
                 anomalyDetected = {
-                    message: `Suspicious score spike (+${(latestExam.percentage - prevAvg).toFixed(1)}%) with high tab switching.`,
-                    exam: latestExam.examTitle
+                    message: `Suspicious score spike (+${(latest.percentage - prevAvg).toFixed(1)}%) with high tab switching.`,
+                    exam: latest.examTitle
                 };
             }
         }
@@ -560,9 +481,11 @@ exports.getStudentIntelligenceReport = asyncHandler(async (req, res) => {
             riskScore: `${normalizedRisk}%`,
             riskLevel: normalizedRisk > 40 ? 'High 🔴' : normalizedRisk > 15 ? 'Medium 🟡' : 'Low 🟢',
             anomalyDetected,
-            violationsBreakdown
+            violationsBreakdown: {},
+            isFallback: true
         };
 
+        timelineData = reports[0].timeline;
         await setCache(statsCacheKey, globalStats, 3600);
         await setCache(timelineCacheKey, timelineData, 300);
     }
@@ -572,12 +495,8 @@ exports.getStudentIntelligenceReport = asyncHandler(async (req, res) => {
     res.json({
         student,
         overview: globalStats,
-        pagination: {
-            page,
-            limit,
-            totalPages: Math.ceil(globalStats.totalLifetimeExams / limit)
-        },
-        timelineData
+        timelineData,
+        generatedAt: new Date()
     });
 });
 
@@ -587,20 +506,8 @@ exports.getStudentIntelligenceReport = asyncHandler(async (req, res) => {
 exports.extendExamTime = asyncHandler(async (req, res) => {
     const { examId, extraMinutes } = req.body;
     const extraSeconds = extraMinutes * 60;
-
-    const result = await ExamSession.updateMany(
-        { exam: examId, status: 'in_progress' }, 
-        { $inc: { remainingTimeSeconds: extraSeconds } }
-    );
-
+    const result = await ExamSession.updateMany({ exam: examId, status: 'in_progress' }, { $inc: { remainingTimeSeconds: extraSeconds } });
     const io = req.app.get('io'); 
-    
-    // ⚡ PRO FIX: Send exact server absolute time to prevent drift
-    io.to(`exam_${examId}`).emit('time_extended', { 
-        extraSeconds, 
-        extraMinutes,
-        serverSyncTime: Date.now() // Absolute time for frontend sync
-    });
-
+    io.to(`exam_${examId}`).emit('time_extended', { extraSeconds, extraMinutes, serverSyncTime: Date.now() });
     res.status(200).json({ success: true, message: `Time extended for ${result.modifiedCount} students.` });
 });

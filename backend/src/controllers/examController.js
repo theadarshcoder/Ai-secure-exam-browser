@@ -1066,6 +1066,10 @@ exports.submitExam = asyncHandler(async (req, res) => {
     // ⚡ CRITICAL: Clear student's dashboard cache to reflect submission immediately
     await clearCache(`active_exams_user_${studentId}`);
 
+    // 🧠 AI Intelligence: Trigger background pre-computation
+    const { addIntelligenceJob } = require('../queues/intelligenceQueue');
+    await addIntelligenceJob(studentId);
+
     res.json({
         message: hasShortAnswers 
             ? 'Exam submitted! Some answers require mentor evaluation.'
