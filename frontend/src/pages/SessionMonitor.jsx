@@ -581,7 +581,7 @@ export default function SessionMonitor() {
   const handleFlagSession = () => {
     socketService.emitFlagSession({
       studentId: sessionData.id,
-      examId: examId,
+      examId: sessionData.examId,
       reason: `Manually flagged by admin during live monitoring.`
     });
     toast.success("Student session flagged for review.");
