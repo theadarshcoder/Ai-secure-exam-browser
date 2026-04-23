@@ -42,8 +42,7 @@ const FAQ_RULES = [
     }
 ];
 
-const FAQBot = ({ examId, userId }) => {
-    const [isOpen, setIsOpen] = useState(false);
+const FAQBot = ({ examId, userId, isOpen, onClose }) => {
     const [messages, setMessages] = useState([
         { sender: 'bot', text: 'Hi! 👋 Having a technical issue? Type your problem or click "Contact Admin" below for direct help.' }
     ]);
@@ -105,7 +104,7 @@ const FAQBot = ({ examId, userId }) => {
     };
 
     return (
-        <div className="fixed bottom-6 right-6 z-[100]">
+        <div className="fixed bottom-14 left-6 z-[100]">
             <AnimatePresence>
                 {isOpen && (
                     <motion.div
@@ -127,7 +126,7 @@ const FAQBot = ({ examId, userId }) => {
                                 </div>
                             </div>
                             <button
-                                onClick={() => setIsOpen(false)}
+                                onClick={onClose}
                                 className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
                             >
                                 <X size={14} className="text-slate-400" />
@@ -195,18 +194,6 @@ const FAQBot = ({ examId, userId }) => {
                     </motion.div>
                 )}
             </AnimatePresence>
-
-            {/* Floating Button */}
-            {!isOpen && (
-                <motion.button
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    onClick={() => setIsOpen(true)}
-                    className="w-14 h-14 rounded-2xl bg-slate-900 text-white shadow-2xl shadow-slate-900/30 flex items-center justify-center text-2xl hover:scale-105 transition-transform active:scale-95 border border-white/10"
-                >
-                    🤖
-                </motion.button>
-            )}
         </div>
     );
 };

@@ -32,6 +32,7 @@ import {
   AlertCircle,
   MessageSquare,
   Radio,
+  Bot,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTabVisibility, TabToast } from "../components/TabVisibility";
@@ -230,9 +231,9 @@ const ProctoringSidebar = React.memo(
     camError,
     onRetryCamera,
   }) => (
-    <div className="flex flex-col w-full gap-5">
-      <div className="relative group">
-        <div className="relative aspect-square w-full rounded-2xl bg-slate-900 border border-slate-200 overflow-hidden shadow-2xl">
+    <div className="flex flex-col items-center w-full gap-2">
+      <div className="relative group w-[140px]">
+        <div className="relative aspect-video w-full rounded-xl bg-slate-900 border border-slate-200 overflow-hidden shadow-xl">
           {cameraActive ? (
             <video
               ref={videoRef}
@@ -947,6 +948,7 @@ export default function ExamCockpit() {
   );
   const [showConfirm, setShowConfirm] = useState(false);
   const [showExitPrompt, setShowExitPrompt] = useState(false);
+  const [isFAQOpen, setIsFAQOpen] = useState(false);
   const [exitPassword, setExitPassword] = useState("");
   const [exitError, setExitError] = useState("");
   const [rating, setRating] = useState(0);
@@ -2268,7 +2270,7 @@ export default function ExamCockpit() {
                 onRetryCamera={initCamera}
               />
             </div>
-            <div className="p-4 border-t border-slate-100 mt-auto">
+            <div className="p-4 border-t border-slate-100 mt-auto flex flex-col gap-2">
               <button
                 onClick={handleRequestHelp}
                 disabled={helpStatus !== "idle"}
@@ -2285,6 +2287,22 @@ export default function ExamCockpit() {
                     ? "Request Failed"
                     : "Need Help?"}
               </button>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setIsFAQOpen(!isFAQOpen)}
+                  className={`flex-1 h-9 rounded-xl flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest transition-all active:scale-95 ${isFAQOpen ? "bg-slate-900 text-white shadow-lg shadow-slate-200" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"}`}
+                >
+                  <Bot size={14} /> AI Chat
+                </button>
+                <button
+                  onClick={() => setShowExitPrompt(true)}
+                  className="w-9 h-9 shrink-0 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-all flex items-center justify-center active:scale-95 shadow-sm"
+                  title="Exit Session"
+                >
+                  <Power size={14} className="stroke-[2.5px]" />
+                </button>
+              </div>
             </div>
             {/* Encrypted Session moved to global bottom bar */}
           </aside>
@@ -2573,13 +2591,6 @@ export default function ExamCockpit() {
                     <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />{" "}
                     Encrypted Session
                   </span>
-                  <button
-                    onClick={() => setShowExitPrompt(true)}
-                    className="flex items-center justify-center w-7 h-7 rounded-full bg-white border border-slate-200 shadow-sm text-slate-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-all group active:scale-95"
-                    title="Exit Session"
-                  >
-                    <Power size={13} className="stroke-[2.5px]" />
-                  </button>
                 </div>
               </footer>
             </div>
@@ -2754,7 +2765,12 @@ export default function ExamCockpit() {
         userId={sessionStorage.getItem("vision_id") || sessionStorage.getItem("vision_email")} 
         examId={examId}
       />
-      <FAQBot examId={examId} userId={sessionStorage.getItem("vision_id") || sessionStorage.getItem("vision_email")} />
+      <FAQBot 
+        examId={examId} 
+        userId={sessionStorage.getItem("vision_id") || sessionStorage.getItem("vision_email")} 
+        isOpen={isFAQOpen}
+        onClose={() => setIsFAQOpen(false)}
+      />
     </div>
   );
 }
