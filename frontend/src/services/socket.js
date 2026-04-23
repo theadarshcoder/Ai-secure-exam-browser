@@ -64,6 +64,15 @@ class SocketService {
       }, 2000);
     });
 
+    this.socket.on('force_logout', (data) => {
+      console.warn('🔒 Force Logout:', data.message);
+      toast.error(data.message || 'Security Alert: Account accessed from another device.', { duration: 6000 });
+      sessionStorage.clear();
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 3000);
+    });
+
     return this.socket;
   }
 
