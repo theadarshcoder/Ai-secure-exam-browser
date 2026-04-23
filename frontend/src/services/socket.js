@@ -6,6 +6,7 @@ const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 class SocketService {
   constructor() {
     this.socket = null;
+    this.currentExamRoom = null; // Track current room for auto-rejoin
   }
 
   connect() {
@@ -24,12 +25,18 @@ class SocketService {
       auth: { token },
       transports: ['websocket'],
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: 10, // Increased for stability
       reconnectionDelay: 2000,
     });
 
     this.socket.on('connect', () => {
       console.log('🔌 Socket connected (authenticated)');
+      
+      // Auto-rejoin exam room if it was previously set (Fixes Bug 3)
+      if (this.currentExamRoom) {
+        console.log(`🔄 Re-joining exam room: ${this.currentExamRoom}`);
+        this.socket.emit('join_exam_room', { examId: this.currentExamRoom });
+      }
     });
 
     this.socket.on('connect_error', (err) => {
@@ -146,6 +153,7 @@ class SocketService {
 
   joinExamRoom(examId) {
     if (this.socket && this.socket.connected) {
+      this.currentExamRoom = examId;
       this.socket.emit('join_exam_room', { examId });
     }
   }

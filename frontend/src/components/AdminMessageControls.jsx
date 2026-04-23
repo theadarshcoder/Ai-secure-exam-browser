@@ -16,6 +16,14 @@ const AdminMessageControls = ({ examId, activeStudents = [], mode = 'full' }) =>
     const [severity, setSeverity] = useState('info');
     const [isSending, setIsSending] = useState(false);
 
+    // Initialize compact mode defaults
+    React.useEffect(() => {
+        if (mode === 'compact' && activeStudents.length > 0) {
+            setMsgType('direct');
+            setTargetStudentId(activeStudents[0]._id || activeStudents[0].id);
+        }
+    }, [mode, activeStudents]);
+
     const handleSend = () => {
         if (!messageText.trim()) return;
         if (msgType === 'direct' && !targetStudentId) {

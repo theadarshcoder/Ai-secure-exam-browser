@@ -974,14 +974,12 @@ export default function ExamCockpit() {
 
     // Handle incoming admin messages & commands
     const handleAdminMessage = (data) => {
-        const { type, message, action, messageId, severity } = data;
+        const { action, message } = data;
         
-        // 1. Mandatory Ack for critical/direct messages
-        if (messageId) {
-            socketService.emitMessageAck(messageId, sessionStorage.getItem('vision_email'));
-        }
+        // 🛡️ Fix Bug 2: Decouple system actions from messaging logic
+        // Normal messages with ACKs are handled by StudentMessageModal automatically
+        // Here we ONLY handle state-changing system actions
 
-        // 2. Handle System Actions
         if (action === 'BLOCK') {
             setIsBlocked(true);
             toast.error(message || "Your screen has been blocked by an administrator.");
@@ -992,18 +990,7 @@ export default function ExamCockpit() {
             setTerminated({ reason: message || "Exam terminated by administrator." });
             toast.error("EXAM TERMINATED", { duration: 10000 });
         } else if (action === 'EXTEND_TIME') {
-            // Handle time extension if needed
-        }
-
-        // 3. Show UI Alert if it's just a message
-        if (message && !action) {
-            if (severity === 'critical') {
-                toast.error(message, { duration: 8000, icon: '🚨' });
-            } else if (severity === 'warning') {
-                toast(message, { icon: '⚠️', duration: 5000 });
-            } else {
-                toast.success(message, { icon: '📩' });
-            }
+            // Handle time extension state if needed
         }
     };
 
@@ -1159,16 +1146,9 @@ export default function ExamCockpit() {
     socketService.joinExamRoom(examId);
 
     const handleBroadcast = (data) => {
-      // Bug 6: Real-time socket-based termination
-      if (
-        data.type === "TERMINATE" &&
-        (data.studentId === sessionStorage.getItem("vision_email") ||
-          data.examId === examId)
-      ) {
-        setTerminated({ reason: data.reason || "Terminated by supervisor" });
-      } else if (!data.examId || data.examId === examId) {
-        setBroadcastMessage(data.message);
-        setTimeout(() => setBroadcastMessage(null), 15000);
+      // Legacy broadcast handling - just show a simple toast
+      if (!data.examId || data.examId === examId) {
+        toast(data.message, { icon: '📩', duration: 6000 });
       }
     };
 
@@ -1215,6 +1195,7 @@ export default function ExamCockpit() {
         [err.questionId]: { error: "Evaluation Failed", details: err.message },
       }));
       setIsExecuting(false);
+      setCooldownSeconds(0); // 🛡️ Fix Bug 4: Reset cooldown on error so student can retry immediately
       toast.dismiss("code-queued");
       toast.error(err.message || "Background evaluation failed.", {
         id: "code-eval-error",

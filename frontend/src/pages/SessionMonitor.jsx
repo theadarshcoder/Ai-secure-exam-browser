@@ -485,15 +485,16 @@ export default function SessionMonitor() {
   }, []);
 
   const handleTerminate = () => {
-    const existing = JSON.parse(localStorage.getItem('vision_terminated_sessions') || '[]');
-    const entry = {
-      studentId: sessionData.id,
+    // 🛡️ Fix Bug 1: Use sockets for termination instead of LocalStorage (which doesn't sync across devices)
+    socketService.emitAdminMessage({
       examId: sessionData.examId,
-      reason: 'Terminated by Admin via Session Monitor',
-      terminatedBy: 'admin',
-      timestamp: new Date().toISOString(),
-    };
-    localStorage.setItem('vision_terminated_sessions', JSON.stringify([entry, ...existing]));
+      studentId: sessionData.id,
+      type: 'direct',
+      action: 'TERMINATE',
+      message: 'Your exam has been terminated by the administrator.',
+      severity: 'critical'
+    });
+
     const role = sessionStorage.getItem('vision_role')?.toLowerCase();
     navigate(role === 'mentor' ? '/mentor' : '/admin');
   };
