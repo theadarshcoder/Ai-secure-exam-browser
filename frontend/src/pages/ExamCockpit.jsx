@@ -35,6 +35,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTabVisibility, TabToast } from "../components/TabVisibility";
+import StudentMessageModal from "../components/StudentMessageModal";
+import FAQBot from "../components/FAQBot";
 import * as faceapi from "@vladmandic/face-api";
 import VisionLogo from "../components/VisionLogo";
 import AnimatedStatusIcon from "../components/AnimatedStatusIcon";
@@ -1085,6 +1087,9 @@ export default function ExamCockpit() {
     const socket = socketService.connect();
     if (!socket) return undefined;
 
+    // Join exam room for admin broadcast messages
+    socketService.joinExamRoom(examId);
+
     const handleBroadcast = (data) => {
       // Bug 6: Real-time socket-based termination
       if (
@@ -1110,6 +1115,31 @@ export default function ExamCockpit() {
       toast.dismiss("code-queued");
       toast.success("Code evaluation complete!", { id: "code-eval-success" });
     };
+
+    // ⚡ PRO FIX: Absolute Timer Sync (Drift Addressed)
+    const handleTimeExtension = ({
+      extraSeconds,
+      extraMinutes,
+      serverSyncTime,
+    }) => {
+      // Calculate drift: Local time vs Server broadcast time
+      const networkDelay = Math.floor((Date.now() - serverSyncTime) / 1000);
+
+      // Exact remaining time calculation
+      setSecondsLeft((prev) => {
+        const newSeconds = prev + extraSeconds - networkDelay;
+        // Update endRef to match the new duration
+        endRef.current = Date.now() + newSeconds * 1000;
+        return newSeconds;
+      });
+
+      toast.success(`🚨 Exam time extended by ${extraMinutes} minutes!`, {
+        icon: "⏱️",
+        duration: 5000,
+      });
+    };
+
+    socket.on("time_extended", handleTimeExtension);
 
     const handleCodeEvaluationError = (err) => {
       setExecutionResultsByQuestion((prev) => ({
@@ -1155,6 +1185,7 @@ export default function ExamCockpit() {
       socket.off("force_block_screen", handleForceBlock);
       socket.off("unblock_screen", handleUnblock);
       socket.off("warning", handleWarning);
+      socket.off("time_extended", handleTimeExtension);
       socketService.disconnect();
     };
   }, [examId]);
@@ -2677,6 +2708,9 @@ export default function ExamCockpit() {
       </AnimatePresence>
 
       <FullBlockOverlay isOpen={isBlocked} />
+
+      <StudentMessageModal userId={sessionStorage.getItem("vision_id") || sessionStorage.getItem("vision_email")} />
+      <FAQBot examId={examId} userId={sessionStorage.getItem("vision_id") || sessionStorage.getItem("vision_email")} />
     </div>
   );
 }

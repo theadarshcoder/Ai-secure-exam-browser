@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import socketService from '../services/socket';
 import FloatingPillMenu from '../components/FloatingPillMenu';
+import AdminMessageControls from '../components/AdminMessageControls';
 import {
   LayoutDashboard, Users, FileText, Settings,
   Search, FileUp, UserPlus, Trash2, Eye,
@@ -806,6 +807,10 @@ export default function AdminDashboard() {
             <p className="text-sm font-medium text-[#7A7A7A] mt-1">{stat.label}</p>
           </div>
         ))}
+      </div>
+
+      <div className="mb-2">
+        <AdminMessageControls activeStudents={[]} mode="full" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

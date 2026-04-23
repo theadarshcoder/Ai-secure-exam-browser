@@ -4,6 +4,7 @@
 
 const express = require('express');
 const http = require('http');
+const crypto = require('crypto');
 const cors = require('cors');
 const { Server } = require('socket.io');
 const rateLimit = require('express-rate-limit');
@@ -18,6 +19,7 @@ const { RedisStore } = require('rate-limit-redis');
 const cacheService = require('./services/cacheService');
 const morgan = require('morgan');
 const validateEnv = require('./utils/envValidator');
+const { startHealthMonitor, incrementDisconnect } = require('./services/healthMonitor');
 
 // ─── Route Imports ───────────────────────────────────────
 const authRoutes = require('./routes/authRoutes');
@@ -256,6 +258,7 @@ io.use(async (socket, next) => {
     validateEnv(); // Verify required variables before starting
     await connectDB();
     await connectRedis();
+    startHealthMonitor(io); // Start monitoring after DB is connected
 })();
 
 app.get('/', (req, res) => res.send('<h1>Server & Sockets working perfectly 🔒</h1>'));
@@ -588,9 +591,70 @@ io.on('connection', (socket) => {
             console.error('Warning emit fail:', err.message);
         }
     });
-    
+
+    // ═══════════════════════════════════════════════════════════
+    //  📨 ADMIN MESSAGING SYSTEM (Secure Rooms + ACK)
+    // ═══════════════════════════════════════════════════════════
+
+    // Students join exam-specific room for targeted broadcasts
+    socket.on('join_exam_room', ({ examId }) => {
+        if (!examId) return;
+        socket.examId = examId; // Track examId for disconnect logging
+        socket.join(`exam_${examId}`);
+        console.log(`[Socket] ${socket.user.email} joined exam room: exam_${examId}`);
+    });
+
+    // Secure Admin/Mentor Message Emitter
+    socket.on('send_admin_message', (payload) => {
+        // ⚠️ SECURITY: Only admin/mentor can send messages
+        if (!['admin', 'mentor'].includes(socket.user.role)) {
+            console.warn(`[Security Alert] Unauthorized message attempt by ${socket.user.email} (${socket.user.role})`);
+            return socket.emit('error', { message: 'Unauthorized action. Only admins/mentors can send messages.' });
+        }
+
+        const messageData = {
+            id: crypto.randomUUID(),
+            timestamp: Date.now(),
+            senderEmail: socket.user.email,
+            senderRole: socket.user.role,
+            ...payload
+        };
+
+        if (payload.type === 'broadcast' && payload.examId) {
+            // Send to all students in this exam room
+            io.to(`exam_${payload.examId}`).emit('receive_admin_message', messageData);
+            console.log(`📨 [Broadcast] to exam_${payload.examId} by ${socket.user.email}: ${payload.message}`);
+        } else if (payload.type === 'direct' && payload.studentId) {
+            // Send to specific student
+            io.to(`user_${payload.studentId}`).emit('receive_admin_message', messageData);
+            console.log(`📨 [Direct] to user_${payload.studentId} by ${socket.user.email}: ${payload.message}`);
+        }
+    });
+
+    // Student ACK system
+    socket.on('message_ack', ({ messageId, studentId }) => {
+        console.log(`[ACK] Message ${messageId} acknowledged by ${socket.user.email}`);
+
+        // Notify all admins and mentors of the acknowledgment
+        io.to('role_admin').to('role_mentor').emit('ack_received', {
+            messageId,
+            studentId: studentId || socket.user.id,
+            studentEmail: socket.user.email,
+            timestamp: Date.now()
+        });
+
+        // 🧠 FUTURE TODO: Store in Redis/MongoDB for analytics
+        // await MessageLog.create({ messageId, studentId, acknowledged: true, time: Date.now() });
+    });
+
     socket.on('disconnect', () => {
         if (watchdogTimer) clearTimeout(watchdogTimer);
+        
+        if (socket.user.role === 'student' && socket.examId) {
+            incrementDisconnect(socket.examId);
+            io.to(`exam_${socket.examId}`).emit('student_offline', { userId: socket.user.id });
+        }
+
         console.log(`❌ Disconnected: ${socket.id} | User: ${socket.user.email}`);
     });
 });

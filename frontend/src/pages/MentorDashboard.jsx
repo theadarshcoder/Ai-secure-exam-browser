@@ -15,6 +15,8 @@ import VisionLogo from '../components/VisionLogo';
 import PremiumSidebar from '../components/PremiumSidebar';
 import BouncingDotLoader from '../components/BouncingDotLoader';
 import FloatingPillMenu from '../components/FloatingPillMenu';
+import AdminMessageControls from '../components/AdminMessageControls';
+import AdminHealthCockpit from '../components/AdminHealthCockpit';
 import { 
   getMentorStats, 
   getMentorExamList, 
@@ -622,6 +624,17 @@ export default function MentorDashboard() {
             <p className="text-sm font-medium text-[#7A7A7A] mt-1">{stat.label}</p>
           </div>
         ))}
+      </div>
+
+      <div className="mb-2">
+        <AdminMessageControls activeStudents={[]} mode="full" />
+      </div>
+
+      <div className="mb-8">
+        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Live Exam Health</h4>
+        {/* Note: This is an overview. If you have multiple exams, you'd iterate. 
+            For now, we'll show it for the primary/latest active exam if one exists. */}
+        <AdminHealthCockpit currentUserId={sessionStorage.getItem('vision_id') || sessionStorage.getItem('vision_email')} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">

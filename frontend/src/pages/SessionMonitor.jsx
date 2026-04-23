@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import socketService from '../services/socket';
+import AdminMessageControls from '../components/AdminMessageControls';
+import AdminHealthCockpit from '../components/AdminHealthCockpit';
 
 /* ─────────────── Simulated Activity Log Generator ─────────────── */
 
@@ -589,6 +591,14 @@ export default function SessionMonitor() {
             </div>
           </div>
         </header>
+        
+        {/* Per-Exam Health & Alerts */}
+        <div className="px-5 py-3 border-b border-white/[0.04] bg-[#0c0d12]">
+          <AdminHealthCockpit 
+            examId={sessionData.examId} 
+            currentUserId={sessionStorage.getItem('vision_id') || sessionStorage.getItem('vision_email')} 
+          />
+        </div>
 
         {/* Student Info Strip */}
         <div className="flex items-center justify-between px-5 py-2.5 border-b border-white/[0.04] bg-[#0c0d12] shrink-0">
@@ -787,37 +797,13 @@ export default function SessionMonitor() {
           })}
         </div>
 
-        {/* Quick Message */}
+        {/* Quick Message / Admin Message Controls */}
         <div className="border-t border-white/[0.06] p-3 shrink-0">
-          <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-600 mb-2 flex items-center gap-1.5">
-            <MessageSquare size={10} /> Quick Message
-          </p>
-          {messages.length > 0 && (
-            <div className="max-h-20 overflow-y-auto mb-2 space-y-1">
-              {messages.map((m, i) => (
-                <div key={i} className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg px-2.5 py-1.5 text-[10px] text-indigo-300">
-                  <span className="font-bold">You:</span> {m.text}
-                  <span className="text-[8px] text-indigo-500 ml-2">{m.time}</span>
-                </div>
-              ))}
-            </div>
-          )}
-          <div className="flex gap-1.5">
-            <input
-              type="text"
-              value={messageInput}
-              onChange={e => setMessageInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
-              placeholder="Send warning to student..."
-              className="flex-1 bg-[#0f1117] border border-white/5 rounded-lg px-3 py-1.5 text-[10px] text-white placeholder:text-zinc-700 focus:border-white/10 outline-none transition-colors"
-            />
-            <button
-              onClick={handleSendMessage}
-              className="px-2.5 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:bg-indigo-500/20 transition-all active:scale-95"
-            >
-              <Send size={11} />
-            </button>
-          </div>
+          <AdminMessageControls 
+            examId={sessionData.examId} 
+            activeStudents={[{ _id: sessionData.id, name: sessionData.name }]} 
+            mode="compact" 
+          />
         </div>
       </aside>
 

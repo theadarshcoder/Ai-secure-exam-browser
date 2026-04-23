@@ -431,3 +431,27 @@ exports.unverifyCandidate = asyncHandler(async (req, res) => {
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json({ success: true, user });
 });
+
+// ═══════════════════════════════════════════════════════════
+// Absolute Timer Sync
+// ═══════════════════════════════════════════════════════════
+exports.extendExamTime = asyncHandler(async (req, res) => {
+    const { examId, extraMinutes } = req.body;
+    const extraSeconds = extraMinutes * 60;
+
+    const result = await ExamSession.updateMany(
+        { exam: examId, status: 'in_progress' }, 
+        { $inc: { remainingTimeSeconds: extraSeconds } }
+    );
+
+    const io = req.app.get('io'); 
+    
+    // ⚡ PRO FIX: Send exact server absolute time to prevent drift
+    io.to(`exam_${examId}`).emit('time_extended', { 
+        extraSeconds, 
+        extraMinutes,
+        serverSyncTime: Date.now() // Absolute time for frontend sync
+    });
+
+    res.status(200).json({ success: true, message: `Time extended for ${result.modifiedCount} students.` });
+});

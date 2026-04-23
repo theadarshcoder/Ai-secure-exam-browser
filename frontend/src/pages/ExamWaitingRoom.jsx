@@ -9,6 +9,7 @@ import * as faceapi from '@vladmandic/face-api';
 import Navbar from '../components/Navbar';
 import BouncingDotLoader from '../components/BouncingDotLoader';
 import api, { getSettings } from '../services/api';
+import ModernAlert from '../components/ModernAlert';
 
 /* ─────────────── Sub-components ─────────────── */
 
@@ -134,6 +135,7 @@ export default function ExamWaitingRoom() {
   const [exitPassword,   setExitPassword]   = useState('');
   const [settings,       setSettings]       = useState(null);
   const [aiReady,        setAiReady]        = useState(false);
+  const [alertConfig,    setAlertConfig]    = useState({ isOpen: false, title: '', message: '', type: 'info' });
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -248,12 +250,25 @@ export default function ExamWaitingRoom() {
                 navigate(`/exam/${exam.id}`);
               } catch (err) {
                 console.warn('Fullscreen request failed:', err);
-                alert('Please allow Fullscreen permission to start the exam!');
+                setAlertConfig({
+                  isOpen: true,
+                  title: 'Action Required',
+                  message: 'Please allow Fullscreen permission to start the exam. This is mandatory for security protocols.',
+                  type: 'warning'
+                });
               }
             }}
           />
         </motion.div>
       </main>
+
+      <ModernAlert 
+        isOpen={alertConfig.isOpen} 
+        onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+      />
 
       {/* Exit Modal */}
       <AnimatePresence>

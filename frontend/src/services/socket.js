@@ -1,4 +1,5 @@
 import { io } from 'socket.io-client';
+import { toast } from 'react-hot-toast';
 
 const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 
@@ -34,7 +35,7 @@ class SocketService {
     this.socket.on('connect_error', (err) => {
       console.error('🚫 Socket connection failed:', err.message);
       if (err.message.includes('Authentication') || err.message.includes('token') || err.message.includes('Session')) {
-        alert(`Debug Error: Socket connection rejected!\nMessage: ${err.message}\nRedirecting to login...`);
+        toast.error(`Security Alert: ${err.message}. Redirecting to login...`);
         console.warn('🔑 Token expired/invalid — redirecting to login');
         sessionStorage.removeItem('vision_token');
         sessionStorage.removeItem('vision_role');
@@ -48,9 +49,11 @@ class SocketService {
 
     this.socket.on('session_expired', (data) => {
       console.warn('🚦 Session Expired:', data.message);
-      alert(data.message || 'Your session has expired. Redirecting to login.');
+      toast.error(data.message || 'Your session has expired. Please login again.');
       sessionStorage.clear();
-      window.location.href = '/login';
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 2000);
     });
 
     return this.socket;
@@ -136,6 +139,50 @@ class SocketService {
     if (this.socket && this.socket.connected) {
       console.log('🔄 Socket: Emitting re-auth with new token');
       this.socket.emit('re_auth', newToken);
+    }
+  }
+
+  // --- 📨 ADMIN MESSAGING SYSTEM ---
+
+  joinExamRoom(examId) {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('join_exam_room', { examId });
+    }
+  }
+
+  emitAdminMessage(payload) {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('send_admin_message', payload);
+    }
+  }
+
+  emitMessageAck(messageId, studentId) {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('message_ack', { messageId, studentId });
+    }
+  }
+
+  onAdminMessage(callback) {
+    if (this.socket) {
+      this.socket.on('receive_admin_message', callback);
+    }
+  }
+
+  offAdminMessage(callback) {
+    if (this.socket) {
+      this.socket.off('receive_admin_message', callback);
+    }
+  }
+
+  onAckReceived(callback) {
+    if (this.socket) {
+      this.socket.on('ack_received', callback);
+    }
+  }
+
+  offAckReceived(callback) {
+    if (this.socket) {
+      this.socket.off('ack_received', callback);
     }
   }
 }

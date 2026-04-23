@@ -16,6 +16,9 @@ router.get('/stats', verifyToken, checkRole(['admin', 'super_mentor', 'mentor'])
 // Live Proctoring - Fetch all active sessions
 router.get('/live-sessions', verifyToken, checkRole(['admin', 'mentor']), adminController.getLiveSessions);
 
+// Extend live exam time for all students
+router.post('/extend-time', verifyToken, checkRole(['admin', 'super_mentor', 'mentor']), adminController.extendExamTime);
+
 // ─────────────────────────────────────────────────────────
 // User Management
 // ─────────────────────────────────────────────────────────
