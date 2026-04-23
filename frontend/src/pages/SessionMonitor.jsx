@@ -13,6 +13,7 @@ import VisionLogo from '../components/VisionLogo';
 import socketService from '../services/socket';
 import AdminMessageControls from '../components/AdminMessageControls';
 import AdminHealthCockpit from '../components/AdminHealthCockpit';
+import { getSessionDetail } from '../services/api';
 
 /* ─────────────── Simulated Activity Log Generator ─────────────── */
 
@@ -377,7 +378,7 @@ export default function SessionMonitor() {
   const [searchParams] = useSearchParams();
 
   // Get session data from URL params
-  const sessionData = {
+  const [sessionData, setSessionData] = useState({
     id: searchParams.get('id') || '',
     name: searchParams.get('name') || 'Unknown Student',
     exam: searchParams.get('exam') || 'General Exam',
@@ -385,7 +386,7 @@ export default function SessionMonitor() {
     risk: searchParams.get('risk') || 'Low',
     score: parseInt(searchParams.get('score') || '90'),
     time: searchParams.get('time') || '30m rem',
-  };
+  });
 
   const [activityLogs, setActivityLogs] = useState(generateInitialLogs);
   const [isConnected, setIsConnected] = useState(true);
@@ -414,44 +415,59 @@ export default function SessionMonitor() {
     return () => clearInterval(timer);
   }, []);
 
-  // Simulate new activity logs
+  // 🛡️ Fix Bug 4: Sync actual block status from backend to prevent button desync
   useEffect(() => {
-    const interval = setInterval(() => {
-      const activity = ACTIVITY_TYPES[Math.floor(Math.random() * ACTIVITY_TYPES.length)];
-      const newLog = {
-        id: `log-${Date.now()}`,
-        ...activity,
-        timestamp: new Date().toISOString(),
-        detail: getRandomDetail(activity.type),
-      };
-      setActivityLogs(prev => [newLog, ...prev].slice(0, 50));
+    const syncStatus = async () => {
+      if (!sessionData.id) return;
+      try {
+        const data = await getSessionDetail(sessionData.id);
+        const session = data?.session || data;
+        if (session) {
+          setIsBlocked(session.isBlocked || session.status === 'blocked');
+          
+          // Update full session data from server response
+          setSessionData(prev => ({
+            ...prev,
+            name: session.studentName || prev.name,
+            exam: session.examTitle || prev.exam,
+            examId: session.exam || session.examId || prev.examId,
+            risk: session.riskLevel || session.risk || prev.risk,
+            score: session.trustScore ?? prev.score,
+            status: session.status || prev.status
+          }));
+          
+          // Update violations if available
+          if (session.violations) {
+            const mappedViolations = session.violations.map(v => {
+               const act = ACTIVITY_TYPES.find(a => a.label.toLowerCase().includes(v.type.toLowerCase())) || ACTIVITY_TYPES[0];
+               return {
+                 id: v._id || `v-${Date.now()}-${Math.random()}`,
+                 ...act,
+                 timestamp: v.timestamp,
+                 detail: v.details
+               };
+            }).reverse();
+            setActivityLogs(prev => [...mappedViolations, ...prev].slice(0, 50));
+          }
+        }
+      } catch (err) {
+        console.error('Failed to sync session status:', err);
+      }
+    };
+    syncStatus();
+  }, [sessionData.id]);
 
-      // Update metrics
-      setMetrics(prev => ({
-        trustScore: {
-          value: Math.max(40, Math.min(100, prev.trustScore.value + (Math.random() > 0.3 ? 1 : -2))),
-          history: [...prev.trustScore.history.slice(1), prev.trustScore.value],
-        },
-        gazeDeviation: {
-          value: Math.max(0, Math.min(45, prev.gazeDeviation.value + (Math.random() - 0.5) * 8)),
-          history: [...prev.gazeDeviation.history.slice(1), prev.gazeDeviation.value],
-        },
-        audioLevel: {
-          value: Math.max(15, Math.min(70, prev.audioLevel.value + (Math.random() - 0.5) * 10)),
-          history: [...prev.audioLevel.history.slice(1), prev.audioLevel.value],
-        },
-        tabSwitches: {
-          value: prev.tabSwitches.value + (Math.random() > 0.95 ? 1 : 0),
-          history: [...prev.tabSwitches.history.slice(1), prev.tabSwitches.value],
-        },
-      }));
-    }, 4000);
-    return () => clearInterval(interval);
-  }, []);
+  // 🛑 Mock Activity Logs Generation Removed - Replaced with Real Sockets Below
 
   // REAL-TIME HELP LISTENER
   useEffect(() => {
     socketService.connect();
+    
+    // 🛡️ Fix: Ensure we are joined to the exam room to receive updates
+    if (sessionData.examId) {
+      socketService.joinExamRoom(sessionData.examId);
+    }
+
     socketService.onStudentHelp((data) => {
       // Only show if it's for this specific student/exam
       if (data.studentId === sessionData.id || data.studentEmail === sessionData.email) {
@@ -470,19 +486,46 @@ export default function SessionMonitor() {
       }
     });
 
-    return () => { /* socket service disconnect handled globally or by context if needed */ };
-  }, [sessionData.id, sessionData.email]);
-
-  // Connection flicker simulation
-  useEffect(() => {
-    const flicker = setInterval(() => {
-      if (Math.random() > 0.95) {
-        setIsConnected(false);
-        setTimeout(() => setIsConnected(true), 1500);
+    // 📡 Fix 2: Listen for real incident alerts from backend
+    socketService.onMentorAlert((data) => {
+      if (data.studentId === sessionData.id) {
+        const typeMatch = ACTIVITY_TYPES.find(a => a.label.toLowerCase().includes((data.type || '').toLowerCase())) || ACTIVITY_TYPES[0];
+        
+        const incidentLog = {
+          id: `alert-${Date.now()}`,
+          ...typeMatch,
+          timestamp: new Date().toISOString(),
+          detail: data.reason || data.details || 'Suspicious activity detected',
+        };
+        
+        setActivityLogs(prev => [incidentLog, ...prev.slice(0, 49)]);
+        
+        // Dynamically update metrics based on real events
+        setMetrics(prev => {
+          const newTrust = Math.max(0, prev.trustScore.value - 5);
+          const newTabs = data.type === 'TAB_HIDDEN' || data.reason?.includes('Background') 
+            ? prev.tabSwitches.value + 1 
+            : prev.tabSwitches.value;
+            
+          return {
+            ...prev,
+            trustScore: {
+              value: newTrust,
+              history: [...prev.trustScore.history.slice(1), newTrust],
+            },
+            tabSwitches: {
+              value: newTabs,
+              history: [...prev.tabSwitches.history.slice(1), newTabs],
+            }
+          };
+        });
       }
-    }, 8000);
-    return () => clearInterval(flicker);
-  }, []);
+    });
+
+    return () => { /* socket service disconnect handled globally or by context if needed */ };
+  }, [sessionData.id, sessionData.email, sessionData.examId]);
+
+  // 🛑 Mock Connection Flicker Removed
 
   const handleTerminate = () => {
     // 🛡️ Fix Bug 1: Use sockets for termination instead of LocalStorage (which doesn't sync across devices)
@@ -536,15 +579,12 @@ export default function SessionMonitor() {
   };
 
   const handleFlagSession = () => {
-    const incident = {
-      id: `INC-${Date.now()}`,
-      type: 'Manual Flag',
-      severity: 'medium',
-      details: `Session ${sessionData.id} (${sessionData.name}) manually flagged by admin during live monitoring.`,
-      timestamp: new Date().toISOString(),
-    };
-    const existing = JSON.parse(localStorage.getItem('vision_incidents') || '[]');
-    localStorage.setItem('vision_incidents', JSON.stringify([incident, ...existing]));
+    socketService.emitFlagSession({
+      studentId: sessionData.id,
+      examId: examId,
+      reason: `Manually flagged by admin during live monitoring.`
+    });
+    toast.success("Student session flagged for review.");
   };
 
   const filteredLogs = selectedLogFilter === 'all'

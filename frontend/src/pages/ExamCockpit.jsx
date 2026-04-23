@@ -796,8 +796,11 @@ const FrontendReactEnvironment = React.memo(
                 recompileDelay: 300,
               }}
               onCodeUpdate={(newFiles) => {
-                // Custom logic to sync Sandpack files back to answers state
-                onCodeChange({ files: newFiles });
+                // 🐢 Fix 4: Debounce Sandpack updates to prevent whole-page re-renders
+                if (window.sandpackDebounce) clearTimeout(window.sandpackDebounce);
+                window.sandpackDebounce = setTimeout(() => {
+                  onCodeChange({ files: newFiles });
+                }, 800);
               }}
             >
               <SandpackLayout
@@ -974,11 +977,13 @@ export default function ExamCockpit() {
 
     // Handle incoming admin messages & commands
     const handleAdminMessage = (data) => {
-        const { action, message } = data;
+        const { action, message, type } = data;
         
-        // 🛡️ Fix Bug 2: Decouple system actions from messaging logic
-        // Normal messages with ACKs are handled by StudentMessageModal automatically
-        // Here we ONLY handle state-changing system actions
+        // Handle normal broadcasts
+        if (type === 'broadcast') {
+            toast(message, { icon: '📩', duration: 6000 });
+            return;
+        }
 
         if (action === 'BLOCK') {
             setIsBlocked(true);
@@ -989,32 +994,94 @@ export default function ExamCockpit() {
         } else if (action === 'TERMINATE') {
             setTerminated({ reason: message || "Exam terminated by administrator." });
             toast.error("EXAM TERMINATED", { duration: 10000 });
-        } else if (action === 'EXTEND_TIME') {
-            // Handle time extension state if needed
         }
     };
 
     socketService.onAdminMessage(handleAdminMessage);
 
-    // Legacy listeners
-    socket.on('force_block_screen', (data) => {
-        setIsBlocked(true);
-        toast.error(data.reason || "Screen Blocked");
-    });
-    socket.on('unblock_screen', () => {
-        setIsBlocked(false);
-        toast.success("Unblocked");
-    });
-    socket.on('warning', (data) => {
-        toast(data.message, { icon: '⚠️' });
-    });
-    socket.on('exam_broadcast', (data) => {
+    // 🚀 BullMQ Code Evaluation Results
+    const handleCodeEvaluationResult = (data) => {
+      setExecutionResultsByQuestion((prev) => ({
+        ...prev,
+        [data.questionId]: data,
+      }));
+      setIsExecuting(false);
+      setCooldownSeconds(10);
+      toast.dismiss("code-queued");
+      toast.success("Code evaluation complete!", { id: "code-eval-success" });
+    };
+
+    const handleCodeEvaluationError = (err) => {
+      setExecutionResultsByQuestion((prev) => ({
+        ...prev,
+        [err.questionId]: { error: "Evaluation Failed", details: err.message },
+      }));
+      setIsExecuting(false);
+      setCooldownSeconds(0);
+      toast.dismiss("code-queued");
+      toast.error(err.message || "Background evaluation failed.", {
+        id: "code-eval-error",
+      });
+    };
+
+    const handleTimeExtension = ({
+      extraSeconds,
+      extraMinutes,
+      serverSyncTime,
+    }) => {
+      const networkDelay = Math.floor((Date.now() - serverSyncTime) / 1000);
+      setSecondsLeft((prev) => {
+        const newSeconds = prev + extraSeconds - (networkDelay > 0 ? networkDelay : 0);
+        endRef.current = Date.now() + newSeconds * 1000;
+        return newSeconds;
+      });
+      toast.success(`🚨 Exam time extended by ${extraMinutes} minutes!`, {
+        icon: "⏱️",
+        duration: 5000,
+      });
+    };
+
+    const handleForceBlock = (data) => {
+      setIsBlocked(true);
+      toast.error(data.reason || "Your session has been blocked!", {
+        duration: 10000,
+      });
+    };
+
+    const handleUnblock = () => {
+      setIsBlocked(false);
+      toast.success("Your session has been unblocked. You may resume.");
+    };
+
+    const handleWarning = (data) => {
+      setActiveWarning(data.message);
+      toast(data.message, { icon: '⚠️' });
+      setTimeout(() => setActiveWarning(null), 10000);
+    };
+
+    socket.on("time_extended", handleTimeExtension);
+    socket.on("code_evaluation_result", handleCodeEvaluationResult);
+    socket.on("code_evaluation_error", handleCodeEvaluationError);
+    socket.on("force_block_screen", handleForceBlock);
+    socket.on("unblock_screen", handleUnblock);
+    socket.on("warning", handleWarning);
+    socket.on("exam_broadcast", (data) => {
         toast(data.message, { icon: '📩', duration: 6000 });
     });
 
+    // 🛡️ Sync Socket if Token Refreshed
+    socketService.reAuth();
+
     return () => {
-        socketService.offAdminMessage(handleAdminMessage);
-        // Socket itself is disconnected in the main cleanup if needed
+      socketService.offAdminMessage(handleAdminMessage);
+      socket.off("time_extended", handleTimeExtension);
+      socket.off("code_evaluation_result", handleCodeEvaluationResult);
+      socket.off("code_evaluation_error", handleCodeEvaluationError);
+      socket.off("force_block_screen", handleForceBlock);
+      socket.off("unblock_screen", handleUnblock);
+      socket.off("warning", handleWarning);
+      socket.off("exam_broadcast");
+      socketService.disconnect();
     };
   }, [examId]);
 
@@ -1130,114 +1197,14 @@ export default function ExamCockpit() {
   // 🛡️ Global Session Guard
   useEffect(() => {
     const token = sessionStorage.getItem("vision_token");
-    const email = sessionStorage.getItem("vision_email");
-    if (!token || !email) {
+    const id = sessionStorage.getItem("vision_id");
+    if (!token || !id) {
       console.warn("Session lost. Redirecting to login.");
       navigate("/login");
     }
   }, [navigate]);
 
-  // 📡 Socket Connection & Broadcast Listener
-  useEffect(() => {
-    const socket = socketService.connect();
-    if (!socket) return undefined;
-
-    // Join exam room for admin broadcast messages
-    socketService.joinExamRoom(examId);
-
-    const handleBroadcast = (data) => {
-      // Legacy broadcast handling - just show a simple toast
-      if (!data.examId || data.examId === examId) {
-        toast(data.message, { icon: '📩', duration: 6000 });
-      }
-    };
-
-    // 🚀 BullMQ Code Evaluation Results
-    const handleCodeEvaluationResult = (data) => {
-      setExecutionResultsByQuestion((prev) => ({
-        ...prev,
-        [data.questionId]: data,
-      }));
-      setIsExecuting(false);
-      setCooldownSeconds(10);
-      toast.dismiss("code-queued");
-      toast.success("Code evaluation complete!", { id: "code-eval-success" });
-    };
-
-    // ⚡ PRO FIX: Absolute Timer Sync (Drift Addressed)
-    const handleTimeExtension = ({
-      extraSeconds,
-      extraMinutes,
-      serverSyncTime,
-    }) => {
-      // Calculate drift: Local time vs Server broadcast time
-      const networkDelay = Math.floor((Date.now() - serverSyncTime) / 1000);
-
-      // Exact remaining time calculation
-      setSecondsLeft((prev) => {
-        const newSeconds = prev + extraSeconds - networkDelay;
-        // Update endRef to match the new duration
-        endRef.current = Date.now() + newSeconds * 1000;
-        return newSeconds;
-      });
-
-      toast.success(`🚨 Exam time extended by ${extraMinutes} minutes!`, {
-        icon: "⏱️",
-        duration: 5000,
-      });
-    };
-
-    socket.on("time_extended", handleTimeExtension);
-
-    const handleCodeEvaluationError = (err) => {
-      setExecutionResultsByQuestion((prev) => ({
-        ...prev,
-        [err.questionId]: { error: "Evaluation Failed", details: err.message },
-      }));
-      setIsExecuting(false);
-      setCooldownSeconds(0); // 🛡️ Fix Bug 4: Reset cooldown on error so student can retry immediately
-      toast.dismiss("code-queued");
-      toast.error(err.message || "Background evaluation failed.", {
-        id: "code-eval-error",
-      });
-    };
-
-    const handleForceBlock = (data) => {
-      setIsBlocked(true);
-      toast.error(data.reason || "Your session has been blocked!", {
-        duration: 10000,
-      });
-    };
-
-    const handleUnblock = () => {
-      setIsBlocked(false);
-      toast.success("Your session has been unblocked. You may resume.");
-    };
-
-    const handleWarning = (data) => {
-      setActiveWarning(data.message);
-      // Auto-clear after 10 seconds
-      setTimeout(() => setActiveWarning(null), 10000);
-    };
-
-    socket.on("exam_broadcast", handleBroadcast);
-    socket.on("code_evaluation_result", handleCodeEvaluationResult);
-    socket.on("code_evaluation_error", handleCodeEvaluationError);
-    socket.on("force_block_screen", handleForceBlock);
-    socket.on("unblock_screen", handleUnblock);
-    socket.on("warning", handleWarning);
-
-    return () => {
-      socket.off("exam_broadcast", handleBroadcast);
-      socket.off("code_evaluation_result", handleCodeEvaluationResult);
-      socket.off("code_evaluation_error", handleCodeEvaluationError);
-      socket.off("force_block_screen", handleForceBlock);
-      socket.off("unblock_screen", handleUnblock);
-      socket.off("warning", handleWarning);
-      socket.off("time_extended", handleTimeExtension);
-      socketService.disconnect();
-    };
-  }, [examId]);
+  // 📡 Socket Connection & Broadcast Listener (DELETED - Merged Above)
 
   const captureAndUploadSnapshot = useCallback(
     async (type = "random") => {
@@ -1278,7 +1245,7 @@ export default function ExamCockpit() {
 
   const logIncident = useCallback(
     async (type, severity, details) => {
-      const studentId = sessionStorage.getItem("vision_email");
+      const studentId = sessionStorage.getItem("vision_id") || sessionStorage.getItem("vision_email");
       if (!studentId) return; // Guarded by useEffect above
       const incident = {
         id: `INC-${Date.now()}`,
@@ -1486,7 +1453,7 @@ export default function ExamCockpit() {
   // 📡 Poll for Supervisor Termination
   useEffect(() => {
     if (submitted || terminated) return;
-    const studentId = sessionStorage.getItem("vision_email");
+    const studentId = sessionStorage.getItem("vision_id") || sessionStorage.getItem("vision_email");
     if (!studentId) return;
 
     const poll = setInterval(() => {
@@ -1536,13 +1503,42 @@ export default function ExamCockpit() {
 
   const handleFinalSubmit = useCallback(async () => {
     try {
-      setSubmitted(true);
-      await api.post("/api/exams/submit", { examId, answers });
+      // 🛡️ Fix 1: Professional submission flow
+      toast.loading("Finalizing your submission... Please wait.", { id: "submit-toast" });
+      
+      await api.post("/api/exams/submit", { 
+        examId, 
+        answers,
+        lastUpdated: Date.now() 
+      });
+      
       await storageService.deleteProgress(examId);
-    } catch (_err) {}
-  }, [examId, answers]);
+      
+      // 📸 Fix 3: Explicitly stop camera tracks for privacy
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+        setStream(null);
+        setCameraActive(false);
+      }
+      
+      toast.success("Exam submitted successfully!", { id: "submit-toast" });
+      setSubmitted(true);
+    } catch (err) {
+      console.error("Submission error:", err);
+      toast.error(
+        err.message || "Submission failed! Please check your internet and try again.", 
+        { id: "submit-toast" }
+      );
+    }
+  }, [examId, answers, stream]);
+
+  const handleFinalSubmitRef = useRef(handleFinalSubmit);
+  useEffect(() => {
+    handleFinalSubmitRef.current = handleFinalSubmit;
+  }, [handleFinalSubmit]);
 
   // ⏱️ Exam Timer (Absolute Drift-Free Sync)
+  // FIX: handleFinalSubmit removed from dependency array to prevent timer reset during typing
   useEffect(() => {
     if (submitted || terminated || secondsLeft < 0) return;
 
@@ -1553,7 +1549,7 @@ export default function ExamCockpit() {
 
         if (remainingSec === 0 && secondsLeft > 0) {
           setSecondsLeft(0);
-          handleFinalSubmit();
+          handleFinalSubmitRef.current();
         } else {
           setSecondsLeft(remainingSec);
         }
@@ -1572,7 +1568,7 @@ export default function ExamCockpit() {
       clearInterval(interval);
       document.removeEventListener("visibilitychange", handleFocus);
     };
-  }, [submitted, terminated, handleFinalSubmit]);
+  }, [submitted, terminated]);
 
   // 🏢 Fetch Exam + Seeded Shuffle + Resume Data
   useEffect(() => {
@@ -1815,49 +1811,7 @@ export default function ExamCockpit() {
         }
         streamRef.current = s;
 
-        // Start Detection Loop
-/* 
-        const startDetection = () => {
-          if (detectionIntervalRef.current)
-            clearInterval(detectionIntervalRef.current);
-          detectionIntervalRef.current = setInterval(async () => {
-            if (
-              videoRef.current &&
-              !submitted &&
-              !terminated &&
-              document.visibilityState === "visible"
-            ) {
-              try {
-                const detections = await faceapi.detectAllFaces(
-                  videoRef.current,
-                  new faceapi.TinyFaceDetectorOptions(),
-                );
-                if (mountedRef.current) {
-                  setFaceBoxes(detections);
-                  if (detections.length === 0) {
-                    // AI camera violations disabled per user request to prevent false positives
-                    /* logIncident(
-                      "No Face Detected",
-                      "high",
-                      "Student missing from frame",
-                    ); */
-                  } else if (detections.length > 1) {
-                    /* logIncident(
-                      "Multiple Faces",
-                      "critical",
-                      "Extra person detected in frame",
-                    ); */
-                  }
-                }
-              } catch (dErr) {
-                console.warn("Detection failed frame");
-              }
-            }
-          }, 3000);
-        };
-
-        startDetection();
-*/
+        // Start Detection Loop (Disabled as per request)
 
         // Track listener for permission revocation mid-session
         s.getTracks().forEach((t) => {
@@ -1869,19 +1823,6 @@ export default function ExamCockpit() {
           };
         });
 
-/* 
-        // Visibility aware detection (Bug Fix 7A)
-        const vHandler = () => {
-          if (document.hidden) {
-            if (detectionIntervalRef.current)
-              clearInterval(detectionIntervalRef.current);
-            detectionIntervalRef.current = null;
-          } else {
-            startDetection();
-          }
-        };
-        document.addEventListener("visibilitychange", vHandler);
-*/
       } catch (err) {
         // Error handled in initCamera
       }
@@ -1910,6 +1851,7 @@ export default function ExamCockpit() {
         currentQuestionIndex: progressRef.current.currentQ,
         questionStates: progressRef.current.visited,
         remainingTimeSeconds: progressRef.current.secondsLeft,
+        lastUpdated: Date.now(), // 🏎️ Fix 5: Auto-Save Race Condition
       };
       if (!navigator.onLine) {
         await storageService.saveProgress(examId, payload);
@@ -2754,7 +2696,10 @@ export default function ExamCockpit() {
 
       <FullBlockOverlay isOpen={isBlocked} />
 
-      <StudentMessageModal userId={sessionStorage.getItem("vision_id") || sessionStorage.getItem("vision_email")} />
+      <StudentMessageModal 
+        userId={sessionStorage.getItem("vision_id") || sessionStorage.getItem("vision_email")} 
+        examId={examId}
+      />
       <FAQBot examId={examId} userId={sessionStorage.getItem("vision_id") || sessionStorage.getItem("vision_email")} />
     </div>
   );

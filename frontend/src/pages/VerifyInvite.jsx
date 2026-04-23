@@ -43,6 +43,7 @@ export default function VerifyInvite() {
 
             // Store session data (same as login flow)
             sessionStorage.setItem('vision_token', data.token);
+            sessionStorage.setItem('vision_id', data.user.id || data.user._id);
             sessionStorage.setItem('vision_user', JSON.stringify(data.user));
             sessionStorage.setItem('vision_role', data.user.role);
             sessionStorage.setItem('vision_email', data.user.email);

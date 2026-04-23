@@ -21,6 +21,24 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Helper to get current user ID safely
+export const getCurrentUserId = () => {
+  const id = sessionStorage.getItem('vision_id');
+  if (id) return id;
+  
+  // Fallback: Decode JWT if ID is missing in storage
+  const token = sessionStorage.getItem('vision_token');
+  if (token) {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.id;
+    } catch (e) {
+      return sessionStorage.getItem('vision_email');
+    }
+  }
+  return sessionStorage.getItem('vision_email');
+};
+
 // Response interceptor for handling 401s
 api.interceptors.response.use(
   (response) => response,
@@ -293,9 +311,9 @@ export const evaluateSession = async (sessionId, grades) => {
 };
 
 // Student requests help from mentor
-export const requestHelp = async (msg) => {
+export const requestHelp = async (examId, msg) => {
     try {
-        const response = await api.post('/api/exams/help', { msg });
+        const response = await api.post('/api/exams/help', { examId, msg });
         return response.data;
     } catch (error) {
         throw error.response?.data || error.message;

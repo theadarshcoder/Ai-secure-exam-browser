@@ -473,6 +473,11 @@ export default function MentorDashboard() {
       }
     });
 
+    // ✅ Fix: Add ACK Received listener
+    socketService.onAckReceived((data) => {
+      toast.success(`ACK: ${data.studentEmail} read your message.`, { icon: '✔' });
+    });
+
     return () => {
       socketService.disconnect();
     };
