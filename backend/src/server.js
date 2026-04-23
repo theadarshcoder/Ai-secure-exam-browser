@@ -438,21 +438,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('mentor_broadcast', (data) => {
-        // Mentors, admins, or super_mentors can broadcast to students
-        if (!['mentor', 'admin', 'super_mentor'].includes(socket.user.role)) {
-            return socket.emit('error', { message: 'Only mentors/admins can broadcast.' });
-        }
-        console.log(`Broadcast from ${socket.user.email}:`, data);
-        
-        // 🛡️ Fix Bug A: Scoped broadcast to specific exam room to prevent cross-exam data leaks
-        io.to(`exam_${data.examId}`).emit('exam_broadcast', {
-            message: data.message,
-            examId: data.examId,
-            sender: socket.user.name || socket.user.email,
-            timestamp: new Date()
-        });
-    });
 
     // --- 🛡️ PROCTORING ACTIONS: Block / Unblock / Warning ---
 

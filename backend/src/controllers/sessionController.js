@@ -28,7 +28,7 @@ exports.logViolation = asyncHandler(async (req, res) => {
         $set: { lastSavedAt: new Date() }
     };
 
-    if (type === 'Tab Switch') {
+    if (type === 'Tab Switch' || type === 'TAB_HIDDEN') {
         update.$inc = { tabSwitchCount: 1 };
     }
 
