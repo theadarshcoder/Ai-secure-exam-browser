@@ -89,12 +89,26 @@ const getCache = async (key) => {
     }
 };
 
+/**
+ * 🗑️ Generic Delete Cache
+ */
+const clearCache = async (key) => {
+    const redis = getRedisClient();
+    if (!redis) return;
+    try {
+        await redis.del(key);
+    } catch (err) {
+        console.warn(`⚠️  Redis: Failed to clear cache for ${key}:`, err.message);
+    }
+};
+
 module.exports = {
     saveUserSession,
     getUserSession,
     removeUserSession,
     setCache,
     getCache,
+    clearCache,
     TTL_ACTIVE_SESSION,
     TTL_API_CACHE
 };

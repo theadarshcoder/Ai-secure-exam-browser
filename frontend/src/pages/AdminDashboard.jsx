@@ -983,7 +983,7 @@ export default function AdminDashboard() {
                        <p className="text-xs font-bold text-slate-900 leading-relaxed">
                           <span className="text-red-600">{notif.studentId}</span> triggered a <span className="underline decoration-red-200">{notif.type}</span> violation.
                        </p>
-                       <button onClick={() => navigate('/admin/session')} className="mt-3 text-[10px] font-bold text-red-500 uppercase tracking-widest flex items-center gap-1 hover:gap-2 transition-all">
+                       <button onClick={() => setActiveTab('LiveMonitoring')} className="mt-3 text-[10px] font-bold text-red-500 uppercase tracking-widest flex items-center gap-1 hover:gap-2 transition-all">
                           Investigate Session <ChevronRight size={12} />
                        </button>
                     </div>
@@ -1989,13 +1989,6 @@ export default function AdminDashboard() {
                   className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all border border-red-100"
                 >
                   <X size={16} />
-                </button>
-                <button 
-                  onClick={() => navigate(`/admin/session?id=${session._id}&name=${encodeURIComponent(session.studentName)}&exam=${encodeURIComponent(session.examTitle)}&risk=${session.risk}&score=${session.trustScore || 90}&status=${session.status}&examId=${session.examId}`)}
-                  title="View Live Stream"
-                  className="p-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all shadow-md active:scale-95 ml-2"
-                >
-                  <Eye size={16} />
                 </button>
               </div>
             </td>

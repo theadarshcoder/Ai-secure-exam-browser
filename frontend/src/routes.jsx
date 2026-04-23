@@ -95,11 +95,6 @@ export default function AppRouter() {
             </ProtectedRoute>
           } />
           
-          <Route path="/admin/session" element={
-            <ProtectedRoute allowedRoles={['admin', 'super_mentor', 'mentor']}>
-              <SessionMonitor />
-            </ProtectedRoute>
-          } />
           
           <Route path="/mentor" element={
             <ProtectedRoute allowedRoles={['mentor', 'admin', 'super_mentor']}>
