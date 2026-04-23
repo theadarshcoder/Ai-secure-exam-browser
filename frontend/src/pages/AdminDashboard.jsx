@@ -1484,20 +1484,31 @@ export default function AdminDashboard() {
                {res.submittedAt ? new Date(res.submittedAt).toLocaleString() : 'N/A'}
             </td>
             <td className="px-6 py-4">
-               <button 
-                 onClick={() => handleViewSession(res._id)}
-                 className={`font-bold text-[11px] uppercase tracking-widest flex items-center gap-1 active:scale-95 ${
-                   res.status === 'pending_review' 
-                     ? 'text-amber-600 hover:text-amber-700' 
-                     : 'text-[#22c55e] hover:text-emerald-700'
-                 }`}
-               >
-                 {res.status === 'pending_review' ? (
-                   <><Edit3 size={12} /> Evaluate</>
-                 ) : (
-                   <><Eye size={12} /> View</>
-                 )}
-               </button>
+                <div className="flex items-center gap-4">
+                   <button 
+                     onClick={() => handleViewSession(res._id)}
+                     className={`font-bold text-[11px] uppercase tracking-widest flex items-center gap-1 active:scale-95 ${
+                       res.status === 'pending_review' 
+                         ? 'text-amber-600 hover:text-amber-700' 
+                         : 'text-[#22c55e] hover:text-emerald-700'
+                     }`}
+                   >
+                     {res.status === 'pending_review' ? (
+                       <><Edit3 size={12} /> Evaluate</>
+                     ) : (
+                       <><Eye size={12} /> View</>
+                     )}
+                   </button>
+                   {res.studentId && (
+                     <button 
+                       onClick={() => navigate(`/admin/students/${res.studentId}/intelligence`)}
+                       className="text-blue-600 hover:text-blue-700 font-bold text-[11px] uppercase tracking-widest flex items-center gap-1 active:scale-95"
+                       title="View Intelligence Report"
+                     >
+                       <ShieldCheck size={12} /> Intelligence
+                     </button>
+                   )}
+                </div>
             </td>
           </tr>
         )}

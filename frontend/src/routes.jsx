@@ -14,6 +14,7 @@ import ExamWaitingRoom from './pages/ExamWaitingRoom';
 import SessionMonitor from './pages/SessionMonitor';
 import StudentResult from './pages/StudentResult';
 import VerifyInvite from './pages/VerifyInvite';
+import StudentIntelligenceDashboard from './pages/StudentIntelligenceDashboard';
 
 const ThemeEnforcer = () => {
   const { pathname } = useLocation();
@@ -141,6 +142,12 @@ export default function AppRouter() {
           <Route path="/exam/:examId/result" element={
             <ProtectedRoute allowedRoles={['student']}>
               <StudentResult />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/admin/students/:studentId/intelligence" element={
+            <ProtectedRoute allowedRoles={['admin', 'super_mentor', 'mentor']}>
+              <StudentIntelligenceDashboard />
             </ProtectedRoute>
           } />
           

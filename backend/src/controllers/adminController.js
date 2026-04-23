@@ -28,6 +28,7 @@ exports.getAllResults = asyncHandler(async (req, res) => {
 
     const formattedResults = results.map(session => ({
         _id: session._id,
+        studentId: session.student?._id || session.student,
         studentName: session.student?.name || 'Unknown Student',
         studentEmail: session.student?.email || 'N/A',
         examTitle: session.exam?.title || 'Unknown Exam',
@@ -434,6 +435,150 @@ exports.unverifyCandidate = asyncHandler(async (req, res) => {
 
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json({ success: true, user });
+});
+
+// ═══════════════════════════════════════════════════════════
+// ULTIMATE: AI-Powered Student Intelligence Engine
+// ═══════════════════════════════════════════════════════════
+exports.getStudentIntelligenceReport = asyncHandler(async (req, res) => {
+    const studentId = req.params.studentId;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    // Separate Cache Keys for modularity
+    const statsCacheKey = `student_stats_${studentId}`;
+    const timelineCacheKey = `student_timeline_${studentId}_p${page}_l${limit}`;
+
+    // 1. DYNAMIC CONFIGURATION (No Hardcoding)
+    const systemSettings = await Setting.findOne().lean() || {};
+    const ANOMALY_THRESHOLD = systemSettings.anomalyThreshold || 20; 
+    const TAB_SWITCH_LIMIT = systemSettings.maxTabSwitches || 5;
+
+    // 2. REDIS CACHE CHECK (Parallel Fetch)
+    const [cachedStats, cachedTimeline] = await Promise.all([
+        getCache(statsCacheKey),
+        getCache(timelineCacheKey)
+    ]);
+
+    let globalStats = cachedStats;
+    let timelineData = cachedTimeline;
+
+    // 3. THE REUSABLE AGGREGATION BLOCK
+    const matchStage = { 
+        $match: { 
+            student: new mongoose.Types.ObjectId(studentId),
+            status: { $in: ['submitted', 'reviewed', 'auto_submitted', 'flagged'] }
+        } 
+    };
+
+    if (!globalStats || !timelineData) {
+        const aggregationResult = await ExamSession.aggregate([
+            matchStage,
+            {
+                $facet: {
+                    // PIPELINE 1: Global Stats (Processes ALL historical data)
+                    globalData: [
+                        {
+                            $group: {
+                                _id: null,
+                                totalExams: { $sum: 1 },
+                                totalPercentage: { $sum: "$percentage" },
+                                passedExams: { $sum: { $cond: ["$passed", 1, 0] } },
+                                totalTabSwitches: { $sum: "$tabSwitchCount" },
+                                allViolations: { $push: "$violations" }
+                            }
+                        }
+                    ],
+                    // PIPELINE 2: Paginated Timeline
+                    timeline: [
+                        { $sort: { startedAt: -1 } },
+                        { $skip: skip },
+                        { $limit: limit },
+                        { 
+                            $lookup: { 
+                                from: 'exams', localField: 'exam', foreignField: '_id', as: 'examData' 
+                            } 
+                        },
+                        { $unwind: '$examData' },
+                        { 
+                            $project: {
+                                score: 1, percentage: 1, passed: 1, 
+                                tabSwitchCount: 1, startedAt: 1, status: 1, violations: 1,
+                                examTitle: '$examData.title', examCategory: '$examData.category'
+                            } 
+                        }
+                    ]
+                }
+            }
+        ]);
+
+        const rawGlobal = aggregationResult[0].globalData[0] || { 
+            totalExams: 0, totalPercentage: 0, passedExams: 0, totalTabSwitches: 0, allViolations: [] 
+        };
+        timelineData = aggregationResult[0].timeline;
+
+        // 4. INTELLIGENCE PROCESSING
+        let weightedRiskScore = 0;
+        const violationsBreakdown = {};
+
+        rawGlobal.allViolations.flat().forEach(v => {
+            if (!v) return;
+            violationsBreakdown[v.type] = (violationsBreakdown[v.type] || 0) + 1;
+            if (v.severity === 'critical') weightedRiskScore += 5;
+            else if (v.severity === 'high') weightedRiskScore += 3;
+            else if (v.severity === 'medium') weightedRiskScore += 2;
+            else weightedRiskScore += 1;
+        });
+        weightedRiskScore += (rawGlobal.totalTabSwitches * 1);
+
+        const avgPercentage = rawGlobal.totalExams > 0 ? (rawGlobal.totalPercentage / rawGlobal.totalExams).toFixed(1) : 0;
+        const passRate = rawGlobal.totalExams > 0 ? ((rawGlobal.passedExams / rawGlobal.totalExams) * 100).toFixed(0) : 0;
+        
+        const MAX_RISK_PER_EXAM = 15;
+        const maxPossibleRisk = rawGlobal.totalExams * MAX_RISK_PER_EXAM;
+        const normalizedRisk = maxPossibleRisk > 0 ? Math.min((weightedRiskScore / maxPossibleRisk) * 100, 100).toFixed(0) : 0;
+
+        let anomalyDetected = null;
+        if (timelineData.length >= 2) {
+            const latestExam = timelineData[0];
+            const prevAvg = (rawGlobal.totalPercentage - latestExam.percentage) / (rawGlobal.totalExams - 1 || 1);
+            
+            if ((latestExam.percentage - prevAvg) > ANOMALY_THRESHOLD && latestExam.tabSwitchCount >= TAB_SWITCH_LIMIT) {
+                anomalyDetected = {
+                    message: `Suspicious score spike (+${(latestExam.percentage - prevAvg).toFixed(1)}%) with high tab switching.`,
+                    exam: latestExam.examTitle
+                };
+            }
+        }
+
+        globalStats = {
+            totalLifetimeExams: rawGlobal.totalExams,
+            avgPercentage: `${avgPercentage}%`,
+            passRate: `${passRate}%`,
+            totalTabSwitches: rawGlobal.totalTabSwitches,
+            riskScore: `${normalizedRisk}%`,
+            riskLevel: normalizedRisk > 40 ? 'High 🔴' : normalizedRisk > 15 ? 'Medium 🟡' : 'Low 🟢',
+            anomalyDetected,
+            violationsBreakdown
+        };
+
+        await setCache(statsCacheKey, globalStats, 3600);
+        await setCache(timelineCacheKey, timelineData, 300);
+    }
+
+    const student = await User.findById(studentId).select('name email profilePicture isVerified').lean();
+
+    res.json({
+        student,
+        overview: globalStats,
+        pagination: {
+            page,
+            limit,
+            totalPages: Math.ceil(globalStats.totalLifetimeExams / limit)
+        },
+        timelineData
+    });
 });
 
 // ═══════════════════════════════════════════════════════════

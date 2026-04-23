@@ -63,4 +63,7 @@ router.get('/candidates', verifyToken, checkRole(['admin', 'super_mentor']), adm
 router.put('/candidates/verify/:userId', verifyToken, checkRole(['admin', 'super_mentor']), adminController.verifyCandidate);
 router.put('/candidates/unverify/:userId', verifyToken, checkRole(['admin', 'super_mentor']), adminController.unverifyCandidate);
 
+// Student Intelligence Report
+router.get('/students/:studentId/report', verifyToken, checkRole(['admin', 'mentor']), adminController.getStudentIntelligenceReport);
+
 module.exports = router;
