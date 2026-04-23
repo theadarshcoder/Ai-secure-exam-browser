@@ -811,13 +811,15 @@ export default function AdminDashboard() {
   };
 
   const handleTerminateStudent = async (sessionId) => {
+    // Find the student ID for this session from our state to send the socket signal
+    const targetSession = liveSessions.find(s => s._id === sessionId);
+    const targetStudentId = targetSession?.studentId || sessionId;
+
     showConfirm('TERIMINATE EXAM? This will forcibly submit their exam and kick them out. This cannot be undone.', async () => {
       try {
-        // We'll use a new socket event or API for termination
-        // For now, let's assume we use a specialized message or emit
         socketService.emitAdminMessage({
             type: 'direct',
-            studentId: sessionId, // In some contexts, sessionId is used as target
+            studentId: targetStudentId,
             message: 'Your exam has been terminated by the administrator.',
             severity: 'critical',
             action: 'TERMINATE'

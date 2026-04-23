@@ -54,15 +54,18 @@ exports.getAllResults = asyncHandler(async (req, res) => {
 // Fetch all active/live exam sessions
 // ═══════════════════════════════════════════════════════════
 exports.getLiveSessions = asyncHandler(async (req, res) => {
+    const THREE_MINUTES_AGO = new Date(Date.now() - 3 * 60 * 1000);
     const sessions = await ExamSession.find({
-        status: { $in: ['in_progress', 'flagged', 'blocked'] }
+        status: { $in: ['in_progress', 'flagged', 'blocked'] },
+        updatedAt: { $gte: THREE_MINUTES_AGO }
     })
     .populate('student', 'name email profilePicture')
     .populate('exam', 'title duration category')
     .sort({ startedAt: -1 })
     .lean();
 
-    const formatted = sessions.map(s => ({
+    // Filter out sessions with missing relational data to prevent "Unknown" entries
+    const formatted = sessions.filter(s => s.student && s.exam).map(s => ({
         _id: s._id,
         studentId: s.student?._id || null,
         studentName: s.student?.name || 'Unknown',
