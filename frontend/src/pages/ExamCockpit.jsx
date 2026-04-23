@@ -1378,11 +1378,12 @@ export default function ExamCockpit() {
         (e.altKey && e.key === "Tab")
       ) {
         e.preventDefault();
-        logIncident(
-          "Shortcut Blocked",
-          "medium",
-          `Attempted shortcut: ${e.key}`,
-        );
+        // Shortcut Blocked incident removed as per user request to reduce noise
+        // logIncident(
+        //   "Shortcut Blocked",
+        //   "medium",
+        //   `Attempted shortcut: ${e.key}`,
+        // );
         return false;
       }
     };
@@ -1391,7 +1392,8 @@ export default function ExamCockpit() {
       if (!isRestricted) return true;
 
       e.preventDefault();
-      logIncident("Right Click Blocked", "low", "Context menu attempt");
+      // Right Click Blocked incident removed as per user request to reduce noise
+      // logIncident("Right Click Blocked", "low", "Context menu attempt");
       return false;
     };
 

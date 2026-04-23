@@ -25,7 +25,7 @@ const StudentResult = () => {
     useEffect(() => {
         const fetchResult = async () => {
             try {
-                const response = await api.get(`/exams/student-result/${examId}`);
+                const response = await api.get(`/api/exams/student-result/${examId}`);
                 setResult(response.data);
             } catch (err) {
                 console.error('Failed to fetch result:', err);

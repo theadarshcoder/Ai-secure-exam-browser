@@ -10,7 +10,7 @@ const { getTimeAgo, parseLeetCode, parseCodeChef } = require('../utils/helpers')
 const { gradeMCQ, gradeCoding, gradeShortAnswer } = require('../services/gradingService');
 const { addCodeEvaluationJob } = require('../queues/codeGradingQueue');
 const { addFrontendEvaluationJob } = require('../queues/frontendGradingQueue');
-const { getCache, setCache, TTL_API_CACHE } = require('../services/cacheService');
+const { getCache, setCache, clearCache, TTL_API_CACHE } = require('../services/cacheService');
 const Setting = require('../models/Setting');
 
 // ─────────────── POST /api/exams/create ───────────────
@@ -240,15 +240,15 @@ exports.getActiveExams = asyncHandler(async (req, res) => {
     if (cached) return res.json(cached);
 
     const exams = await Exam.find({ status: 'published' })
-        .select('title category duration totalMarks passingMarks scheduledDate questions creator')
+        .select('title category duration totalMarks passingMarks scheduledDate questions creator resultsPublished')
         .populate('creator', 'name email')
         .sort({ scheduledDate: -1 })
         .lean(); // Faster lookup
 
-    // Check which exams this student has already submitted
+    // Check which exams this student has already submitted (Any terminal status)
     const submittedSessions = await ExamSession.find({ 
         student: studentId, 
-        status: 'submitted' 
+        status: { $in: ['submitted', 'pending_review', 'reviewed', 'auto_submitted', 'blocked'] }
     }).select('exam').lean();
     const submittedExamIds = new Set(submittedSessions.map(s => s.exam.toString()));
 
@@ -1036,6 +1036,9 @@ exports.submitExam = asyncHandler(async (req, res) => {
         { exam: examId, student: studentId, status: { $in: ['exam_started', 'opened'] } },
         { status: 'completed' }
     ).catch(err => console.error('[Invite] Status update (completed) failed:', err.message));
+
+    // ⚡ CRITICAL: Clear student's dashboard cache to reflect submission immediately
+    await clearCache(`active_exams_user_${studentId}`);
 
     res.json({
         message: hasShortAnswers 
