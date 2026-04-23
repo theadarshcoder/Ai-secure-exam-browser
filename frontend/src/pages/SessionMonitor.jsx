@@ -593,7 +593,7 @@ export default function SessionMonitor() {
         {/* Student Info Strip */}
         <div className="flex items-center justify-between px-5 py-2.5 border-b border-white/[0.04] bg-[#0c0d12] shrink-0">
           <div className="flex items-center gap-4">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-[11px] font-black text-white shadow-lg">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-[11px] font-bold text-white shadow-lg">
               {sessionData.name.split(' ').map(n => n[0]).join('')}
             </div>
             <div>

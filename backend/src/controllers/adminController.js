@@ -362,6 +362,7 @@ exports.saveSettings = asyncHandler(async (req, res) => {
         setting.enableWebcam = req.body.enableWebcam ?? setting.enableWebcam;
         setting.disableCopyPaste = req.body.disableCopyPaste ?? setting.disableCopyPaste;
         setting.requireIDVerification = req.body.requireIDVerification ?? setting.requireIDVerification;
+        setting.exitPassword = req.body.exitPassword !== undefined ? req.body.exitPassword : setting.exitPassword;
         await setting.save();
     } else {
         setting = await Setting.create(req.body);

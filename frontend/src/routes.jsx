@@ -72,7 +72,7 @@ const LoginRedirect = () => {
 
 const NotFound = () => (
   <div className="h-screen flex flex-col items-center justify-center bg-[#0a0c10] text-white">
-    <h1 className="text-6xl font-black mb-4">404</h1>
+    <h1 className="text-6xl font-bold mb-4">404</h1>
     <p className="text-slate-500 uppercase tracking-widest text-xs">Node Not Found</p>
     <a href="/" className="mt-8 px-6 py-2 bg-white text-black rounded-xl font-bold text-xs uppercase">Return to Base</a>
   </div>

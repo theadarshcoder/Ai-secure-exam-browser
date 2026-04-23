@@ -1,4 +1,76 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+// Success Modal
+const SuccessModal = ({ isOpen, examId, onInvite, onReturn }) => {
+  const examLink = `${window.location.origin}/exam/${examId}`;
+  
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            transition={{ type: "spring", damping: 20, stiffness: 300 }}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 relative overflow-hidden"
+          >
+            {/* Header Section */}
+            <div className="text-center">
+              <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-500">
+                <CheckCircle size={32} strokeWidth={2} />
+              </div>
+              <h2 className="text-2xl font-bold text-slate-900 mb-2">System Deployed</h2>
+              <p className="text-slate-500 text-sm leading-relaxed max-w-[280px] mx-auto">
+                Assessment protocol is now active across all proctor nodes.
+              </p>
+            </div>
+
+            {/* The Link Box (SaaS Style) */}
+            <div className="mt-8 mb-8 relative">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">
+                STUDENT EXAM LINK
+              </label>
+              <div className="p-1 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between group hover:border-slate-300 transition-colors">
+                <div className="font-mono text-[13px] text-slate-600 truncate px-3 flex-1 select-all">
+                  {examLink}
+                </div>
+                <button 
+                  onClick={() => { 
+                    navigator.clipboard.writeText(examLink); 
+                  }}
+                  className="p-2 bg-white border border-slate-200 shadow-sm rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all flex items-center gap-2 focus:ring-2 focus:ring-slate-200 outline-none"
+                >
+                  <Copy size={14} />
+                  <span className="text-[11px] font-bold">Copy</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="space-y-3">
+              <button 
+                onClick={onInvite}
+                className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-900/10 active:scale-[0.98]"
+              >
+                <Users size={16} />
+                Invite Students
+              </button>
+              <button 
+                onClick={onReturn}
+                className="w-full text-slate-500 font-bold py-2 hover:text-slate-900 transition-colors flex items-center justify-center gap-2 text-sm"
+              >
+                Return to Module
+                <ArrowLeft size={16} className="rotate-180" />
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+};
 import api from '../services/api';
 import { Navbar } from '../components/Navbar';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -10,7 +82,7 @@ import {
   Upload, FilePlus, FileSpreadsheet, Lock,
   LayoutDashboard, Users, BarChart3, Settings, Bell,
   ChevronRight, LogOut, Eye, Edit3, Star, RefreshCw,
-  Download, UploadCloud, Link, Calendar
+  Download, UploadCloud, Link, Calendar, ScanFace
 } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -108,7 +180,7 @@ const CustomDatePicker = ({ selected, onChange }) => {
     >
       <div className="flex-1 min-w-0 flex items-center gap-3 overflow-hidden">
         <div className={`shrink-0 p-1.5 rounded-lg transition-colors ${value ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400 group-hover:text-emerald-500 group-hover:bg-emerald-50'}`}>
-          <Calendar size={14} />
+          {value && value.includes(':') ? <Clock size={14} /> : <Calendar size={14} />}
         </div>
         <span className={`text-sm font-bold tracking-tight truncate ${value ? 'text-slate-900' : 'text-slate-400'}`}>
           {value || 'Set Schedule'}
@@ -128,40 +200,105 @@ const CustomDatePicker = ({ selected, onChange }) => {
   return (
     <DatePicker
       selected={selected ? new Date(selected) : null}
-      onChange={(date) => onChange(date)}
+      onChange={(date) => {
+        if (date) {
+          const now = new Date();
+          // If selected time is in the past (like default midnight), jump to current time
+          if (date.getTime() < now.getTime()) {
+            onChange(now);
+          } else {
+            onChange(date);
+          }
+        } else {
+          onChange(null);
+        }
+      }}
       showTimeSelect
+      minDate={new Date()}
+      filterTime={(time) => {
+        const currentDate = new Date();
+        const selectedDate = new Date(selected || new Date());
+        if (selectedDate.toDateString() === currentDate.toDateString()) {
+          return time.getTime() > currentDate.getTime();
+        }
+        return true;
+      }}
+      todayButton="Select Today"
+      timeCaption="Time"
       dateFormat="yyyy MMM d - h:mm aa"
       customInput={<CustomInput />}
       wrapperClassName="w-full"
-      popperClassName="!z-50 shadow-2xl rounded-2xl border border-slate-200"
+      popperClassName="!z-50 shadow-2xl rounded-2xl border border-slate-200 bg-white"
       portalId="root"
     />
   );
 };
 
-const McqEditor = ({ question, updateQ }) => (
-  <div className="space-y-2">
-    {question.options.map((opt, oi) => (
-      <div key={oi} className="flex items-center gap-2.5">
-        <button 
-          onClick={() => updateQ(question.id, { correctOption: oi })} 
-          className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center shrink-0 text-[10px] font-bold transition-all ${question.correctOption === oi ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400' : 'border-white/[0.06] text-zinc-700 hover:border-white/[0.12]'}`}
-        >
-          {question.correctOption === oi ? <CheckCircle size={13} /> : String.fromCharCode(65 + oi)}
-        </button>
-        <input 
-          value={opt} 
-          onChange={e => {
-            const options = [...question.options];
-            options[oi] = e.target.value;
-            updateQ(question.id, { options });
-          }} 
-          className="flex-1 bg-white border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-emerald-500/50 transition-colors shadow-sm" 
-        />
-      </div>
-    ))}
-  </div>
-);
+const McqEditor = ({ question, updateQ }) => {
+  const addOption = () => {
+    const options = [...(question.options || []), ''];
+    updateQ(question.id, { options });
+  };
+
+  const removeOption = (index) => {
+    if ((question.options || []).length <= 1) return;
+    const options = question.options.filter((_, i) => i !== index);
+    let correctOption = question.correctOption;
+    if (correctOption === index) correctOption = 0;
+    else if (correctOption > index) correctOption--;
+    updateQ(question.id, { options, correctOption });
+  };
+
+  return (
+    <div className="flex flex-col gap-3 w-full max-w-3xl">
+      {(question.options || ['']).map((opt, oi) => (
+        <div key={oi} className="flex items-center gap-3 w-full group relative">
+          {/* Selection Toggle */}
+          <button 
+            onClick={() => updateQ(question.id, { correctOption: oi })} 
+            className={`w-6 h-6 rounded-full border cursor-pointer flex items-center justify-center transition-all shrink-0 ${question.correctOption === oi ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'border-slate-300 text-transparent hover:border-emerald-400'}`}
+          >
+            <Check size={12} strokeWidth={4} />
+          </button>
+          
+          {/* Label */}
+          <span className="text-sm font-bold text-slate-400 w-6 text-center shrink-0">
+            {String.fromCharCode(65 + oi)}
+          </span>
+
+          {/* Input Field */}
+          <input 
+            value={opt} 
+            onChange={e => {
+              const options = [...question.options];
+              options[oi] = e.target.value;
+              updateQ(question.id, { options });
+            }} 
+            className={`flex-1 px-4 py-2.5 border rounded-2xl text-[13.5px] font-medium text-slate-800 outline-none transition-all shadow-sm ${question.correctOption === oi ? 'border-emerald-500 ring-4 ring-emerald-500/5 bg-emerald-50/10' : 'border-slate-200 focus:border-emerald-200 focus:ring-4 focus:ring-emerald-500/5 bg-white'}`} 
+            placeholder={`Option ${String.fromCharCode(65 + oi)}...`}
+          />
+
+          {/* Delete Action */}
+          <button 
+            onClick={() => removeOption(oi)}
+            className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100 shrink-0"
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
+      ))}
+
+      {/* Add Option Action */}
+      <button 
+        onClick={addOption}
+        className="flex items-center gap-2 mt-2 text-sm font-bold text-slate-500 hover:text-emerald-600 transition-all w-fit px-3 py-2 rounded-xl hover:bg-emerald-50 group"
+      >
+        <Plus size={16} className="group-hover:rotate-90 transition-transform" />
+        Add Option
+      </button>
+    </div>
+  );
+};
 
 const ShortEditor = ({ question, updateQ }) => (
   <div className="space-y-4">
@@ -464,6 +601,7 @@ export default function CreateExam() {
   const [initialLoading, setInitialLoading] = useState(false);
   const [toasts, setToasts] = useState([]);
   const [activeQTab, setActiveQTab] = useState('mcq');
+  const [counts, setCounts] = useState({ mcq: 0, short: 0, coding: 0, 'frontend-react': 0 });
   
   // Link Import States
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -473,12 +611,20 @@ export default function CreateExam() {
   const [previewQuestion, setPreviewQuestion] = useState(null);
   const returnTo = new URLSearchParams(location.search).get('returnTo') || '/mentor';
 
-  const navItems = [
+  const userRole = sessionStorage.getItem('vision_role') || 'mentor';
+  const isAdmin = userRole === 'admin' || returnTo === '/admin';
+
+  const navItems = isAdmin ? [
     { id: 'Overview', label: 'Overview', icon: LayoutDashboard },
-    { id: 'Live Proctoring', label: 'Live Proctoring', icon: Users },
+    { id: 'Users', label: 'User Management', icon: Users },
+    { id: 'Candidates', label: 'Candidates', icon: ScanFace },
+    { id: 'Exams', label: 'Exam Library', icon: FileText },
+    { id: 'Results', label: 'Results & Reports', icon: BarChart3 },
+    { id: 'Settings', label: 'System Settings', icon: Settings },
+  ] : [
+    { id: 'Overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'Exam Management', label: 'Exam Library', icon: FileText },
     { id: 'Results & Reports', label: 'Results & Reports', icon: BarChart3 },
-    { id: 'Settings', label: 'System Settings', icon: Settings },
   ];
 
   const handleLogout = () => {
@@ -967,7 +1113,7 @@ export default function CreateExam() {
     }
   };
 
-  const addQ = (type) => {
+  const addQ = (type, count = 1) => {
     const tpl = {
       mcq: { type: 'mcq', questionText: '', options: ['', '', '', ''], correctOption: 0, marks: 1 },
       short: { type: 'short', questionText: '', expectedAnswer: '', maxWords: 150, marks: 2 },
@@ -983,9 +1129,16 @@ export default function CreateExam() {
         frontendTestCases: [{ description: 'Should render Hello World', testCode: "return document.querySelector('h1').textContent.includes('Hello World')", isHidden: true }]
       },
     };
-    const q = { ...tpl[type], id: Date.now() };
-    setQuestions(p => [...p, q]);
-    setExpandedQ(q.id);
+    
+    const newQs = [];
+    const now = Date.now();
+    for (let i = 0; i < count; i++) {
+      newQs.push({ ...tpl[type], id: now + i });
+    }
+    
+    setQuestions(p => [...p, ...newQs]);
+    if (newQs.length > 0) setExpandedQ(newQs[newQs.length - 1].id);
+    setCounts(prev => ({ ...prev, [type]: 1 })); // Reset specific count
   };
 
   const updateQ = (id, u) => setQuestions(qs => qs.map(q => q.id === id ? { ...q, ...u } : q));
@@ -1098,8 +1251,8 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
       {/* Premium Sidebar (Aligned with Admin/Mentor Dashboards) */}
       <PremiumSidebar
         navItems={navItems}
-        activeTab="Exam Management"
-        setActiveTab={() => navigate(returnTo)}
+        activeTab={isAdmin ? 'Exams' : 'Exam Management'}
+        setActiveTab={(tabId) => navigate(`${returnTo}?tab=${tabId}`)}
         userName={sessionStorage.getItem('vision_name') || 'Admin'}
         userRole={sessionStorage.getItem('vision_role') || 'Admin'}
         onLogout={handleLogout}
@@ -1109,26 +1262,26 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
       {/* Main Container */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative bg-zinc-50">
         {/* Header (Breadcrumbs) */}
-        <header className="h-20 bg-zinc-50/80 backdrop-blur-md border-b border-zinc-200 flex items-center justify-between px-10 relative z-20">
-          <div className="flex items-center gap-3 text-xs font-bold text-zinc-500 uppercase tracking-widest leading-none">
-            <span onClick={() => navigate(returnTo)} className="hover:text-emerald-500 transition-colors cursor-pointer">{returnTo === '/admin' ? 'Admin' : 'Mentor'}</span>
-            <ChevronRight size={14} className="opacity-30" />
-            <span className="hover:text-emerald-500 transition-colors cursor-pointer" onClick={() => navigate(returnTo)}>Exam Library</span>
-            <ChevronRight size={14} className="opacity-30" />
-            <span className="text-zinc-900">{editId ? 'Edit' : 'Create'} Assessment</span>
+        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-zinc-200 flex items-center justify-between px-10 relative z-20">
+          <div className="flex items-center gap-3 text-[13px] font-medium text-slate-400 tracking-wide">
+            <span onClick={() => navigate(returnTo)} className="hover:text-slate-900 transition-colors cursor-pointer">{returnTo === '/admin' ? 'Admin Dashboard' : 'Mentor Dashboard'}</span>
+            <ChevronRight size={14} className="opacity-40" />
+            <span className="hover:text-slate-900 transition-colors cursor-pointer" onClick={() => navigate(returnTo)}>Exam Library</span>
+            <ChevronRight size={14} className="opacity-40" />
+            <span className="text-slate-900 font-semibold">{editId ? 'Edit' : 'Create'} Assessment</span>
           </div>
 
           <div className="flex items-center gap-6">
             <div className="relative group cursor-pointer">
-               <Bell size={20} className="text-zinc-500 hover:text-emerald-500 transition-colors" />
+               <Bell size={20} className="text-slate-400 hover:text-slate-900 transition-colors" />
             </div>
-            <div className="h-6 w-px bg-zinc-100" />
+            <div className="h-6 w-px bg-slate-100" />
             <div className="flex items-center gap-3 cursor-pointer group">
               <div className="text-right">
-                <p className="text-[11px] font-bold text-zinc-900 group-hover:text-emerald-500 transition-colors uppercase tracking-tight leading-none">{sessionStorage.getItem('vision_name') || 'Mentor'}</p>
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-400 mt-1">Authorized</p>
+                <p className="text-[11px] font-bold text-slate-900 group-hover:text-emerald-600 transition-colors uppercase tracking-tight leading-none">{sessionStorage.getItem('vision_name') || 'Mentor'}</p>
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mt-1">Authorized</p>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-zinc-100 border border-zinc-200 flex items-center justify-center font-black text-zinc-900 uppercase text-sm shadow-sm group-hover:border-emerald-500/50 transition-all">
+              <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center font-black text-slate-600 uppercase text-sm shadow-sm group-hover:border-emerald-200 transition-all">
                 {(sessionStorage.getItem('vision_name') || 'M').charAt(0)}
               </div>
             </div>
@@ -1355,12 +1508,30 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                       <div className="space-y-1.5">
                         {filtered.map((q, i) => (
                           <React.Fragment key={q.id}>
-                            <div className={`group bg-white border rounded-lg transition-all ${expandedQ === q.id ? 'ring-1 ring-emerald-500/20 border-emerald-200' : 'border-slate-200 hover:border-slate-300'}`}>
-                              <div className="flex items-center justify-between px-3 py-2.5">
-                                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                   <span className="text-[10px] font-semibold text-slate-400 w-5 text-center shrink-0">{i + 1}</span>
-                                   <input value={q.questionText} onChange={e => updateQ(q.id, { questionText: e.target.value })} placeholder="Enter question..." className="bg-transparent border-none text-[13px] font-medium text-slate-800 placeholder:text-slate-300 focus:ring-0 w-full p-0" />
-                                   <span className="text-[10px] text-slate-400 shrink-0 tabular-nums">{q.marks}pts</span>
+                            <div className={`group bg-white border rounded-2xl transition-all ${expandedQ === q.id ? 'ring-4 ring-emerald-500/5 border-emerald-200 shadow-sm' : 'border-slate-100 hover:border-slate-200 hover:shadow-sm'}`}>
+                              <div className="flex items-center justify-between px-5 py-4">
+                                <div className="flex items-center gap-4 min-w-0 flex-1">
+                                   <div className="w-7 h-7 rounded-lg bg-slate-50 flex items-center justify-center shrink-0 group-hover:bg-emerald-50 transition-colors">
+                                      <span className="text-[10px] font-bold text-slate-400 group-hover:text-emerald-500">{i + 1}</span>
+                                   </div>
+                                   <textarea 
+                                     value={q.questionText} 
+                                     onChange={e => {
+                                       updateQ(q.id, { questionText: e.target.value });
+                                       e.target.style.height = 'auto';
+                                       e.target.style.height = e.target.scrollHeight + 'px';
+                                     }} 
+                                     onFocus={(e) => {
+                                       e.target.style.height = 'auto';
+                                       e.target.style.height = e.target.scrollHeight + 'px';
+                                     }}
+                                     placeholder="Describe your question here..." 
+                                     rows={1}
+                                     className="bg-transparent border-none text-[14px] font-bold text-slate-800 placeholder:text-slate-300 focus:ring-0 w-full p-0 outline-none resize-none overflow-hidden min-h-[20px] leading-relaxed py-1" 
+                                   />
+                                   <div className="bg-slate-50 px-2.5 py-1 rounded-lg shrink-0 border border-slate-100/50">
+                                      <span className="text-[10px] font-bold text-slate-400 tabular-nums">{q.marks}pts</span>
+                                   </div>
                                 </div>
                                 <div className="flex items-center gap-0.5 ml-2">
                                    <button onClick={() => setExpandedQ(expandedQ === q.id ? null : q.id)} className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition-colors">
@@ -1377,17 +1548,56 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                             </div>
 
                             {expandedQ === q.id && (
-                              <div className="px-8 pb-8 pt-4 border-t border-zinc-200 animate-in slide-in-from-top-2 duration-300 bg-white rounded-b-lg border-x border-b">
-                                 <div className="mb-6 flex items-center gap-4">
-                                    <div className="flex items-center bg-zinc-50 border border-zinc-200 rounded-2xl pr-4 overflow-hidden">
-                                       <input type="number" value={q.marks} onChange={e => updateQ(q.id, { marks: parseInt(e.target.value) || 0 })} className="w-14 h-12 bg-transparent border-none text-sm font-black text-zinc-900 text-center focus:ring-0 tabular-nums" />
-                                       <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Points</span>
+                              <div className="border-t border-slate-100 animate-in slide-in-from-top-2 duration-300 bg-white rounded-b-2xl overflow-hidden border-x border-b">
+                                 {/* Section 1: Universal Settings Strip */}
+                                 <div className="bg-slate-50 border-b border-slate-100 px-6 py-3 flex items-center gap-6">
+                                    <div className="flex items-center gap-3">
+                                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Points</span>
+                                       <input 
+                                         type="number" 
+                                         value={q.marks} 
+                                         onChange={e => updateQ(q.id, { marks: parseInt(e.target.value) || 0 })}
+                                         className="w-20 h-9 bg-white border border-slate-200 rounded-lg px-3 text-sm font-bold text-slate-700 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                                       />
                                     </div>
+                                    
+                                    <div className="flex items-center gap-3">
+                                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Difficulty</span>
+                                       <select 
+                                         value={q.difficulty || 'Medium'} 
+                                         onChange={e => updateQ(q.id, { difficulty: e.target.value })}
+                                         className="h-9 bg-white border border-slate-200 rounded-lg px-3 text-sm font-medium text-slate-700 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all cursor-pointer"
+                                       >
+                                         <option value="Easy">Easy</option>
+                                         <option value="Medium">Medium</option>
+                                         <option value="Hard">Hard</option>
+                                       </select>
+                                    </div>
+
+                                    {q.type === 'coding' && (
+                                       <div className="flex items-center gap-3 ml-auto">
+                                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Language</span>
+                                          <select 
+                                            value={q.language || 'javascript'} 
+                                            onChange={e => updateQ(q.id, { language: e.target.value })}
+                                            className="h-9 bg-white border border-slate-200 rounded-lg px-3 text-sm font-medium text-slate-700 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all cursor-pointer"
+                                          >
+                                            <option value="javascript">JavaScript</option>
+                                            <option value="python">Python</option>
+                                            <option value="cpp">C++</option>
+                                            <option value="java">Java</option>
+                                          </select>
+                                       </div>
+                                    )}
                                  </div>
-                                 {q.type === 'mcq' && <McqEditor question={q} updateQ={updateQ} />}
-                                 {q.type === 'short' && <ShortEditor question={q} updateQ={updateQ} />}
-                                 {q.type === 'coding' && <CodingEditor question={q} updateQ={updateQ} />}
-                                 {q.type === 'frontend-react' && <FrontendReactEditor question={q} updateQ={updateQ} />}
+
+                                 {/* Section 2: Dynamic Type-Specific Area */}
+                                 <div className="px-6 py-4">
+                                    {q.type === 'mcq' && <McqEditor question={q} updateQ={updateQ} />}
+                                    {q.type === 'short' && <ShortEditor question={q} updateQ={updateQ} />}
+                                    {q.type === 'coding' && <CodingEditor question={q} updateQ={updateQ} />}
+                                    {q.type === 'frontend-react' && <FrontendReactEditor question={q} updateQ={updateQ} />}
+                                 </div>
                               </div>
                             )}
                           </React.Fragment>
@@ -1406,19 +1616,55 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                   
                   
                   <div className="space-y-5">
-                    <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em] ml-1">Add Content</p>
-                    <div className="grid grid-cols-1 gap-3">
-                       {Object.entries(typeLabels).map(([type, label]) => (
-                         <button key={type} onClick={() => addQ(type)} className="w-full flex items-center gap-4 p-4 bg-white border border-slate-200 rounded-2xl hover:bg-emerald-50 hover:border-emerald-200 hover:shadow-md group/btn transition-all text-left active:scale-95">
-                            <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-emerald-600 group-hover/btn:bg-emerald-500 group-hover/btn:text-white group-hover/btn:border-emerald-500 group-hover/btn:scale-110 transition-all shadow-sm">
-                              {typeIcons[type]}
+                    <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest ml-1">Add Content</p>
+                    <div className="bg-white border border-slate-200 rounded-[32px] p-6 shadow-sm space-y-6">
+                       <div className="space-y-4">
+                          {Object.entries(typeLabels).map(([type, label]) => (
+                            <div key={type} className="flex items-center justify-between group/row">
+                               <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 group-hover/row:text-emerald-500 group-hover/row:bg-emerald-50 transition-all">
+                                    {typeIcons[type]}
+                                  </div>
+                                  <span className="text-[12px] font-bold text-slate-700">{label}</span>
+                               </div>
+                               <div className="flex items-center bg-slate-50 rounded-lg h-8 w-14 border border-slate-100 focus-within:border-emerald-200 transition-all overflow-hidden">
+                                  <input 
+                                    type="number" 
+                                    min="0" 
+                                    max="50"
+                                    value={counts[type] || ''}
+                                    placeholder="0"
+                                    onChange={e => {
+                                      const val = e.target.value;
+                                      setCounts(prev => ({ ...prev, [type]: val === '' ? 0 : Math.max(0, Math.min(50, parseInt(val) || 0)) }));
+                                    }}
+                                    className="w-full bg-transparent border-none text-[12px] font-bold text-slate-900 focus:ring-0 p-0 text-center outline-none shadow-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                  />
+                               </div>
                             </div>
-                            <div>
-                               <p className="text-xs font-black text-slate-900 group-hover/btn:text-emerald-700 transition-colors uppercase tracking-wider">{label}</p>
-                               <p className="text-[9px] text-slate-400 group-hover/btn:text-emerald-600/70 transition-colors uppercase font-bold">New Module</p>
-                            </div>
-                         </button>
-                       ))}
+                          ))}
+                       </div>
+                       
+                       <button 
+                         onClick={() => {
+                            let totalAdded = 0;
+                            Object.entries(counts).forEach(([type, count]) => {
+                               if (count > 0) {
+                                  addQ(type, count);
+                                  totalAdded += count;
+                               }
+                            });
+                            if (totalAdded > 0) {
+                               addToast(`Successfully implemented ${totalAdded} new modules!`, 'success');
+                               // Reset all to 0 except the first one maybe? Or reset all to 0.
+                               setCounts({ mcq: 0, short: 0, coding: 0, 'frontend-react': 0 });
+                            }
+                         }}
+                         className="w-full h-12 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-2xl font-bold text-[13px] tracking-tight transition-all active:scale-95 border border-emerald-200/50 flex items-center justify-center gap-2 group shadow-sm"
+                       >
+                          <Plus size={18} strokeWidth={2.5} className="group-hover:rotate-90 transition-transform" />
+                          Implement Selection
+                       </button>
                     </div>
                   </div>
 
@@ -1454,12 +1700,13 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                       </div>
                       
                       {/* CSV Helper for CreateExam */}
-                      <div className="mt-2 text-left bg-zinc-900/50 p-3 rounded-xl border border-white/[0.05]">
-                         <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><FileText size={12} /> CSV Expected Format</p>
-                         <p className="text-[9px] font-mono text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20 break-all leading-relaxed">
+                      <div className="mt-2 text-left bg-white/40 backdrop-blur-xl p-4 rounded-[20px] border border-white/60 shadow-sm relative overflow-hidden">
+                         <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500/10" />
+                         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5"><FileText size={12} className="text-slate-400" /> CSV Expected Format</p>
+                         <code className="block text-[10px] font-mono text-emerald-600 bg-emerald-50/50 px-2 py-1.5 rounded-lg border border-emerald-100/50 break-all leading-relaxed">
                            Type, QuestionText, Marks, Option1, Option2, Option3, Option4, ExpectedAnswer
-                         </p>
-                         <p className="text-[9px] text-zinc-500 mt-1 italic">* Option columns are only required for MCQ.</p>
+                         </code>
+                         <p className="text-[9px] text-slate-400 mt-2 italic font-medium">* Option columns are only required for MCQ.</p>
                       </div>
                       <button 
                         onClick={exportQuestions} 
@@ -1469,8 +1716,8 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                         Download JSON Data
                       </button>
                     </div>
-                    <button onClick={handlePublish} disabled={isPublishing || questions.length === 0 || publishStatus !== 'idle'} className="w-full h-10 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl font-semibold text-[11px] tracking-wide shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95 group/pub">
-                      <AnimatedStatusIcon status={publishStatus} icon={<Send size={18} className="group-hover/pub:translate-x-1 group-hover/pub:-translate-y-1 transition-transform" />} size={18} />
+                    <button onClick={handlePublish} disabled={isPublishing || questions.length === 0 || publishStatus !== 'idle'} className="w-full h-10 bg-[#4ade80] hover:bg-[#22c55e] disabled:opacity-50 text-slate-900 rounded-xl font-bold text-[11px] tracking-wide shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95">
+                      <AnimatedStatusIcon status={publishStatus} icon={<Send size={18} />} size={18} />
                       {publishStatus === 'loading' ? 'Deploying...' : publishStatus === 'success' ? 'Deployed' : 'Deploy Now'}
                     </button>
                     <button onClick={handleSaveDraft} disabled={isSaving || saveStatus !== 'idle'} className="w-full h-10 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl font-semibold text-[11px] tracking-wide flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm">
@@ -1725,43 +1972,12 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
       )}
 
       {/* Success Modal */}
-      {showSuccessModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md bg-black/60">
-          <div className="bg-white border border-emerald-500/20 w-full max-w-sm rounded-[40px] p-10 text-center shadow-2xl animate-in zoom-in-95 duration-300 relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-500 to-teal-500" />
-            <div className="w-20 h-20 bg-emerald-500/10 border border-emerald-500/20 rounded-[28px] flex items-center justify-center mx-auto mb-8 text-emerald-400 shadow-[0_0_40px_rgba(16,185,129,0.15)]">
-              <CheckCircle size={40} strokeWidth={2.5} />
-            </div>
-            <h2 className="text-2xl font-black text-zinc-900 mb-3 uppercase tracking-tight">System Deployed</h2>
-            <p className="text-xs text-zinc-500 mb-8 leading-relaxed font-semibold uppercase tracking-wider">Assessment protocol is now active across all proctor nodes.</p>
-            
-            <div className="bg-zinc-50 border border-zinc-200 rounded-2xl p-5 flex flex-col gap-4 mb-10">
-              <div className="text-left font-mono min-w-0">
-                <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest mb-1.5 leading-none">Student Exam Link</p>
-                <p className="text-[10px] text-zinc-700 font-bold tracking-tight break-all leading-relaxed">{`${window.location.origin}/exam/${publishedExamId}`}</p>
-              </div>
-              <button 
-                onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/exam/${publishedExamId}`); addToast('Exam link copied to clipboard!'); }}
-                className="w-full py-3 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20"
-              >
-                <Copy size={14} /> Copy Link
-              </button>
-            </div>
-
-            <button 
-              onClick={() => { setShowSuccessModal(false); setShowInviteModal(true); }}
-              className="group w-full mb-3 bg-indigo-600 text-white h-14 rounded-[20px] font-black text-xs uppercase tracking-[0.2em] hover:bg-indigo-700 transition-all active:scale-[0.98] flex items-center justify-center gap-3 shadow-lg shadow-indigo-900/20"
-            >
-              <Users size={16} /> Invite Students
-            </button>
-
-            <button onClick={() => navigate(returnTo)} className="group w-full bg-white text-black h-14 rounded-[20px] font-black text-xs uppercase tracking-[0.2em] hover:bg-zinc-100 transition-all active:scale-[0.98] flex items-center justify-center gap-3 border border-zinc-200">
-              Return to Module
-              <ArrowLeft size={16} className="rotate-180 group-hover:translate-x-1 transition-transform" />
-            </button>
-          </div>
-        </div>
-      )}
+      <SuccessModal 
+        isOpen={showSuccessModal}
+        examId={publishedExamId}
+        onInvite={() => { setShowSuccessModal(false); setShowInviteModal(true); }}
+        onReturn={() => navigate(returnTo)}
+      />
 
       {/* Bulk Invite Modal */}
       <BulkInviteModal 
@@ -1771,19 +1987,15 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
         examTitle={exam.title}
       />
 
-      {/* Toasts */}
-      <div className="fixed bottom-10 right-10 z-[200] space-y-4">
+      <div className="fixed bottom-10 right-10 z-[200] space-y-3">
         {toasts.map(t => (
-          <div key={t.id} className={`flex items-center gap-4 px-6 py-5 rounded-[24px] border-2 shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-in slide-in-from-right-10 duration-500 bg-zinc-900 ${t.type === 'error' ? 'border-red-500 text-red-400' : 'border-emerald-500 text-emerald-400'}`}>
-            <div className={`w-10 h-10 rounded-[14px] flex items-center justify-center shrink-0 ${t.type === 'error' ? 'bg-red-500/20 text-red-500' : 'bg-emerald-500/20 text-emerald-500'}`}>
-               {t.type === 'error' ? <AlertCircle size={20} strokeWidth={2.5} /> : <CheckCircle size={20} strokeWidth={2.5} />}
+          <div key={t.id} className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl border shadow-[0_15px_30px_-5px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom-4 duration-300 bg-white ${t.type === 'error' ? 'border-red-100 text-red-600' : 'border-emerald-100 text-emerald-600'}`}>
+            <div className={`shrink-0 ${t.type === 'error' ? 'text-red-500' : 'text-emerald-500'}`}>
+               {t.type === 'error' ? <AlertCircle size={16} strokeWidth={2.5} /> : <CheckCircle size={16} strokeWidth={2.5} />}
             </div>
-            <div className="pr-4">
-               <p className={`text-xs font-black uppercase tracking-[0.2em] mb-1 leading-none ${t.type === 'error' ? 'text-red-400' : 'text-emerald-400'}`}>
-                 {t.type === 'error' ? 'System Error' : 'Success'}
-               </p>
-               <p className="text-[11px] font-bold text-zinc-300 uppercase tracking-tight leading-relaxed">{t.msg}</p>
-            </div>
+            <p className="text-[12px] font-bold tracking-tight text-slate-700 whitespace-nowrap">
+              {t.msg}
+            </p>
           </div>
         ))}
       </div>

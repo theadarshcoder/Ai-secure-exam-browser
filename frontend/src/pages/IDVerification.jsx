@@ -33,10 +33,10 @@ const StepIndicator = ({ step }) => {
               isActive ? 'border-slate-800 bg-slate-800 text-white shadow-sm' :
                          'border-slate-200 bg-white text-slate-400'
             }`}>
-              {isDone ? <CheckCircle2 size={15} /> : <span className="text-[11px] font-black">{num}</span>}
+              {isDone ? <CheckCircle2 size={15} /> : <span className="text-[11px] font-bold">{num}</span>}
             </div>
             <div className="pt-1.5">
-              <h4 className={`text-xs font-black uppercase tracking-wider ${!muted ? 'text-slate-800' : 'text-slate-400'}`}>{s.title}</h4>
+              <h4 className={`text-xs font-bold uppercase tracking-wider ${!muted ? 'text-slate-800' : 'text-slate-400'}`}>{s.title}</h4>
               <p className="text-[10px] text-slate-400 mt-1 leading-relaxed pr-2">{s.desc}</p>
             </div>
           </div>
@@ -51,7 +51,7 @@ const ErrorState = ({ error, onRetry, isConnecting }) => (
     <div className="w-16 h-16 bg-red-100 text-red-500 rounded-2xl flex items-center justify-center mb-5 border border-red-200">
       <AlertTriangle size={32} />
     </div>
-    <h3 className="text-xl font-black text-slate-900 mb-2">{error.title || 'Hardware Map Failed'}</h3>
+    <h3 className="text-xl font-bold text-slate-900 mb-2">{error.title || 'Hardware Map Failed'}</h3>
     <div className="text-xs text-slate-500 max-w-sm leading-relaxed mb-6 space-y-4">
       <p className="text-center text-[13px]">{error.message}</p>
       <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl text-left">
@@ -66,7 +66,7 @@ const ErrorState = ({ error, onRetry, isConnecting }) => (
     <button
       onClick={onRetry}
       disabled={isConnecting}
-      className="px-6 py-3 bg-slate-900 text-white hover:bg-slate-700 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+      className="px-6 py-3 bg-slate-900 text-white hover:bg-slate-700 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
     >
       {isConnecting ? <><RotateCcw size={14} className="animate-spin" /> Querying...</> : <><RotateCcw size={14} /> Retry Hardware Connect</>}
     </button>
@@ -83,7 +83,7 @@ const SuccessState = ({ onProceed, onRetake }) => (
     >
       <CheckCircle2 size={52} className="text-emerald-500 -rotate-3" />
     </motion.div>
-    <h2 className="text-3xl font-black text-slate-900 mb-3 tracking-tight">Identity Verified</h2>
+    <h2 className="text-3xl font-bold text-slate-900 mb-3 tracking-tight">Identity Verified</h2>
     <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed mb-10 font-medium">
       Verification complete. Security metadata signature generated and stored.
     </p>
@@ -96,7 +96,7 @@ const SuccessState = ({ onProceed, onRetake }) => (
       </button>
       <button
         onClick={onProceed}
-        className="flex-1 py-3.5 px-4 rounded-xl bg-slate-900 text-white hover:bg-slate-800 transition-all text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-sm"
+        className="flex-1 py-3.5 px-4 rounded-xl bg-slate-900 text-white hover:bg-slate-800 transition-all text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 shadow-sm"
       >
         Proceed <ArrowRight size={14} />
       </button>
@@ -332,7 +332,7 @@ export default function IDVerification() {
                       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                         className="absolute inset-0 bg-black/80 z-30 flex flex-col items-center justify-center">
                         <div className="w-10 h-10 border-2 border-t-emerald-400 border-white/10 rounded-full animate-spin mb-3" />
-                        <span className="text-[9px] font-black text-emerald-400 tracking-[0.3em] uppercase">Processing Identity</span>
+                        <span className="text-[9px] font-bold text-emerald-400 tracking-[0.3em] uppercase">Processing Identity</span>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -340,7 +340,7 @@ export default function IDVerification() {
                   {/* Live badge */}
                   <div className="absolute top-4 left-4 flex items-center gap-2 px-2.5 py-1 bg-black/60 backdrop-blur-md rounded-lg border border-white/10 z-20">
                     <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                    <span className="text-[8px] font-black text-white uppercase tracking-widest">Secure Feed</span>
+                    <span className="text-[8px] font-bold text-white uppercase tracking-widest">Secure Feed</span>
                   </div>
                 </div>
 
@@ -354,7 +354,7 @@ export default function IDVerification() {
                     {step === 1 ? <UserCircle2 size={18} className="text-slate-700" /> : <CreditCard size={18} className="text-slate-700" />}
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">
                       {step === 1 ? 'Step 1: Student Photo' : 'Step 2: ID Card'}
                     </span>
                     <span className="text-xs font-semibold text-slate-700 leading-tight">

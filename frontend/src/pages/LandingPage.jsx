@@ -1471,7 +1471,7 @@ const CredTrustFooter = () => {
                 onClick={e => e.preventDefault()}
                 whileHover={{ scale: 1.1, backgroundColor: '#fff', color: '#000' }}
                 whileTap={{ scale: 0.94 }}
-                className="w-10 h-10 rounded-full border border-zinc-700 flex items-center justify-center text-zinc-400 hover:text-white transition-colors text-[11px] font-black tracking-tight"
+                className="w-10 h-10 rounded-full border border-zinc-700 flex items-center justify-center text-zinc-400 hover:text-white transition-colors text-[11px] font-bold tracking-tight"
                 style={{ transition: 'background 0.15s, color 0.15s' }}
               >
                 {s.label}
@@ -1556,7 +1556,7 @@ const CyclingPillHeadline = () => {
               className="flex items-center gap-3 relative z-10"
             >
               {current.icon}
-              <span className={`text-3xl md:text-5xl font-black tracking-tighter uppercase ${current.text}`}>
+              <span className={`text-3xl md:text-5xl font-bold tracking-tighter uppercase ${current.text}`}>
                 {current.label}
               </span>
             </motion.div>

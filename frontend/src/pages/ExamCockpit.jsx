@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import socketService from '../services/socket';
-import api, { runCodingQuestion, requestHelp } from '../services/api';
+import api, { runCodingQuestion, requestHelp, getSettings } from '../services/api';
 import Editor from '@monaco-editor/react';
 import {
   CameraOff, Clock, Shield, CheckCircle, CheckCircle2, Lock as LockIcon,
@@ -97,11 +97,11 @@ const QuestionPalette = React.memo(({ questions, currentQ, answers, visited, mar
             <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Questions</span>
           </div>
-          <span className="text-[10px] font-black text-slate-400 tabular-nums uppercase">{answered}/{questions.length} Solved</span>
+          <span className="text-[10px] font-bold text-slate-400 tabular-nums uppercase">{answered}/{questions.length} Solved</span>
         </div>
         <div className="p-1 bg-slate-100 rounded-xl flex items-center gap-1">
           {sections.map(sec => (
-            <button key={sec.id} onClick={() => handleSectionClick(sec)} className={`flex-1 py-2 text-[10px] font-black rounded-lg uppercase tracking-wider transition-all ${activeSection === sec.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+            <button key={sec.id} onClick={() => handleSectionClick(sec)} className={`flex-1 py-2 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all ${activeSection === sec.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
               {sec.label}
             </button>
           ))}
@@ -148,10 +148,10 @@ const ProctoringSidebar = React.memo(({ cameraActive, videoRef, faceActive, conf
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-slate-50">
             <CameraOff size={24} className="text-slate-200" />
-            <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Feed Disabled</span>
+            <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">Feed Disabled</span>
           </div>
         )}
-        <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2 py-1 bg-black/60 backdrop-blur-md rounded-lg text-[8px] font-black text-white uppercase tracking-widest border border-white/10 z-10">
+        <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2 py-1 bg-black/60 backdrop-blur-md rounded-lg text-[8px] font-bold text-white uppercase tracking-widest border border-white/10 z-10">
           <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
           Live
         </div>
@@ -176,15 +176,15 @@ const SubmitModal = React.memo(({ isOpen, onClose, onConfirm, stats }) => (
       <div className="fixed inset-0 z-[110] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6">
         <motion.div initial={{ scale: 0.95, y: 10, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-white/20">
           <div className="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200 text-slate-900 mb-6 flex items-center justify-center shadow-sm"><Send size={28} /></div>
-          <h2 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">Confirm Exam Submission?</h2>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2 tracking-tight">Confirm Exam Submission?</h2>
           <p className="text-[13px] font-medium text-slate-500 mb-8 leading-relaxed">You are about to submit your response. This action is final and your work will be graded as currently saved.</p>
           <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 mb-8 grid grid-cols-3 gap-4 text-center">
-            <div><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Answered</p><p className="text-xl font-black text-slate-900 tabular-nums">{stats.answered}</p></div>
-            <div className="border-l border-slate-200"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Marked</p><p className="text-xl font-black text-slate-900 tabular-nums">{stats.marked}</p></div>
-            <div className="border-l border-slate-200"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total</p><p className="text-xl font-black text-slate-900 tabular-nums">{stats.total}</p></div>
+            <div><p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Answered</p><p className="text-xl font-bold text-slate-900 tabular-nums">{stats.answered}</p></div>
+            <div className="border-l border-slate-200"><p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Marked</p><p className="text-xl font-bold text-slate-900 tabular-nums">{stats.marked}</p></div>
+            <div className="border-l border-slate-200"><p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Total</p><p className="text-xl font-bold text-slate-900 tabular-nums">{stats.total}</p></div>
           </div>
           <div className="flex gap-3">
-            <button onClick={onClose} className="flex-1 py-3.5 px-4 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all text-[12px] font-black uppercase tracking-widest">Wait, I'll Review</button>
+            <button onClick={onClose} className="flex-1 py-3.5 px-4 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all text-[12px] font-bold uppercase tracking-widest">Wait, I'll Review</button>
             <button onClick={onConfirm} className="flex-1 py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition-all text-[12px] font-bold uppercase tracking-widest shadow-lg shadow-emerald-900/10">Confirm & Submit</button>
           </div>
         </motion.div>
@@ -233,15 +233,15 @@ const ExitModal = React.memo(({ isOpen, onClose, onExit, password, setPassword, 
       <div className="fixed inset-0 z-[120] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-6">
         <motion.div initial={{ scale: 0.95, y: 10, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl border border-white/20 text-center">
           <div className="w-16 h-16 rounded-2xl bg-red-50 border border-red-100 text-red-600 mb-6 mx-auto flex items-center justify-center shadow-sm"><ShieldAlert size={28} /></div>
-          <h2 className="text-xl font-black text-slate-900 mb-2 tracking-tight">Security Override</h2>
+          <h2 className="text-xl font-bold text-slate-900 mb-2 tracking-tight">Security Override</h2>
           <p className="text-[12px] font-medium text-zinc-500 mb-8 mx-auto max-w-[240px]">Enter supervisor credentials to force terminate this session.</p>
           <div className="relative mb-6">
             <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Supervisor Password" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-center text-slate-900 font-mono text-[14px] tracking-[0.4em] focus:outline-none focus:border-red-400 focus:ring-4 focus:ring-red-500/10 transition-all" />
-            {error && <div className="absolute top-full left-0 right-0 mt-2"><span className="text-[10px] font-black text-red-600 uppercase tracking-widest">{error}</span></div>}
+            {error && <div className="absolute top-full left-0 right-0 mt-2"><span className="text-[10px] font-bold text-red-600 uppercase tracking-widest">{error}</span></div>}
           </div>
           <div className="flex gap-3">
-            <button onClick={onClose} className="flex-1 py-3.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all text-[12px] font-black uppercase tracking-widest">Cancel</button>
-            <button onClick={onExit} className="flex-1 py-3.5 rounded-xl bg-red-600 hover:bg-red-700 text-white transition-all text-[12px] font-black uppercase tracking-widest shadow-lg shadow-red-100">Terminate</button>
+            <button onClick={onClose} className="flex-1 py-3.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all text-[12px] font-bold uppercase tracking-widest">Cancel</button>
+            <button onClick={onExit} className="flex-1 py-3.5 rounded-xl bg-red-600 hover:bg-red-700 text-white transition-all text-[12px] font-bold uppercase tracking-widest shadow-lg shadow-red-100">Terminate</button>
           </div>
         </motion.div>
       </div>
@@ -262,12 +262,12 @@ const FullBlockOverlay = React.memo(({ isOpen, reason }) => (
           <div className="w-24 h-24 rounded-full bg-red-500/10 border-2 border-red-500 flex items-center justify-center mx-auto mb-8 animate-pulse">
             <LockIcon size={48} className="text-red-500" />
           </div>
-          <h1 className="text-4xl font-black text-white mb-4 uppercase tracking-tighter">Access Resticted</h1>
+          <h1 className="text-4xl font-bold text-white mb-4 uppercase tracking-tighter">Access Resticted</h1>
           <p className="text-zinc-400 text-lg mb-10 leading-relaxed font-medium">
             {reason || "Your exam session has been suspended by the supervisor due to suspicious activity."}
           </p>
           <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
-             <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+             <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
                Please contact your instructor immediately to regain access.
              </p>
           </div>
@@ -280,13 +280,13 @@ const FullBlockOverlay = React.memo(({ isOpen, reason }) => (
 const ObjectivePanel = React.memo(({ question, index, markedForReview, panelWidth }) => (
   <div style={{ width: `${panelWidth}%` }} className="shrink-0 flex flex-col min-h-0 bg-white">
     <div className="bg-slate-50 border-b border-slate-100 px-6 py-3.5 flex items-center justify-between shrink-0">
-      <span className="text-[11px] font-black text-slate-900 uppercase tracking-widest">Objective</span>
-      {markedForReview[question?.originalId || question?.id || question?._id] && <div className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-2 py-0.5 rounded-md border border-amber-100"><Bookmark size={10} className="fill-amber-600" /><span className="text-[9px] font-black uppercase tracking-wider">Flagged</span></div>}
+      <span className="text-[11px] font-bold text-slate-900 uppercase tracking-widest">Objective</span>
+      {markedForReview[question?.originalId || question?.id || question?._id] && <div className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-2 py-0.5 rounded-md border border-amber-100"><Bookmark size={10} className="fill-amber-600" /><span className="text-[9px] font-bold uppercase tracking-wider">Flagged</span></div>}
     </div>
     <div className="flex-1 overflow-y-auto p-8 scroll-thin font-medium">
       <div className="flex items-center gap-3 mb-6">
-        <div className="px-2.5 py-1 bg-slate-100 text-slate-900 border border-slate-200 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm">Q{index + 1}</div>
-        <div className="px-2.5 py-1 bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-[10px] font-black uppercase tracking-widest">{question?.marks || 10} Marks</div>
+        <div className="px-2.5 py-1 bg-slate-100 text-slate-900 border border-slate-200 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-sm">Q{index + 1}</div>
+        <div className="px-2.5 py-1 bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-[10px] font-bold uppercase tracking-widest">{question?.marks || 10} Marks</div>
       </div>
       <h2 className="text-xl font-medium text-slate-900 leading-snug tracking-tight mb-6">{question?.questionText}</h2>
       <div className="prose prose-slate prose-sm text-slate-500 leading-relaxed space-y-4">
@@ -326,7 +326,7 @@ const CodingEnvironment = React.memo(({
         className="flex flex-col shrink-0 min-h-0 bg-white overflow-hidden relative z-0 border-b border-slate-100"
       >
         <div className="flex items-center justify-between px-4 h-10 bg-slate-50 border-b border-slate-200 shrink-0 z-10">
-          <div className="flex items-center gap-2 text-slate-400"><Terminal size={14} /><span className="text-[11px] font-black uppercase tracking-widest">Environment</span></div>
+          <div className="flex items-center gap-2 text-slate-400"><Terminal size={14} /><span className="text-[11px] font-bold uppercase tracking-widest">Environment</span></div>
           <div className="flex items-center gap-2">
             <button 
               onClick={() => setShowResetConfirm(true)}
@@ -339,11 +339,11 @@ const CodingEnvironment = React.memo(({
               </div>
             </button>
             <div className="relative">
-              <button onClick={() => setIsLangDropdownOpen(p => !p)} className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-2.5 h-[26px] hover:bg-slate-50 transition-all text-[11px] font-black uppercase tracking-widest text-slate-600 shadow-sm">{selectedLanguage}<ChevronDown size={12} /></button>
+              <button onClick={() => setIsLangDropdownOpen(p => !p)} className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-2.5 h-[26px] hover:bg-slate-50 transition-all text-[11px] font-bold uppercase tracking-widest text-slate-600 shadow-sm">{selectedLanguage}<ChevronDown size={12} /></button>
               {isLangDropdownOpen && (
                 <div className="absolute top-full right-0 mt-1 w-32 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1 overflow-hidden">
                   {['javascript', 'python', 'cpp', 'java'].map(l => (
-                    <button key={l} onClick={() => { setSelectedLanguage(l); setIsLangDropdownOpen(false); }} className={`w-full text-left px-3 py-1.5 text-[11px] font-black uppercase tracking-wider transition-colors ${selectedLanguage === l ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:bg-slate-50'}`}>{l}</button>
+                    <button key={l} onClick={() => { setSelectedLanguage(l); setIsLangDropdownOpen(false); }} className={`w-full text-left px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${selectedLanguage === l ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:bg-slate-50'}`}>{l}</button>
                   ))}
                 </div>
               )}
@@ -386,23 +386,23 @@ const CodingEnvironment = React.memo(({
       </div>
       <div className="flex-1 flex flex-col min-h-0 bg-white relative z-10 overflow-hidden">
         <div className="flex items-center px-4 border-b border-slate-200 shrink-0 h-10 bg-white z-10">
-          <button onClick={() => setActiveTab('Test Cases')} className={`h-full px-4 text-[11px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'Test Cases' ? 'text-slate-900 border-slate-900' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>Test Cases</button>
-          <button onClick={() => setActiveTab('Execution Details')} className={`h-full px-4 text-[11px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'Execution Details' ? 'text-slate-900 border-slate-900' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>Output Log</button>
+          <button onClick={() => setActiveTab('Test Cases')} className={`h-full px-4 text-[11px] font-bold uppercase tracking-widest border-b-2 transition-all ${activeTab === 'Test Cases' ? 'text-slate-900 border-slate-900' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>Test Cases</button>
+          <button onClick={() => setActiveTab('Execution Details')} className={`h-full px-4 text-[11px] font-bold uppercase tracking-widest border-b-2 transition-all ${activeTab === 'Execution Details' ? 'text-slate-900 border-slate-900' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>Output Log</button>
         </div>
         <div className="flex-1 overflow-y-auto p-6 scroll-thin bg-slate-50/40">
-          {isExecuting ? <div className="h-full flex flex-col items-center justify-center gap-3 text-slate-800"><RotateCcw size={24} className="animate-spin" /><span className="text-[10px] font-black uppercase tracking-widest animate-pulse">Processing Execution...</span></div> : executionResult ? (
+          {isExecuting ? <div className="h-full flex flex-col items-center justify-center gap-3 text-slate-800"><RotateCcw size={24} className="animate-spin" /><span className="text-[10px] font-bold uppercase tracking-widest animate-pulse">Processing Execution...</span></div> : executionResult ? (
             <div className="space-y-4">
               {activeTab === 'Test Cases' ? (
                   <div className="grid grid-cols-1 gap-4">
                       {executionResult.results ? executionResult.results.map((res, i) => (
                           <div key={i} className={`bg-white border rounded-2xl border-slate-200 overflow-hidden`}>
                               <div className={`px-4 py-2.5 border-b flex items-center justify-between ${res.passed ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-red-50 text-red-700 border-red-100'}`}>
-                                  <span className="text-[10px] font-black uppercase tracking-widest">Case {i + 1}</span>
-                                  <span className="text-[9px] font-black uppercase">{res.passed ? 'PASSED ✅' : 'FAILED ❌'}</span>
+                                  <span className="text-[10px] font-bold uppercase tracking-widest">Case {i + 1}</span>
+                                  <span className="text-[9px] font-bold uppercase">{res.passed ? 'PASSED ✅' : 'FAILED ❌'}</span>
                               </div>
                               <div className="p-4 grid grid-cols-3 gap-4">
-                                  <div><p className="text-[9px] font-black text-slate-400 uppercase mb-1">Actual</p><pre className="text-[10px] font-mono bg-slate-50 p-2 rounded border border-slate-100 overflow-x-auto">{res.actualOutput || 'N/A'}</pre></div>
-                                  <div className="col-span-2"><p className="text-[9px] font-black text-slate-400 uppercase mb-1">Error/Detail</p><pre className="text-[10px] font-mono text-red-500">{res.error || 'None'}</pre></div>
+                                  <div><p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Actual</p><pre className="text-[10px] font-mono bg-slate-50 p-2 rounded border border-slate-100 overflow-x-auto">{res.actualOutput || 'N/A'}</pre></div>
+                                  <div className="col-span-2"><p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Error/Detail</p><pre className="text-[10px] font-mono text-red-500">{res.error || 'None'}</pre></div>
                               </div>
                           </div>
                       )) : <pre className="text-red-500 font-mono text-xs">{executionResult.error}: {executionResult.details}</pre>}
@@ -413,7 +413,7 @@ const CodingEnvironment = React.memo(({
                   </div>
               )}
             </div>
-          ) : <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-4"><Play size={48} className="opacity-20 translate-x-1" /><span className="text-[10px] font-black uppercase tracking-widest">Awaiting Code Execution</span></div>}
+          ) : <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-4"><Play size={48} className="opacity-20 translate-x-1" /><span className="text-[10px] font-bold uppercase tracking-widest">Awaiting Code Execution</span></div>}
         </div>
       </div>
     </div>
@@ -426,7 +426,7 @@ const CodingEnvironment = React.memo(({
             <div className="w-12 h-12 bg-red-50 text-red-600 rounded-full flex items-center justify-center mb-4 border border-red-100 shadow-sm">
               <RotateCcw size={20} />
             </div>
-            <h3 className="text-lg font-black text-slate-900 mb-2">Reset Code Editor?</h3>
+            <h3 className="text-lg font-bold text-slate-900 mb-2">Reset Code Editor?</h3>
             <p className="text-sm text-slate-500 font-medium mb-6 leading-relaxed">
               This will erase all your current code and restore the default starting template. This action cannot be undone.
             </p>
@@ -513,30 +513,30 @@ const FrontendReactEnvironment = React.memo(({
         {/* Results Panel */}
         <div className="h-48 border-t border-slate-200 flex flex-col bg-white">
           <div className="flex items-center px-4 border-b border-slate-200 shrink-0 h-10 bg-slate-50">
-            <button onClick={() => setActiveTab('Test Cases')} className={`h-full px-4 text-[11px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'Test Cases' ? 'text-slate-900 border-slate-900' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>UI Validation Results</button>
+            <button onClick={() => setActiveTab('Test Cases')} className={`h-full px-4 text-[11px] font-bold uppercase tracking-widest border-b-2 transition-all ${activeTab === 'Test Cases' ? 'text-slate-900 border-slate-900' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>UI Validation Results</button>
           </div>
           <div className="flex-1 overflow-y-auto p-4 scroll-thin bg-slate-50/40">
             {isExecuting ? (
               <div className="h-full flex flex-col items-center justify-center gap-2 text-slate-800">
                 <RotateCcw size={20} className="animate-spin" />
-                <span className="text-[9px] font-black uppercase tracking-widest animate-pulse">Running UI Verification...</span>
+                <span className="text-[9px] font-bold uppercase tracking-widest animate-pulse">Running UI Verification...</span>
               </div>
             ) : executionResult ? (
               <div className="space-y-3">
                 {executionResult.testCaseResults?.map((res, i) => (
                   <div key={i} className={`bg-white border rounded-xl p-3 flex items-center justify-between border-slate-200 shadow-sm ${res.passed ? 'border-l-4 border-l-emerald-500' : 'border-l-4 border-l-red-500'}`}>
                     <div className="flex flex-col gap-1">
-                      <span className="text-[10px] font-black text-slate-900">{res.description}</span>
+                      <span className="text-[10px] font-bold text-slate-900">{res.description}</span>
                       {res.errorMsg && <span className="text-[9px] text-red-500 font-mono">{res.errorMsg}</span>}
                     </div>
-                    <span className="text-[9px] font-black uppercase shrink-0">{res.passed ? 'PASSED ✅' : 'FAILED ❌'}</span>
+                    <span className="text-[9px] font-bold uppercase shrink-0">{res.passed ? 'PASSED ✅' : 'FAILED ❌'}</span>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-2">
                 <Play size={32} className="opacity-20" />
-                <span className="text-[9px] font-black uppercase tracking-widest">Submit to Validate UI</span>
+                <span className="text-[9px] font-bold uppercase tracking-widest">Submit to Validate UI</span>
               </div>
             )}
           </div>
@@ -601,6 +601,7 @@ export default function ExamCockpit() {
   const [isBlocked, setIsBlocked] = useState(false);
   const [activeWarning, setActiveWarning] = useState(null);
   const [camError, setCamError] = useState(false);
+  const [settings, setSettings] = useState(null);
   
   // Layout state
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
@@ -1201,8 +1202,13 @@ export default function ExamCockpit() {
         setTimeout(() => navigate('/student'), 3000);
       }
     };
-    fetchExam(0);
-  }, [examId, navigate]);
+     fetchExam(0);
+
+     // Fetch Global Settings for Exit Password
+     getSettings().then(res => {
+       if (res) setSettings(res);
+     }).catch(err => console.error("Failed to load global settings", err));
+   }, [examId, navigate]);
 
   // 📷 Camera & AI Setup
   const initCamera = useCallback(async () => {
@@ -1752,7 +1758,22 @@ export default function ExamCockpit() {
 
       {/* 2. LAYER OVERLAY: Modals and Alerts (Never Blurry) */}
       <SubmitModal isOpen={showConfirm} onClose={() => setShowConfirm(false)} stats={{ answered: answeredCount, total: questions.length, marked: Object.values(markedForReview).filter(Boolean).length }} onConfirm={handleFinalSubmit} />
-      <ExitModal isOpen={showExitPrompt} onClose={() => setShowExitPrompt(false)} password={exitPassword} setPassword={setExitPassword} error={exitError} onExit={() => { if (exitPassword === '12345') { window.removeEventListener('beforeunload', () => {}); navigate('/student'); } else setExitError('Denied'); }} />
+       <ExitModal 
+         isOpen={showExitPrompt} 
+         onClose={() => setShowExitPrompt(false)} 
+         password={exitPassword} 
+         setPassword={setExitPassword} 
+         error={exitError} 
+         onExit={() => { 
+           const targetPass = settings?.exitPassword || '12345'; // Fallback to 12345 if not set or failed to load
+           if (!settings?.exitPassword || exitPassword === targetPass) { 
+             window.removeEventListener('beforeunload', () => {}); 
+             navigate('/student'); 
+           } else {
+             setExitError('Incorrect Password');
+           }
+         }} 
+       />
       <TabViolationOverlay isOpen={isTabViolation} onResume={() => setIsTabViolation(false)} />
       <TabToast toast={tabToast} />
 

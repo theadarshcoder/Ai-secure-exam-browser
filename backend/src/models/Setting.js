@@ -8,7 +8,8 @@ const settingSchema = new mongoose.Schema({
     allowLateSubmissions: { type: Boolean, default: false },
     enableWebcam: { type: Boolean, default: true },
     disableCopyPaste: { type: Boolean, default: true },
-    requireIDVerification: { type: Boolean, default: true }
+    requireIDVerification: { type: Boolean, default: true },
+    exitPassword: { type: String, default: '' }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Setting', settingSchema);

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { Navbar } from '../components/Navbar';
 import BouncingDotLoader from '../components/BouncingDotLoader';
-import api from '../services/api';
+import api, { getSettings } from '../services/api';
 import { 
   PlayCircle, BookOpen, ShieldCheck, 
   ArrowRight, Clock, CheckCircle2, Lock as LockIcon, ListChecks, Calendar,
@@ -253,8 +253,8 @@ const ResultsModal = ({ examId, isOpen, onClose }) => {
         <div className="p-8">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="text-2xl font-black text-slate-900 mb-2">Exam Results</h2>
-              <p className="text-slate-500 text-sm">Detailed performance analysis</p>
+              <h2 className="text-2xl font-bold text-slate-900 mb-1">Exam Results</h2>
+              <p className="text-slate-500 text-xs font-medium uppercase tracking-wider">Detailed performance analysis</p>
             </div>
             <button
               onClick={onClose}
@@ -289,23 +289,23 @@ const ResultsModal = ({ examId, isOpen, onClose }) => {
               {/* Summary Cards */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                 <div className="bg-emerald-50 border-emerald-200 border border-emerald-200 rounded-2xl p-6">
-                  <p className="text-emerald-600 text-sm font-bold uppercase tracking-widest mb-2">Score</p>
-                  <p className="text-3xl font-black text-slate-900">{results.obtainedMarks}/{results.totalMarks}</p>
+                  <p className="text-emerald-600 text-[10px] font-bold uppercase tracking-widest mb-2">Score</p>
+                  <p className="text-3xl font-bold text-slate-900">{results.obtainedMarks}/{results.totalMarks}</p>
                   <p className="text-slate-500 text-sm mt-2">{results.percentage}%</p>
                 </div>
                 <div className="bg-blue-50 border-blue-200 border border-blue-200 rounded-2xl p-6">
-                  <p className="text-blue-600 text-sm font-bold uppercase tracking-widest mb-2">Correct</p>
-                  <p className="text-3xl font-black text-slate-900">{results.correctAnswers}/{results.totalQuestions}</p>
+                  <p className="text-blue-600 text-[10px] font-bold uppercase tracking-widest mb-2">Correct</p>
+                  <p className="text-3xl font-bold text-slate-900">{results.correctAnswers}/{results.totalQuestions}</p>
                   <p className="text-slate-500 text-sm mt-2">Accuracy</p>
                 </div>
                 <div className="bg-slate-50mber-500/10 border border-amber-200 rounded-2xl p-6">
-                  <p className="text-amber-600 text-sm font-bold uppercase tracking-widest mb-2">Incorrect</p>
-                  <p className="text-3xl font-black text-slate-900">{results.totalQuestions - results.correctAnswers}</p>
+                  <p className="text-amber-600 text-[10px] font-bold uppercase tracking-widest mb-2">Incorrect</p>
+                  <p className="text-3xl font-bold text-slate-900">{results.totalQuestions - results.correctAnswers}</p>
                   <p className="text-slate-500 text-sm mt-2">Questions</p>
                 </div>
                 <div className="bg-red-50 border-red-200 border border-red-200 rounded-2xl p-6">
-                  <p className="text-red-600 text-sm font-bold uppercase tracking-widest mb-2">Negative Marks</p>
-                  <p className="text-3xl font-black text-slate-900">-{results.negativeMarks}</p>
+                  <p className="text-red-600 text-[10px] font-bold uppercase tracking-widest mb-2">Negative Marks</p>
+                  <p className="text-3xl font-bold text-slate-900">-{results.negativeMarks}</p>
                   <p className="text-slate-500 text-sm mt-2">Deductions</p>
                 </div>
               </div>
@@ -385,6 +385,9 @@ export default function StudentDashboard() {
 
   // Exit confirmation state
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [exitPassword, setExitPassword] = useState('');
+  const [settings, setSettings] = useState(null);
+  const [exitError, setExitError] = useState('');
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -467,6 +470,11 @@ export default function StudentDashboard() {
     document.body.style.overflow = 'hidden';
     const timer = setInterval(() => setNow(new Date()), 1000);
     localStorage.removeItem('vision_terminated_sessions');
+
+    getSettings().then(res => {
+      if (res) setSettings(res);
+    }).catch(err => console.error("Failed to load settings", err));
+
     return () => {
       document.body.style.overflow = 'auto';
       clearInterval(timer);
@@ -484,7 +492,7 @@ export default function StudentDashboard() {
     }
   };
 
-  // ─────────────── Filtering Engine ───────────────
+  // ─────────────── Filtering Engine ──────────────
   const filteredExams = useMemo(() => {
     return exams.filter(exam => {
       // 1. Text Search Filter
@@ -603,7 +611,7 @@ export default function StudentDashboard() {
               ) : (
                 <div className="h-48 md:h-64 w-full flex flex-col items-center justify-center text-center bg-[#F5F5F5] border border-dashed border-slate-300 rounded-3xl mt-4">
                    <Filter size={32} className="text-slate-400 mb-4" />
-                   <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-1">No Alignments Found</h3>
+                   <h3 className="text-xs font-bold text-slate-900 uppercase tracking-widest mb-1">No Alignments Found</h3>
                    <p className="text-xs text-slate-500 font-medium max-w-[250px]">Adjust your search query or filters to reveal matching assignments.</p>
                    {(searchQuery || statusFilter !== 'All') && (
                      <button onClick={() => {setSearchQuery(''); setStatusFilter('All');}} className="mt-4 text-[10px] text-emerald-600 font-bold uppercase tracking-widest hover:underline">Clear Filters</button>
@@ -632,7 +640,7 @@ export default function StudentDashboard() {
             {supportSent ? (
                <div className="text-center py-8">
                  <CheckCircle2 size={36} className="text-emerald-600 mx-auto mb-3" />
-                 <p className="text-sm font-black tracking-widest uppercase text-slate-900">Transmission Sent</p>
+                 <p className="text-sm font-bold tracking-wider uppercase text-slate-900">Transmission Sent</p>
                  <p className="text-xs text-zinc-500 mt-2 font-medium">A supervisor will initiate proxy support shortly.</p>
                </div>
             ) : (
@@ -648,7 +656,7 @@ export default function StudentDashboard() {
                  <button
                    onClick={handleSupport}
                    disabled={!supportMsg.trim()}
-                   className="mt-4 w-full py-3 rounded-xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
+                   className="mt-4 w-full py-3 rounded-xl bg-slate-900 text-white text-xs font-bold uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
                  >
                    Transmit Packet
                  </button>
@@ -686,7 +694,7 @@ export default function StudentDashboard() {
                 <LogOut size={18} className="text-red-500" />
               </div>
               <div>
-                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Exit Session</h3>
+                <h3 className="text-[11px] font-bold text-slate-900 uppercase tracking-widest">Exit Session</h3>
                 <p className="text-xs text-slate-500 mt-0.5">This will end your current session.</p>
               </div>
             </div>
@@ -697,20 +705,41 @@ export default function StudentDashboard() {
           <p className="text-xs text-slate-500 mb-5 font-medium">
             Are you sure you want to exit? Your session will be cleared and you'll be redirected to the home page.
           </p>
-          <div className="flex gap-3">
-            <button
-              onClick={() => setShowExitConfirm(false)}
-              className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs uppercase tracking-widest transition-colors"
-            >
-              Stay
-            </button>
-            <button
-              onClick={() => { sessionStorage.clear(); localStorage.clear(); navigate('/'); }}
-              className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
-            >
-              <LogOut size={13} /> Exit
-            </button>
-          </div>
+          {settings?.exitPassword && (
+             <div className="mb-5">
+               <input
+                 type="password"
+                 value={exitPassword}
+                 onChange={e => { setExitPassword(e.target.value); setExitError(''); }}
+                 placeholder="Supervisor Password"
+                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-center text-slate-900 font-mono tracking-widest outline-none focus:border-red-400 transition-all text-sm"
+               />
+               {exitError && <p className="text-[10px] text-red-500 font-bold mt-2 uppercase tracking-widest">{exitError}</p>}
+             </div>
+           )}
+           <div className="flex gap-3">
+             <button
+               onClick={() => { setShowExitConfirm(false); setExitPassword(''); setExitError(''); }}
+               className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs uppercase tracking-widest transition-colors"
+             >
+               Stay
+             </button>
+             <button
+               onClick={() => { 
+                 const targetPass = settings?.exitPassword || '';
+                 if (!targetPass || exitPassword === targetPass) {
+                   sessionStorage.clear(); 
+                   localStorage.clear(); 
+                   navigate('/'); 
+                 } else {
+                   setExitError('Incorrect Password');
+                 }
+               }}
+               className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
+             >
+               <LogOut size={13} /> Exit
+             </button>
+           </div>
         </div>
       </div>
     )}

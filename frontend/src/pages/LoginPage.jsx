@@ -57,10 +57,10 @@ const DiagnosticSidebar = ({ role, activeCount }) => {
       <div className="relative z-10 w-full flex flex-col flex-grow">
         <div className="flex items-center gap-2.5 mb-8 opacity-90 w-fit">
           <VisionLogo className="w-8 h-8 text-slate-900" />
-          <span className="text-[15px] font-black tracking-[0.28em] text-slate-900 uppercase">VISION</span>
+          <span className="text-[15px] font-bold tracking-widest text-slate-900 uppercase">VISION</span>
         </div>
 
-        <h2 className="text-2xl font-black tracking-tight mb-1 text-slate-900">System Health</h2>
+        <h2 className="text-2xl font-bold tracking-tight mb-1 text-slate-900">System Health</h2>
         <p className="text-slate-500 text-xs leading-relaxed mb-6">Verifying environment integrity protocols. Proceed securely.</p>
 
         <div className="space-y-3 flex-grow">
@@ -75,7 +75,7 @@ const DiagnosticSidebar = ({ role, activeCount }) => {
                   <span className={`text-[11px] font-bold tracking-wide ${isLoaded ? 'text-slate-800' : 'text-slate-400'}`}>{check.label}</span>
                 </div>
                 {isLoaded ? (
-                  <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-widest font-black text-emerald-400">
+                  <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-wider font-bold text-emerald-500">
                     <div className="flex items-end gap-[1px] h-2.5">
                       <div className="w-[1.5px] bg-emerald-400 rounded-full animate-pulse h-[40%]" />
                       <div className="w-[1.5px] bg-emerald-400 rounded-full animate-pulse h-[100%]" />
@@ -92,7 +92,7 @@ const DiagnosticSidebar = ({ role, activeCount }) => {
         <div className="mt-6 w-full bg-slate-50 rounded-xl p-3 border border-slate-200 shadow-sm h-[95px] overflow-hidden">
           <div className="flex items-center gap-1.5 mb-2 border-b border-slate-200 pb-1.5">
             <TerminalSquare size={10} className="text-emerald-600" />
-            <span className="text-[8px] uppercase tracking-[0.2em] font-black text-slate-500">AI Vigilance Output</span>
+            <span className="text-[8px] uppercase tracking-[0.2em] font-bold text-slate-500">AI Vigilance Output</span>
           </div>
           <div className="font-mono text-[9px] space-y-1 text-slate-600 uppercase">
             <p className="flex items-center gap-1.5 truncate"><span className="text-slate-400">&gt;</span> Tracking patterns: <span className="text-emerald-600 font-bold ml-auto">ACTIVE</span></p>
@@ -120,7 +120,7 @@ const RoleSwitcher = ({ currentRole, setRole }) => (
       <button
         key={r}
         type="button"
-        className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-[10px] uppercase tracking-widest font-black rounded-lg relative z-10 transition-colors duration-500 ${currentRole === r ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
+        className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-[10px] uppercase tracking-widest font-bold rounded-lg relative z-10 transition-colors duration-500 ${currentRole === r ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
         onClick={() => setRole(r)}
       >
         {ROLE_DATA[r].icon}
@@ -150,7 +150,7 @@ const BiometricScanner = ({ progress }) => (
         <User size={30} className={`transition-colors duration-500 ${progress === 100 ? 'text-slate-800' : 'text-slate-400'}`} />
       </div>
     </div>
-    <span className={`text-[10px] uppercase tracking-widest font-black px-3 py-1 rounded-full border shadow-sm transition-all duration-300 ${progress === 100 ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-slate-500 bg-slate-50 border-slate-200'}`}>
+    <span className={`text-[10px] uppercase tracking-widest font-bold px-3 py-1 rounded-full border shadow-sm transition-all duration-300 ${progress === 100 ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-slate-500 bg-slate-50 border-slate-200'}`}>
       {progress === 100 ? <><ShieldCheck size={12} className="inline mr-1 mb-[2px]" /> Biometric Verified</> : `Syncing Hardware... ${progress}%`}
     </span>
   </div>
@@ -250,11 +250,19 @@ const LoginPage = () => {
     setError(null);
     
     try {
+      // 🛡️ Generate or retrieve device ID
+      let deviceId = sessionStorage.getItem('vision_device_id');
+      if (!deviceId) {
+          deviceId = crypto.randomUUID();
+          sessionStorage.setItem('vision_device_id', deviceId);
+      }
+
       // 🚀 Real API Authentication
       const response = await api.post('/api/auth/login', {
         email,
         password,
-        role: role // Backend needs to know the requested role for admin impersonation
+        role: role, // Backend needs to know the requested role for admin impersonation
+        deviceId
       });
 
       const { token, user: userData } = response.data;
@@ -302,7 +310,7 @@ const LoginPage = () => {
         <div className="w-full md:w-[55%] bg-white flex flex-col p-7 relative self-stretch">
           <div className="w-full max-w-sm mx-auto flex flex-col flex-1 justify-center">
             <div className={`text-center ${role === 'student' ? 'mb-4' : 'mb-8'}`}>
-              <h1 className="text-2xl font-black tracking-tight text-slate-900 mb-1 uppercase">Gateway Access</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900 mb-1 uppercase">Gateway Access</h1>
               <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Please authenticate to continue.</p>
             </div>
 
@@ -323,7 +331,7 @@ const LoginPage = () => {
 
             <form onSubmit={handleSubmit} className={role === 'student' ? 'space-y-3' : 'space-y-6'}>
               <div>
-                <label className="block text-[10px] font-black tracking-widest uppercase text-slate-500 mb-1.5 ml-1">Access Identity</label>
+                <label className="block text-[10px] font-bold tracking-wider uppercase text-slate-500 mb-1.5 ml-1">Access Identity</label>
                 <div className="relative">
                   <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                   <input
