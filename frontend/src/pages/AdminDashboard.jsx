@@ -1899,7 +1899,7 @@ export default function AdminDashboard() {
         </div>
         
         <div className="w-full md:w-auto">
-           <AdminMessageControls activeStudents={liveSessions.map(s => ({ _id: s._id, name: s.studentName, email: s.studentEmail }))} mode="full" />
+           <AdminMessageControls activeStudents={liveSessions.map(s => ({ _id: s.studentId, name: s.studentName, email: s.studentEmail }))} mode="full" />
         </div>
       </div>
 
