@@ -102,6 +102,23 @@ const clearCache = async (key) => {
     }
 };
 
+/**
+ * 🗑️ Clear Cache by Pattern (e.g., "active_exams_user_*")
+ */
+const clearPattern = async (pattern) => {
+    const redis = getRedisClient();
+    if (!redis) return;
+    try {
+        const keys = await redis.keys(pattern);
+        if (keys.length > 0) {
+            await redis.del(keys);
+            console.log(`📡 Redis: Cleared ${keys.length} keys matching pattern: ${pattern}`);
+        }
+    } catch (err) {
+        console.warn(`⚠️  Redis: Failed to clear pattern ${pattern}:`, err.message);
+    }
+};
+
 module.exports = {
     saveUserSession,
     getUserSession,
@@ -109,6 +126,7 @@ module.exports = {
     setCache,
     getCache,
     clearCache,
+    clearPattern,
     TTL_ACTIVE_SESSION,
     TTL_API_CACHE
 };

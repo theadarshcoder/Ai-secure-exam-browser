@@ -10,7 +10,7 @@ const { getTimeAgo, parseLeetCode, parseCodeChef } = require('../utils/helpers')
 const { gradeMCQ, gradeCoding, gradeShortAnswer } = require('../services/gradingService');
 const { addCodeEvaluationJob } = require('../queues/codeGradingQueue');
 const { addFrontendEvaluationJob } = require('../queues/frontendGradingQueue');
-const { getCache, setCache, clearCache, TTL_API_CACHE } = require('../services/cacheService');
+const { getCache, setCache, clearCache, clearPattern, TTL_API_CACHE } = require('../services/cacheService');
 const Setting = require('../models/Setting');
 
 // ─────────────── POST /api/exams/create ───────────────
@@ -163,6 +163,8 @@ exports.updateExam = asyncHandler(async (req, res) => {
         }
     }
 
+    const oldDuration = exam.duration;
+    
     exam.title = title;
     exam.category = category || exam.category;
     exam.duration = duration;
@@ -176,6 +178,27 @@ exports.updateExam = asyncHandler(async (req, res) => {
     }
 
     await exam.save();
+
+    // ⚡ Real-time Sync: If duration increased, extend time for all live sessions
+    if (duration > oldDuration) {
+        const extraMinutes = duration - oldDuration;
+        const extraSeconds = extraMinutes * 60;
+        
+        const ExamSession = require('../models/ExamSession'); // Lazy load
+        await ExamSession.updateMany(
+            { exam: examId, status: 'in_progress' },
+            { $inc: { remainingTimeSeconds: extraSeconds } }
+        );
+
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`exam_${examId}`).emit('time_extended', {
+                extraSeconds,
+                extraMinutes,
+                serverSyncTime: Date.now()
+            });
+        }
+    }
 
     res.json({ message: 'Exam updated successfully', exam });
 });
@@ -199,6 +222,9 @@ exports.togglePublishResults = asyncHandler(async (req, res) => {
 
     exam.resultsPublished = Boolean(resultsPublished);
     await exam.save();
+
+    // ⚡ CRITICAL: Clear all student dashboard caches to reflect result visibility change immediately
+    await clearPattern('active_exams_user_*');
 
     res.json({ 
         message: exam.resultsPublished ? 'Results published to students.' : 'Results hidden from students.', 
@@ -1022,9 +1048,9 @@ exports.submitExam = asyncHandler(async (req, res) => {
     const percentage = Math.round((autoScore / totalMarks) * 100) || 0;
     const passed = percentage >= (Number(exam.passingMarks) || 40);
 
-    session.score = autoScore;
-    session.totalMarks = totalMarks;
-    session.percentage = percentage;
+    session.score = Number(autoScore) || 0;
+    session.totalMarks = Number(totalMarks) || 1;
+    session.percentage = Number(percentage) || 0;
     session.passed = hasShortAnswers ? false : passed;
     session.status = finalStatus;
     session.requiresManualGrading = hasShortAnswers;

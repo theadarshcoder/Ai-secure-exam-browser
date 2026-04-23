@@ -15,6 +15,7 @@ import VisionLogo from '../components/VisionLogo';
 import PremiumSidebar from '../components/PremiumSidebar';
 import ToggleSwitch from '../components/ToggleSwitch';
 import BouncingDotLoader from '../components/BouncingDotLoader';
+import CSVHelper from '../components/CSVHelper';
 import api, { 
   getDashboardStats, 
   getStudents, 
@@ -1037,6 +1038,7 @@ export default function AdminDashboard() {
           >
             <FileUp size={14} /> Import CSV
           </button>
+          <CSVHelper format="name, email" example="John Doe, john@example.com" />
           {userRole === 'admin' && (
             <button 
               onClick={() => setShowAddUserModal(true)}

@@ -939,6 +939,8 @@ export default function ExamCockpit() {
   const [answers, setAnswers] = useState({}); // Keyed by ORIGINAL question index/ID
   const [markedForReview, setMarkedForReview] = useState({}); // Keyed by ORIGINAL index
   const [visited, setVisited] = useState({}); // Keyed by ORIGINAL index
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
   const [submitted, setSubmitted] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [faceBoxes, setFaceBoxes] = useState([]);
@@ -1536,9 +1538,17 @@ export default function ExamCockpit() {
     return () => clearInterval(timer);
   }, [cooldownSeconds]);
 
-  const handleFinalSubmit = useCallback(async () => {
+   const handleFinalSubmit = useCallback(async () => {
+    if (isSubmittingRef.current || submitted) {
+      console.warn("⚠️ Submission already in progress or completed. Ignoring call.");
+      return;
+    }
+
     try {
-      // 🛡️ Fix 1: Professional submission flow
+      isSubmittingRef.current = true;
+      setIsSubmitting(true);
+      
+      // 🛡️ Professional submission flow
       toast.loading("Finalizing your submission... Please wait.", { id: "submit-toast" });
       
       await api.post("/api/exams/submit", { 
@@ -1556,16 +1566,18 @@ export default function ExamCockpit() {
         setCameraActive(false);
       }
       
-      toast.success("Exam submitted successfully!", { id: "submit-toast" });
+       toast.success("Exam submitted successfully!", { id: "submit-toast" });
       setSubmitted(true);
     } catch (err) {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
       console.error("Submission error:", err);
       toast.error(
-        err.message || "Submission failed! Please check your internet and try again.", 
+        err.response?.data?.message || err.message || "Submission failed! Please try again.", 
         { id: "submit-toast" }
       );
     }
-  }, [examId, answers, stream]);
+  }, [examId, answers, stream, submitted]);
 
   const handleFinalSubmitRef = useRef(handleFinalSubmit);
   useEffect(() => {
@@ -1582,7 +1594,7 @@ export default function ExamCockpit() {
         const remainingMs = Math.max(0, endRef.current - Date.now());
         const remainingSec = Math.floor(remainingMs / 1000);
 
-        if (remainingSec === 0 && secondsLeft > 0) {
+        if (remainingSec === 0 && secondsLeft > 0 && !isSubmittingRef.current) {
           setSecondsLeft(0);
           handleFinalSubmitRef.current();
         } else {

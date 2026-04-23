@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { X, Upload, FileSpreadsheet, Download, Send, Loader2, CheckCircle, AlertCircle, Users, Trash2 } from 'lucide-react';
 import api from '../services/api';
+import CSVHelper from './CSVHelper';
 
 export default function BulkInviteModal({ isOpen, onClose, examId, examTitle }) {
     const [students, setStudents] = useState([]);
@@ -127,11 +128,13 @@ export default function BulkInviteModal({ isOpen, onClose, examId, examTitle }) 
                     </div>
                 )}
 
-                {/* Sample Download */}
                 {students.length === 0 && !result && (
-                    <button onClick={downloadSampleCSV} style={S.sampleBtn}>
-                        <Download size={13} /> Download Sample CSV
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginTop: '16px' }}>
+                        <button onClick={downloadSampleCSV} style={S.sampleBtn}>
+                            <Download size={13} /> Download Sample CSV
+                        </button>
+                        <CSVHelper format="name, email" example="John Doe, john@example.com" />
+                    </div>
                 )}
 
                 {/* Errors */}

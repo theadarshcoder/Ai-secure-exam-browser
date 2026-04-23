@@ -91,6 +91,7 @@ import VisionLogo from '../components/VisionLogo';
 import PremiumSidebar from '../components/PremiumSidebar';
 import AnimatedStatusIcon from '../components/AnimatedStatusIcon';
 import BulkInviteModal from '../components/BulkInviteModal';
+import CSVHelper from '../components/CSVHelper';
 
 // AI Suggestions are now fetched from the backend live engine.
 
@@ -1346,7 +1347,14 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mt-10 pt-10 border-t border-slate-100">
                     <div>
-                      <label className={LABEL_BASE}>Duration</label>
+                      <label className={LABEL_BASE}>
+                        Duration
+                        {exam.status !== 'draft' && exam.id && (
+                          <span className="ml-2 text-[8px] text-emerald-600 font-black uppercase tracking-[0.1em] bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-md animate-pulse">
+                            Syncs Live
+                          </span>
+                        )}
+                      </label>
                       <StepperInput value={exam.duration} onChange={v => setExam({...exam, duration: v})} icon={Clock} unit="min" step={5} max={300} />
                     </div>
                     <div>
@@ -1690,6 +1698,10 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                           <UploadCloud size={16} />
                           File
                         </button>
+                        <CSVHelper 
+                          format="Type, QuestionText, Marks, Option1, Option2, Option3, Option4, ExpectedAnswer" 
+                          example="mcq, What is React?, 5, Library, Framework, Tool, OS, 1"
+                        />
                         <button 
                           onClick={() => setShowLinkModal(true)} 
                           className="flex-1 h-12 bg-emerald-50 border border-emerald-100 hover:bg-emerald-100 text-emerald-600 rounded-[16px] font-black text-[10px] uppercase tracking-[0.1em] flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm"
