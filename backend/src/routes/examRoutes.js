@@ -75,6 +75,9 @@ router.get('/session-detail/:sessionId', verifyToken, checkRole(['mentor', 'admi
 // 🆕 Evaluate Session — Mentor manually grades short answers
 router.put('/evaluate/:sessionId', verifyToken, checkRole(['mentor', 'admin']), examController.evaluateSession);
 
+// 🆕 Terminate Session — Mentor/Admin forcibly ends an exam
+router.put('/terminate/:sessionId', verifyToken, checkRole(['mentor', 'admin']), examController.terminateSession);
+
 // Proctoring violation log karo (Tab Switch, Face Not Detected, etc.)
 router.post('/incident', verifyToken, examController.logIncident);
 

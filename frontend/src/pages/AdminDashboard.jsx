@@ -9,7 +9,7 @@ import {
   Search, FileUp, UserPlus, Trash2, Eye,
   ShieldCheck, Activity, AlertOctagon,
   ChevronRight, LogOut, Bell, RefreshCw, Edit3,
-  BarChart3, Download, Clock, Check, X, Star, CheckCircle, AlertCircle, Plus, ScanFace, Radio, ShieldAlert, User, EyeOff, MessageCircle, AlertTriangle
+  BarChart3, Download, Clock, Check, X, Star, CheckCircle, AlertCircle, Plus, ScanFace, Radio, ShieldAlert, User, EyeOff, MessageCircle, AlertTriangle, OctagonX
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import PremiumSidebar from '../components/PremiumSidebar';
@@ -34,7 +34,8 @@ import api, {
   togglePublishResults,
   evaluateSession,
   deleteAuditLog,
-  clearAllAuditLogs
+  clearAllAuditLogs,
+  getLiveSessions
 } from '../services/api';
 
 // ─────────────────────────────────────────────────────────
@@ -396,6 +397,11 @@ export default function AdminDashboard() {
   const [exams, setExams] = useState([]);
   const [adminResults, setAdminResults] = useState([]);
   const [resultFilter, setResultFilter] = useState('ALL');
+  
+  // Live Sessions Monitoring state
+  const [liveSessions, setLiveSessions] = useState([]);
+  const [liveSearchQuery, setLiveSearchQuery] = useState('');
+
   // Evaluation Modal state
   const [showEvalModal, setShowEvalModal] = useState(false);
   const [evalSessionData, setEvalSessionData] = useState(null);
@@ -465,6 +471,24 @@ export default function AdminDashboard() {
     return () => socketService.disconnect();
   }, []);
 
+  // Poll Live Sessions when on LiveMonitoring tab or every 30s
+  useEffect(() => {
+    let interval;
+    const fetchLive = async () => {
+      try {
+        const res = await getLiveSessions();
+        setLiveSessions(res || []);
+      } catch (err) {
+        console.error("Live sessions fetch failed:", err);
+      }
+    };
+
+    fetchLive();
+    interval = setInterval(fetchLive, 20000); // 20s poll
+
+    return () => clearInterval(interval);
+  }, [activeTab]);
+
   const handleClearNotifications = () => {
     setNotifications([]);
     setShowNotifDropdown(false);
@@ -517,6 +541,9 @@ export default function AdminDashboard() {
           } else if (tab === 'Candidates') {
               const res = await getCandidates(candidateSearch).catch(() => []);
               setCandidates(res || []);
+          } else if (tab === 'LiveMonitoring') {
+              const res = await getLiveSessions();
+              setLiveSessions(res || []);
           }
       } catch (err) {
           console.error("Failed fetching data:", err);
@@ -753,6 +780,53 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleBlockStudent = async (studentId, examId) => {
+    showConfirm('Block this student? They will be locked out of the exam screen.', async () => {
+      try {
+        socketService.blockStudent(studentId, examId);
+        toast.error('Student blocked!');
+        // Optimization: update local state immediately
+        setLiveSessions(prev => prev.map(s => s._id === studentId || s.studentId === studentId ? { ...s, isBlocked: true, status: 'blocked' } : s));
+      } catch (err) {
+        toast.error('Block failed');
+      }
+    });
+  };
+
+  const handleUnblockStudent = async (studentId, examId) => {
+    try {
+      socketService.unblockStudent(studentId, examId);
+      toast.success('Student unblocked!');
+      setLiveSessions(prev => prev.map(s => s._id === studentId || s.studentId === studentId ? { ...s, isBlocked: false, status: 'in_progress' } : s));
+    } catch (err) {
+      toast.error('Unblock failed');
+    }
+  };
+
+  const handleTerminateStudent = async (sessionId) => {
+    showConfirm('TERIMINATE EXAM? This will forcibly submit their exam and kick them out. This cannot be undone.', async () => {
+      try {
+        // We'll use a new socket event or API for termination
+        // For now, let's assume we use a specialized message or emit
+        socketService.emitAdminMessage({
+            type: 'direct',
+            studentId: sessionId, // In some contexts, sessionId is used as target
+            message: 'Your exam has been terminated by the administrator.',
+            severity: 'critical',
+            action: 'TERMINATE'
+        });
+        
+        // Also call API to finalize session status in DB
+        await api.put(`/api/exams/terminate/${sessionId}`);
+        
+        toast.success('Session terminated.');
+        setLiveSessions(prev => prev.filter(s => s._id !== sessionId));
+      } catch (err) {
+        toast.error('Termination failed.');
+      }
+    });
+  };
+
   // Grade submission is handled by SessionReportModal inline if needed
 
   const handleExportCsv = () => {
@@ -775,6 +849,7 @@ export default function AdminDashboard() {
 
   const tabs = [
     { id: 'Overview', label: 'Overview', icon: LayoutDashboard, access: ['admin', 'super_mentor'] },
+    { id: 'LiveMonitoring', label: 'Live Monitoring', icon: Radio, access: ['admin', 'super_mentor', 'mentor'], badge: liveSessions.length },
     { id: 'Users', label: 'User Management', icon: Users, access: ['admin', 'super_mentor'] },
     { id: 'Candidates', label: 'Candidates', icon: ScanFace, access: ['admin', 'super_mentor'] },
     { id: 'Exams', label: 'Exam Library', icon: FileText, access: ['admin', 'super_mentor'] },
@@ -1766,9 +1841,130 @@ export default function AdminDashboard() {
   );
   };
 
+  const renderLiveMonitoring = () => (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+            <input 
+              type="text" 
+              placeholder="Search live students..."
+              value={liveSearchQuery}
+              onChange={(e) => setLiveSearchQuery(e.target.value)}
+              className="pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-green-500 w-64 transition-all bg-white shadow-sm"
+            />
+          </div>
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 text-[#22c55e] rounded-lg border border-green-100 animate-pulse">
+            <div className="w-2 h-2 bg-[#22c55e] rounded-full" />
+            <span className="text-[10px] font-bold uppercase tracking-widest">{liveSessions.length} Online Now</span>
+          </div>
+        </div>
+        
+        <div className="w-full md:w-auto">
+           <AdminMessageControls activeStudents={liveSessions.map(s => ({ _id: s._id, name: s.studentName, email: s.studentEmail }))} mode="full" />
+        </div>
+      </div>
+
+      <DataTable 
+        loading={loading}
+        headers={['Candidate', 'Exam Title', 'Violations', 'Status', 'Risk Level', 'Actions']}
+        data={liveSessions.filter(s => 
+          !liveSearchQuery || 
+          s.studentName.toLowerCase().includes(liveSearchQuery.toLowerCase()) || 
+          s.examTitle.toLowerCase().includes(liveSearchQuery.toLowerCase())
+        )}
+        renderRow={(session) => (
+          <tr key={session._id} className="hover:bg-slate-50/80 transition-colors group">
+            <td className="px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center font-bold text-slate-500 uppercase text-xs border border-slate-200 shadow-sm shrink-0">
+                  {session.studentName.charAt(0)}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-slate-900 truncate">{session.studentName}</p>
+                  <p className="text-[11px] text-slate-400 font-medium truncate">{session.studentEmail}</p>
+                </div>
+              </div>
+            </td>
+            <td className="px-6 py-4">
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold text-slate-700">{session.examTitle}</span>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Started {new Date(session.startedAt).toLocaleTimeString()}</span>
+              </div>
+            </td>
+            <td className="px-6 py-4 text-center">
+              <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border ${
+                session.violationCount > 5 ? 'bg-red-50 text-red-600 border-red-100' : 
+                session.violationCount > 2 ? 'bg-amber-50 text-amber-600 border-amber-100' : 
+                'bg-slate-50 text-slate-600 border-slate-100'
+              }`}>
+                <AlertTriangle size={12} />
+                {session.violationCount}
+              </div>
+            </td>
+            <td className="px-6 py-4">
+               <Badge color={session.status === 'blocked' ? 'red' : session.status === 'flagged' ? 'amber' : 'emerald'}>
+                 {session.status.replace('_', ' ')}
+               </Badge>
+            </td>
+            <td className="px-6 py-4">
+               <div className="flex items-center gap-2">
+                 <div className={`w-1.5 h-1.5 rounded-full ${
+                   session.risk === 'High' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 
+                   session.risk === 'Medium' ? 'bg-amber-500' : 'bg-emerald-500'
+                 }`} />
+                 <span className={`text-[10px] font-bold uppercase tracking-widest ${
+                    session.risk === 'High' ? 'text-red-600' : 
+                    session.risk === 'Medium' ? 'text-amber-600' : 'text-emerald-600'
+                 }`}>{session.risk}</span>
+               </div>
+            </td>
+            <td className="px-6 py-4">
+              <div className="flex items-center gap-2">
+                {session.status === 'blocked' ? (
+                  <button 
+                    onClick={() => handleUnblockStudent(session.studentId || session._id, session.examId)}
+                    title="Unblock Screen"
+                    className="p-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-all border border-emerald-100"
+                  >
+                    <ShieldCheck size={16} />
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => handleBlockStudent(session.studentId || session._id, session.examId)}
+                    title="Block Screen"
+                    className="p-2 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-100 transition-all border border-amber-100"
+                  >
+                    <OctagonX size={16} />
+                  </button>
+                )}
+                <button 
+                  onClick={() => handleTerminateStudent(session._id)}
+                  title="Terminate Session"
+                  className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all border border-red-100"
+                >
+                  <X size={16} />
+                </button>
+                <button 
+                  onClick={() => navigate(`/admin/session?id=${session._id}`)}
+                  title="View Live Stream"
+                  className="p-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all shadow-md active:scale-95 ml-2"
+                >
+                  <Eye size={16} />
+                </button>
+              </div>
+            </td>
+          </tr>
+        )}
+      />
+    </div>
+  );
+
   const renderContent = () => {
     switch (activeTab) {
       case 'Overview': return renderOverview();
+      case 'LiveMonitoring': return renderLiveMonitoring();
       case 'Users': return renderUsers();
       case 'Candidates': return renderCandidates();
       case 'Exams': return renderExams();

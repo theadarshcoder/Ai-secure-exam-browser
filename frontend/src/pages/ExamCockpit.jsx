@@ -960,9 +960,77 @@ export default function ExamCockpit() {
   const [panelWidth, setPanelWidth] = useState(42);
   const isResizing = useRef(false);
   const isPanelResizing = useRef(false);
-  const progressRef = useRef({ answers, currentQ, visited, secondsLeft });
+  const progressRef = useRef({ answers: {}, currentQ: 0, secondsLeft: 0, visited: {} });
 
-  const [headerAlert, setHeaderAlert] = useState(null);
+  // 📡 Real-time Socket Connection & Admin Communication
+  useEffect(() => {
+    if (!examId) return;
+    
+    const socket = socketService.connect();
+    if (!socket) return;
+
+    // Join room for exam-specific broadcasts
+    socketService.joinExamRoom(examId);
+
+    // Handle incoming admin messages & commands
+    const handleAdminMessage = (data) => {
+        const { type, message, action, messageId, severity } = data;
+        
+        // 1. Mandatory Ack for critical/direct messages
+        if (messageId) {
+            socketService.emitMessageAck(messageId, sessionStorage.getItem('vision_email'));
+        }
+
+        // 2. Handle System Actions
+        if (action === 'BLOCK') {
+            setIsBlocked(true);
+            toast.error(message || "Your screen has been blocked by an administrator.");
+        } else if (action === 'UNBLOCK') {
+            setIsBlocked(false);
+            toast.success("Your screen has been unblocked. You can resume.");
+        } else if (action === 'TERMINATE') {
+            setTerminated({ reason: message || "Exam terminated by administrator." });
+            toast.error("EXAM TERMINATED", { duration: 10000 });
+        } else if (action === 'EXTEND_TIME') {
+            // Handle time extension if needed
+        }
+
+        // 3. Show UI Alert if it's just a message
+        if (message && !action) {
+            if (severity === 'critical') {
+                toast.error(message, { duration: 8000, icon: '🚨' });
+            } else if (severity === 'warning') {
+                toast(message, { icon: '⚠️', duration: 5000 });
+            } else {
+                toast.success(message, { icon: '📩' });
+            }
+        }
+    };
+
+    socketService.onAdminMessage(handleAdminMessage);
+
+    // Legacy listeners
+    socket.on('force_block_screen', (data) => {
+        setIsBlocked(true);
+        toast.error(data.reason || "Screen Blocked");
+    });
+    socket.on('unblock_screen', () => {
+        setIsBlocked(false);
+        toast.success("Unblocked");
+    });
+    socket.on('warning', (data) => {
+        toast(data.message, { icon: '⚠️' });
+    });
+    socket.on('exam_broadcast', (data) => {
+        toast(data.message, { icon: '📩', duration: 6000 });
+    });
+
+    return () => {
+        socketService.offAdminMessage(handleAdminMessage);
+        // Socket itself is disconnected in the main cleanup if needed
+    };
+  }, [examId]);
+
   const headerAlertTimer = useRef(null);
   const prevQTypeRef = useRef(null);
   const bgHiddenTimeRef = useRef(null);
@@ -1729,10 +1797,12 @@ export default function ExamCockpit() {
       setCamError(false); // Clear any prior error
       setCameraActive(true); // ✅ Only set active AFTER stream is confirmed
 
+/* 
       const MODEL_URL =
         "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
       await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
       setModelsLoaded(true);
+*/
 
       return s;
     } catch (err) {
@@ -1765,6 +1835,7 @@ export default function ExamCockpit() {
         streamRef.current = s;
 
         // Start Detection Loop
+/* 
         const startDetection = () => {
           if (detectionIntervalRef.current)
             clearInterval(detectionIntervalRef.current);
@@ -1804,6 +1875,7 @@ export default function ExamCockpit() {
         };
 
         startDetection();
+*/
 
         // Track listener for permission revocation mid-session
         s.getTracks().forEach((t) => {
@@ -1815,6 +1887,7 @@ export default function ExamCockpit() {
           };
         });
 
+/* 
         // Visibility aware detection (Bug Fix 7A)
         const vHandler = () => {
           if (document.hidden) {
@@ -1826,6 +1899,7 @@ export default function ExamCockpit() {
           }
         };
         document.addEventListener("visibilitychange", vHandler);
+*/
       } catch (err) {
         // Error handled in initCamera
       }
@@ -2234,8 +2308,8 @@ export default function ExamCockpit() {
               <ProctoringSidebar
                 cameraActive={cameraActive}
                 videoRef={videoRef}
-                faceActive={faceBoxes.length > 0}
-                confidence={confidence}
+                faceActive={false}
+                confidence={0}
                 camError={camError}
                 onRetryCamera={initCamera}
               />

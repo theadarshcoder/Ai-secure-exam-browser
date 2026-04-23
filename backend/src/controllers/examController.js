@@ -574,6 +574,7 @@ exports.startExam = asyncHandler(async (req, res) => {
             answers: liveAnswers,                      
             questionStates: liveQuestionStates,        
             remainingTimeSeconds: liveRemainingTime,
+            status: session.status,
             exam: {
                 ...exam._doc,
                 questions: safeQuestions,
@@ -858,7 +859,8 @@ exports.resumeExam = asyncHandler(async (req, res) => {
         answers: liveAnswers,
         currentQuestionIndex: liveIndex,
         questionStates: liveQuestionStates,
-        remainingTimeSeconds: liveRemainingTime
+        remainingTimeSeconds: liveRemainingTime,
+        status: session.status
     });
 });
 
@@ -1852,4 +1854,36 @@ exports.runFrontendCode = asyncHandler(async (req, res) => {
         jobId: job.id,
         message: "Your UI submission is being evaluated. Results will be broadcasted via socket."
     });
+});
+// 🆕 Terminate Session — Mentor/Admin forcibly ends an exam
+exports.terminateSession = asyncHandler(async (req, res) => {
+    const { sessionId } = req.params;
+
+    const session = await ExamSession.findById(sessionId);
+    if (!session) {
+        res.status(404);
+        throw new Error('Session not found');
+    }
+
+    if (session.status === 'submitted' || session.status === 'auto_submitted') {
+        res.status(400);
+        throw new Error('This exam is already completed.');
+    }
+
+    // Force terminate
+    session.status = 'auto_submitted'; // Or a new status like 'terminated'
+    session.submittedAt = new Date();
+    session.blockReason = 'Terminated by administrator';
+    await session.save();
+
+    // Clean up Redis if exists
+    const redisClient = getRedisClient();
+    if (redisClient) {
+        const cacheKey = `exam_session:${session.exam}:${session.student}`;
+        await redisClient.del(cacheKey).catch(() => {});
+    }
+
+    console.log(`🚫 Admin Terminated session: ${sessionId} for student ${session.student}`);
+
+    res.json({ success: true, message: 'Session terminated successfully.' });
 });

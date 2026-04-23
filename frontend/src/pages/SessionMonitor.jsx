@@ -520,9 +520,18 @@ export default function SessionMonitor() {
 
   const handleBroadcast = () => {
     if (!broadcastMessage.trim()) return;
-    socketService.emitBroadcast(broadcastMessage, sessionData.id);
+    
+    socketService.emitAdminMessage({
+      examId: sessionData.examId,
+      type: 'broadcast',
+      message: broadcastMessage.trim(),
+      severity: 'warning', // Default for broadcast
+      requiresAck: true
+    });
+
     setShowBroadcastModal(false);
     setBroadcastMessage('');
+    toast.success("Broadcast message sent to all students!");
   };
 
   const handleFlagSession = () => {
