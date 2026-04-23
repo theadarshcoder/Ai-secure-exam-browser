@@ -468,7 +468,14 @@ export default function AdminDashboard() {
       setNotifications(prev => [newNotif, ...prev]);
     });
 
-    return () => socketService.disconnect();
+    // ✅ Fix: Add ACK Received listener
+    socketService.onAckReceived((data) => {
+      toast.success(`MESSAGE READ: ${data.studentEmail} acknowledged your message.`, { icon: '✔' });
+    });
+
+    return () => {
+      socketService.disconnect();
+    };
   }, []);
 
   // Poll Live Sessions when on LiveMonitoring tab or every 30s
@@ -1984,7 +1991,7 @@ export default function AdminDashboard() {
                   <X size={16} />
                 </button>
                 <button 
-                  onClick={() => navigate(`/admin/session?id=${session._id}`)}
+                  onClick={() => navigate(`/admin/session?id=${session._id}&name=${encodeURIComponent(session.studentName)}&exam=${encodeURIComponent(session.examTitle)}&risk=${session.risk}&score=${session.trustScore || 90}&status=${session.status}&examId=${session.examId}`)}
                   title="View Live Stream"
                   className="p-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all shadow-md active:scale-95 ml-2"
                 >

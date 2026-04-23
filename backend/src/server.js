@@ -295,6 +295,7 @@ app.use(errorHandler);
 // Ab yahan sirf authenticated users hi pahunchenge
 
 const ExamSession = require('./models/ExamSession');
+const Exam = require('./models/Exam');
 const Setting = require('./models/Setting');
 
 io.on('connection', (socket) => {
@@ -438,8 +439,8 @@ io.on('connection', (socket) => {
     });
 
     socket.on('mentor_broadcast', (data) => {
-        // Mentors or admins can broadcast to students
-        if (socket.user.role !== 'mentor' && socket.user.role !== 'admin') {
+        // Mentors, admins, or super_mentors can broadcast to students
+        if (!['mentor', 'admin', 'super_mentor'].includes(socket.user.role)) {
             return socket.emit('error', { message: 'Only mentors/admins can broadcast.' });
         }
         console.log(`Broadcast from ${socket.user.email}:`, data);
@@ -456,7 +457,7 @@ io.on('connection', (socket) => {
     // --- 🛡️ PROCTORING ACTIONS: Block / Unblock / Warning ---
 
     socket.on('block_student', async (data) => {
-        if (socket.user.role !== 'mentor' && socket.user.role !== 'admin') return;
+        if (!['mentor', 'admin', 'super_mentor'].includes(socket.user.role)) return;
         const { studentId, examId, sessionId } = data;
         
         try {
@@ -480,7 +481,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('unblock_student', async (data) => {
-        if (socket.user.role !== 'mentor' && socket.user.role !== 'admin') return;
+        if (!['mentor', 'admin', 'super_mentor'].includes(socket.user.role)) return;
         const { studentId, examId, sessionId } = data;
 
         try {
@@ -527,13 +528,14 @@ io.on('connection', (socket) => {
                     shouldBlock = true;
                     blockReason = `Background limit exceeded (${duration}s > ${bgLimit}s)`;
                 } else {
-                    // 🛡️ Fix Bug C: Use violations array instead of violationCount field
+                    // 🛡️ Fix Bug 6: Increment tabSwitchCount for risk scoring
                     session.violations.push({
                         type: 'Tab Switch',
                         severity: 'low',
                         details: `Background duration: ${duration}s`,
                         timestamp: new Date()
                     });
+                    session.tabSwitchCount = (session.tabSwitchCount || 0) + 1;
                 }
             } else if (type === 'CHEATING_FLAG') {
                 session.violations.push({
@@ -542,6 +544,7 @@ io.on('connection', (socket) => {
                     details: 'AI proctor flagged multiple suspicious behaviors',
                     timestamp: new Date()
                 });
+                session.faceDetectionCount = (session.faceDetectionCount || 0) + 1;
             }
 
             // Always sync violationCount for backwards compatibility or fast querying if needed
@@ -561,13 +564,15 @@ io.on('connection', (socket) => {
                 console.log(`🔒 Auto-Blocking student ${studentId}: ${blockReason}`);
                 io.to(`user_${studentId}`).emit('force_block_screen', { reason: blockReason });
                 
-                // 🛡️ Fix Bug B: Notify mentors/admins via their role-specific rooms (replacing the non-existent exam_monitor room)
-                io.to('role_mentor').to('role_admin').emit('mentor_alert', {
+                // 🛡️ Fix Bug 1.🚨: Scope auto-block alerts to specific exam monitor room to prevent cross-contamination
+                // ✅ Fix 2: Also emit to role_mentor for global dashboard awareness
+                io.to(`exam_monitor_${examId}`).to('role_admin').to('role_mentor').emit('mentor_alert', {
                     type: 'VIOLATION_BLOCK',
                     studentId: session.student,
                     studentName: socket.user.name || socket.user.email,
                     reason: blockReason,
-                    examId: examId
+                    examId: examId,
+                    timestamp: new Date()
                 });
             } else {
                 await session.save();
@@ -585,7 +590,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('send_warning', async (data) => {
-        if (socket.user.role !== 'mentor' && socket.user.role !== 'admin') return;
+        if (!['mentor', 'admin', 'super_mentor'].includes(socket.user.role)) return;
         const { studentId, sessionId, message } = data;
         
         try {
@@ -612,17 +617,38 @@ io.on('connection', (socket) => {
     // ═══════════════════════════════════════════════════════════
 
     // Students join exam-specific room for targeted broadcasts
-    socket.on('join_exam_room', ({ examId }) => {
+    socket.on('join_exam_room', async ({ examId }) => {
         if (!examId) return;
-        socket.examId = examId; // Track examId for disconnect logging
-        socket.join(`exam_${examId}`);
         
-        // 🛡️ If mentor/admin joins, also put them in the monitor room
-        if (['mentor', 'admin'].includes(socket.user.role)) {
-            socket.join(`exam_monitor_${examId}`);
+        // 🛡️ Security Fix 3: Mandatory authorization check for joining rooms
+        try {
+            const user = socket.user;
+            const exam = await Exam.findById(examId);
+            if (!exam) return;
+
+            const isAllowed = 
+                user.role === 'admin' || 
+                exam.creator.toString() === user.id ||
+                (user.role === 'student' && await ExamSession.exists({ exam: examId, student: user.id }));
+
+            if (!isAllowed) {
+                console.warn(`[Security] Unauthorized room join attempt: ${user.email} -> exam_${examId}`);
+                socket.emit('error', { message: 'Unauthorized access to this exam room.' });
+                return;
+            }
+
+            socket.examId = examId; // Track examId for disconnect logging
+            socket.join(`exam_${examId}`);
+            
+            // 🛡️ If mentor/admin/super_mentor joins, also put them in the monitor room
+            if (['mentor', 'admin', 'super_mentor'].includes(user.role)) {
+                socket.join(`exam_monitor_${examId}`);
+            }
+            
+            console.log(`[Socket] ${user.email} joined exam room: exam_${examId}`);
+        } catch (err) {
+            console.error('Room join error:', err.message);
         }
-        
-        console.log(`[Socket] ${socket.user.email} joined exam room: exam_${examId}`);
     });
 
     // 🛡️ Compatibility handler for AdminHealthCockpit
@@ -634,8 +660,8 @@ io.on('connection', (socket) => {
 
     // Secure Admin/Mentor Message Emitter
     socket.on('send_admin_message', (payload) => {
-        // ⚠️ SECURITY: Only admin/mentor can send messages
-        if (!['admin', 'mentor'].includes(socket.user.role)) {
+        // ⚠️ SECURITY: Only admin/mentor/super_mentor can send messages
+        if (!['admin', 'mentor', 'super_mentor'].includes(socket.user.role)) {
             console.warn(`[Security Alert] Unauthorized message attempt by ${socket.user.email} (${socket.user.role})`);
             return socket.emit('error', { message: 'Unauthorized action. Only admins/mentors can send messages.' });
         }
@@ -665,24 +691,43 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Student ACK system
-    socket.on('message_ack', ({ messageId, studentId }) => {
-        console.log(`[ACK] Message ${messageId} acknowledged by ${socket.user.email}`);
-
-        // 🛡️ Fix Bug 1.C: Scope ACKs to exam-specific monitor room
-        const room = studentId ? `exam_monitor_${studentId}` : 'role_admin'; // Fallback if no examId context
-        // Note: Ideally message_ack should include examId. For now we use the monitor rooms
-        // if the student joins the room.
+    socket.on('message_ack', ({ messageId, studentId, examId }) => {
+        // 🛡️ Fix Bug 2: Correctly route ACKs to the specific exam's monitoring room
+        const targetRoom = examId ? `exam_monitor_${examId}` : (studentId ? `exam_monitor_${studentId}` : 'role_admin');
         
-        io.to(`exam_monitor_${socket.examId}`).to('role_admin').emit('ack_received', {
+        io.to(targetRoom).to('role_admin').emit('ack_received', {
             messageId,
             studentId: studentId || socket.user.id,
             studentEmail: socket.user.email,
-            timestamp: Date.now()
+            timestamp: new Date()
         });
 
         // 🧠 FUTURE TODO: Store in Redis/MongoDB for analytics
         // await MessageLog.create({ messageId, studentId, acknowledged: true, time: Date.now() });
+    });
+
+    socket.on('flag_session', async (data) => {
+        if (!['mentor', 'admin', 'super_mentor'].includes(socket.user.role)) return;
+        const { studentId, examId, reason } = data;
+        
+        try {
+            await ExamSession.findOneAndUpdate(
+                { exam: examId, student: studentId },
+                { 
+                    $push: { 
+                        violations: {
+                            type: 'Manual Flag',
+                            severity: 'medium',
+                            details: reason || 'Manually flagged by administrator',
+                            timestamp: new Date()
+                        }
+                    }
+                }
+            );
+            console.log(`🚩 Session flagged by admin: ${studentId} in exam ${examId}`);
+        } catch (err) {
+            console.error('Flag session DB fail:', err.message);
+        }
     });
 
     socket.on('disconnect', () => {

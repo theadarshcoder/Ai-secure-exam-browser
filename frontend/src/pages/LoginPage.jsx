@@ -269,6 +269,7 @@ const LoginPage = () => {
 
       // Store real session data
       sessionStorage.setItem('vision_token', token);
+      sessionStorage.setItem('vision_id', userData.id || userData._id);
       sessionStorage.setItem('vision_role', userData.role);
       sessionStorage.setItem('vision_email', userData.email);
       sessionStorage.setItem('vision_name', userData.name);

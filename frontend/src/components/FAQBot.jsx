@@ -90,7 +90,7 @@ const FAQBot = ({ examId, userId }) => {
     const escalateToAdmin = async () => {
         setIsEscalating(true);
         try {
-            await requestHelp(examId, null, 'Student needs manual intervention via support bot.');
+            await requestHelp(examId, 'Student needs manual intervention via support bot.');
             setMessages(prev => [...prev, {
                 sender: 'bot',
                 text: '✅ Help request sent! A proctor will message you shortly. Keep the exam window open.'

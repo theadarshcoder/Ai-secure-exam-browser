@@ -667,7 +667,7 @@ exports.startExam = asyncHandler(async (req, res) => {
 // ⭐ CRITICAL FUNCTION — Auto-Save Progress
 // Frontend calls this API every 30 seconds to ensure data persistency
 exports.saveProgress = asyncHandler(async (req, res) => {
-    const { examId, answers, currentQuestionIndex, questionStates, remainingTimeSeconds } = req.body;
+    const { examId, answers, currentQuestionIndex, questionStates, remainingTimeSeconds, lastUpdated } = req.body;
     const studentId = req.user.id;
 
     if (!examId) {
@@ -700,6 +700,24 @@ exports.saveProgress = asyncHandler(async (req, res) => {
         throw new Error('Session not found. Please start the exam first.');
     }
 
+    // 🏎️ Fix 5: Auto-Save Race Condition
+    // Check if we have a newer client payload already processed using Redis
+    const redisClient = getRedisClient();
+    const cacheKey = `exam_session:${examId}:${studentId}`;
+    
+    if (redisClient && lastUpdated) {
+        const cachedData = await redisClient.hGetAll(cacheKey);
+        if (cachedData && cachedData.clientLastUpdated) {
+            const previousUpdate = parseInt(cachedData.clientLastUpdated);
+            if (lastUpdated < previousUpdate) {
+                return res.status(200).json({ 
+                    success: true, 
+                    message: 'Ignored older payload to prevent race condition.' 
+                });
+            }
+        }
+    }
+
     // 2. Relational Split: Save answers to ExamAnswer collection
     if (answers && typeof answers === 'object') {
         const bulkOps = Object.keys(answers).map(qId => {
@@ -725,14 +743,13 @@ exports.saveProgress = asyncHandler(async (req, res) => {
     }
 
     // 3. Update Redis Cache (High performance - keeps the combined object for fast hydration)
-    const redisClient = getRedisClient();
     if (redisClient) {
-        const cacheKey = `exam_session:${examId}:${studentId}`;
         const updates = [];
         if (answers !== undefined)              updates.push('answers', JSON.stringify(answers));
         if (currentQuestionIndex !== undefined) updates.push('currentQuestionIndex', currentQuestionIndex.toString());
         if (questionStates !== undefined)       updates.push('questionStates', JSON.stringify(questionStates));
         if (remainingTimeSeconds !== undefined) updates.push('remainingTimeSeconds', remainingTimeSeconds.toString());
+        if (lastUpdated !== undefined)          updates.push('clientLastUpdated', lastUpdated.toString());
         updates.push('lastSavedAt', new Date().toISOString());
 
         if (updates.length > 0) {
@@ -1658,10 +1675,22 @@ exports.requestHelp = asyncHandler(async (req, res) => {
 
     const io = req.app.get('io');
     if (io) {
+        // Broad alert for global monitoring
         io.to('role_mentor').to('role_admin').emit('student_need_help', supportMessage);
+        
+        // 🛡️ Fix Bug 5: Scoped alert for specific exam room
+        const examId = req.body.examId;
+        if (examId) {
+            io.to(`exam_monitor_${examId}`).emit('student_need_help', supportMessage);
+        }
     }
 
-    res.status(200).json({ success: true, message: 'Support request sent.' });
+    res.status(200).json({ 
+        success: true, 
+        message: 'Support request sent.',
+        examId: req.body.examId,
+        studentId: req.user.id
+    });
 });
 
 // ─────────────── POST /api/exams/import-questions/:id ───────────────

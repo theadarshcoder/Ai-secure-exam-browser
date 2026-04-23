@@ -74,6 +74,12 @@ class SocketService {
     }
   }
 
+  emitFlagSession(data) {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('flag_session', data);
+    }
+  }
+
   emitViolation(data) {
     if (this.socket && this.socket.connected) {
       this.socket.emit('student_violation', data);
@@ -166,9 +172,9 @@ class SocketService {
     }
   }
 
-  emitMessageAck(messageId, studentId) {
+  emitMessageAck(messageId, studentId, examId) {
     if (this.socket && this.socket.connected) {
-      this.socket.emit('message_ack', { messageId, studentId });
+      this.socket.emit('message_ack', { messageId, studentId, examId });
     }
   }
 

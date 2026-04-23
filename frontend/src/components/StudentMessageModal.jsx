@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import socketService from '../services/socket';
 
-const StudentMessageModal = ({ userId }) => {
+const StudentMessageModal = ({ userId, examId }) => {
     const [messageQueue, setMessageQueue] = useState([]);
 
     useEffect(() => {
@@ -20,8 +20,8 @@ const StudentMessageModal = ({ userId }) => {
     const handleAcknowledge = () => {
         const currentMsg = messageQueue[0];
 
-        // Emit ACK to backend
-        socketService.emitMessageAck(currentMsg.id, userId);
+        // Emit ACK to backend with examId context
+        socketService.emitMessageAck(currentMsg.id, userId, examId || currentMsg.examId);
 
         // Remove acknowledged message, show next in queue
         setMessageQueue(prev => prev.slice(1));
