@@ -1835,17 +1835,18 @@ export default function ExamCockpit() {
                 if (mountedRef.current) {
                   setFaceBoxes(detections);
                   if (detections.length === 0) {
-                    logIncident(
+                    // AI camera violations disabled per user request to prevent false positives
+                    /* logIncident(
                       "No Face Detected",
                       "high",
                       "Student missing from frame",
-                    );
+                    ); */
                   } else if (detections.length > 1) {
-                    logIncident(
+                    /* logIncident(
                       "Multiple Faces",
                       "critical",
                       "Extra person detected in frame",
-                    );
+                    ); */
                   }
                 }
               } catch (dErr) {
