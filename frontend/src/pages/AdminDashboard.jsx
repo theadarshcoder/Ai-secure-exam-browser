@@ -909,13 +909,13 @@ export default function AdminDashboard() {
                    <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <Badge color={log.action.includes('DELETE') ? 'red' : 'zinc'}>{log.action}</Badge>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{new Date(log.createdAt).toLocaleString()}</span>
+                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">{new Date(log.createdAt).toLocaleString()}</span>
                       </div>
                       <button onClick={() => handleDeleteLog(log._id)} className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-400 hover:text-red-500 transition-all"><Trash2 size={14} /></button>
                    </div>
-                   <p className="text-[11px] text-slate-600 font-bold italic mb-2">By: {log.adminId?.name || 'Admin'} <span className="opacity-50 noter-italic">({log.adminId?.email || 'N/A'})</span></p>
+                   <p className="text-[11px] text-slate-600 font-semibold mb-2">By: {log.adminId?.name || 'Admin'} <span className="opacity-40 font-medium ml-1">({log.adminId?.email || 'N/A'})</span></p>
                    {log.details && (
-                      <div className="p-3 bg-white/60 rounded-xl border border-slate-100 text-[10px] font-mono text-slate-500 break-all leading-relaxed shadow-inner">
+                      <div className="p-3 bg-white/60 rounded-xl border border-slate-100 text-[10px] font-medium text-slate-500 break-all leading-relaxed shadow-inner">
                          {JSON.stringify(log.details)}
                       </div>
                    )}
@@ -1506,17 +1506,50 @@ export default function AdminDashboard() {
     }
   };
 
+  const [verifyingAll, setVerifyingAll] = useState(false);
+
   const handleVerifyAllCandidates = async () => {
-    const pending = candidates.filter(c => !c.isVerified && (c.profilePicture || c.idCardUrl));
-    if (pending.length === 0) return toast.error('No pending candidates to verify');
+    // Step 1: Identify pending candidates in the CURRENT VIEW (including filters)
+    const visiblePending = candidates.filter(c => {
+      if (c.isVerified) return false;
+      if (candidateFilter === 'ISSUES') return !!c.verificationIssue;
+      if (candidateFilter === 'PENDING') return !c.verificationIssue;
+      return true; // ALL
+    });
+
+    if (visiblePending.length === 0) {
+      return toast.error('No pending candidates found to verify.');
+    }
+    
+    setVerifyingAll(true);
+    const loadingToast = toast.loading(`Verifying ${visiblePending.length} candidates...`);
     
     try {
-      const loadingToast = toast.loading(`Verifying ${pending.length} candidates...`);
-      await Promise.all(pending.map(c => verifyCandidate(c._id)));
-      setCandidates(prev => prev.map(c => ({ ...c, isVerified: true, verificationIssue: null })));
-      toast.success(`Successfully verified ${pending.length} candidates`, { id: loadingToast });
+      // Step 2: Batch process using Settled to handle individual failures gracefully
+      const results = await Promise.allSettled(visiblePending.map(c => verifyCandidate(c._id)));
+      
+      // Step 3: Extract successfully verified IDs (ensure string comparison)
+      const succeededIds = results
+        .map((res, index) => res.status === 'fulfilled' ? visiblePending[index]._id.toString() : null)
+        .filter(id => id !== null);
+
+      // Step 4: Update local state for successful ones
+      setCandidates(prev => prev.map(c => 
+        succeededIds.includes(c._id.toString()) 
+          ? { ...c, isVerified: true, verificationIssue: null } 
+          : c
+      ));
+      
+      const failedCount = results.length - succeededIds.length;
+      if (failedCount > 0) {
+        toast.error(`Verified ${succeededIds.length} users, but ${failedCount} failed.`, { id: loadingToast });
+      } else {
+        toast.success(`Successfully verified all ${visiblePending.length} candidates!`, { id: loadingToast });
+      }
     } catch (err) {
-      toast.error('Bulk verification failed');
+      toast.error('Bulk operation failed: ' + (err.message || 'Unknown error'), { id: loadingToast });
+    } finally {
+      setVerifyingAll(false);
     }
   };
 
@@ -1621,9 +1654,14 @@ export default function AdminDashboard() {
           </button>
           <button
             onClick={handleVerifyAllCandidates}
-            className="flex items-center gap-2 px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 text-sm font-medium rounded-lg transition-all border border-slate-200 active:scale-95 shadow-sm"
+            disabled={verifyingAll}
+            className={`flex items-center gap-2 px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 text-sm font-medium rounded-lg transition-all border border-slate-200 active:scale-95 shadow-sm ${verifyingAll ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            <CheckCircle size={16} className="text-emerald-500" /> Verify All
+            {verifyingAll ? (
+              <><RefreshCw size={16} className="animate-spin text-emerald-500" /> Processing...</>
+            ) : (
+              <><CheckCircle size={16} className="text-emerald-500" /> Verify All</>
+            )}
           </button>
         </div>
       </div>
@@ -1825,10 +1863,9 @@ export default function AdminDashboard() {
                     </div>
                     <button
                       onClick={() => handleVerifyCandidate(selectedCandidate._id, true)}
-                      disabled={!selectedCandidate.profilePicture || !selectedCandidate.idCardUrl}
-                      className="px-4 py-1.5 bg-[#22C55E] text-white text-xs font-medium rounded-lg transition-transform shadow-[0_2px_8px_rgba(34,197,94,0.25),inset_0_1px_0_rgba(255,255,255,0.25)] border border-[#16A34A] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 whitespace-nowrap shrink-0"
+                      className="px-4 py-1.5 bg-[#4ade80] text-slate-900 text-[11px] font-bold rounded-xl transition-all shadow-lg shadow-green-500/10 border border-[#22c55e]/30 active:scale-95 flex items-center gap-1.5 whitespace-nowrap shrink-0 uppercase tracking-wider"
                     >
-                      <CheckCircle size={14} strokeWidth={2.5} /> Proper & Verify
+                      <CheckCircle size={14} strokeWidth={2.5} /> Verify Identity
                     </button>
                   </div>
                 )}
