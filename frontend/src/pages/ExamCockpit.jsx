@@ -2234,20 +2234,6 @@ export default function ExamCockpit() {
             </span>
           </div>
 
-          <AnimatePresence>
-            {headerAlert && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 5 }}
-                className="absolute left-1/2 -translate-x-1/2 flex items-center bg-slate-950 text-white px-5 py-1.5 rounded-full border border-white/10 shadow-2xl z-50 pointer-events-none"
-              >
-                <span className="text-[11px] font-bold uppercase tracking-[0.1em]">
-                  {headerAlert}
-                </span>
-              </motion.div>
-            )}
-          </AnimatePresence>
 
           <div className="flex items-center gap-6">
             <ExamTimer seconds={secondsLeft} isCritical={isTimeCritical} />

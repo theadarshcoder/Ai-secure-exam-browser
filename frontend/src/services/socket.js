@@ -6,7 +6,8 @@ const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 class SocketService {
   constructor() {
     this.socket = null;
-    this.currentExamRoom = null; // Track current room for auto-rejoin
+    // 🛡️ Fix Bug 2.B: Persist exam room across page refreshes using sessionStorage
+    this.currentExamRoom = sessionStorage.getItem('current_exam_room');
   }
 
   connect() {
@@ -32,10 +33,10 @@ class SocketService {
     this.socket.on('connect', () => {
       console.log('🔌 Socket connected (authenticated)');
       
-      // Auto-rejoin exam room if it was previously set (Fixes Bug 3)
-      if (this.currentExamRoom) {
-        console.log(`🔄 Re-joining exam room: ${this.currentExamRoom}`);
-        this.socket.emit('join_exam_room', { examId: this.currentExamRoom });
+      const savedRoom = sessionStorage.getItem('current_exam_room');
+      if (savedRoom) {
+        console.log(`🔄 Re-joining exam room: ${savedRoom}`);
+        this.socket.emit('join_exam_room', { examId: savedRoom });
       }
     });
 
@@ -154,6 +155,7 @@ class SocketService {
   joinExamRoom(examId) {
     if (this.socket && this.socket.connected) {
       this.currentExamRoom = examId;
+      sessionStorage.setItem('current_exam_room', examId); // Save to storage
       this.socket.emit('join_exam_room', { examId });
     }
   }

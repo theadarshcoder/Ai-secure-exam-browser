@@ -9,7 +9,13 @@ const verifyToken = async (req, res, next) => {
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         // ⚡ SCALING GUARD: Check Redis first
-        const cachedToken = await cacheService.getUserSession(decoded.id);
+        let cachedToken = null;
+        try {
+            cachedToken = await cacheService.getUserSession(decoded.id);
+        } catch (cacheErr) {
+            console.error('🛡️ Cache Service Down (verifyToken):', cacheErr.message);
+            // 🔄 Fallback to MongoDB automatically by leaving cachedToken as null
+        }
 
         if (cachedToken) {
             if (cachedToken !== token) {
@@ -19,7 +25,7 @@ const verifyToken = async (req, res, next) => {
                 });
             }
         } else {
-            // 🔄 CACHE MISS: Fetch from DB & Backfill
+            // 🔄 CACHE MISS / REDIS DOWN: Fetch from DB & Backfill
             const user = await User.findById(decoded.id);
             if (!user) {
                 return res.status(403).json({ message: "User account not found" });
@@ -30,8 +36,10 @@ const verifyToken = async (req, res, next) => {
                     code: "SESSION_COLLISION" 
                 });
             }
-            // Backfill cache
-            await cacheService.saveUserSession(decoded.id, token);
+            // Backfill cache (Non-blocking)
+            cacheService.saveUserSession(decoded.id, token).catch(e => 
+                console.error('🛡️ Cache Backfill Failed:', e.message)
+            );
         }
         
         req.user = decoded;
