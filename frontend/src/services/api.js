@@ -26,7 +26,9 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response) {
-      if ((error.response.status === 401 || error.response.status === 403) && !error.config?.url?.includes('/login')) {
+      // 🛡️ CRITICAL FIX: Only redirect on 401 (Unauthorized). 
+      // 403 (Forbidden) means student tried accessing admin route, which shouldn't kick them out.
+      if (error.response.status === 401 && !error.config?.url?.includes('/login')) {
         sessionStorage.clear(); localStorage.clear();
         window.location.href = '/login';
       } else {

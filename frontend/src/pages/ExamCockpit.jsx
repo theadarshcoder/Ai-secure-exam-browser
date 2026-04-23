@@ -1706,12 +1706,15 @@ export default function ExamCockpit() {
     };
     fetchExam(0);
 
-    // Fetch Global Settings for Exit Password
-    getSettings()
-      .then((res) => {
-        if (res) setSettings(res);
-      })
-      .catch((err) => console.error("Failed to load global settings", err));
+    // Fetch Global Settings for Exit Password (Admin/Mentor only)
+    const role = sessionStorage.getItem("vision_role");
+    if (role === "admin" || role === "mentor" || role === "super_mentor") {
+      getSettings()
+        .then((res) => {
+          if (res) setSettings(res);
+        })
+        .catch((err) => console.error("Failed to load global settings", err));
+    }
   }, [examId, navigate]);
 
   // 📷 Camera & AI Setup

@@ -471,9 +471,12 @@ export default function StudentDashboard() {
     const timer = setInterval(() => setNow(new Date()), 1000);
     localStorage.removeItem('vision_terminated_sessions');
 
-    getSettings().then(res => {
-      if (res) setSettings(res);
-    }).catch(err => console.error("Failed to load settings", err));
+    const role = sessionStorage.getItem('vision_role');
+    if (role === 'admin' || role === 'mentor' || role === 'super_mentor') {
+      getSettings().then(res => {
+        if (res) setSettings(res);
+      }).catch(err => console.error("Failed to load settings", err));
+    }
 
     return () => {
       document.body.style.overflow = 'auto';

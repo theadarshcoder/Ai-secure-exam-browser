@@ -165,9 +165,12 @@ export default function ExamWaitingRoom() {
     fetchExam();
     preLoadModels();
     
-    getSettings().then(res => {
-      if (res) setSettings(res);
-    }).catch(err => console.error("Failed to load settings", err));
+    const role = sessionStorage.getItem('vision_role');
+    if (role === 'admin' || role === 'mentor' || role === 'super_mentor') {
+      getSettings().then(res => {
+        if (res) setSettings(res);
+      }).catch(err => console.error("Failed to load settings", err));
+    }
 
     return () => { document.body.style.overflow = 'auto'; clearInterval(timer); };
   }, [examId]);
