@@ -455,21 +455,21 @@ const FullBlockOverlay = React.memo(({ isOpen, reason }) => (
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[1000] bg-slate-900 flex items-center justify-center p-6 select-none"
+        className="fixed inset-0 z-[1000] bg-slate-50 flex items-center justify-center p-6 select-none"
       >
-        <div className="text-center max-w-md">
-          <div className="w-24 h-24 rounded-full bg-red-500/10 border-2 border-red-500 flex items-center justify-center mx-auto mb-8 animate-pulse">
-            <LockIcon size={48} className="text-red-500" />
+        <div className="text-center max-w-md bg-white p-10 rounded-3xl shadow-xl border border-slate-200">
+          <div className="w-20 h-20 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto mb-6">
+            <LockIcon size={32} strokeWidth={2.5} />
           </div>
-          <h1 className="text-4xl font-bold text-white mb-4 uppercase tracking-tighter">
-            Access Resticted
+          <h1 className="text-2xl font-bold text-slate-900 mb-3 tracking-tight">
+            Access Restricted
           </h1>
-          <p className="text-zinc-400 text-lg mb-10 leading-relaxed font-medium">
+          <p className="text-slate-600 text-[15px] mb-8 leading-relaxed font-medium">
             {reason ||
               "Your exam session has been suspended by the supervisor due to suspicious activity."}
           </p>
-          <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
-            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+          <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
+            <p className="text-[12.5px] font-semibold text-slate-500">
               Please contact your instructor immediately to regain access.
             </p>
           </div>
@@ -971,6 +971,7 @@ export default function ExamCockpit() {
   const [activeWarning, setActiveWarning] = useState(null);
   const [camError, setCamError] = useState(false);
   const [settings, setSettings] = useState(null);
+  const [headerAlert, setHeaderAlert] = useState(null);
 
   // Layout state
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
@@ -2192,6 +2193,19 @@ export default function ExamCockpit() {
               {exam?.title || "Exam"}
             </span>
           </div>
+
+          <AnimatePresence>
+            {headerAlert && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="absolute left-1/2 -translate-x-1/2 bg-slate-900 text-white px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg z-50"
+              >
+                {headerAlert}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
 
           <div className="flex items-center gap-6">
