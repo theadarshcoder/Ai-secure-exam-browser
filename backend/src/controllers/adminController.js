@@ -64,6 +64,7 @@ exports.getLiveSessions = asyncHandler(async (req, res) => {
 
     const formatted = sessions.map(s => ({
         _id: s._id,
+        studentId: s.student?._id || null,
         studentName: s.student?.name || 'Unknown',
         studentEmail: s.student?.email || 'N/A',
         studentPhoto: s.student?.profilePicture,

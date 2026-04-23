@@ -674,10 +674,16 @@ io.on('connection', (socket) => {
             ...payload
         };
 
-        if (payload.type === 'broadcast' && payload.examId) {
-            // Send to all students in this exam room
-            io.to(`exam_${payload.examId}`).emit('receive_admin_message', messageData);
-            console.log(`📨 [Broadcast] to exam_${payload.examId} by ${socket.user.email}: ${payload.message}`);
+        if (payload.type === 'broadcast') {
+            if (payload.examId) {
+                // Send to specific exam room
+                io.to(`exam_${payload.examId}`).emit('receive_admin_message', messageData);
+                console.log(`📨 [Broadcast] to exam_${payload.examId} by ${socket.user.email}: ${payload.message}`);
+            } else {
+                // Global broadcast to all students
+                io.to('role_student').emit('receive_admin_message', messageData);
+                console.log(`📨 [Global Broadcast] by ${socket.user.email}: ${payload.message}`);
+            }
         } else if (payload.type === 'direct' && payload.studentId) {
             // Send to specific student
             io.to(`user_${payload.studentId}`).emit('receive_admin_message', messageData);
