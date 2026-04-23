@@ -996,12 +996,14 @@ export default function ExamCockpit() {
     const handleAdminMessage = (data) => {
         const { action, message, type } = data;
         
-        // Handle normal broadcasts
+        // Handle normal broadcasts (show in overlay + toast)
         if (type === 'broadcast') {
-            toast(message, { icon: '📩', duration: 6000 });
+            setBroadcastMessage(message);
+            toast(message, { icon: '📩', duration: 8000 });
             return;
         }
 
+        // Handle commands
         if (action === 'BLOCK') {
             setIsBlocked(true);
             toast.error(message || "Your screen has been blocked by an administrator.");
@@ -1011,6 +1013,11 @@ export default function ExamCockpit() {
         } else if (action === 'TERMINATE') {
             setTerminated({ reason: message || "Exam terminated by administrator." });
             toast.error("EXAM TERMINATED", { duration: 10000 });
+        } else if (type === 'direct') {
+            // plain direct message (no command)
+            toast(message, { icon: '💬', duration: 8000 });
+            // Also show in broadcast overlay if it's important
+            setBroadcastMessage(`[DIRECT] ${message}`);
         }
     };
 
@@ -1492,6 +1499,13 @@ export default function ExamCockpit() {
   // ⏲️ Termination Countdown Effect
   useEffect(() => {
     if (!terminated) return;
+
+    // Trigger auto-submit on termination to save student work
+    if (handleFinalSubmitRef.current) {
+        console.log("🔒 Termination detected: Triggering emergency auto-submit...");
+        handleFinalSubmitRef.current();
+    }
+
     if (stream) {
       stream.getTracks().forEach((t) => t.stop());
       setStream(null);
