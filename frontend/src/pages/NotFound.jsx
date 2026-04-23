@@ -34,12 +34,12 @@ export default function NotFound() {
             </div>
           </div>
 
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-6">
             <span className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
             Error Code: 404_UPLINK_LOST
           </div>
 
-          <h1 className="text-5xl lg:text-7xl font-black text-white tracking-tighter mb-4 uppercase">
+          <h1 className="text-5xl lg:text-7xl font-bold text-white tracking-tighter mb-4 uppercase">
             Route Not <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-emerald-400">Found</span>
           </h1>
           
@@ -50,13 +50,13 @@ export default function NotFound() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button 
               onClick={() => navigate(-1)}
-              className="w-full sm:w-auto px-8 py-4 rounded-2xl border border-white/5 bg-white/5 text-white font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-8 py-4 rounded-2xl border border-white/5 bg-white/5 text-white font-bold text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all flex items-center justify-center gap-2"
             >
               <ArrowLeft size={16} /> Previous Node
             </button>
             <button 
               onClick={() => navigate('/')}
-              className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-white text-[#0a0c10] font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all shadow-xl flex items-center justify-center gap-2 active:scale-95"
+              className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-white text-[#0a0c10] font-bold text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all shadow-xl flex items-center justify-center gap-2 active:scale-95"
             >
               <Home size={16} /> Return to Base
             </button>
@@ -66,7 +66,7 @@ export default function NotFound() {
         <div className="mt-20 pt-8 border-t border-white/[0.03] flex items-center justify-center gap-8">
            <div className="flex items-center gap-2 opacity-30 grayscale">
              <VisionLogo className="w-4 h-4" />
-             <span className="text-[10px] font-black tracking-widest uppercase">VISION SYSTEM</span>
+             <span className="text-[10px] font-bold tracking-widest uppercase">VISION SYSTEM</span>
            </div>
         </div>
       </div>

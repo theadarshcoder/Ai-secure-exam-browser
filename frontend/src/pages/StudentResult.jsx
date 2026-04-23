@@ -97,7 +97,7 @@ const StudentResult = () => {
                             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                             <span className="text-sm font-medium">Back to Dashboard</span>
                         </button>
-                        <h1 className="text-4xl font-black tracking-tight">{result.examTitle}</h1>
+                        <h1 className="text-3xl font-bold tracking-tight">{result.examTitle}</h1>
                         <p className="text-slate-500 mt-2 flex items-center gap-2 uppercase tracking-widest text-[10px] font-bold">
                             <Clock className="w-3 h-3" />
                             Submitted on {new Date(result.submittedAt).toLocaleDateString()} at {new Date(result.submittedAt).toLocaleTimeString()}
@@ -106,7 +106,7 @@ const StudentResult = () => {
                     
                     <div className="flex items-center gap-4 bg-slate-900/50 p-4 rounded-2xl border border-white/5 backdrop-blur-sm">
                         <div className="text-right">
-                            <p className="text-[10px] uppercase tracking-widest font-black text-slate-500">Status</p>
+                            <p className="text-[10px] uppercase tracking-wider font-bold text-slate-500">Status</p>
                             <p className={`font-bold uppercase ${result.status === 'pending_review' ? 'text-amber-400' : 'text-emerald-400'}`}>
                                 {result.status.replace('_', ' ')}
                             </p>
@@ -125,7 +125,7 @@ const StudentResult = () => {
                                 <stat.icon className="w-5 h-5" />
                             </div>
                             <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-1">{stat.label}</p>
-                            <p className={`text-2xl font-black ${stat.color}`}>{stat.value}</p>
+                            <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
                         </div>
                     ))}
                 </div>
@@ -142,12 +142,12 @@ const StudentResult = () => {
                             {Object.entries(result.sectionStats || {}).map(([type, data]) => (
                                 <div key={type} className="bg-slate-900/30 p-5 rounded-2xl border border-white/5">
                                     <div className="flex justify-between items-start mb-4">
-                                        <div className="uppercase tracking-widest text-[10px] font-black text-slate-500">{type} QUESTIONS</div>
+                                        <div className="uppercase tracking-widest text-[10px] font-bold text-slate-500">{type} QUESTIONS</div>
                                         <div className="text-xs font-bold text-slate-700">{Math.round((data.marks / (data.total * 5)) * 100)}%</div>
                                     </div>
                                     <div className="space-y-4">
                                         <div className="flex justify-between items-end">
-                                            <div className="text-2xl font-black">{data.correct}/{data.total}</div>
+                                            <div className="text-2xl font-bold">{data.correct}/{data.total}</div>
                                             <div className="text-[10px] text-slate-500 font-bold mb-1">CORRECT</div>
                                         </div>
                                         <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
@@ -180,12 +180,12 @@ const StudentResult = () => {
                                             </div>
                                             <div>
                                                 <p className="text-sm font-medium line-clamp-1">{q.questionText}</p>
-                                                <p className="text-[10px] uppercase tracking-widest text-slate-500 font-black mt-0.5">{q.type}</p>
+                                                <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-0.5">{q.type}</p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-6">
                                             <div className="text-right hidden sm:block">
-                                                <p className="text-[10px] uppercase tracking-widest font-black text-slate-600">Marks</p>
+                                                <p className="text-[10px] uppercase tracking-widest font-bold text-slate-600">Marks</p>
                                                 <p className="text-xs font-bold">{q.marksObtained}/{q.maxMarks}</p>
                                             </div>
                                             {q.status === 'correct' ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : 
@@ -217,7 +217,7 @@ const StudentResult = () => {
                         </div>
 
                         <div className="bg-slate-900/50 p-6 rounded-3xl border border-white/5">
-                            <h4 className="text-sm font-black uppercase tracking-widest text-slate-500 mb-6 underline decoration-slate-800 decoration-2 underline-offset-8">
+                            <h4 className="text-sm font-bold uppercase tracking-widest text-slate-500 mb-6 underline decoration-slate-800 decoration-2 underline-offset-8">
                                 Security Report
                             </h4>
                             <div className="space-y-4">

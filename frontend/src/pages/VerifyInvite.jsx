@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { Shield, Loader2, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
-import { v4 as uuidv4 } from 'uuid';
 
 // ═══════════════════════════════════════════════════════════
 //  Verify Invite Page — Student lands here from email link
@@ -31,7 +30,7 @@ export default function VerifyInvite() {
             // Generate or retrieve device ID (same pattern as login flow)
             let deviceId = sessionStorage.getItem('vision_device_id');
             if (!deviceId) {
-                deviceId = uuidv4();
+                deviceId = crypto.randomUUID();
                 sessionStorage.setItem('vision_device_id', deviceId);
             }
 

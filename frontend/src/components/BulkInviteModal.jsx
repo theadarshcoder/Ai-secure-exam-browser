@@ -119,9 +119,9 @@ export default function BulkInviteModal({ isOpen, onClose, examId, examTitle }) 
                     >
                         <Upload size={32} color="#10b981" style={{ marginBottom: 12 }} />
                         <p style={S.dropText}>Drop CSV file here or click to browse</p>
-                        <div style={{ marginTop: '12px', display: 'inline-block', textAlign: 'left', background: 'rgba(0,0,0,0.2)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                            <p style={{ fontSize: '10px', color: '#a1a1aa', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '0.5px' }}>Expected CSV Format:</p>
-                            <code style={{ fontSize: '11px', color: '#10b981', fontFamily: 'monospace' }}>name, email</code>
+                        <div style={{ marginTop: '16px', display: 'inline-block', textAlign: 'left', background: '#f1f5f9', padding: '10px 16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                            <p style={{ fontSize: '10px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.5px' }}>Expected CSV Format:</p>
+                            <code style={{ fontSize: '12px', color: '#059669', fontFamily: 'monospace', fontWeight: 700 }}>name, email</code>
                         </div>
                         <input ref={fileRef} type="file" accept=".csv" hidden onChange={e => handleFile(e.target.files[0])} />
                     </div>
@@ -204,32 +204,32 @@ export default function BulkInviteModal({ isOpen, onClose, examId, examTitle }) 
 }
 
 const S = {
-    overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16 },
-    modal: { background: '#18181b', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, width: '100%', maxWidth: 560, maxHeight: '85vh', overflow: 'auto', padding: '24px 28px' },
-    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
-    title: { color: '#fff', fontSize: 18, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8, letterSpacing: -0.3 },
-    subtitle: { color: '#71717a', fontSize: 12, margin: '4px 0 0', fontWeight: 500 },
-    closeBtn: { background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: 8, padding: 6, color: '#71717a', cursor: 'pointer' },
-    dropZone: { border: '2px dashed rgba(16,185,129,0.25)', borderRadius: 14, padding: '36px 24px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s', background: 'rgba(16,185,129,0.03)' },
-    dropZoneActive: { borderColor: '#10b981', background: 'rgba(16,185,129,0.08)' },
-    dropText: { color: '#d4d4d8', fontSize: 14, fontWeight: 600, margin: '0 0 4px' },
-    dropHint: { color: '#52525b', fontSize: 11, margin: 0 },
-    sampleBtn: { display: 'flex', alignItems: 'center', gap: 6, margin: '12px auto 0', background: 'none', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '8px 14px', color: '#a1a1aa', fontSize: 11, fontWeight: 600, cursor: 'pointer' },
-    errorBox: { display: 'flex', gap: 8, alignItems: 'flex-start', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: 10, padding: '10px 14px', marginTop: 12, color: '#fca5a5', fontSize: 12 },
-    tableHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-    badge: { display: 'flex', alignItems: 'center', gap: 6, color: '#10b981', fontSize: 12, fontWeight: 600 },
-    clearBtn: { display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 6, padding: '4px 10px', color: '#f87171', fontSize: 11, cursor: 'pointer' },
-    tableWrap: { maxHeight: 260, overflow: 'auto', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, marginBottom: 16 },
+    overlay: { position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16 },
+    modal: { background: '#ffffff', border: '1px solid rgba(0,0,0,0.05)', borderRadius: 24, width: '100%', maxWidth: 560, maxHeight: '85vh', overflow: 'auto', padding: '32px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.15)' },
+    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 },
+    title: { color: '#0f172a', fontSize: 20, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 10, letterSpacing: -0.4 },
+    subtitle: { color: '#64748b', fontSize: 13, margin: '4px 0 0', fontWeight: 500 },
+    closeBtn: { background: '#f8fafc', border: '1px solid #f1f5f9', borderRadius: 10, padding: 8, color: '#94a3b8', cursor: 'pointer', transition: 'all 0.2s' },
+    dropZone: { border: '2px dashed #10b98133', borderRadius: 16, padding: '48px 24px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s', background: '#f0fdf444' },
+    dropZoneActive: { borderColor: '#10b981', background: '#f0fdf4' },
+    dropText: { color: '#334155', fontSize: 15, fontWeight: 600, margin: '0 0 4px' },
+    dropHint: { color: '#64748b', fontSize: 12, margin: 0 },
+    sampleBtn: { display: 'flex', alignItems: 'center', gap: 8, margin: '16px auto 0', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 18px', color: '#475569', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' },
+    errorBox: { display: 'flex', gap: 10, alignItems: 'flex-start', background: '#fef2f2', border: '1px solid #fee2e2', borderRadius: 12, padding: '12px 16px', marginTop: 16, color: '#991b1b', fontSize: 13 },
+    tableHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginTop: 16 },
+    badge: { display: 'flex', alignItems: 'center', gap: 8, color: '#059669', fontSize: 13, fontWeight: 600 },
+    clearBtn: { display: 'flex', alignItems: 'center', gap: 6, background: '#fff', border: '1px solid #fee2e2', borderRadius: 8, padding: '6px 12px', color: '#dc2626', fontSize: 11, fontWeight: 600, cursor: 'pointer' },
+    tableWrap: { maxHeight: 300, overflow: 'auto', border: '1px solid #e2e8f0', borderRadius: 12, marginBottom: 20 },
     table: { width: '100%', borderCollapse: 'collapse' },
-    th: { textAlign: 'left', padding: '8px 12px', fontSize: 10, fontWeight: 700, color: '#71717a', textTransform: 'uppercase', letterSpacing: 0.8, background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.04)' },
-    tr: { borderBottom: '1px solid rgba(255,255,255,0.03)' },
-    td: { padding: '8px 12px', fontSize: 13, color: '#d4d4d8' },
-    removeBtn: { background: 'none', border: 'none', color: '#71717a', cursor: 'pointer', padding: 2 },
-    sendBtn: { width: '100%', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', borderRadius: 10, padding: '13px 24px', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 },
-    resultBox: { textAlign: 'center', padding: '16px 0' },
-    statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginTop: 16 },
-    stat: { background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '12px 8px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 2 },
-    statNum: { fontSize: 20, fontWeight: 800, color: '#10b981' },
-    statLabel: { fontSize: 10, color: '#71717a', fontWeight: 600, textTransform: 'uppercase' },
-    doneBtn: { marginTop: 16, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '10px 24px', color: '#d4d4d8', fontSize: 13, fontWeight: 600, cursor: 'pointer' }
+    th: { textAlign: 'left', padding: '12px 16px', fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.8, background: '#f8fafc', borderBottom: '1px solid #e2e8f0' },
+    tr: { borderBottom: '1px solid #f1f5f9' },
+    td: { padding: '10px 16px', fontSize: 13, color: '#334155' },
+    removeBtn: { background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 4, transition: 'color 0.2s' },
+    sendBtn: { width: '100%', background: '#0f172a', border: 'none', borderRadius: 12, padding: '14px 24px', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, transition: 'background 0.2s', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' },
+    resultBox: { textAlign: 'center', padding: '24px 0' },
+    statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginTop: 24 },
+    stat: { background: '#f8fafc', border: '1px solid #f1f5f9', borderRadius: 12, padding: '16px 10px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 4 },
+    statNum: { fontSize: 22, fontWeight: 700, color: '#059669' },
+    statLabel: { fontSize: 10, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 },
+    doneBtn: { marginTop: 24, background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 10, padding: '12px 32px', color: '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }
 };

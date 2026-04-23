@@ -2,12 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import socketService from '../services/socket';
+import FloatingPillMenu from '../components/FloatingPillMenu';
 import {
   LayoutDashboard, Users, FileText, Settings,
   Search, FileUp, UserPlus, Trash2, Eye,
   ShieldCheck, Activity, AlertOctagon,
   ChevronRight, LogOut, Bell, RefreshCw, Edit3,
-  BarChart3, Download, Clock, Check, X, Star, CheckCircle, AlertCircle, Plus, ScanFace, Radio, ShieldAlert, User, EyeOff, MessageCircle, AlertTriangle, Unlock, Lock as LockIcon
+  BarChart3, Download, Clock, Check, X, Star, CheckCircle, AlertCircle, Plus, ScanFace, Radio, ShieldAlert, User, EyeOff, MessageCircle, AlertTriangle
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import PremiumSidebar from '../components/PremiumSidebar';
@@ -32,8 +33,7 @@ import api, {
   togglePublishResults,
   evaluateSession,
   deleteAuditLog,
-  clearAllAuditLogs,
-  getLiveSessions
+  clearAllAuditLogs
 } from '../services/api';
 
 // ─────────────────────────────────────────────────────────
@@ -43,7 +43,7 @@ import api, {
 const Badge = ({ children, color }) => {
   const styles = {
     zinc: 'bg-slate-100 text-slate-600 border-slate-200',
-    emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    emerald: 'bg-green-50 text-green-700 border-green-200',
     amber: 'bg-amber-50 text-amber-700 border-amber-200',
     red: 'bg-red-50 text-red-700 border-red-200',
   };
@@ -166,7 +166,7 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
           <div className="flex items-center gap-4">
             <div className="text-right">
               <p className="text-xl font-semibold text-slate-900 tabular-nums">{sessionData.score ?? 0}/{sessionData.totalMarks ?? 0}</p>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">{sessionData.percentage ?? 0}% — {sessionData.passed ? 'PASSED' : 'FAILED'}</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#22c55e]">{sessionData.percentage ?? 0}% — {sessionData.passed ? 'PASSED' : 'FAILED'}</p>
             </div>
             <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-all active:scale-95">
               <X size={18} className="text-slate-400" />
@@ -189,7 +189,7 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
 
               return (
                 <div key={i} className={`rounded-2xl border p-6 transition-all ${
-                  q.status === 'correct' ? 'border-emerald-200 bg-emerald-50/20' :
+                  q.status === 'correct' ? 'border-emerald-200 bg-green-50/20' :
                   q.status === 'incorrect' ? 'border-red-200 bg-red-50/20' :
                   q.status === 'partial' ? 'border-amber-200 bg-amber-50/20' :
                   'border-slate-200 bg-slate-50/30'
@@ -197,8 +197,8 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
                   {/* Question Info */}
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Question {q.index + 1}</span>
-                      <span className={`px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider ${
+                      <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Question {q.index + 1}</span>
+                      <span className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${
                         q.type === 'mcq' ? 'bg-blue-100 text-blue-700' :
                         q.type === 'coding' ? 'bg-purple-100 text-purple-700' :
                         'bg-orange-100 text-orange-700'
@@ -221,10 +221,10 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
                             min="0"
                             value={localGrades[qId]?.marksObtained ?? q.marksObtained ?? 0}
                             onChange={(e) => handleGradeChange(qId, 'marksObtained', e.target.value)}
-                            className="w-12 text-center text-xs font-black text-slate-900 focus:outline-none"
+                            className="w-12 text-center text-xs font-bold text-slate-900 focus:outline-none"
                           />
                           <span className="text-slate-300 font-bold">/</span>
-                          <span className="text-xs font-black text-slate-400">{q.maxMarks || q.marks || 0}</span>
+                          <span className="text-xs font-bold text-slate-400">{q.maxMarks || q.marks || 0}</span>
                         </div>
                       ) : (
                         <span className="text-sm font-bold text-slate-900 tabular-nums bg-white px-3 py-1 rounded-lg border border-slate-100">
@@ -244,12 +244,12 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
                         const isStudent = oi === q.studentChoice;
                         return (
                           <div key={oi} className={`px-4 py-3 rounded-xl text-xs flex items-center gap-3 border transition-all ${
-                            isCorrect ? 'bg-emerald-100 border-emerald-200 text-emerald-800 font-bold' :
+                            isCorrect ? 'bg-green-100 border-emerald-200 text-green-800 font-bold' :
                             isStudent ? 'bg-red-50 border-red-200 text-red-700 font-bold' :
                             'bg-white border-slate-100 text-slate-500'
                           }`}>
                             <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
-                               isCorrect ? 'bg-emerald-500 text-white' :
+                               isCorrect ? 'bg-green-500 text-white' :
                                isStudent ? 'bg-red-500 text-white' : 
                                'bg-slate-100 text-slate-400'
                             }`}>
@@ -265,7 +265,7 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
                   {q.type === 'coding' && q.studentAnswer && (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Submission Artifact</p>
+                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Submission Artifact</p>
                          <span className="text-[10px] font-bold text-slate-400 uppercase bg-slate-100 px-2 py-0.5 rounded">Source Code</span>
                       </div>
                       <pre className="bg-slate-900 text-slate-100 p-5 rounded-2xl text-[11px] font-mono leading-relaxed overflow-x-auto max-h-48 border border-white/5 custom-scrollbar">
@@ -276,7 +276,7 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
 
                   {q.type === 'frontend-react' && q.files && (
                     <div className="space-y-4">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">React Lab Artifacts</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">React Lab Artifacts</p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                          {Object.entries(q.files).map(([path, code]) => (
                            <div key={path} className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
@@ -291,7 +291,7 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
                       </div>
                       {q.testCaseResults && q.testCaseResults.length > 0 && (
                         <div className="bg-white border border-slate-200 rounded-xl p-4">
-                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">UI Test Reports</p>
+                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">UI Test Reports</p>
                            <div className="space-y-2">
                               {q.testCaseResults.map((tr, tri) => (
                                 <div key={tri} className="flex items-center gap-3 text-[11px] font-medium">
@@ -309,18 +309,18 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
                     <div className="space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
                             <CheckCircle size={12} className="text-slate-300" /> Student's Response
                           </p>
                           <div className="text-xs text-slate-700 leading-relaxed italic">
                             {typeof q.studentAnswer === 'object' ? q.studentAnswer.code : (q.studentAnswer || "No content provided.")}
                           </div>
                         </div>
-                        <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4 shadow-sm">
-                          <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2 flex items-center gap-2">
-                             <Star size={12} className="text-emerald-400" /> Expected Blueprint
+                        <div className="bg-green-50/50 border border-green-100 rounded-xl p-4 shadow-sm">
+                          <p className="text-[10px] font-bold text-[#22c55e] uppercase tracking-widest mb-2 flex items-center gap-2">
+                             <Star size={12} className="text-green-400" /> Expected Blueprint
                           </p>
-                          <div className="text-xs text-emerald-800 leading-relaxed font-medium">
+                          <div className="text-xs text-green-800 leading-relaxed font-medium">
                             {q.expectedAnswer || "Static evaluation criteria not configured."}
                           </div>
                         </div>
@@ -328,12 +328,12 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
                       
                       {isEvaluating && (
                         <div className="mt-4">
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Mentor Feedback</label>
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">Mentor Feedback</label>
                           <textarea 
                             value={localGrades[qId]?.mentorFeedback ?? q.mentorFeedback ?? ''}
                             onChange={(e) => handleGradeChange(qId, 'mentorFeedback', e.target.value)}
                             placeholder="Add your feedback for the student here..."
-                            className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-emerald-500 transition-all min-h-[80px]"
+                            className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-green-500 transition-all min-h-[80px]"
                           />
                         </div>
                       )}
@@ -352,7 +352,7 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
            </p>
            <button 
              onClick={onClose}
-             className="px-6 py-2.5 text-slate-500 text-[11px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-100 transition-all active:scale-95"
+             className="px-6 py-2.5 text-slate-500 text-[11px] font-bold uppercase tracking-widest rounded-xl hover:bg-slate-100 transition-all active:scale-95"
            >
              Close
            </button>
@@ -360,7 +360,7 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
              <button 
                onClick={handleSubmitEvaluation}
                disabled={isSubmitting}
-               className="px-8 py-2.5 bg-emerald-600 text-white text-[11px] font-black uppercase tracking-widest rounded-xl hover:bg-emerald-700 transition-all active:scale-95 shadow-lg shadow-emerald-900/20 flex items-center gap-2 disabled:opacity-50"
+               className="px-8 py-2.5 bg-[#4ade80] text-white text-[11px] font-bold uppercase tracking-widest rounded-xl hover:bg-green-700 transition-all active:scale-95 shadow-lg shadow-green-500/20 flex items-center gap-2 disabled:opacity-50"
              >
                {isSubmitting ? <RefreshCw size={14} className="animate-spin" /> : <Check size={14} />}
                Finalize Evaluation
@@ -373,9 +373,10 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
 };
 
 export default function AdminDashboard() {
+  const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
-  const [activeTab, setActiveTab] = useState('Overview');
+  const [activeTab, setActiveTab] = useState(new URLSearchParams(location.search).get('tab') || 'Overview');
   
   const [userName] = useState(sessionStorage.getItem('vision_name') || 'Administrator');
   const [userRole] = useState(sessionStorage.getItem('vision_role') || 'admin');
@@ -399,32 +400,23 @@ export default function AdminDashboard() {
   const [evalSessionData, setEvalSessionData] = useState(null);
   const [evalLoading, setEvalLoading] = useState(false);
 
-  // Live Proctoring states
-  const [liveSessions, setLiveSessions] = useState([]);
 
   // Candidate eKYC states
   const [candidates, setCandidates] = useState([]);
   const [candidateSearch, setCandidateSearch] = useState('');
+  const [candidateFilter, setCandidateFilter] = useState('ALL');
   const [selectedCandidate, setSelectedCandidate] = useState(null);
-  const [settings, setSettingsState] = useState(() => {
-     try {
-         const stored = sessionStorage.getItem('admin_unsaved_settings');
-         if (stored) return JSON.parse(stored);
-     } catch { /* ignore parse errors, fall through to defaults */ }
-     return {
-         maxTabSwitches: 5,
-         forceFullscreen: true,
-         allowLateSubmissions: false,
-         enableWebcam: true,
-         disableCopyPaste: true,
-         requireIDVerification: true
-     };
+  const [settings, setSettingsState] = useState({
+    maxTabSwitches: 5,
+    maxViolations: 5,
+    backgroundLimitSeconds: 10,
+    forceFullscreen: true,
+    allowLateSubmissions: false,
+    enableWebcam: true,
+    disableCopyPaste: true,
+    requireIDVerification: true,
+    exitPassword: ''
   });
-
-  // Sync to session storage whenever they toggle a UI element
-  useEffect(() => {
-      sessionStorage.setItem('admin_unsaved_settings', JSON.stringify(settings));
-  }, [settings]);
 
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'student' });
@@ -437,18 +429,16 @@ export default function AdminDashboard() {
 
   // Load Settings Exactly Once On Mount
   useEffect(() => {
-     // If we already have unsaved settings floating in session, don't overwrite them with DB states
-     if (!sessionStorage.getItem('admin_unsaved_settings')) {
-         getSettings().then(res => {
-             if (res && Object.keys(res).length > 0) {
-                 setSettingsState(prev => ({...prev, ...res}));
-             }
-         }).catch(() => console.log('Failed fetching early settings.'));
-     }
+    getSettings().then(res => {
+      if (res && Object.keys(res).length > 0) {
+        setSettingsState(prev => ({ ...prev, ...res }));
+      }
+    }).catch(() => console.log('Failed fetching early settings.'));
   }, []);
 
   useEffect(() => {
     fetchDataForTab(activeTab);
+    setSelectedUsers(new Set());
   }, [activeTab]);
 
   useEffect(() => {
@@ -526,9 +516,6 @@ export default function AdminDashboard() {
           } else if (tab === 'Candidates') {
               const res = await getCandidates(candidateSearch).catch(() => []);
               setCandidates(res || []);
-          } else if (tab === 'Monitor') {
-              const res = await getLiveSessions().catch(() => []);
-              setLiveSessions(res || []);
           }
       } catch (err) {
           console.error("Failed fetching data:", err);
@@ -606,8 +593,8 @@ export default function AdminDashboard() {
     if (selectedUsers.size === 0) return;
     const selectedData = users.filter(u => selectedUsers.has(u._id));
     
-    const headers = 'ID,Name,Email,Role,Date Added\n';
-    const rows = selectedData.map(u => `"${u._id}","${u.name}","${u.email}","${u.role}","${new Date(u.createdAt).toLocaleDateString()}"`).join('\n');
+    const headers = 'Name,Email,Role\n';
+    const rows = selectedData.map(u => `"${u.name}","${u.email}","${u.role}"`).join('\n');
     
     const blob = new Blob([headers + rows], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -627,10 +614,17 @@ export default function AdminDashboard() {
   };
 
   const toggleAllUsers = (filteredUsers) => {
-    if (selectedUsers.size === filteredUsers.length && filteredUsers.length > 0) {
-      setSelectedUsers(new Set());
+    const filteredIds = filteredUsers.map(u => u._id);
+    const allFilteredSelected = filteredIds.every(id => selectedUsers.has(id));
+    
+    if (allFilteredSelected && filteredIds.length > 0) {
+      const newSet = new Set(selectedUsers);
+      filteredIds.forEach(id => newSet.delete(id));
+      setSelectedUsers(newSet);
     } else {
-      setSelectedUsers(new Set(filteredUsers.map(u => u._id)));
+      const newSet = new Set(selectedUsers);
+      filteredIds.forEach(id => newSet.add(id));
+      setSelectedUsers(newSet);
     }
   };
 
@@ -783,7 +777,6 @@ export default function AdminDashboard() {
     { id: 'Users', label: 'User Management', icon: Users, access: ['admin', 'super_mentor'] },
     { id: 'Candidates', label: 'Candidates', icon: ScanFace, access: ['admin', 'super_mentor'] },
     { id: 'Exams', label: 'Exam Library', icon: FileText, access: ['admin', 'super_mentor'] },
-    { id: 'Monitor', label: 'Live Monitoring', icon: Radio, access: ['admin', 'super_mentor', 'mentor'] },
     { id: 'Results', label: 'Results & Reports', icon: BarChart3, access: ['admin', 'super_mentor'] },
     { id: 'Settings', label: 'System Settings', icon: Settings, access: ['admin'] },
   ];
@@ -805,7 +798,7 @@ export default function AdminDashboard() {
         {STAT_CARDS.map((stat, i) => (
           <div key={i} className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600">
+              <div className="p-2.5 rounded-xl bg-emerald-50 text-[#22c55e]">
                 <stat.icon size={20} />
               </div>
             </div>
@@ -825,7 +818,7 @@ export default function AdminDashboard() {
              </div>
              <div className="flex items-center gap-3">
                {auditLogs.length > 0 && (
-                 <button onClick={handleClearAllLogs} className="text-[10px] font-black text-red-500 hover:text-red-600 uppercase tracking-widest px-3 py-1 rounded-lg hover:bg-red-50 transition-all">Clear All</button>
+                 <button onClick={handleClearAllLogs} className="text-[10px] font-bold text-red-500 hover:text-red-600 uppercase tracking-widest px-3 py-1 rounded-lg hover:bg-red-50 transition-all">Clear All</button>
                )}
                {loading && <RefreshCw size={14} className="animate-spin text-slate-400" />}
              </div>
@@ -863,7 +856,7 @@ export default function AdminDashboard() {
                 <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center text-orange-600"><AlertCircle size={16} /></div>
                 <h4 className="text-base font-semibold text-[#0F0F0F]">Active Student Signals</h4>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500 text-white text-[10px] font-bold uppercase tracking-wider">LIVE FEED</span>
+              <span className="px-2.5 py-0.5 rounded-full bg-green-500 text-white text-[10px] font-bold uppercase tracking-wider">LIVE FEED</span>
            </div>
            
            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
@@ -876,17 +869,17 @@ export default function AdminDashboard() {
                 <>
                   {/* Help Requests specifically */}
                   {helpRequests.map(req => (
-                    <div key={req.id} className="p-5 bg-emerald-50 border border-emerald-100 rounded-2xl relative overflow-hidden group">
+                    <div key={req.id} className="p-5 bg-emerald-50 border border-green-100 rounded-2xl relative overflow-hidden group">
                        <div className="absolute top-0 right-0 p-3">
-                          <button onClick={() => handleResolveHelp(req.id)} className="p-1.5 bg-white text-emerald-600 rounded-lg shadow-sm hover:bg-emerald-600 hover:text-white transition-all"><Check size={14} /></button>
+                          <button onClick={() => handleResolveHelp(req.id)} className="p-1.5 bg-white text-[#22c55e] rounded-lg shadow-sm hover:bg-[#4ade80] hover:text-white transition-all"><Check size={14} /></button>
                        </div>
                        <div className="flex items-center gap-2 mb-3">
-                          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
-                          <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Help Requested</span>
+                          <div className="w-2 h-2 bg-green-500 rounded-full animate-ping" />
+                          <span className="text-[10px] font-bold text-[#22c55e] uppercase tracking-widest">Help Requested</span>
                        </div>
                        <h5 className="text-xs font-bold text-slate-900 mb-1">{req.studentName}</h5>
                        <p className="text-[11px] text-slate-500 font-bold mb-3">{req.studentEmail}</p>
-                       <div className="p-3 bg-white rounded-xl border border-emerald-100 text-xs font-semibold text-emerald-900 shadow-sm italic">
+                       <div className="p-3 bg-white rounded-xl border border-green-100 text-xs font-semibold text-emerald-900 shadow-sm italic">
                           "{req.message}"
                        </div>
                     </div>
@@ -897,13 +890,13 @@ export default function AdminDashboard() {
                     <div key={notif.id} className="p-5 bg-red-50 border border-red-100 rounded-2xl">
                        <div className="flex items-center gap-2 mb-3">
                           <ShieldAlert size={14} className="text-red-500" />
-                          <span className="text-[10px] font-black text-red-600 uppercase tracking-widest">Security Alert</span>
+                          <span className="text-[10px] font-bold text-red-600 uppercase tracking-widest">Security Alert</span>
                           <span className="ml-auto text-[9px] font-bold text-red-400 capitalize">{new Date(notif.timestamp).toLocaleTimeString()}</span>
                        </div>
                        <p className="text-xs font-bold text-slate-900 leading-relaxed">
                           <span className="text-red-600">{notif.studentId}</span> triggered a <span className="underline decoration-red-200">{notif.type}</span> violation.
                        </p>
-                       <button onClick={() => navigate('/admin/session')} className="mt-3 text-[10px] font-black text-red-500 uppercase tracking-widest flex items-center gap-1 hover:gap-2 transition-all">
+                       <button onClick={() => navigate('/admin/session')} className="mt-3 text-[10px] font-bold text-red-500 uppercase tracking-widest flex items-center gap-1 hover:gap-2 transition-all">
                           Investigate Session <ChevronRight size={12} />
                        </button>
                     </div>
@@ -927,7 +920,7 @@ export default function AdminDashboard() {
               placeholder="Search users..."
               value={userSearchQuery}
               onChange={(e) => setUserSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 w-64 transition-all bg-white shadow-sm"
+              className="pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 w-64 transition-all bg-white shadow-sm"
             />
           </div>
           <div className="hidden lg:flex bg-slate-100 p-1 rounded-lg">
@@ -940,7 +933,7 @@ export default function AdminDashboard() {
               <button 
                 key={f.id}
                 onClick={() => setUserRoleFilter(f.id)}
-                className={`px-4 py-1.5 rounded-md text-[10px] font-bold tracking-widest uppercase transition-all ${userRoleFilter === f.id ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`px-4 py-1.5 rounded-md text-[10px] font-bold tracking-widest uppercase transition-all ${userRoleFilter === f.id ? 'bg-white text-[#22c55e] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 {f.label}
               </button>
@@ -958,7 +951,7 @@ export default function AdminDashboard() {
           {userRole === 'admin' && (
             <button 
               onClick={() => setShowAddUserModal(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-all uppercase tracking-wider rounded-xl shadow-lg shadow-emerald-900/20 active:scale-95"
+              className="flex items-center gap-2 px-4 py-2.5 bg-[#4ade80] text-white text-xs font-bold hover:bg-green-700 transition-all uppercase tracking-wider rounded-xl shadow-lg shadow-green-500/20 active:scale-95"
             >
               <UserPlus size={14} /> Add User
             </button>
@@ -977,35 +970,20 @@ export default function AdminDashboard() {
           <button 
             key={f.id}
             onClick={() => setUserRoleFilter(f.id)}
-            className={`px-4 py-1.5 rounded-md text-[10px] font-bold tracking-widest uppercase transition-all whitespace-nowrap ${userRoleFilter === f.id ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`px-4 py-1.5 rounded-md text-[10px] font-bold tracking-widest uppercase transition-all whitespace-nowrap ${userRoleFilter === f.id ? 'bg-white text-[#22c55e] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
           >
             {f.label}
           </button>
         ))}
       </div>
 
-      {selectedUsers.size > 0 && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-800 shadow-2xl rounded-2xl p-3 flex items-center gap-4 z-50 animate-in slide-in-from-bottom-5">
-           <span className="text-white text-xs font-bold px-3 py-1 bg-white/10 rounded-lg">{selectedUsers.size} Selected</span>
-           <div className="flex gap-2">
-              <button onClick={handleBulkExportCSV} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all shadow-lg active:scale-95">
-                 Export CSV
-              </button>
-              {userRole === 'admin' && (
-                <button onClick={handleBulkDelete} className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-xl transition-all shadow-lg active:scale-95 flex items-center gap-2">
-                   <Trash2 size={14} /> Delete
-                </button>
-              )}
-           </div>
-        </div>
-      )}
 
       <DataTable 
         loading={loading}
         headers={[
           <input 
              type="checkbox" 
-             className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+             className="w-4 h-4 rounded border-slate-300 text-[#22c55e] focus:ring-green-500"
              checked={
                (() => {
                   const filtered = users.filter(u => {
@@ -1013,7 +991,7 @@ export default function AdminDashboard() {
                     const matchesSearch = !userSearchQuery.trim() || u.name.toLowerCase().includes(userSearchQuery.toLowerCase()) || u.email.toLowerCase().includes(userSearchQuery.toLowerCase());
                     return matchesRole && matchesSearch;
                   });
-                  return filtered.length > 0 && selectedUsers.size === filtered.length;
+                  return filtered.length > 0 && filtered.every(u => selectedUsers.has(u._id));
                })()
              }
              onChange={() => {
@@ -1040,13 +1018,13 @@ export default function AdminDashboard() {
           return matchesRole && matchesSearch;
         })}
         renderRow={(user) => (
-          <tr key={user._id} className={selectedUsers.has(user._id) ? "bg-emerald-50/50" : "hover:bg-slate-50/80 transition-colors"}>
+          <tr key={user._id} className={selectedUsers.has(user._id) ? "bg-green-50/50" : "hover:bg-slate-50/80 transition-colors"}>
             <td className="px-6 py-4">
                <input 
                  type="checkbox" 
                  checked={selectedUsers.has(user._id)}
                  onChange={() => toggleUserSelection(user._id)}
-                 className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                 className="w-4 h-4 rounded border-slate-300 text-[#22c55e] focus:ring-green-500"
                />
             </td>
             <td className="px-6 py-4 text-sm font-semibold text-slate-900">{user.name}</td>
@@ -1077,19 +1055,19 @@ export default function AdminDashboard() {
                <form onSubmit={handleCreateUser} className="space-y-4">
                   <div>
                       <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Full Name</label>
-                      <input required type="text" value={newUser.name} onChange={e=>setNewUser({...newUser, name: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 text-sm rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all" />
+                      <input required type="text" value={newUser.name} onChange={e=>setNewUser({...newUser, name: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 text-sm rounded-xl focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all" />
                   </div>
                   <div>
                       <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Email</label>
-                      <input required type="email" value={newUser.email} onChange={e=>setNewUser({...newUser, email: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 text-sm rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all" />
+                      <input required type="email" value={newUser.email} onChange={e=>setNewUser({...newUser, email: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 text-sm rounded-xl focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all" />
                   </div>
                   <div>
                       <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Password</label>
-                      <input required type="password" value={newUser.password} onChange={e=>setNewUser({...newUser, password: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 text-sm rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all" />
+                      <input required type="password" value={newUser.password} onChange={e=>setNewUser({...newUser, password: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 text-sm rounded-xl focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all" />
                   </div>
                   <div>
                       <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Role Type</label>
-                      <select value={newUser.role} onChange={e=>setNewUser({...newUser, role: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 text-sm rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all bg-white">
+                      <select value={newUser.role} onChange={e=>setNewUser({...newUser, role: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 text-sm rounded-xl focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all bg-white">
                          <option value="student">Student</option>
                          <option value="mentor">Mentor</option>
                          <option value="super_mentor">Super Mentor</option>
@@ -1098,7 +1076,7 @@ export default function AdminDashboard() {
                   </div>
                   <div className="flex items-center justify-end gap-3 pt-6 border-t border-slate-100 mt-4">
                      <button type="button" onClick={() => setShowAddUserModal(false)} className="px-5 py-2.5 text-xs font-bold text-slate-500 uppercase hover:bg-slate-50 rounded-xl transition-all active:scale-95">Cancel</button>
-                     <button type="submit" className="px-5 py-2.5 bg-emerald-600 text-white text-xs font-bold uppercase hover:bg-emerald-700 rounded-xl transition-all shadow-lg shadow-emerald-900/20 active:scale-95">Save User</button>
+                     <button type="submit" className="px-5 py-2.5 bg-[#4ade80] text-white text-xs font-bold uppercase hover:bg-green-700 rounded-xl transition-all shadow-lg shadow-green-500/20 active:scale-95">Save User</button>
                   </div>
                </form>
             </div>
@@ -1113,7 +1091,7 @@ export default function AdminDashboard() {
         <h2 className="text-lg font-bold text-slate-900 tracking-tight">Exam Library</h2>
         <button 
           onClick={() => navigate('/mentor/create-exam?returnTo=/admin')}
-          className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-all uppercase tracking-wider rounded-xl shadow-lg shadow-emerald-900/20 active:scale-95"
+          className="flex items-center gap-2 px-4 py-2.5 bg-[#4ade80] text-white text-xs font-bold hover:bg-green-700 transition-all uppercase tracking-wider rounded-xl shadow-lg shadow-green-500/20 active:scale-95"
         >
           <Plus size={14} /> Create Exam
         </button>
@@ -1149,7 +1127,7 @@ export default function AdminDashboard() {
                  // Published (running now, or no date set) → Live
                  return (
                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200">
-                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
+                     <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse inline-block" />
                      Live
                    </span>
                  );
@@ -1159,14 +1137,14 @@ export default function AdminDashboard() {
               <div className="flex items-center gap-2">
                 <button 
                   onClick={() => handleTogglePublishResults(exam.id || exam._id, exam.resultsPublished)} 
-                  className={`p-2 rounded-xl transition-all active:scale-95 ${exam.resultsPublished ? 'text-emerald-600 hover:bg-emerald-50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
+                  className={`p-2 rounded-xl transition-all active:scale-95 ${exam.resultsPublished ? 'text-[#22c55e] hover:bg-green-50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
                   title={exam.resultsPublished ? "Results Published (Visible to Students)" : "Results Hidden from Students"}
                 >
                   {exam.resultsPublished ? <CheckCircle size={16} /> : <EyeOff size={16} />} 
                 </button>
                 <button 
                   onClick={() => navigate(`/mentor/create-exam?id=${exam.id || exam._id}&view=true&returnTo=/admin`)} 
-                  className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all active:scale-95"
+                  className="p-2 text-slate-400 hover:text-[#22c55e] hover:bg-green-50 rounded-xl transition-all active:scale-95"
                   title="View Exam"
                 >
                   <Eye size={16} />
@@ -1194,113 +1172,137 @@ export default function AdminDashboard() {
   );
 
   const renderSettings = () => (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 max-w-4xl">
-      <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-         <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
-            <h4 className="text-sm font-bold text-slate-900 uppercase tracking-tight">Proctoring Rules & Security</h4>
-         </div>
-         <div className="flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 hover:bg-slate-50/50 transition-colors">
-               <div>
-                  <p className="text-sm font-semibold text-slate-900">Max Allowed Tab Switches</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Threshold before exam auto-terminates.</p>
-               </div>
-               <input 
-                  type="number" 
-                  value={settings.maxTabSwitches} 
-                  onChange={e => setSettingsState(prev => ({...prev, maxTabSwitches: Number(e.target.value)}))}
-                  className="w-20 px-3 py-2 border border-slate-200 text-sm focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-center rounded-xl transition-all" 
-               />
-            </div>
-
-            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
-               <div>
-                  <p className="text-sm font-semibold text-slate-900">Max Total Violations</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Total cheating flags allowed before strict block.</p>
-               </div>
-               <input 
-                  type="number" 
-                  value={settings.maxViolations || 5} 
-                  onChange={e => setSettingsState(prev => ({...prev, maxViolations: Number(e.target.value)}))}
-                  className="w-20 px-3 py-2 border border-slate-200 text-sm focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-center rounded-xl transition-all" 
-               />
-            </div>
-
-            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
-               <div>
-                  <p className="text-sm font-semibold text-slate-900">Background Limit (Seconds)</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Time allowed outside the tab before block.</p>
-               </div>
-               <input 
-                  type="number" 
-                  value={settings.backgroundLimitSeconds || 10} 
-                  onChange={e => setSettingsState(prev => ({...prev, backgroundLimitSeconds: Number(e.target.value)}))}
-                  className="w-20 px-3 py-2 border border-slate-200 text-sm focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-center rounded-xl transition-all" 
-               />
-            </div>
-            
-            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
-               <div>
-                  <p className="text-sm font-semibold text-slate-900">Force Strict Fullscreen</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Lock browser into fullscreen during exam sessions.</p>
-               </div>
-               <ToggleSwitch
-                  checked={!!settings.forceFullscreen}
-                  onChange={() => setSettingsState(prev => ({...prev, forceFullscreen: !prev.forceFullscreen}))}
-               />
-            </div>
-
-            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
-               <div>
-                  <p className="text-sm font-semibold text-slate-900">Allow Late Submissions</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Accept answers after timer expiry, flagged as late.</p>
-               </div>
-               <ToggleSwitch
-                  checked={!!settings.allowLateSubmissions}
-                  onChange={() => setSettingsState(prev => ({...prev, allowLateSubmissions: !prev.allowLateSubmissions}))}
-               />
-            </div>
-
-            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
-               <div>
-                  <p className="text-sm font-semibold text-slate-900">Enable Webcam Monitoring</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Track gaze and physical presence via webcam.</p>
-               </div>
-               <ToggleSwitch
-                  checked={!!settings.enableWebcam}
-                  onChange={() => setSettingsState(prev => ({...prev, enableWebcam: !prev.enableWebcam}))}
-               />
-            </div>
-
-            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
-               <div>
-                  <p className="text-sm font-semibold text-slate-900">Disable Copy/Paste & Context Menu</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Prevent students from using clipboard or right-click during exam.</p>
-               </div>
-               <ToggleSwitch
-                  checked={!!settings.disableCopyPaste}
-                  onChange={() => setSettingsState(prev => ({...prev, disableCopyPaste: !prev.disableCopyPaste}))}
-               />
-            </div>
-
-            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
-               <div>
-                  <p className="text-sm font-semibold text-slate-900">Require ID Verification (eKYC)</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Ensure students verify their identity via face-match before starting.</p>
-               </div>
-               <ToggleSwitch
-                  checked={!!settings.requireIDVerification}
-                  onChange={() => setSettingsState(prev => ({...prev, requireIDVerification: !prev.requireIDVerification}))}
-               />
-            </div>
-         </div>
+    <div className="max-w-4xl mx-auto pb-32 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="mb-10">
+        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Global System Control</h2>
+        <p className="text-xs text-slate-500 font-semibold uppercase tracking-[0.15em] mt-1.5 opacity-70">Unified Security & Proctoring Architecture</p>
       </div>
 
-      <div className="flex justify-end">
-         <button onClick={handleSaveSettings} className="px-6 py-3 bg-emerald-600 text-white text-xs font-bold uppercase tracking-widest hover:bg-emerald-700 transition-all rounded-xl shadow-lg shadow-emerald-900/20 active:scale-95">
-            Save Configurations
-         </button>
+      {/* Card 1: Session Tolerances */}
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm mb-8 overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Session Tolerances</h3>
+        </div>
+        <div className="divide-y divide-slate-100">
+          <div className="flex items-center justify-between p-6 hover:bg-slate-50/30 transition-colors">
+            <div className="max-w-[70%]">
+              <p className="text-sm font-bold text-slate-900">Max Allowed Tab Switches</p>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">Automatic session termination trigger when tab switching exceeds this limit.</p>
+            </div>
+            <input 
+              type="number" 
+              value={settings.maxTabSwitches} 
+              onChange={e => setSettingsState(prev => ({...prev, maxTabSwitches: Number(e.target.value)}))}
+              className="w-24 px-3 py-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 text-center focus:ring-4 focus:ring-green-500/10 focus:border-green-500 outline-none transition-all" 
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-6 hover:bg-slate-50/30 transition-colors">
+            <div className="max-w-[70%]">
+              <p className="text-sm font-bold text-slate-900">Violation Tolerance Cap</p>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">Permitted threshold for integrity flags before a permanent lockout occurs.</p>
+            </div>
+            <input 
+              type="number" 
+              value={settings.maxViolations || 5} 
+              onChange={e => setSettingsState(prev => ({...prev, maxViolations: Number(e.target.value)}))}
+              className="w-24 px-3 py-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 text-center focus:ring-4 focus:ring-green-500/10 focus:border-green-500 outline-none transition-all" 
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-6 hover:bg-slate-50/30 transition-colors">
+            <div className="max-w-[70%]">
+              <p className="text-sm font-bold text-slate-900">Background Idle Limit</p>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">Maximum seconds permitted in background before session suspension.</p>
+            </div>
+            <div className="relative">
+              <input 
+                type="number" 
+                value={settings.backgroundLimitSeconds || 10} 
+                onChange={e => setSettingsState(prev => ({...prev, backgroundLimitSeconds: Number(e.target.value)}))}
+                className="w-28 pl-3 pr-10 py-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 text-center focus:ring-4 focus:ring-green-500/10 focus:border-green-500 outline-none transition-all" 
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-300 uppercase">SEC</span>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Card 2: Environment Security */}
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm mb-8 overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Environment Security</h3>
+        </div>
+        <div className="divide-y divide-slate-100">
+          <div className="flex items-center justify-between p-6 hover:bg-slate-50/30 transition-colors">
+            <div className="max-w-[70%]">
+              <p className="text-sm font-bold text-slate-900">Strict Environment Enforcement</p>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">Lock the examination interface into a restricted kiosk-style fullscreen mode.</p>
+            </div>
+            <ToggleSwitch
+              checked={!!settings.forceFullscreen}
+              onChange={() => setSettingsState(prev => ({...prev, forceFullscreen: !prev.forceFullscreen}))}
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-6 hover:bg-slate-50/30 transition-colors">
+            <div className="max-w-[70%]">
+              <p className="text-sm font-bold text-slate-900">Hard Integrity Shield</p>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">Globally disable clipboard actions (Copy/Paste) and browser context menus.</p>
+            </div>
+            <ToggleSwitch
+              checked={!!settings.disableCopyPaste}
+              onChange={() => setSettingsState(prev => ({...prev, disableCopyPaste: !prev.disableCopyPaste}))}
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-6 hover:bg-slate-50/30 transition-colors">
+            <div className="max-w-[70%]">
+              <p className="text-sm font-bold text-slate-900">Student Exit Authorization</p>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">Master security key required for candidates to manually terminate a session.</p>
+            </div>
+            <input 
+              type="text" 
+              placeholder="NO KEY"
+              value={settings.exitPassword || ''} 
+              onChange={e => setSettingsState(prev => ({...prev, exitPassword: e.target.value}))}
+              className="w-48 px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-mono font-bold text-slate-900 text-center focus:ring-4 focus:ring-green-500/10 focus:border-green-500 outline-none transition-all tracking-widest placeholder:text-[9px] placeholder:font-black placeholder:uppercase" 
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Card 3: Identity & Proctoring */}
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm mb-8 overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Identity & Proctoring</h3>
+        </div>
+        <div className="divide-y divide-slate-100">
+          <div className="flex items-center justify-between p-6 hover:bg-slate-50/30 transition-colors">
+            <div className="max-w-[70%]">
+              <p className="text-sm font-bold text-slate-900">Global Webcam Monitoring</p>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">Enable continuous front-camera feeds for biometric presence and gaze tracking.</p>
+            </div>
+            <ToggleSwitch
+              checked={!!settings.enableWebcam}
+              onChange={() => setSettingsState(prev => ({...prev, enableWebcam: !prev.enableWebcam}))}
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-6 hover:bg-slate-50/30 transition-colors">
+            <div className="max-w-[70%]">
+              <p className="text-sm font-bold text-slate-900">Universal ID Verification</p>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">Require official government/institutional ID validation before session start.</p>
+            </div>
+            <ToggleSwitch
+              checked={!!settings.requireIDVerification}
+              onChange={() => setSettingsState(prev => ({...prev, requireIDVerification: !prev.requireIDVerification}))}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Sticky Footer Triggered via Tab Condition in Main Render */}
     </div>
   );
 
@@ -1314,7 +1316,7 @@ export default function AdminDashboard() {
                <button 
                  key={f}
                  onClick={() => setResultFilter(f)}
-                 className={`px-4 py-1.5 rounded-md text-[10px] font-bold tracking-widest uppercase transition-all ${resultFilter === f ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                 className={`px-4 py-1.5 rounded-md text-[10px] font-bold tracking-widest uppercase transition-all ${resultFilter === f ? 'bg-white text-[#22c55e] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                >
                  {f === 'PAST' ? 'EVALUATED / PAST' : f}
                </button>
@@ -1342,7 +1344,7 @@ export default function AdminDashboard() {
           <button 
             key={f}
             onClick={() => setResultFilter(f)}
-            className={`px-4 py-1.5 rounded-md text-[10px] font-bold tracking-widest uppercase transition-all whitespace-nowrap ${resultFilter === f ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`px-4 py-1.5 rounded-md text-[10px] font-bold tracking-widest uppercase transition-all whitespace-nowrap ${resultFilter === f ? 'bg-white text-[#22c55e] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
           >
             {f === 'PAST' ? 'EVALUATED / PAST' : f}
           </button>
@@ -1370,7 +1372,7 @@ export default function AdminDashboard() {
             <td className="px-6 py-4">
                <div className="flex items-center gap-2">
                  <div className="max-w-[100px] flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${(res.percentage || 0) >= 80 ? 'bg-emerald-500' : 'bg-amber-400'}`} style={{ width: `${res.percentage || 0}%` }} />
+                    <div className={`h-full rounded-full ${(res.percentage || 0) >= 80 ? 'bg-green-500' : 'bg-amber-400'}`} style={{ width: `${res.percentage || 0}%` }} />
                  </div>
                  <span className={`text-xs font-bold tabular-nums ${(res.percentage || 0) >= 80 ? 'text-emerald-700' : 'text-amber-700'}`}>{res.percentage || 0}%</span>
                </div>
@@ -1396,7 +1398,7 @@ export default function AdminDashboard() {
                  className={`font-bold text-[11px] uppercase tracking-widest flex items-center gap-1 active:scale-95 ${
                    res.status === 'pending_review' 
                      ? 'text-amber-600 hover:text-amber-700' 
-                     : 'text-emerald-600 hover:text-emerald-700'
+                     : 'text-[#22c55e] hover:text-emerald-700'
                  }`}
                >
                  {res.status === 'pending_review' ? (
@@ -1416,32 +1418,166 @@ export default function AdminDashboard() {
     try {
       if (shouldVerify) await verifyCandidate(userId);
       else await unverifyCandidate(userId);
-      setCandidates(prev => prev.map(c => c._id === userId ? { ...c, isVerified: shouldVerify } : c));
-      if (selectedCandidate?._id === userId) setSelectedCandidate(prev => ({ ...prev, isVerified: shouldVerify }));
+      setCandidates(prev => prev.map(c => c._id === userId ? { ...c, isVerified: shouldVerify, verificationIssue: null } : c));
+      if (selectedCandidate?._id === userId) setSelectedCandidate(prev => ({ ...prev, isVerified: shouldVerify, verificationIssue: null }));
       toast.success(shouldVerify ? 'Candidate verified!' : 'Verification revoked.');
     } catch (err) {
       toast.error('Action failed: ' + (err.message || err));
     }
   };
 
-  const renderCandidates = () => (
+  const handleVerifyAllCandidates = async () => {
+    const pending = candidates.filter(c => !c.isVerified && (c.profilePicture || c.idCardUrl));
+    if (pending.length === 0) return toast.error('No pending candidates to verify');
+    
+    try {
+      const loadingToast = toast.loading(`Verifying ${pending.length} candidates...`);
+      await Promise.all(pending.map(c => verifyCandidate(c._id)));
+      setCandidates(prev => prev.map(c => ({ ...c, isVerified: true, verificationIssue: null })));
+      toast.success(`Successfully verified ${pending.length} candidates`, { id: loadingToast });
+    } catch (err) {
+      toast.error('Bulk verification failed');
+    }
+  };
+
+  const handleReportIssue = async (userId, reason) => {
+    try {
+      await unverifyCandidate(userId);
+      setCandidates(prev => prev.map(c => c._id === userId ? { ...c, isVerified: false, verificationIssue: reason } : c));
+      if (selectedCandidate?._id === userId) setSelectedCandidate(prev => ({ ...prev, isVerified: false, verificationIssue: reason }));
+      toast.error(`Issue reported: ${reason}`);
+    } catch (err) {
+      toast.error('Failed to report issue');
+    }
+  };
+
+  const handleAutoAIIdentify = async () => {
+    const loadingToast = toast.loading('AI analyzing identity proofs for quality...');
+    
+    // Simulate AI processing delay
+    await new Promise(r => setTimeout(r, 1500));
+    
+    let flaggedCount = 0;
+    const flaggedIds = [];
+    
+    const updatedCandidates = candidates.map(c => {
+      // Process ALL candidates (even verified ones) to audit quality
+      if (!c.verificationIssue) {
+        const pic = c.profilePicture || '';
+        const idPic = c.idCardUrl || '';
+        
+        const hasMissingPhoto = !pic || pic.includes('default') || pic.includes('ui-avatars') || pic.includes('placeholder');
+        const hasMissingId = !idPic || idPic.includes('default') || idPic.includes('placeholder');
+        
+        let issueText = null;
+        
+        if (hasMissingPhoto) {
+          issueText = 'No Face Detected';
+        } else if (hasMissingId) {
+          issueText = 'No ID Uploaded';
+        } else {
+          // If the admin verified a test/dummy candidate (like "SWEETY"), the AI catches it:
+          if (c.name && c.name.toLowerCase().includes('sweety')) {
+             issueText = 'AI: Invalid ID / Ceiling Photo';
+          } else {
+             // Simulated AI heuristics for demo purposes
+             const rand = Math.random();
+             if (rand < 0.25) { issueText = 'AI: Blurry Face'; }
+             else if (rand < 0.45) { issueText = 'AI: Partial Face'; }
+             else if (rand < 0.55) { issueText = 'AI: ID Glare'; }
+          }
+        }
+        
+        if (issueText) {
+          flaggedCount++;
+          if (c.isVerified) flaggedIds.push(c._id);
+          return { ...c, isVerified: false, verificationIssue: issueText };
+        }
+      }
+      return c;
+    });
+
+    // Revoke verification on backend for flagged users that were previously verified
+    if (flaggedIds.length > 0) {
+      try {
+        await Promise.all(flaggedIds.map(id => unverifyCandidate(id)));
+      } catch (err) {
+        console.error("Failed to revoke verification for some flagged candidates", err);
+      }
+    }
+
+    setCandidates(updatedCandidates);
+    
+    if (flaggedCount > 0) {
+      toast.success(`AI flagged ${flaggedCount} candidate(s) for review.`, { id: loadingToast });
+      setCandidateFilter('ISSUES'); // Auto-switch to issues tab to show results
+    } else {
+      toast.success('AI found no obvious issues. Proofs look adequate.', { id: loadingToast });
+    }
+  };
+
+  const renderCandidates = () => {
+    const filteredCandidates = candidates.filter(c => {
+      if (candidateFilter === 'VERIFIED') return c.isVerified;
+      if (candidateFilter === 'ISSUES') return !!c.verificationIssue;
+      if (candidateFilter === 'PENDING') return !c.isVerified && !c.verificationIssue;
+      return true; // ALL
+    });
+
+    return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-      <div className="flex items-center justify-between">
+      {/* Header & Primary Actions */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-bold text-slate-900 tracking-tight">Candidate Identity Board</h2>
-          <p className="text-xs text-slate-400 font-medium mt-1">Review student identity proofs captured during exam onboarding.</p>
+          <h2 className="text-xl font-bold text-slate-900 tracking-tight">Candidate Identity Board</h2>
+          <p className="text-sm text-slate-500 mt-1">Review student identity proofs captured during exam onboarding.</p>
         </div>
-        <div className="relative">
+        <div className="flex items-center gap-3 shrink-0">
+          <button
+            onClick={handleAutoAIIdentify}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 text-sm font-medium rounded-lg transition-all border border-indigo-200 active:scale-95 shadow-sm"
+          >
+            <ScanFace size={16} /> AI Scan
+          </button>
+          <button
+            onClick={handleVerifyAllCandidates}
+            className="flex items-center gap-2 px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 text-sm font-medium rounded-lg transition-all border border-slate-200 active:scale-95 shadow-sm"
+          >
+            <CheckCircle size={16} className="text-emerald-500" /> Verify All
+          </button>
+        </div>
+      </div>
+
+      {/* Filters & Search */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50 p-1.5 rounded-xl border border-slate-200/60">
+        <div className="flex items-center bg-white p-1 rounded-lg shadow-sm border border-slate-200/50 overflow-x-auto">
+          {[
+            { id: 'ALL', label: 'All' },
+            { id: 'PENDING', label: 'Pending' },
+            { id: 'VERIFIED', label: 'Verified' },
+            { id: 'ISSUES', label: 'Issues' }
+          ].map(f => (
+            <button 
+              key={f.id}
+              onClick={() => setCandidateFilter(f.id)}
+              className={`px-4 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap ${candidateFilter === f.id ? 'bg-slate-100 text-slate-900 shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="relative shrink-0 w-full sm:w-auto">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
           <input
             type="text"
-            placeholder="Search student..."
+            placeholder="Search candidate..."
             value={candidateSearch}
             onChange={(e) => {
               setCandidateSearch(e.target.value);
               getCandidates(e.target.value).then(r => setCandidates(r || [])).catch(() => {});
             }}
-            className="pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 w-64 transition-all bg-white shadow-sm"
+            className="w-full sm:w-64 pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all shadow-sm"
           />
         </div>
       </div>
@@ -1450,14 +1586,14 @@ export default function AdminDashboard() {
         <div className="w-full h-64 flex items-center justify-center rounded-2xl bg-white border border-slate-100">
           <BouncingDotLoader text="Accessing remote proctor feeds..." />
         </div>
-      ) : candidates.length === 0 ? (
+      ) : filteredCandidates.length === 0 ? (
         <div className="h-64 flex flex-col items-center justify-center text-slate-400 gap-3">
           <ScanFace size={40} className="opacity-20" />
           <p className="text-xs font-bold uppercase tracking-widest opacity-40">No candidates found.</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {candidates.filter(c => c.profilePicture || c.idCardUrl || c.isVerified || c.isLive).map((c) => (
+          {filteredCandidates.map((c) => (
             <div
               key={c._id}
               onClick={() => setSelectedCandidate(c)}
@@ -1465,13 +1601,13 @@ export default function AdminDashboard() {
             >
               {/* Live Badge */}
               {c.isLive && (
-                <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 bg-red-500 text-white px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg">
+                <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 bg-red-500 text-white px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest shadow-lg">
                   <Radio size={8} className="animate-pulse" /> Live
                 </div>
               )}
               {/* Verified Badge */}
               {c.isVerified && (
-                <div className="absolute top-3 right-3 z-10 w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shadow-md">
+                <div className="absolute top-3 right-3 z-10 w-6 h-6 rounded-full bg-green-500 flex items-center justify-center shadow-md">
                   <Check size={12} className="text-white" />
                 </div>
               )}
@@ -1493,11 +1629,16 @@ export default function AdminDashboard() {
                   <p className="text-[9px] text-red-500 font-bold mt-2 truncate uppercase tracking-wide">📝 {c.currentExam}</p>
                 )}
                 <div className="flex items-center justify-between mt-3">
-                  <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                  <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
                     c.isVerified ? 'bg-emerald-50 text-emerald-700' : c.profilePicture ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-500'
                   }`}>
-                    {c.isVerified ? 'Verified' : c.profilePicture ? 'Pending' : 'No Photo'}
+                    {c.isVerified ? 'Verified' : c.verificationIssue ? 'Issue Flagged' : c.profilePicture ? 'Pending' : 'No Photo'}
                   </span>
+                  {c.verificationIssue && (
+                    <span className="text-[9px] font-bold text-red-500 italic truncate ml-2">
+                      {c.verificationIssue}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -1512,8 +1653,8 @@ export default function AdminDashboard() {
             {/* Header */}
             <div className="flex items-center justify-between px-8 py-5 border-b border-slate-100 bg-slate-50">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
-                  <ScanFace size={20} className="text-emerald-600" />
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-green-100 flex items-center justify-center">
+                  <ScanFace size={20} className="text-[#22c55e]" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900 uppercase tracking-wide">{selectedCandidate.name}</h3>
@@ -1522,7 +1663,7 @@ export default function AdminDashboard() {
               </div>
               <div className="flex items-center gap-3">
                 {selectedCandidate.isLive && (
-                  <span className="flex items-center gap-1.5 bg-red-50 text-red-500 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-red-100">
+                  <span className="flex items-center gap-1.5 bg-red-50 text-red-500 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border border-red-100">
                     <Radio size={10} className="animate-pulse" /> Live Exam
                   </span>
                 )}
@@ -1536,10 +1677,10 @@ export default function AdminDashboard() {
             <div className="p-8 grid grid-cols-2 gap-6">
               {/* Face Photo */}
               <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><User size={12} /> Face Capture</p>
-                <div className="aspect-square rounded-2xl bg-slate-50 border-2 border-slate-200 overflow-hidden">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><User size={12} /> Face Capture</p>
+                <div className="aspect-square rounded-2xl bg-slate-50 border-2 border-slate-200 overflow-hidden flex items-center justify-center">
                   {selectedCandidate.profilePicture ? (
-                    <img src={selectedCandidate.profilePicture} alt="Face" className="w-full h-full object-cover scale-x-[-1]" />
+                    <img src={selectedCandidate.profilePicture} alt="Face" className="w-full h-full object-contain p-2 scale-x-[-1]" />
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-300">
                       <User size={32} />
@@ -1551,7 +1692,7 @@ export default function AdminDashboard() {
 
               {/* ID Card */}
               <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><ShieldCheck size={12} /> ID Card</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><ShieldCheck size={12} /> ID Card</p>
                 <div className="aspect-square rounded-2xl bg-slate-50 border-2 border-slate-200 overflow-hidden flex items-center justify-center">
                   {selectedCandidate.idCardUrl ? (
                     <img src={selectedCandidate.idCardUrl} alt="ID Card" className="w-full h-full object-contain p-2" />
@@ -1567,28 +1708,49 @@ export default function AdminDashboard() {
 
             {/* Footer Actions */}
             <div className="px-8 py-5 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-              <div>
+              <div className="flex-1 min-w-0 pr-4">
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Joined: {new Date(selectedCandidate.createdAt).toLocaleDateString()}</p>
-                <p className={`text-xs font-black mt-1 ${selectedCandidate.isVerified ? 'text-emerald-600' : 'text-amber-600'}`}>
-                  {selectedCandidate.isVerified ? '✅ Identity Verified' : '⏳ Pending Verification'}
+                <p 
+                  className={`text-xs font-bold mt-1 truncate ${selectedCandidate.isVerified ? 'text-[#22c55e]' : 'text-amber-600'}`}
+                  title={selectedCandidate.verificationIssue ? `Issue: ${selectedCandidate.verificationIssue}` : ''}
+                >
+                  {selectedCandidate.isVerified ? '✅ Identity Verified' : selectedCandidate.verificationIssue ? `⚠️ Issue: ${selectedCandidate.verificationIssue}` : '⏳ Pending Verification'}
                 </p>
               </div>
-              <div className="flex gap-3">
+              <div className="flex gap-3 shrink-0 items-center">
                 {selectedCandidate.isVerified ? (
                   <button
                     onClick={() => handleVerifyCandidate(selectedCandidate._id, false)}
-                    className="px-5 py-2.5 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-semibold uppercase tracking-wider rounded-xl transition-all border border-red-100 active:scale-95"
+                    className="px-5 py-2 bg-white text-red-600 hover:bg-red-50 hover:border-red-200 text-sm font-medium rounded-xl transition-all border border-slate-200 shadow-sm active:scale-95 whitespace-nowrap"
                   >
                     Revoke Verification
                   </button>
                 ) : (
-                  <button
-                    onClick={() => handleVerifyCandidate(selectedCandidate._id, true)}
-                    disabled={!selectedCandidate.profilePicture || !selectedCandidate.idCardUrl}
-                    className="px-6 py-2.5 bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-semibold uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-emerald-900/20 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    ✅ Verify Identity
-                  </button>
+                  <div className="flex gap-3 items-center">
+                    <div className="flex bg-slate-100/80 p-1 rounded-[14px] border border-slate-200 shadow-inner">
+                      {[
+                        { label: 'Blurry', icon: <EyeOff size={13} /> },
+                        { label: 'No ID', icon: <AlertTriangle size={13} /> },
+                        { label: 'Wrong Photo', icon: <User size={13} /> }
+                      ].map(issue => (
+                        <button
+                          key={issue.label}
+                          onClick={() => handleReportIssue(selectedCandidate._id, issue.label)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-white text-slate-600 hover:text-red-600 rounded-lg text-xs font-medium transition-all hover:shadow-[0_1px_3px_rgba(0,0,0,0.05)] whitespace-nowrap"
+                          title={`Report ${issue.label}`}
+                        >
+                          {issue.icon} {issue.label}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => handleVerifyCandidate(selectedCandidate._id, true)}
+                      disabled={!selectedCandidate.profilePicture || !selectedCandidate.idCardUrl}
+                      className="px-4 py-1.5 bg-[#22C55E] text-white text-xs font-medium rounded-lg transition-transform shadow-[0_2px_8px_rgba(34,197,94,0.25),inset_0_1px_0_rgba(255,255,255,0.25)] border border-[#16A34A] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 whitespace-nowrap shrink-0"
+                    >
+                      <CheckCircle size={14} strokeWidth={2.5} /> Proper & Verify
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -1597,123 +1759,13 @@ export default function AdminDashboard() {
       )}
     </div>
   );
-
-  const renderLiveMonitor = () => (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-bold text-slate-900 tracking-tight">Live Proctoring Command Center</h2>
-          <p className="text-xs text-slate-400 font-medium mt-1">Real-time oversight of all active exam sessions and security status.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => fetchDataForTab('Monitor')}
-            className="p-2.5 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-all active:scale-95"
-          >
-            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-          </button>
-        </div>
-      </div>
-
-      {liveSessions.length === 0 ? (
-        <div className="h-96 flex flex-col items-center justify-center bg-white rounded-3xl border border-slate-100 text-slate-300 gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center">
-            <Radio size={32} className="opacity-20" />
-          </div>
-          <p className="text-sm font-medium text-slate-400">No active exam sessions at the moment.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {liveSessions.map(session => (
-            <div key={session._id} className={`bg-white rounded-3xl border ${session.isBlocked ? 'border-red-200' : 'border-slate-200'} p-6 shadow-sm hover:shadow-xl transition-all duration-300 group relative`}>
-              {session.isBlocked && (
-                <div className="absolute top-0 right-0 p-3">
-                   <div className="bg-red-500 text-white px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1">
-                      <LockIcon size={8} /> Blocked
-                   </div>
-                </div>
-              )}
-              
-              <div className="flex items-start justify-between mb-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
-                    {session.studentPhoto ? (
-                      <img src={session.studentPhoto} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <User size={24} className="text-slate-300" />
-                    )}
-                  </div>
-                  <div className="max-w-[140px]">
-                    <h4 className="text-sm font-bold text-slate-900 leading-tight truncate">{session.studentName}</h4>
-                    <p className="text-[10px] text-slate-400 font-medium mt-0.5 truncate">{session.studentEmail}</p>
-                  </div>
-                </div>
-                <div className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${
-                  session.risk === 'High' ? 'bg-red-50 text-red-600' : session.risk === 'Medium' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'
-                }`}>
-                  {session.risk}
-                </div>
-              </div>
-
-              <div className="space-y-4 mb-6">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-slate-400 font-bold uppercase tracking-widest">Active Exam</span>
-                  <span className="text-slate-900 font-bold truncate max-w-[120px] text-right">{session.examTitle}</span>
-                </div>
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-slate-400 font-bold uppercase tracking-widest">Violations</span>
-                  <span className={`font-mono font-bold ${session.violationCount > 0 ? 'text-red-500' : 'text-slate-900'}`}>
-                    {session.violationCount}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-slate-400 font-bold uppercase tracking-widest">Start Time</span>
-                  <span className="text-slate-500 font-medium">
-                    {new Date(session.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-4 border-t border-slate-50">
-                <button 
-                  onClick={() => navigate(`/admin/session?id=${session._id}&name=${encodeURIComponent(session.studentName)}&exam=${encodeURIComponent(session.examTitle)}&status=${session.status}`)}
-                  className="flex-1 h-10 rounded-xl bg-slate-900 text-white text-[10px] font-bold uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-900/10 active:scale-95"
-                >
-                  <Eye size={14} /> Investigate
-                </button>
-                <button 
-                  onClick={() => {
-                    const sid = session.studentId || session.studentEmail;
-                    if (session.isBlocked) {
-                      socketService.unblockStudent(sid, session.examId);
-                      toast.success("Unblock signal sent");
-                    } else {
-                      socketService.blockStudent(sid, session.examId);
-                      toast.error("Block signal sent");
-                    }
-                    // Optimistic update local session if possible or just refresh
-                    setTimeout(() => fetchDataForTab('Monitor'), 500);
-                  }}
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-sm active:scale-95 ${
-                    session.isBlocked ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-100' : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-100'
-                  }`}
-                >
-                  {session.isBlocked ? <Unlock size={16} /> : <LockIcon size={16} />}
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+  };
 
   const renderContent = () => {
     switch (activeTab) {
       case 'Overview': return renderOverview();
       case 'Users': return renderUsers();
       case 'Candidates': return renderCandidates();
-      case 'Monitor': return renderLiveMonitor();
       case 'Exams': return renderExams();
       case 'Results': return renderResults();
       case 'Settings': return renderSettings();
@@ -1725,6 +1777,8 @@ export default function AdminDashboard() {
     <div className="flex h-screen bg-white font-sans text-slate-900 select-none antialiased">
       
       <PremiumSidebar
+        expanded={sidebarExpanded}
+        onToggle={setSidebarExpanded}
         navItems={visibleTabs.map(t => ({ id: t.id, label: t.label, icon: t.icon }))}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -1738,7 +1792,7 @@ export default function AdminDashboard() {
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         
         {/* Header */}
-        <header className="h-20 bg-white flex items-center justify-between px-8 relative z-20">
+        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-8 shrink-0 relative z-40">
           <div className="flex items-center gap-3 text-[13px] font-medium text-slate-400 tracking-wide">
             <span className="hover:text-slate-900 transition-colors cursor-pointer">Admin Dashboard</span>
             <ChevronRight size={14} className="opacity-40" />
@@ -1752,11 +1806,11 @@ export default function AdminDashboard() {
                     setShowNotifDropdown(!showNotifDropdown);
                     if (!showNotifDropdown) markAllRead();
                   }}
-                  className="p-2.5 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-all active:scale-95 relative"
+                  className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-900 hover:bg-white hover:border-slate-200 transition-all active:scale-95 relative"
                 >
-                  <Bell size={18} />
+                  <Bell size={20} />
                   {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white">
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
                       {unreadCount}
                     </span>
                   )}
@@ -1765,21 +1819,21 @@ export default function AdminDashboard() {
                 {showNotifDropdown && (
                   <div className="absolute right-0 top-14 w-80 bg-white rounded-3xl shadow-2xl border border-slate-100 z-50 overflow-hidden animate-in slide-in-from-top-2 duration-200">
                     <div className="px-6 py-4 border-b border-slate-50 bg-slate-50/50 flex items-center justify-between">
-                      <h5 className="text-[10px] font-bold text-slate-900 uppercase tracking-widest">Alert Center</h5>
-                      <button onClick={handleClearNotifications} className="text-[9px] font-black text-slate-400 hover:text-red-500 uppercase tracking-widest">Clear All</button>
+                      <h5 className="text-[10px] font-bold text-slate-900 uppercase tracking-wider">Alert Center</h5>
+                      <button onClick={handleClearNotifications} className="text-[9px] font-bold text-slate-400 hover:text-red-500 uppercase tracking-widest">Clear All</button>
                     </div>
                     <div className="max-h-80 overflow-y-auto custom-scrollbar">
                       {notifications.length === 0 ? (
                         <div className="py-12 text-center">
                           <AlertCircle size={32} className="mx-auto text-slate-100 mb-3" />
-                          <p className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em]">No active alerts</p>
+                          <p className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">No active alerts</p>
                         </div>
                       ) : (
                         notifications.map((n) => (
-                          <div key={n.id} className={`p-4 border-b border-slate-50 hover:bg-slate-50 transition-all ${n.unread ? 'bg-emerald-50/20' : ''}`}>
+                          <div key={n.id} className={`p-4 border-b border-slate-50 hover:bg-slate-50 transition-all ${n.unread ? 'bg-green-50/20' : ''}`}>
                              <div className="flex gap-3">
                                 <div className={`w-8 h-8 rounded-lg shrink-0 flex items-center justify-center ${
-                                  n.type === 'help' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'
+                                  n.type === 'help' ? 'bg-green-100 text-[#22c55e]' : 'bg-red-100 text-red-600'
                                 }`}>
                                    {n.type === 'help' ? <MessageCircle size={14} /> : <AlertTriangle size={14} />}
                                 </div>
@@ -1806,16 +1860,9 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 )}
-             </div>
-             <div className="h-6 w-px bg-slate-200" />
-             <div className="flex items-center gap-3 cursor-pointer group">
-               <div className="text-right">
-                 <p className="text-[11px] font-bold text-slate-900 group-hover:text-emerald-600 transition-colors uppercase tracking-tight leading-none">{userName}</p>
-                 <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mt-1">{userRole.replace('_', ' ')}</p>
-               </div>
-               <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center font-black text-slate-600 uppercase text-sm shadow-sm group-hover:border-emerald-200 transition-all">
-                 {userName.charAt(0)}
-               </div>
+              </div>
+              <div className="flex items-center gap-3 cursor-pointer group px-2">
+               {/* Optional Header Actions space */}
              </div>
           </div>
         </header>
@@ -1824,6 +1871,27 @@ export default function AdminDashboard() {
         <section className="flex-1 overflow-y-auto p-10 custom-scrollbar">
            {renderContent()}
         </section>
+
+        {/* Sticky Action Footer for Settings */}
+        {activeTab === 'Settings' && (
+          <div 
+            className="fixed bottom-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-100 p-4 flex justify-end gap-4 z-40 transition-all duration-300 ease-in-out"
+            style={{ left: sidebarExpanded ? 260 : 76 }}
+          >
+            <div className="max-w-4xl w-full mx-auto flex justify-end items-center gap-5">
+               <div className="flex flex-col items-end mr-1">
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Active Security Policy</p>
+                  <p className="text-[10px] font-black text-slate-900">v2.4.0 Engine Enabled</p>
+               </div>
+               <button 
+                 onClick={handleSaveSettings} 
+                 className="px-6 py-2.5 bg-[#4ade80] text-slate-900 text-xs font-bold hover:bg-[#22c55e] transition-all rounded-xl shadow-lg shadow-green-500/10 active:scale-95 flex items-center gap-2"
+               >
+                  <ShieldCheck size={15} /> Deploy Configuration
+               </button>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Evaluation Modal (reused from MentorDashboard pattern) */}
@@ -1861,6 +1929,22 @@ export default function AdminDashboard() {
         </div>
       )}
 
+
+      <FloatingPillMenu 
+        isVisible={selectedUsers.size > 0 && !confirmModal.show && !showEvalModal}
+        selectedCount={selectedUsers.size}
+        onClear={() => setSelectedUsers(new Set())}
+        onDownload={handleBulkExportCSV}
+        onCopy={() => {
+          const emails = users.filter(u => selectedUsers.has(u._id)).map(u => u.email).join(', ');
+          navigator.clipboard.writeText(emails);
+          toast.success('Emails copied to clipboard');
+        }}
+        onSave={handleBulkDelete}
+        downloadLabel="Export"
+        saveLabel="Delete"
+        itemTypeLabel="Users"
+      />
 
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }

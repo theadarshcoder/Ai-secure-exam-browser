@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import socketService from '../services/socket';
 import {
-  LayoutDashboard, Video, FileText, BarChart3, 
+  LayoutDashboard, FileText, BarChart3, 
   Search, Bell, Plus, ChevronRight,
   LogOut, Clock, AlertTriangle, 
   CheckCircle2, ArrowUpRight, ArrowDownRight,
@@ -14,6 +14,7 @@ import {
 import VisionLogo from '../components/VisionLogo';
 import PremiumSidebar from '../components/PremiumSidebar';
 import BouncingDotLoader from '../components/BouncingDotLoader';
+import FloatingPillMenu from '../components/FloatingPillMenu';
 import { 
   getMentorStats, 
   getMentorExamList, 
@@ -25,30 +26,45 @@ import {
 } from '../services/api';
 import AnimatedStatusIcon from '../components/AnimatedStatusIcon';
 
+
 /* ─────────────────────────────────────────────────────────
    Components
    ───────────────────────────────────────────────────────── */
 
+const Badge = ({ children, color }) => {
+  const styles = {
+    zinc: 'bg-slate-100 text-slate-600 border-slate-200',
+    emerald: 'bg-green-50 text-green-700 border-green-200',
+    amber: 'bg-amber-50 text-amber-700 border-amber-200',
+    red: 'bg-red-50 text-red-700 border-red-200',
+  };
+  return (
+    <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${styles[color] || styles.zinc} capitalize font-sans`}>
+      {children}
+    </span>
+  );
+};
+
 const StatusBadge = ({ status }) => {
   const styles = {
-    normal: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    warning: 'bg-amber-50 text-amber-700 border-amber-200',
-    terminated: 'bg-red-50 text-red-700 border-red-200',
-    active: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    live: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    draft: 'bg-slate-100 text-slate-600 border-slate-200',
-    low: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    medium: 'bg-amber-50 text-amber-700 border-amber-200',
-    high: 'bg-red-50 text-red-700 border-red-200',
-    submitted: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-    auto_submitted: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-    pending_review: 'bg-amber-100 text-amber-800 border-amber-200',
-    in_progress: 'bg-blue-100 text-blue-800 border-blue-200 animate-pulse',
-    blocked: 'bg-red-100 text-red-800 border-red-200',
-    manually_graded: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-    correct: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    incorrect: 'bg-red-50 text-red-700 border-red-200',
-    partial: 'bg-amber-50 text-amber-700 border-amber-200',
+    normal: 'emerald',
+    warning: 'amber',
+    terminated: 'red',
+    active: 'emerald',
+    live: 'emerald',
+    draft: 'zinc',
+    low: 'emerald',
+    medium: 'amber',
+    high: 'red',
+    submitted: 'emerald',
+    auto_submitted: 'emerald',
+    pending_review: 'amber',
+    in_progress: 'zinc',
+    blocked: 'red',
+    manually_graded: 'emerald',
+    correct: 'emerald',
+    incorrect: 'red',
+    partial: 'amber',
   };
 
   const labels = {
@@ -60,18 +76,18 @@ const StatusBadge = ({ status }) => {
     auto_submitted: '🤖 Auto Submit',
     pending_review: '⏳ Under Review',
     blocked: '🚫 Blocked',
-    manually_graded: '📝 Mentor Graded',
+    manually_graded: '📝 Graded',
     correct: 'Correct',
     incorrect: 'Incorrect',
     partial: 'Partial',
   };
 
-  const current = styles[status?.toLowerCase()] || styles.draft;
+  const color = styles[status?.toLowerCase()] || 'zinc';
 
   return (
-    <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border ${current} capitalize`}>
+    <Badge color={color}>
       {labels[status] || status}
-    </span>
+    </Badge>
   );
 };
 
@@ -84,24 +100,24 @@ const FloatingHelpPanel = ({ requests, onResolve }) => {
 
   return (
     <div className="fixed bottom-6 right-6 w-80 z-[60] animate-in slide-in-from-bottom-5 duration-300">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[400px]">
-        <div className="px-4 py-3 bg-slate-800/50 border-b border-slate-700 flex items-center justify-between">
+      <div className="bg-white/90 backdrop-blur-xl border border-slate-200 rounded-[24px] shadow-2xl overflow-hidden flex flex-col max-h-[400px]">
+        <div className="px-5 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <h3 className="text-[11px] font-black text-white uppercase tracking-widest">Help Requests ({requests.length})</h3>
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <h3 className="text-[10px] font-bold text-slate-900 uppercase tracking-widest">Help Requests ({requests.length})</h3>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
           {requests.map((req, i) => (
-            <div key={req.id || i} className="bg-slate-800/80 border border-white/5 rounded-xl p-3 hover:border-white/10 transition-all group">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[10px] font-black text-emerald-400 truncate max-w-[150px]">{req.studentName}</span>
-                <span className="text-[8px] font-mono text-slate-500">{new Date(req.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            <div key={req.id || i} className="bg-white border border-slate-100 rounded-2xl p-4 hover:border-emerald-200 transition-all shadow-sm group">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold text-slate-900 truncate max-w-[150px]">{req.studentName}</span>
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{new Date(req.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
-              <p className="text-[11px] text-slate-300 leading-relaxed mb-3">"{req.message}"</p>
+              <p className="text-[11px] text-slate-500 font-medium leading-relaxed mb-4 italic">"{req.message}"</p>
               <button 
                 onClick={() => onResolve(req.id)}
-                className="w-full py-1.5 rounded-lg bg-slate-700 hover:bg-emerald-600 text-white text-[9px] font-black uppercase tracking-widest transition-all active:scale-95"
+                className="w-full py-2 rounded-xl bg-slate-900 hover:bg-[#4ade80] text-white text-[10px] font-bold uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-slate-900/10"
               >
                 Mark Resolved
               </button>
@@ -121,7 +137,7 @@ const DataTable = ({ headers, data, renderRow, loading }) => (
         <thead className="bg-slate-50 border-b border-slate-200 font-sans">
           <tr>
             {headers.map((h, i) => (
-              <th key={i} className="px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              <th key={i} className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
                 {h}
               </th>
             ))}
@@ -187,24 +203,24 @@ const EvaluationModal = ({ sessionData, onClose, onGradeSubmit, submitStatus }) 
   const hasPendingReview = sessionData.questions?.some(q => q.status === 'pending_review');
 
   return (
-    <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-300" onClick={onClose}>
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
         
         {/* Header */}
-        <div className="flex items-center justify-between px-8 py-5 border-b border-slate-200 bg-slate-50">
+        <div className="flex items-center justify-between px-8 py-6 border-b border-slate-100 bg-slate-50/50">
           <div>
             <h3 className="text-base font-bold text-slate-900 uppercase tracking-wider">{sessionData.exam?.title || 'Exam'} — Evaluation</h3>
             <p className="text-xs text-slate-500 mt-1">
               Student: <span className="font-bold text-slate-700">{sessionData.student?.name}</span> ({sessionData.student?.email})
             </p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-6">
             <div className="text-right">
-              <p className="text-xl font-semibold text-slate-900">{sessionData.score}/{sessionData.totalMarks}</p>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{sessionData.percentage}% — {sessionData.passed ? 'Passed' : 'Failed'}</p>
+              <p className="text-2xl font-black text-slate-900 tabular-nums leading-none">{sessionData.score}/{sessionData.totalMarks}</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#22c55e] mt-1">{sessionData.percentage}% — {sessionData.passed ? 'Passed' : 'Failed'}</p>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
-              <X size={18} className="text-slate-400" />
+            <button onClick={onClose} className="p-2.5 hover:bg-slate-100 rounded-xl transition-all active:scale-95 text-slate-400 hover:text-slate-600">
+              <X size={20} />
             </button>
           </div>
         </div>
@@ -213,7 +229,7 @@ const EvaluationModal = ({ sessionData, onClose, onGradeSubmit, submitStatus }) 
         <div className="overflow-y-auto max-h-[60vh] p-6 space-y-4 custom-scrollbar">
           {sessionData.questions?.map((q, i) => (
             <div key={i} className={`rounded-xl border p-5 ${
-              q.status === 'correct' ? 'border-emerald-200 bg-emerald-50/30' :
+              q.status === 'correct' ? 'border-emerald-200 bg-green-50/30' :
               q.status === 'incorrect' ? 'border-red-200 bg-red-50/30' :
               q.status === 'partial' ? 'border-amber-200 bg-amber-50/30' :
               q.status === 'manually_graded' ? 'border-blue-200 bg-blue-50/30' :
@@ -244,8 +260,8 @@ const EvaluationModal = ({ sessionData, onClose, onGradeSubmit, submitStatus }) 
                 <div className="space-y-1.5">
                   {q.options?.map((opt, oi) => (
                     <div key={oi} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs ${
-                      oi === q.correctChoice && oi === q.studentChoice ? 'bg-emerald-100 text-emerald-800 font-bold' :
-                      oi === q.correctChoice ? 'bg-emerald-100 text-emerald-800 font-bold' :
+                      oi === q.correctChoice && oi === q.studentChoice ? 'bg-green-100 text-green-800 font-bold' :
+                      oi === q.correctChoice ? 'bg-green-100 text-green-800 font-bold' :
                       oi === q.studentChoice ? 'bg-red-100 text-red-800 font-bold' :
                       'bg-slate-50 text-slate-600'
                     }`}>
@@ -325,7 +341,7 @@ const EvaluationModal = ({ sessionData, onClose, onGradeSubmit, submitStatus }) 
                             ...prev,
                             [q.index]: { ...prev[q.index], marksObtained: Number(e.target.value) }
                           }))}
-                          className="w-20 px-3 py-2 border border-slate-200 text-sm text-center rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                          className="w-20 px-3 py-2 border border-slate-200 text-sm text-center rounded-xl focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
                         />
                         <span className="text-xs text-slate-400">/ {q.maxMarks}</span>
                       </div>
@@ -336,7 +352,7 @@ const EvaluationModal = ({ sessionData, onClose, onGradeSubmit, submitStatus }) 
                           ...prev,
                           [q.index]: { ...prev[q.index], mentorFeedback: e.target.value }
                         }))}
-                        className="w-full px-3 py-2 border border-slate-200 text-xs rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 min-h-[60px] resize-none"
+                        className="w-full px-3 py-2 border border-slate-200 text-xs rounded-xl focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 min-h-[60px] resize-none"
                       />
                     </div>
                   )}
@@ -363,7 +379,7 @@ const EvaluationModal = ({ sessionData, onClose, onGradeSubmit, submitStatus }) 
             <button
               onClick={handleSubmit}
               disabled={submitStatus !== 'idle'}
-              className="min-w-[150px] px-5 py-2.5 bg-emerald-600 text-white text-xs font-bold uppercase hover:bg-emerald-700 rounded-xl transition-all shadow-lg shadow-emerald-900/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="min-w-[150px] px-5 py-2.5 bg-[#4ade80] text-white text-xs font-bold uppercase hover:bg-green-700 rounded-xl transition-all shadow-lg shadow-green-500/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               <AnimatedStatusIcon status={submitStatus} icon={<Check size={14} />} size={14} />
               {submitStatus === 'loading' ? 'Submitting' : submitStatus === 'success' ? 'Submitted' : 'Submit Grades'}
@@ -382,17 +398,17 @@ const EvaluationModal = ({ sessionData, onClose, onGradeSubmit, submitStatus }) 
 
 export default function MentorDashboard() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('Overview');
+  const [activeTab, setActiveTab] = useState(new URLSearchParams(location.search).get('tab') || 'Overview');
   const [userName] = useState(sessionStorage.getItem('vision_name') || 'Mentor');
   
   // Live data states
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({ liveStudents: 0, totalSubmissions: 0, flags: 0, totalExams: 0 });
   const [activity, setActivity] = useState([]);
-  const [liveSessions, setLiveSessions] = useState([]);
   const [exams, setExams] = useState([]);
   const [results, setResults] = useState([]);
   const [resultFilter, setResultFilter] = useState('ALL');
+  const [selectedResults, setSelectedResults] = useState(new Set());
 
   const [searchFilter, setSearchFilter] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -468,11 +484,10 @@ export default function MentorDashboard() {
   const fetchDataForTab = async (tab) => {
     setLoading(true);
     try {
-      if (tab === 'Overview' || tab === 'Live Proctoring') {
+      if (tab === 'Overview') {
         const res = await getMentorStats();
         setStats(res.stats || { liveStudents: 0, totalSubmissions: 0, flags: 0, totalExams: 0 });
         setActivity(Array.isArray(res.activity) ? res.activity : []);
-        setLiveSessions(Array.isArray(res.performance) ? res.performance : []);
       } else if (tab === 'Exam Management') {
         const res = await getMentorExamList();
         setExams(Array.isArray(res) ? res : []);
@@ -579,7 +594,6 @@ export default function MentorDashboard() {
 
   const navItems = [
     { id: 'Overview', label: 'Overview', icon: LayoutDashboard },
-    { id: 'Live Proctoring', label: 'Live Proctoring', icon: Video },
     { id: 'Exam Management', label: 'Exam Library', icon: FileText },
     { id: 'Results & Reports', label: 'Results & Reports', icon: BarChart3 },
   ];
@@ -589,9 +603,9 @@ export default function MentorDashboard() {
      ───────────────────────────────────────────────────────── */
 
   const STAT_CARDS = [
-    { label: 'Active Test Takers', value: stats.liveStudents, trendType: 'up', icon: Users },
-    { label: 'Violations / Flags', value: stats.flags, trendType: stats.flags > 0 ? 'up' : 'neutral', icon: AlertTriangle },
-    { label: 'Exams Published', value: stats.totalExams, trendType: 'neutral', icon: FileText },
+    { label: 'Active Test Takers', value: stats.liveStudents, icon: Users },
+    { label: 'Violations / Flags', value: stats.flags, icon: AlertTriangle },
+    { label: 'Exams Published', value: stats.totalExams, icon: FileText },
   ];
 
   const renderOverview = () => (
@@ -600,16 +614,9 @@ export default function MentorDashboard() {
         {STAT_CARDS.map((stat, i) => (
           <div key={i} className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600">
+              <div className="p-2.5 rounded-xl bg-emerald-50 text-[#22c55e]">
                 <stat.icon size={20} />
               </div>
-              <span className={`text-xs font-bold flex items-center gap-1 ${
-                stat.trendType === 'up' ? 'text-emerald-600' : 
-                stat.trendType === 'down' ? 'text-red-600' : 'text-slate-400'
-              }`}>
-                {stat.trendType === 'up' && <ArrowUpRight size={14} />}
-                {stat.trendType === 'down' && <ArrowDownRight size={14} />}
-              </span>
             </div>
             <h3 className="text-[32px] font-semibold text-[#0F0F0F]">{stat.value}</h3>
             <p className="text-sm font-medium text-[#7A7A7A] mt-1">{stat.label}</p>
@@ -617,169 +624,90 @@ export default function MentorDashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-8 p-6 rounded-2xl bg-white border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <h4 className="text-sm font-bold text-slate-900 uppercase tracking-tight">Recent Activity</h4>
-            <button onClick={() => setActiveTab('Results & Reports')} className="text-xs font-bold text-emerald-600 hover:underline">View All</button>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="lg:col-span-8 p-8 rounded-[32px] bg-white border border-slate-200 shadow-sm flex flex-col h-[500px]">
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">
+                <ShieldCheck size={20} />
+              </div>
+              <h4 className="text-base font-bold text-slate-900 uppercase tracking-tight">Real-Time Integrity Feed</h4>
+            </div>
+            <button onClick={() => setActiveTab('Results & Reports')} className="text-[10px] font-bold text-[#22c55e] uppercase tracking-wider hover:bg-green-50 px-4 py-2 rounded-xl transition-all">View Analytics</button>
           </div>
-          <div className="space-y-4">
+          <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
              {/* Socket violations take priority, then API activity */}
              {violations.length > 0 ? violations.map((v) => (
-                <div key={v.id} className="flex items-center justify-between p-4 bg-red-50/50 border border-red-100 rounded-xl animate-in slide-in-from-right-2">
-                   <div className="flex items-center gap-3">
-                      <AlertTriangle size={16} className="text-red-500" />
+                <div key={v.id} className="flex items-center justify-between p-5 bg-red-50/40 border border-red-100/50 rounded-2xl animate-in slide-in-from-right-3 duration-500">
+                   <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shadow-sm">
+                        <AlertTriangle size={18} />
+                      </div>
                       <div>
-                         <p className="text-[13px] font-bold text-slate-900">{v.student}</p>
-                         <p className="text-[11px] text-slate-500">{v.type}</p>
+                         <p className="text-sm font-bold text-slate-900">{v.student}</p>
+                         <p className="text-[10px] text-red-500 font-semibold uppercase tracking-wider">{v.type}</p>
                       </div>
                    </div>
-                   <span className="text-[10px] font-bold text-slate-400 uppercase">{v.time}</span>
+                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-white px-3 py-1 rounded-lg border border-slate-100">{v.time}</span>
                 </div>
              )) : activity.length > 0 ? activity.map((a, i) => (
-                <div key={i} className={`flex items-center justify-between p-4 ${a.type === 'flag' ? 'bg-red-50/50 border border-red-100' : 'bg-slate-50 border border-slate-100'} rounded-xl`}>
-                   <div className="flex items-center gap-3">
-                      {a.type === 'flag' ? <AlertTriangle size={16} className="text-red-500" /> : <CheckCircle2 size={16} className="text-emerald-500" />}
+                <div key={i} className={`flex items-center justify-between p-5 ${a.type === 'flag' ? 'bg-red-50/40 border border-red-100/50' : 'bg-slate-50 border border-slate-100'} rounded-2xl`}>
+                   <div className="flex items-center gap-4">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${a.type === 'flag' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-[#22c55e]'}`}>
+                        {a.type === 'flag' ? <AlertTriangle size={18} /> : <CheckCircle2 size={18} />}
+                      </div>
                       <div>
-                         <p className="text-[13px] font-bold text-slate-900">{a.name}</p>
-                         <p className="text-[11px] text-slate-500">{a.action} {a.exam}</p>
+                         <p className="text-sm font-bold text-slate-900">{a.name}</p>
+                         <p className="text-[11px] text-slate-500 font-medium uppercase tracking-tight">{a.action} {a.exam}</p>
                       </div>
                    </div>
-                   <span className="text-[10px] font-bold text-slate-400 uppercase">{a.time}</span>
+                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-white px-3 py-1 rounded-lg border border-slate-100">{a.time}</span>
                 </div>
              )) : (
-               <div className="h-32 flex flex-col items-center justify-center text-slate-400 gap-2">
-                  <ShieldCheck size={24} className="opacity-20" />
-                  <p className="text-xs font-bold uppercase tracking-widest opacity-40 text-center">No integrity violations detected <br/>in the current session</p>
+               <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-4 opacity-40">
+                  <ShieldCheck size={48} strokeWidth={1} />
+                  <p className="text-[11px] font-black uppercase tracking-[0.3em] text-center">Protocol Active <br/>Zero Violations Detected</p>
                </div>
              )}
           </div>
         </div>
-        <div className="lg:col-span-4 p-6 rounded-2xl bg-white border border-slate-200 shadow-sm">
-           <div className="flex items-center gap-2 mb-6">
-              <CheckCircle2 size={16} className="text-emerald-600" />
-              <h4 className="text-sm font-bold text-slate-900 uppercase tracking-tight">Quick Stats</h4>
+        <div className="lg:col-span-4 p-8 rounded-[32px] bg-white border border-slate-200 shadow-sm">
+           <div className="flex items-center gap-3 mb-8">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#22c55e] flex items-center justify-center">
+                <CheckCircle2 size={20} />
+              </div>
+              <h4 className="text-base font-bold text-slate-900 uppercase tracking-tight">System Health</h4>
            </div>
-           <div className="space-y-6">
+           <div className="space-y-8">
               <div>
-                 <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
+                 <div className="flex justify-between items-center text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">
                     <span>Submissions</span>
-                    <span className="text-emerald-600">{stats.totalSubmissions}</span>
+                    <span className="text-[#22c55e]">{stats.totalSubmissions} / {stats.liveStudents + stats.totalSubmissions}</span>
                  </div>
-                 <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${Math.min((stats.totalSubmissions / Math.max(stats.totalSubmissions + stats.liveStudents, 1)) * 100, 100)}%` }} />
+                 <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-green-500 transition-all duration-700 ease-out" style={{ width: `${Math.min((stats.totalSubmissions / Math.max(stats.totalSubmissions + stats.liveStudents, 1)) * 100, 100)}%` }} />
                  </div>
               </div>
               <div>
-                 <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
-                    <span>Flagged Sessions</span>
-                    <span className={stats.flags > 0 ? 'text-red-600' : 'text-emerald-600'}>{stats.flags}</span>
+                 <div className="flex justify-between items-center text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">
+                    <span>Integrity Flags</span>
+                    <span className={stats.flags > 0 ? 'text-red-600' : 'text-[#22c55e]'}>{stats.flags} Sessions</span>
                  </div>
-                 <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                    <div className={`h-full transition-all duration-500 ${stats.flags > 0 ? 'bg-red-400' : 'bg-emerald-500'}`} style={{ width: `${Math.min((stats.flags / Math.max(stats.totalSubmissions, 1)) * 100, 100)}%` }} />
+                 <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div className={`h-full transition-all duration-700 ease-out ${stats.flags > 0 ? 'bg-red-400' : 'bg-green-500'}`} style={{ width: `${Math.min((stats.flags / Math.max(stats.totalSubmissions, 1)) * 100, 100)}%` }} />
                  </div>
               </div>
            </div>
-           <p className="text-[11px] text-slate-500 mt-8 leading-relaxed italic">
-             "Proctoring active. Real-time data refreshes on each tab switch."
-           </p>
+           <div className="mt-12 p-5 bg-slate-50 rounded-2xl border border-slate-100">
+             <p className="text-[11px] text-slate-500 leading-relaxed italic font-medium">
+               "Vision Engine is monitoring all nodes. Secure environment verified."
+             </p>
+           </div>
         </div>
       </div>
     </div>
   );
 
-  const renderLiveProctoring = () => {
-    // Filter live sessions based on debounced search
-    const filtered = liveSessions
-      .map(s => ({
-        ...s,
-        threatScore: (s.tabSwitchCount || 0) * 2 + (s.warningCount || 0),
-        isHighRisk: (s.tabSwitchCount || 0) >= 3 || (s.warningCount || 0) >= 2
-      }))
-      .sort((a, b) => b.threatScore - a.threatScore) // Highest risk first
-      .filter(s => 
-        !debouncedSearch || 
-        (s.name || '').toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-        (s.exam || '').toLowerCase().includes(debouncedSearch.toLowerCase())
-      );
-
-    return (
-      <div className="space-y-6 animate-in fade-in duration-300">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              Live Environment
-            </h2>
-            <p className="text-xs text-slate-500 mt-1 uppercase tracking-widest font-bold">{stats.liveStudents} active sessions</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-              <input 
-                type="text" 
-                placeholder="Filter candidates..."
-                value={searchFilter}
-                onChange={e => setSearchFilter(e.target.value)}
-                className="pl-9 pr-4 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none w-64 bg-white"
-              />
-            </div>
-            <button onClick={() => fetchDataForTab('Live Proctoring')} className="p-2 border border-slate-200 rounded-xl text-slate-500 hover:bg-slate-50 transition-all active:scale-95">
-              <RefreshCw size={14} />
-            </button>
-          </div>
-        </div>
-
-        <DataTable 
-          loading={loading}
-          headers={['Student', 'Exam', 'Score', 'Status', 'Actions']}
-          data={filtered}
-          renderRow={(session, idx) => (
-            <tr key={idx} className={`hover:bg-slate-50 transition-colors group ${session.isHighRisk ? 'bg-red-50/30' : ''}`}>
-              <td className="px-6 py-4">
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg border flex items-center justify-center font-bold text-xs ${session.isHighRisk ? 'bg-red-100 border-red-200 text-red-600 animate-pulse' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
-                    {(session.name || 'S').charAt(0)}
-                  </div>
-                  <div>
-                    <span className="text-sm font-semibold text-slate-900">{session.name || 'Student'}</span>
-                    {session.isHighRisk && <p className="text-[8px] font-black text-red-500 uppercase mt-0.5">High Integrity Risk</p>}
-                  </div>
-                </div>
-              </td>
-              <td className="px-6 py-4 text-xs font-medium text-slate-600">
-                {session.exam || 'N/A'}
-              </td>
-              <td className="px-6 py-4">
-                <div className="flex flex-col gap-1">
-                  <span className={`text-xs font-bold tabular-nums ${(session.score || 0) >= 80 ? 'text-emerald-700' : 'text-amber-700'}`}>
-                    {session.score != null ? `${session.score}%` : 'Pending'}
-                  </span>
-                  <div className="flex items-center gap-2">
-                     <span className="text-[9px] text-slate-400 uppercase font-bold">Tabs: {session.tabSwitchCount || 0}</span>
-                     <span className="text-[9px] text-slate-400 uppercase font-bold">Warns: {session.warningCount || 0}</span>
-                  </div>
-                </div>
-              </td>
-              <td className="px-6 py-4">
-                 <StatusBadge status={session.status || 'Active'} />
-              </td>
-              <td className="px-6 py-4">
-                 <div className="flex items-center gap-2">
-                   <button 
-                     onClick={() => navigate(`/admin/session?id=${session.sessionId || session._id}&name=${session.name}&exam=${session.exam}&risk=${session.isHighRisk ? 'High' : 'Low'}`)}
-                     className="flex items-center gap-2 text-[11px] font-black uppercase text-emerald-600 hover:bg-emerald-50 px-3 py-1.5 rounded-[10px] transition-all border border-transparent hover:border-emerald-100 active:scale-95"
-                   >
-                      <Eye size={12} /> View
-                   </button>
-                 </div>
-              </td>
-            </tr>
-          )}
-        />
-      </div>
-    );
-  };
 
   const renderExamLibrary = () => (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -787,7 +715,7 @@ export default function MentorDashboard() {
          <h2 className="text-lg font-bold text-slate-900 tracking-tight">Exam Library</h2>
          <button 
            onClick={() => navigate('/mentor/create-exam')}
-           className="flex items-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-emerald-700 transition-all active:scale-95 shadow-lg shadow-emerald-600/20"
+           className="flex items-center gap-2 bg-[#4ade80] text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-green-700 transition-all active:scale-95 shadow-lg shadow-green-500/20"
          >
             <Plus size={16} /> Create New Exam
          </button>
@@ -799,7 +727,7 @@ export default function MentorDashboard() {
         data={exams}
         renderRow={(exam) => (
           <tr key={exam.id || exam._id} className="hover:bg-slate-50 transition-colors">
-            <td className="px-6 py-4 font-bold text-sm text-slate-900">{exam.name || exam.title}</td>
+            <td className="px-6 py-4 font-semibold text-sm text-slate-900">{exam.name || exam.title}</td>
             <td className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{exam.category || 'Standard'}</td>
             <td className="px-6 py-4 text-xs text-slate-500 tabular-nums font-medium">{exam.duration || '—'} MIN</td>
             <td className="px-6 py-4 text-xs text-slate-500 tabular-nums font-medium">{exam.questionsCount || 0} Qs</td>
@@ -810,7 +738,7 @@ export default function MentorDashboard() {
                <div className="flex items-center gap-4">
                   <button 
                     onClick={() => handleTogglePublishResults(exam.id || exam._id, exam.resultsPublished)} 
-                    className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95 ${exam.resultsPublished ? 'text-emerald-600 hover:text-emerald-700' : 'text-slate-400 hover:text-emerald-600'}`}
+                    className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95 ${exam.resultsPublished ? 'text-[#22c55e] hover:text-emerald-700' : 'text-slate-400 hover:text-[#22c55e]'}`}
                     title={exam.resultsPublished ? "Results visible to students" : "Results hidden from students"}
                   >
                     {exam.resultsPublished ? <CheckCircle size={14} /> : <EyeOff size={14} />} 
@@ -818,7 +746,7 @@ export default function MentorDashboard() {
                   </button>
                   <button 
                     onClick={() => navigate(`/mentor/create-exam?id=${exam.id || exam._id}&view=true`)}
-                    className="text-xs font-bold text-slate-500 hover:text-emerald-600 uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95"
+                    className="text-xs font-bold text-slate-500 hover:text-[#22c55e] uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95"
                   >
                     <Eye size={14} /> View
                   </button>
@@ -852,7 +780,7 @@ export default function MentorDashboard() {
                <button 
                  key={f}
                  onClick={() => setResultFilter(f)}
-                 className={`px-4 py-1.5 rounded-md text-[10px] font-bold tracking-widest uppercase transition-all ${resultFilter === f ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                 className={`px-4 py-1.5 rounded-md text-[10px] font-bold tracking-widest uppercase transition-all ${resultFilter === f ? 'bg-white text-[#22c55e] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                >
                  {f === 'PAST' ? 'EVALUATED / PAST' : f}
                </button>
@@ -881,7 +809,7 @@ export default function MentorDashboard() {
           <button 
             key={f}
             onClick={() => setResultFilter(f)}
-            className={`px-4 py-1.5 rounded-md text-[10px] font-bold tracking-widest uppercase transition-all whitespace-nowrap ${resultFilter === f ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`px-4 py-1.5 rounded-md text-[10px] font-bold tracking-widest uppercase transition-all whitespace-nowrap ${resultFilter === f ? 'bg-white text-[#22c55e] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
           >
             {f === 'PAST' ? 'EVALUATED / PAST' : f}
           </button>
@@ -890,7 +818,18 @@ export default function MentorDashboard() {
 
       <DataTable 
         loading={loading}
-        headers={['Student', 'Exam Name', 'Result', 'Status', 'Violations', 'Submitted', 'Action']}
+        headers={[
+          <input 
+            type="checkbox" 
+            className="w-4 h-4 rounded border-slate-300 text-[#22c55e] focus:ring-green-500"
+            checked={results.length > 0 && results.every(r => selectedResults.has(r._id))}
+            onChange={() => {
+              if (selectedResults.size === results.length) setSelectedResults(new Set());
+              else setSelectedResults(new Set(results.map(r => r._id)));
+            }}
+          />,
+          'Student', 'Exam Name', 'Result', 'Status', 'Violations', 'Submitted', 'Action'
+        ]}
         data={results.filter(r => {
           if (resultFilter === 'ALL') return true;
           if (resultFilter === 'PENDING') return r.status === 'pending_review';
@@ -898,7 +837,20 @@ export default function MentorDashboard() {
           return true;
         })}
         renderRow={(res, idx) => (
-          <tr key={res._id || idx} className="hover:bg-slate-50 transition-colors">
+          <tr key={res._id || idx} className={`${selectedResults.has(res._id) ? 'bg-green-50/50' : 'hover:bg-slate-50'} transition-colors`}>
+            <td className="px-6 py-4">
+              <input 
+                type="checkbox" 
+                checked={selectedResults.has(res._id)}
+                onChange={() => {
+                  const next = new Set(selectedResults);
+                  if (next.has(res._id)) next.delete(res._id);
+                  else next.add(res._id);
+                  setSelectedResults(next);
+                }}
+                className="w-4 h-4 rounded border-slate-300 text-[#22c55e] focus:ring-green-500"
+              />
+            </td>
             <td className="px-6 py-4">
               <div>
                 <p className="text-sm font-semibold text-slate-800">{res.studentName || 'Student'}</p>
@@ -909,9 +861,9 @@ export default function MentorDashboard() {
             <td className="px-6 py-4">
                <div className="flex items-center gap-2">
                  <div className="max-w-[100px] flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${(res.percentage || 0) >= 80 ? 'bg-emerald-500' : 'bg-amber-400'}`} style={{ width: `${res.percentage || 0}%` }} />
+                    <div className={`h-full rounded-full ${(res.percentage || 0) >= 80 ? 'bg-green-500' : 'bg-amber-400'}`} style={{ width: `${res.percentage || 0}%` }} />
                  </div>
-                 <span className={`text-xs font-black tabular-nums ${(res.percentage || 0) >= 80 ? 'text-emerald-700' : 'text-amber-700'}`}>{res.percentage || 0}%</span>
+                 <span className={`text-xs font-bold tabular-nums ${(res.percentage || 0) >= 80 ? 'text-emerald-700' : 'text-amber-700'}`}>{res.percentage || 0}%</span>
                </div>
             </td>
             <td className="px-6 py-4">
@@ -927,7 +879,7 @@ export default function MentorDashboard() {
                  className={`font-bold text-[11px] uppercase tracking-widest flex items-center gap-1 active:scale-95 ${
                    res.status === 'pending_review' 
                      ? 'text-amber-600 hover:text-amber-700' 
-                     : 'text-emerald-600 hover:text-emerald-700'
+                     : 'text-[#22c55e] hover:text-emerald-700'
                  }`}
                >
                  {res.status === 'pending_review' ? (
@@ -946,7 +898,6 @@ export default function MentorDashboard() {
   const renderContent = () => {
     switch (activeTab) {
       case 'Overview': return renderOverview();
-      case 'Live Proctoring': return renderLiveProctoring();
       case 'Exam Management': return renderExamLibrary();
       case 'Results & Reports': return renderResults();
       default: return null;
@@ -968,7 +919,7 @@ export default function MentorDashboard() {
       {/* Main Container */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Header */}
-        <header className="h-20 bg-white flex items-center justify-between px-8 relative z-20">
+        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-8 shrink-0 relative z-40">
           <div className="flex items-center gap-3 text-[13px] font-medium text-slate-400 tracking-wide">
             <span className="hover:text-slate-900 transition-colors cursor-pointer">Mentor Dashboard</span>
             <ChevronRight size={14} className="opacity-40" />
@@ -976,21 +927,17 @@ export default function MentorDashboard() {
           </div>
 
           <div className="flex items-center gap-5">
-            <div className="relative ml-2 flex items-center gap-4">
-              <div className="relative group cursor-pointer">
-                 <Bell size={20} className="text-slate-400 hover:text-slate-600 transition-colors" />
+            <div className="relative ml-2 flex items-center gap-2">
+              <button className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-900 hover:bg-white hover:border-slate-200 transition-all active:scale-95 relative">
+                 <Bell size={20} />
                  {violations.length > 0 && (
-                   <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white animate-pulse" />
+                   <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white animate-pulse">
+                     {violations.length}
+                   </span>
                  )}
-              </div>
-              <div className="h-6 w-px bg-slate-200 mx-2" />
-              <div className="flex items-center gap-3 cursor-pointer group">
-                <div className="text-right">
-                  <p className="text-[13px] font-semibold text-[#0F0F0F] leading-none">{userName}</p>
-                </div>
-                <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm shadow-sm ml-1">
-                  {userName.charAt(0)}
-                </div>
+              </button>
+              <div className="flex items-center gap-3 cursor-pointer group px-2">
+                {/* Optional Header Actions space */}
               </div>
             </div>
           </div>
@@ -1020,18 +967,18 @@ export default function MentorDashboard() {
         )
       )}
 
-      {/* Confirm Modal */}
+      {/* Modal confirmations */}
       {confirmModal.show && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-8 shadow-2xl w-full max-w-sm border border-slate-200 animate-in zoom-in-95 duration-200">
-            <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto mb-5">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 shadow-2xl w-full max-w-sm border border-slate-200 animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto mb-5">
               <AlertOctagon size={24} className="text-amber-500" />
             </div>
-            <h3 className="text-sm font-bold text-slate-900 text-center uppercase tracking-wider mb-2">Confirm Action</h3>
+            <h3 className="text-[13px] font-black text-slate-900 text-center uppercase tracking-widest mb-2">Confirm Action</h3>
             <p className="text-xs text-slate-500 text-center mb-8 font-medium">{confirmModal.msg}</p>
             <div className="flex items-center gap-3">
-              <button onClick={closeConfirm} className="flex-1 h-12 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider hover:bg-slate-50 transition-all active:scale-95">Cancel</button>
-              <button onClick={() => { confirmModal.onConfirm?.(); closeConfirm(); }} className="flex-1 h-12 rounded-xl bg-red-600 text-white text-xs font-bold uppercase tracking-wider hover:bg-red-700 transition-all shadow-lg shadow-red-900/20 active:scale-95">Confirm</button>
+              <button onClick={closeConfirm} className="flex-1 h-12 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-widest hover:bg-slate-50 transition-all active:scale-95">Cancel</button>
+              <button onClick={() => { confirmModal.onConfirm?.(); closeConfirm(); }} className="flex-1 h-12 rounded-xl bg-slate-900 text-white text-xs font-bold uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 active:scale-95">Confirm</button>
             </div>
           </div>
         </div>
@@ -1044,6 +991,22 @@ export default function MentorDashboard() {
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
       `}</style>
+      <FloatingPillMenu 
+        isVisible={selectedResults.size > 0}
+        selectedCount={selectedResults.size}
+        onClear={() => setSelectedResults(new Set())}
+        onDownload={handleExportCsv}
+        onCopy={() => {
+          const emails = results.filter(r => selectedResults.has(r._id)).map(r => r.studentEmail).join(', ');
+          navigator.clipboard.writeText(emails);
+          toast.success('Emails copied to clipboard');
+        }}
+        onSave={() => toast.success(`${selectedResults.size} reports archived`)}
+        downloadLabel="Export"
+        saveLabel="Archive"
+        itemTypeLabel="Results"
+      />
+
       <FloatingHelpPanel 
         requests={helpRequests} 
         onResolve={(id) => setHelpRequests(prev => prev.filter(r => r.id !== id))} 

@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import * as faceapi from '@vladmandic/face-api';
 import Navbar from '../components/Navbar';
 import BouncingDotLoader from '../components/BouncingDotLoader';
-import api from '../services/api';
+import api, { getSettings } from '../services/api';
 
 /* ─────────────── Sub-components ─────────────── */
 
@@ -132,6 +132,7 @@ export default function ExamWaitingRoom() {
   const [now,            setNow]            = useState(new Date());
   const [showExitPrompt, setShowExitPrompt] = useState(false);
   const [exitPassword,   setExitPassword]   = useState('');
+  const [settings,       setSettings]       = useState(null);
   const [aiReady,        setAiReady]        = useState(false);
 
   useEffect(() => {
@@ -161,6 +162,11 @@ export default function ExamWaitingRoom() {
 
     fetchExam();
     preLoadModels();
+    
+    getSettings().then(res => {
+      if (res) setSettings(res);
+    }).catch(err => console.error("Failed to load settings", err));
+
     return () => { document.body.style.overflow = 'auto'; clearInterval(timer); };
   }, [examId]);
 
@@ -268,7 +274,14 @@ export default function ExamWaitingRoom() {
               />
               <div className="flex gap-3">
                 <button onClick={() => setShowExitPrompt(false)} className="flex-1 py-2.5 text-xs font-medium uppercase tracking-wider border border-slate-200 rounded-xl text-slate-500 hover:bg-slate-50 transition-all">Cancel</button>
-                <button onClick={() => { if (exitPassword === '12345') navigate('/student'); else setExitPassword(''); }} className="flex-1 py-2.5 text-xs font-medium uppercase tracking-wider bg-red-600 rounded-xl text-white active:scale-95 transition-all">Exit</button>
+                <button onClick={() => { 
+                  const targetPass = settings?.exitPassword || '12345';
+                  if (!settings?.exitPassword || exitPassword === targetPass) {
+                    navigate('/student'); 
+                  } else {
+                    setExitPassword(''); 
+                  }
+                }} className="flex-1 py-2.5 text-xs font-medium uppercase tracking-wider bg-red-600 rounded-xl text-white active:scale-95 transition-all">Exit</button>
               </div>
             </motion.div>
           </motion.div>

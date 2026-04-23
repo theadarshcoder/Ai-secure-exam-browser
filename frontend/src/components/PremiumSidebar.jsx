@@ -21,8 +21,16 @@ export default function PremiumSidebar({
   userRole = '',
   onLogout,
   brandLabel = 'VISION',
+  expanded: controlledExpanded,
+  onToggle,
 }) {
-  const [expanded, setExpanded] = useState(true);
+  const [internalExpanded, setInternalExpanded] = useState(true);
+  const expanded = controlledExpanded !== undefined ? controlledExpanded : internalExpanded;
+
+  const toggleSidebar = () => {
+    if (onToggle) onToggle(!expanded);
+    else setInternalExpanded(!internalExpanded);
+  };
   const [hoveredId, setHoveredId] = useState(null);
 
   const sidebarVariants = {
@@ -61,7 +69,7 @@ export default function PremiumSidebar({
     >
       {/* ── Toggle Button ── */}
       <motion.button
-        onClick={() => setExpanded(!expanded)}
+        onClick={toggleSidebar}
         whileHover={{ scale: 1.08 }}
         whileTap={{ scale: 0.92 }}
         style={{
@@ -321,44 +329,23 @@ export default function PremiumSidebar({
       </nav>
 
       {/* ── Bottom: User + Logout ── */}
+      {/* ── Bottom: User + Logout ── */}
       <div
         style={{
-          padding: expanded ? '10px 10px 14px' : '10px 8px 14px',
-          borderTop: '1px solid #F0F0F0',
+          padding: expanded ? '12px 12px 16px' : '12px 8px 16px',
+          borderTop: '1px solid #F1F5F9',
           display: 'flex',
           flexDirection: 'column',
-          gap: 2,
+          gap: 6,
         }}
       >
         {/* User info */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: expanded ? '8px 10px' : '8px 0',
-            justifyContent: expanded ? 'flex-start' : 'center',
-            borderRadius: 10,
-            background: '#F7F7F8',
-            overflow: 'hidden',
-          }}
+        <div 
+          className="flex items-center gap-3 cursor-pointer group rounded-xl hover:bg-slate-50 transition-all" 
+          style={{ padding: expanded ? '8px' : '8px 0', justifyContent: expanded ? 'flex-start' : 'center' }}
         >
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: '50%',
-              background: '#1E1E2E',
-              color: '#fff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 500,
-              fontSize: 13,
-              flexShrink: 0,
-            }}
-          >
-            {userName.charAt(0).toUpperCase()}
+          <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center font-black text-slate-700 uppercase text-[11px] shadow-sm group-hover:border-[#4ade80] transition-all shrink-0">
+            {userName.charAt(0)}
           </div>
           <AnimatePresence>
             {expanded && (
@@ -367,12 +354,12 @@ export default function PremiumSidebar({
                 initial="hide"
                 animate="show"
                 exit="hide"
-                style={{ overflow: 'hidden' }}
+                className="overflow-hidden"
               >
-                <p style={{ fontSize: 13, fontWeight: 600, color: '#111', lineHeight: 1.2, whiteSpace: 'nowrap' }}>
+                <p className="text-[10px] font-black text-slate-900 group-hover:text-[#22c55e] transition-colors uppercase tracking-tight leading-none">
                   {userName}
                 </p>
-                <p style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 1 }}>
+                <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-slate-400 mt-1">
                   {userRole.replace('_', ' ')}
                 </p>
               </motion.div>
@@ -383,31 +370,27 @@ export default function PremiumSidebar({
         {/* Logout */}
         <motion.button
           onClick={onLogout}
-          whileHover={{ background: '#FEF2F2' }}
+          whileHover={{ background: '#FFF1F2' }}
           whileTap={{ scale: 0.96 }}
+          className="group/logout"
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 10,
+            gap: 12,
             padding: expanded ? '8px 10px' : '8px 0',
             justifyContent: expanded ? 'flex-start' : 'center',
             borderRadius: 10,
             background: 'transparent',
             border: 'none',
             cursor: 'pointer',
-            color: '#9CA3AF',
-            fontSize: 14,
-            fontWeight: 500,
+            color: '#64748B',
             width: '100%',
             overflow: 'hidden',
           }}
         >
-          <motion.div
-            whileHover={{ color: '#DC2626' }}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-          >
-            <LogOut size={17} strokeWidth={1.8} />
-          </motion.div>
+          <div className="flex items-center justify-center flex-shrink-0 group-hover/logout:text-red-500 transition-colors">
+            <LogOut size={16} strokeWidth={2.5} />
+          </div>
           <AnimatePresence>
             {expanded && (
               <motion.span
@@ -415,7 +398,7 @@ export default function PremiumSidebar({
                 initial="hide"
                 animate="show"
                 exit="hide"
-                style={{ whiteSpace: 'nowrap' }}
+                className="text-[10px] font-black uppercase tracking-widest text-slate-500 group-hover/logout:text-red-600 transition-colors whitespace-nowrap"
               >
                 Log Out
               </motion.span>
