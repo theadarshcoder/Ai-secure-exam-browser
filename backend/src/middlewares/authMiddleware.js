@@ -30,10 +30,11 @@ const verifyToken = async (req, res, next) => {
             if (!user) {
                 return res.status(403).json({ message: "User account not found" });
             }
-            if (user.currentSessionToken && user.currentSessionToken !== token) {
+            // Security Fix: Strict session check (reject if token in DB is null/empty or mismatch)
+            if (!user.currentSessionToken || user.currentSessionToken !== token) {
                 return res.status(401).json({ 
-                    message: "Security Alert: This session has been terminated because you logged in from another device.",
-                    code: "SESSION_COLLISION" 
+                    message: "Session expired or terminated. Please login again.",
+                    code: "SESSION_TERMINATED" 
                 });
             }
             // Backfill cache (Non-blocking)
@@ -56,7 +57,7 @@ const verifyToken = async (req, res, next) => {
                 code: "INVALID_TOKEN"
             });
         }
-        res.status(403).json({
+        return res.status(403).json({
             message: "Authentication failed",
             code: "AUTH_FAILED"
         });
@@ -66,23 +67,29 @@ const verifyToken = async (req, res, next) => {
 const checkRole = (requiredRoles) => {
     return (req, res, next) => {
         const roles = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
-        if (!roles.includes(req.user.role) && req.user.role !== 'admin' && req.user.role !== 'super_mentor') {
-            return res.status(403).json({ message: `Access denied for ${req.user.role}` });
+        if (!roles.includes(req.user.role)) {
+            return res.status(403).json({ message: `Access denied for ${req.user.role}. This route requires one of: ${roles.join(', ')}` });
         }
         next();
     };
 };
 
 const checkPermission = (requiredPermission) => {
-    return async (req, res, next) => {
-        try {
-            const user = await User.findById(req.user.id);
-            if (user.role === 'admin') return next();
-            if (user.permissions && user.permissions.includes(requiredPermission)) return next();
-            return res.status(403).json({ message: `Missing permission: ${requiredPermission}` });
-        } catch (error) {
-            res.status(500).json({ error: "Permission check failed" });
+    return (req, res, next) => {
+        // ⚡ SCALING: Use permissions directly from the JWT-decoded user object
+        // This avoids a database hit (User.findById) on every request.
+        const { role, permissions } = req.user;
+
+        if (role === 'admin') return next();
+        
+        if (permissions && permissions.includes(requiredPermission)) {
+            return next();
         }
+
+        return res.status(403).json({ 
+            message: `Security: Missing required permission [${requiredPermission}]. Access Denied.`,
+            code: "PERMISSION_DENIED"
+        });
     };
 };
 

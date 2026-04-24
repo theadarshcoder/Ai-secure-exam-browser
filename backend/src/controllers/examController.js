@@ -537,7 +537,7 @@ exports.startExam = asyncHandler(async (req, res) => {
 
         if (redisClient) {
             const cacheKey = `exam_session:${examId}:${studentId}`;
-            const cachedData = await redisClient.hGetAll(cacheKey);
+            const cachedData = await redisClient.hgetall(cacheKey);
             
             if (cachedData && Object.keys(cachedData).length > 0) {
                 try {
@@ -557,12 +557,7 @@ exports.startExam = asyncHandler(async (req, res) => {
                 });
 
                 // Backfill Redis
-                await redisClient.hSet(cacheKey, {
-                    answers: JSON.stringify(liveAnswers),
-                    currentQuestionIndex: liveIndex.toString(),
-                    questionStates: JSON.stringify(liveQuestionStates),
-                    remainingTimeSeconds: liveRemainingTime.toString()
-                });
+                await redisClient.hset(cacheKey, 'answers', JSON.stringify(liveAnswers), 'currentQuestionIndex', liveIndex.toString(), 'questionStates', JSON.stringify(liveQuestionStates), 'remainingTimeSeconds', liveRemainingTime.toString());
                 await redisClient.expire(cacheKey, 86400);
             }
         }
@@ -645,12 +640,7 @@ exports.startExam = asyncHandler(async (req, res) => {
     const redisClient = getRedisClient();
     if (redisClient) {
         const cacheKey = `exam_session:${examId}:${studentId}`;
-        await redisClient.hSet(cacheKey, {
-            answers: JSON.stringify({}),
-            currentQuestionIndex: '0',
-            questionStates: JSON.stringify(initialStates),
-            remainingTimeSeconds: (exam.duration * 60).toString()
-        });
+        await redisClient.hset(cacheKey, 'answers', JSON.stringify({}), 'currentQuestionIndex', '0', 'questionStates', JSON.stringify(initialStates), 'remainingTimeSeconds', (exam.duration * 60).toString());
         await redisClient.expire(cacheKey, 86400);
     }
 
@@ -732,7 +722,7 @@ exports.saveProgress = asyncHandler(async (req, res) => {
     const cacheKey = `exam_session:${examId}:${studentId}`;
     
     if (redisClient && lastUpdated) {
-        const cachedData = await redisClient.hGetAll(cacheKey);
+        const cachedData = await redisClient.hgetall(cacheKey);
         if (cachedData && cachedData.clientLastUpdated) {
             const previousUpdate = parseInt(cachedData.clientLastUpdated);
             if (lastUpdated < previousUpdate) {
@@ -779,7 +769,7 @@ exports.saveProgress = asyncHandler(async (req, res) => {
         updates.push('lastSavedAt', new Date().toISOString());
 
         if (updates.length > 0) {
-            await redisClient.hSet(cacheKey, updates);
+            await redisClient.hset(cacheKey, ...updates);
             await redisClient.expire(cacheKey, 86400);
         }
     }
@@ -856,7 +846,7 @@ exports.resumeExam = asyncHandler(async (req, res) => {
 
     if (redisClient) {
         const cacheKey = `exam_session:${examId}:${studentId}`;
-        const cachedData = await redisClient.hGetAll(cacheKey);
+        const cachedData = await redisClient.hgetall(cacheKey);
         
         if (cachedData && Object.keys(cachedData).length > 0) {
             try {
@@ -875,12 +865,7 @@ exports.resumeExam = asyncHandler(async (req, res) => {
                 liveAnswers[a.questionId] = a.code ? { answer: a.answer, code: a.code } : a.answer;
             });
 
-            await redisClient.hSet(cacheKey, {
-                answers: JSON.stringify(liveAnswers),
-                currentQuestionIndex: liveIndex.toString(),
-                questionStates: JSON.stringify(liveQuestionStates),
-                remainingTimeSeconds: liveRemainingTime.toString()
-            });
+            await redisClient.hset(cacheKey, 'answers', JSON.stringify(liveAnswers), 'currentQuestionIndex', liveIndex.toString(), 'questionStates', JSON.stringify(liveQuestionStates), 'remainingTimeSeconds', liveRemainingTime.toString());
             await redisClient.expire(cacheKey, 86400);
         }
     }
@@ -936,7 +921,7 @@ exports.submitExam = asyncHandler(async (req, res) => {
     if (redisClient) {
         try {
             const cacheKey = `exam_session:${examId}:${studentId}`;
-            const cachedData = await redisClient.hGetAll(cacheKey);
+            const cachedData = await redisClient.hgetall(cacheKey);
             if (cachedData && cachedData.answers) {
                 const redisAnswers = JSON.parse(cachedData.answers);
                 finalAnswers = { ...redisAnswers, ...finalAnswers };

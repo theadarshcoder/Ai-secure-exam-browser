@@ -45,8 +45,7 @@ exports.bulkInvite = asyncHandler(async (req, res) => {
         throw new Error('Exam not found.');
     }
 
-    // Permission check
-    if (exam.creator.toString() !== req.user.id && req.user.role !== 'admin') {
+    if (exam.creator.toString() !== req.user.id && req.user.role !== 'admin' && req.user.role !== 'super_mentor') {
         res.status(403);
         throw new Error('You do not have permission to invite students to this exam.');
     }
@@ -320,22 +319,32 @@ exports.verifyInvite = asyncHandler(async (req, res) => {
         await invite.save();
     }
 
-    // ─── Generate JWT for auto-login ─────────────────────
+    // ─── Generate/Reuse JWT for auto-login ────────────────
     const student = invite.student;
     if (!student) {
         res.status(403);
         throw new Error(GENERIC_ERROR);
     }
 
-    const jwtToken = jwt.sign(
-        { id: student._id, email: student.email, role: student.role || 'student' },
-        process.env.JWT_SECRET,
-        { expiresIn: '24h' }
-    );
+    let jwtToken;
+    // Security Fix: Prevent JWT overlap/race condition if already opened on same device
+    if ((invite.status === 'opened' || invite.status === 'exam_started') && 
+        invite.deviceFingerprint === secureFingerprint && 
+        student.currentSessionToken) {
+        
+        jwtToken = student.currentSessionToken;
+        console.log(`♻️ Reusing existing session token for student: ${student.email}`);
+    } else {
+        jwtToken = jwt.sign(
+            { id: student._id, email: student.email, role: student.role || 'student' },
+            process.env.JWT_SECRET,
+            { expiresIn: '24h' }
+        );
 
-    // Update user's current session token
-    await User.findByIdAndUpdate(student._id, { currentSessionToken: jwtToken });
-    await cacheService.saveUserSession(student._id, jwtToken);
+        // Update user's current session token
+        await User.findByIdAndUpdate(student._id, { currentSessionToken: jwtToken });
+        await cacheService.saveUserSession(student._id, jwtToken);
+    }
 
     res.json({
         message: 'Invitation verified! Redirecting to exam...',
@@ -365,8 +374,7 @@ exports.getInviteStatus = asyncHandler(async (req, res) => {
         throw new Error('Exam not found.');
     }
 
-    // Permission check
-    if (exam.creator.toString() !== req.user.id && req.user.role !== 'admin') {
+    if (exam.creator.toString() !== req.user.id && req.user.role !== 'admin' && req.user.role !== 'super_mentor') {
         res.status(403);
         throw new Error('You do not have permission to view invites for this exam.');
     }
@@ -404,7 +412,7 @@ exports.resendInvite = asyncHandler(async (req, res) => {
         throw new Error('Exam not found.');
     }
 
-    if (exam.creator.toString() !== req.user.id && req.user.role !== 'admin') {
+    if (exam.creator.toString() !== req.user.id && req.user.role !== 'admin' && req.user.role !== 'super_mentor') {
         res.status(403);
         throw new Error('Permission denied.');
     }
