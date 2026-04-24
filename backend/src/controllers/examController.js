@@ -691,7 +691,7 @@ exports.saveProgress = asyncHandler(async (req, res) => {
         throw new Error('examId is required!');
     }
 
-    // 🛡️ GRANULAR VALIDATION: Payload Exhaustion Guard
+    // 🛡️ GRANULAR VALIDATION: Payload Exhaustion & Format Guard
     if (answers && typeof answers === 'object') {
         const keys = Object.keys(answers);
         if (keys.length > 200) {
@@ -699,12 +699,21 @@ exports.saveProgress = asyncHandler(async (req, res) => {
             throw new Error('Malformed payload: Excessive answer keys.');
         }
         for (const qId of keys) {
-            const answerContent = typeof answers[qId] === 'object' ? (answers[qId]?.code || '') : answers[qId];
+            const answerVal = answers[qId];
+            
+            // Format Validation: Check if answer is too large or invalid type
+            const answerContent = typeof answerVal === 'object' ? (answerVal?.code || answerVal?.answer || '') : answerVal;
             const contentLength = typeof answerContent === 'string' ? answerContent.length : JSON.stringify(answerContent || '').length;
             
             if (contentLength > 10000) {
                 res.status(400);
                 throw new Error(`Payload too large: Answer for question ${qId} exceeds 10KB limit.`);
+            }
+
+            // Type Validation
+            if (answerVal !== null && typeof answerVal !== 'string' && typeof answerVal !== 'number' && typeof answerVal !== 'object') {
+                res.status(400);
+                throw new Error(`Invalid answer format for question ${qId}`);
             }
         }
     }
@@ -910,9 +919,20 @@ exports.submitExam = asyncHandler(async (req, res) => {
     }
 
     // Bug Fix: Submission Lock (Guardrail 3)
-    if (session.status === 'submitted' || session.status === 'auto_submitted') {
+    if (session.status === 'submitted' || session.status === 'auto_submitted' || session.status === 'blocked') {
         res.status(400);
-        throw new Error('This exam has already been submitted.');
+        throw new Error(`This exam cannot be submitted. Status: ${session.status}`);
+    }
+
+    // ⏱️ Fix: Timer Validation (Compare startTime + duration)
+    const currentTime = Date.now();
+    const startTime = new Date(session.startedAt).getTime();
+    const durationMs = exam.duration * 60 * 1000;
+    const bufferMs = 60000; // 60 seconds buffer for network lag
+
+    if (currentTime > (startTime + durationMs + bufferMs)) {
+        res.status(400);
+        throw new Error('Exam time has expired. Submission rejected.');
     }
 
     // 🚀 Redis Final Merge Logic
@@ -923,8 +943,14 @@ exports.submitExam = asyncHandler(async (req, res) => {
             const cacheKey = `exam_session:${examId}:${studentId}`;
             const cachedData = await redisClient.hgetall(cacheKey);
             if (cachedData && cachedData.answers) {
-                const redisAnswers = JSON.parse(cachedData.answers);
-                finalAnswers = { ...redisAnswers, ...finalAnswers };
+                try {
+                    const redisAnswers = JSON.parse(cachedData.answers);
+                    if (redisAnswers && typeof redisAnswers === 'object') {
+                        finalAnswers = { ...redisAnswers, ...finalAnswers };
+                    }
+                } catch (parseErr) {
+                    console.error('⚠️ Redis Answers parse failed in submitExam:', parseErr.message);
+                }
             }
             await redisClient.del(cacheKey); // Clean up hash
         } catch (redisErr) {
@@ -1281,10 +1307,26 @@ exports.logIncident = asyncHandler(async (req, res) => {
         { upsert: true, new: true }
     );
 
+    // 🛡️ Fix 2: Cheating Protection Enforcement
+    const globalSettings = await Setting.findOne() || { maxTabSwitches: 5 };
+    if (session.tabSwitchCount >= globalSettings.maxTabSwitches && session.status === 'in_progress') {
+        session.status = 'blocked';
+        session.blockReason = 'Excessive tab switching detected by system proctor';
+        await session.save();
+
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`student_${studentId}`).emit('force_block_screen', {
+                reason: session.blockReason
+            });
+        }
+    }
+
     res.json({ 
         message: 'Incident logged', 
         violationCount: session.violations.length,
-        tabSwitches: session.tabSwitchCount
+        tabSwitches: session.tabSwitchCount,
+        status: session.status
     });
 });
 

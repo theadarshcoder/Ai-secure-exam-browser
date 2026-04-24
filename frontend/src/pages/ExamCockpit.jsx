@@ -1413,6 +1413,10 @@ export default function ExamCockpit() {
             (Date.now() - bgHiddenTimeRef.current) / 1000,
           );
           socketService.emitViolationReport("TAB_HIDDEN", duration, examId);
+          
+          // 🛡️ Fix 2: Persistent Cheating Protection
+          logIncident("Tab Switch", "high", `User left exam environment for ${duration}s`);
+          
           bgHiddenTimeRef.current = null;
           setIsTabViolation(true);
         }
