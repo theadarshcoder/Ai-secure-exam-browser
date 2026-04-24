@@ -9,7 +9,8 @@ import {
   CheckCircle2, ArrowUpRight, ArrowDownRight,
   Filter, Download, Eye, Power, Users, ShieldCheck, 
   Edit3, RefreshCw, Trash2, X, Check, AlertCircle,
-  Code, MessageSquare, Star, CheckCircle, AlertOctagon, EyeOff
+  Code, MessageSquare, Star, CheckCircle, AlertOctagon, EyeOff,
+  TrendingUp, Search, Activity
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import PremiumSidebar from '../components/PremiumSidebar';
@@ -24,7 +25,8 @@ import {
   getSessionDetail,
   evaluateSession,
   togglePublishResults,
-  deleteExam
+  deleteExam,
+  getStudents
 } from '../services/api';
 import AnimatedStatusIcon from '../components/AnimatedStatusIcon';
 
@@ -407,10 +409,12 @@ export default function MentorDashboard() {
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({ liveStudents: 0, totalSubmissions: 0, flags: 0, totalExams: 0 });
   const [activity, setActivity] = useState([]);
+  const [students, setStudents] = useState([]);
   const [exams, setExams] = useState([]);
   const [results, setResults] = useState([]);
   const [resultFilter, setResultFilter] = useState('ALL');
   const [selectedResults, setSelectedResults] = useState(new Set());
+  const [userSearchQuery, setUserSearchQuery] = useState('');
 
   const [searchFilter, setSearchFilter] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -430,7 +434,7 @@ export default function MentorDashboard() {
   // Confirm modal system
   const [confirmModal, setConfirmModal] = useState({ show: false, msg: '', onConfirm: null });
   const showConfirm = (msg, onConfirm) => setConfirmModal({ show: true, msg, onConfirm });
-  const closeConfirm = () => setConfirmModal({ show: false, msg: '', onConfirm: null });
+  const closeConfirm = () => setConfirmModal({ show: false, msg, onConfirm: null });
 
   // Setup search debouncing
   useEffect(() => {
@@ -502,6 +506,9 @@ export default function MentorDashboard() {
         const res = await getAllResults();
         const data = res?.results || res || [];
         setResults(Array.isArray(data) ? data : []);
+      } else if (tab === 'Academics') {
+        const res = await getStudents();
+        setStudents(res.students || []);
       }
     } catch (err) {
       console.error('Failed to fetch data:', err);
@@ -603,6 +610,7 @@ export default function MentorDashboard() {
     { id: 'Overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'Exam Management', label: 'Exam Library', icon: FileText },
     { id: 'Results & Reports', label: 'Results & Reports', icon: BarChart3 },
+    { id: 'Academics', label: 'Academic Insights', icon: TrendingUp },
   ];
 
   /* ─────────────────────────────────────────────────────────
@@ -924,11 +932,81 @@ export default function MentorDashboard() {
     </div>
   );
 
+  const renderAcademics = () => (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+            <TrendingUp size={24} className="text-blue-600" /> Academic Intelligence
+          </h2>
+          <p className="text-xs text-slate-500 mt-1 font-medium uppercase tracking-widest">Global Student Behavioral Analytics</p>
+        </div>
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="relative flex-1 md:w-64">
+             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+             <input 
+               type="text" 
+               placeholder="Search students..." 
+               value={userSearchQuery}
+               onChange={e => setUserSearchQuery(e.target.value)}
+               className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+             />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {students.filter(s => 
+          !userSearchQuery || 
+          s.name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+          s.email.toLowerCase().includes(userSearchQuery.toLowerCase())
+        ).map((student) => (
+          <div key={student._id} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:scale-125 transition-transform duration-500">
+              <Star size={64} className="text-blue-600" />
+            </div>
+            
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-lg shadow-sm">
+                {student.name.charAt(0)}
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{student.name}</h3>
+                <p className="text-[11px] text-slate-400 font-medium">{student.email}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-50">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Enrolled On</span>
+                <span className="text-xs font-semibold text-slate-600">{new Date(student.createdAt).toLocaleDateString()}</span>
+              </div>
+              <button 
+                onClick={() => navigate(`/admin/students/${student._id}/intelligence`)}
+                className="px-4 py-2 bg-blue-600 text-white text-[10px] font-bold uppercase tracking-widest rounded-lg hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 active:scale-95 flex items-center gap-2"
+              >
+                <ShieldCheck size={14} /> Analysis
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      {students.length === 0 && (
+        <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
+          <Users size={48} className="mx-auto text-slate-200 mb-4" />
+          <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">No students found to analyze.</p>
+        </div>
+      )}
+    </div>
+  );
+
   const renderContent = () => {
     switch (activeTab) {
       case 'Overview': return renderOverview();
       case 'Exam Management': return renderExamLibrary();
       case 'Results & Reports': return renderResults();
+      case 'Academics': return renderAcademics();
       default: return null;
     }
   };
