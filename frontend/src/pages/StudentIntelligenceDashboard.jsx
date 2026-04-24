@@ -314,6 +314,7 @@ const StudentIntelligenceDashboard = () => {
                     <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 bg-gradient-to-br from-white to-gray-50">
                         <h2 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
                             <Brain size={20} className="text-purple-600" /> AI Insights
+                            <span className="text-[10px] bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter ml-1">BETA</span>
                         </h2>
                         
                         <div className="space-y-4">
@@ -335,6 +336,22 @@ const StudentIntelligenceDashboard = () => {
                                 value={intelligence.cheatingPattern}
                                 sub="Behavioral consistency check"
                             />
+                            
+                            <div className="pt-4 mt-4 border-t border-dashed border-gray-200">
+                                <div className="flex gap-4 items-start opacity-50 grayscale">
+                                    <div className="mt-1 p-2 bg-gray-50 rounded-lg">
+                                        <Target className="text-gray-400" size={16} />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">Predictive Risk</p>
+                                            <span className="text-[8px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-black uppercase tracking-tighter">Coming Soon</span>
+                                        </div>
+                                        <p className="text-sm font-black text-gray-400 mt-1">N/A</p>
+                                        <p className="text-[10px] text-gray-400 italic font-medium">Future performance prediction</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
