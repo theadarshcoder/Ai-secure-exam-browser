@@ -22,7 +22,8 @@ const saveUserSession = async (userId, token) => {
 
     try {
         const key = `${SESSION_PREFIX}${userId}`;
-        await redis.set(key, token, { EX: DEFAULT_TTL });
+        // ioredis syntax: .set(key, value, 'EX', ttl)
+        await redis.set(key, token, 'EX', DEFAULT_TTL);
         console.log(`📡 Redis: Cached session for user ${userId}`);
     } catch (err) {
         console.warn('⚠️  Redis: Failed to save user session:', err.message);
@@ -68,7 +69,7 @@ const setCache = async (key, data, ttl = TTL_API_CACHE) => {
     const redis = getRedisClient();
     if (!redis) return;
     try {
-        await redis.set(key, JSON.stringify(data), { EX: ttl });
+        await redis.set(key, JSON.stringify(data), 'EX', ttl);
     } catch (err) {
         console.warn(`⚠️  Redis: Failed to set cache for ${key}:`, err.message);
     }
@@ -110,7 +111,7 @@ const clearPattern = async (pattern) => {
     if (!redis) return;
     try {
         const keys = await redis.keys(pattern);
-        if (keys.length > 0) {
+        if (keys && keys.length > 0) {
             await redis.del(keys);
             console.log(`📡 Redis: Cleared ${keys.length} keys matching pattern: ${pattern}`);
         }

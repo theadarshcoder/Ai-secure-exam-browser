@@ -1,12 +1,11 @@
 const { Queue } = require('bullmq');
+const { getRedisConnection } = require('../config/redis');
 
-const REDIS_OPTIONS = {
-    connection: {
-        url: process.env.REDIS_URL || 'redis://127.0.0.1:6373',
-    }
-};
+// 🚀 Use the shared singleton connection
+const connection = getRedisConnection();
 
-const intelligenceQueue = new Queue('intelligence_queue', REDIS_OPTIONS);
+const intelligenceQueue = new Queue('intelligence_queue', { connection });
+
 
 /**
  * 🚀 Add job to pre-calculate student intelligence

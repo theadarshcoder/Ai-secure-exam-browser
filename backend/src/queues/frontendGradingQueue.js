@@ -1,12 +1,15 @@
 const { Queue, Worker } = require('bullmq');
 const { evaluateFrontendCode } = require('../services/frontendGradingService');
+const { getRedisConnection } = require('../config/redis');
 
-const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+// 🚀 Use the shared singleton connection
+const connection = getRedisConnection();
 
 // 1. Initialize Queue (Producer)
 const frontendEvaluationQueue = new Queue('FrontendEvaluation', { 
-    connection: { url: redisUrl } 
+    connection 
 });
+
 
 /**
  * Adds a frontend evaluation job to the BullMQ queue.
@@ -58,10 +61,11 @@ const setupFrontendEvaluationWorker = (io) => {
             throw err;
         }
     }, { 
-        connection: { url: redisUrl },
+        connection,
         concurrency: 3, // Lower concurrency for frontend as JSDOM/Babel are heavier
         lockDuration: 10000 // 10 seconds lock
     });
+
 
     worker.on('completed', (job) => {
         console.log(`✅ [Worker] Frontend Job ${job.id} completed for student ${job.data.studentId}`);

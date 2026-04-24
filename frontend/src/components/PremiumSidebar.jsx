@@ -178,151 +178,171 @@ export default function PremiumSidebar({
             zIndex: 0,
           }} />
           
-        {navItems.map((item) => {
+        {navItems.map((item, idx) => {
           const isActive = activeTab === item.id;
           const isHovered = hoveredId === item.id;
           const IconComp = item.icon;
 
+          // Render section header if present and different from previous or first
+          const showSection = item.section && (idx === 0 || navItems[idx - 1].section !== item.section);
+
           return (
-            <div
-              key={item.id}
-              style={{ position: 'relative' }}
-              onMouseEnter={() => setHoveredId(item.id)}
-            >
-              {/* Externalized Hover Slider Pill */}
-              {isHovered && (
-                <motion.div
-                  layoutId="hoverTracker"
-                  style={{
-                    position: 'absolute',
-                    left: expanded ? 8 : 4,
-                    top: '15%',
-                    bottom: '15%',
-                    width: 3,
-                    borderRadius: 3,
-                    background: '#CBD5E1',
-                    zIndex: 8,
-                  }}
-                  transition={{ type: 'spring', stiffness: 280, damping: 24, mass: 0.8 }}
-                />
+            <React.Fragment key={item.id}>
+              {showSection && expanded && (
+                <div style={{
+                  padding: '16px 14px 6px',
+                  fontSize: '9px',
+                  fontWeight: 800,
+                  color: '#94A3B8',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.12em',
+                  zIndex: 1,
+                }}>
+                  {item.section}
+                </div>
+              )}
+              {showSection && !expanded && (
+                <div style={{ height: 1, background: '#F1F5F9', margin: '8px 4px' }} />
               )}
 
-              {/* Externalized Active Tracking Pill */}
-              {isActive && (
-                <motion.div
-                  layoutId="verticalTracker"
-                  style={{
-                    position: 'absolute',
-                    left: expanded ? 8 : 4,
-                    top: '15%',
-                    bottom: '15%',
-                    width: 3,
-                    borderRadius: 3,
-                    background: '#111111',
-                    zIndex: 10,
-                  }}
-                  transition={{ type: 'spring', stiffness: 280, damping: 24, mass: 0.8 }}
-                />
-              )}
-
-              <motion.button
-                onClick={() => setActiveTab(item.id)}
-                whileTap={{ scale: 0.96 }}
-                title={!expanded ? item.label : undefined}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: expanded ? '6px 12px' : '10px 0',
-                  justifyContent: expanded ? 'flex-start' : 'center',
-                  borderRadius: 8,
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: 'transparent',
-                  transition: 'background 0.15s ease',
-                  outline: 'none',
-                  position: 'relative',
-                  overflow: 'hidden',
-                }}
+              <div
+                style={{ position: 'relative' }}
+                onMouseEnter={() => setHoveredId(item.id)}
               >
-                {/* Icon container */}
-                <motion.div
-                  animate={{
-                    background: 'transparent',
-                  }}
-                  transition={{ duration: 0.15 }}
+                {/* Externalized Hover Slider Pill */}
+                {isHovered && (
+                  <motion.div
+                    layoutId="hoverTracker"
+                    style={{
+                      position: 'absolute',
+                      left: expanded ? 8 : 4,
+                      top: '15%',
+                      bottom: '15%',
+                      width: 3,
+                      borderRadius: 3,
+                      background: '#CBD5E1',
+                      zIndex: 8,
+                    }}
+                    transition={{ type: 'spring', stiffness: 280, damping: 24, mass: 0.8 }}
+                  />
+                )}
+
+                {/* Externalized Active Tracking Pill */}
+                {isActive && (
+                  <motion.div
+                    layoutId="verticalTracker"
+                    style={{
+                      position: 'absolute',
+                      left: expanded ? 8 : 4,
+                      top: '15%',
+                      bottom: '15%',
+                      width: 3,
+                      borderRadius: 3,
+                      background: '#111111',
+                      zIndex: 10,
+                    }}
+                    transition={{ type: 'spring', stiffness: 280, damping: 24, mass: 0.8 }}
+                  />
+                )}
+
+                <motion.button
+                  onClick={() => setActiveTab(item.id)}
+                  whileTap={{ scale: 0.96 }}
+                  title={!expanded ? item.label : undefined}
                   style={{
-                    width: 24,
-                    height: 24,
+                    width: '100%',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
+                    gap: 8,
+                    padding: expanded ? '6px 12px' : '10px 0',
+                    justifyContent: expanded ? 'flex-start' : 'center',
+                    borderRadius: 8,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: 'transparent',
+                    transition: 'background 0.15s ease',
+                    outline: 'none',
                     position: 'relative',
-                    zIndex: 1,
+                    overflow: 'hidden',
                   }}
                 >
-                  <motion.span
-                    animate={{ color: isActive ? '#111111' : isHovered ? '#374151' : '#6B7280' }}
+                  {/* Icon container */}
+                  <motion.div
+                    animate={{
+                      background: 'transparent',
+                    }}
                     transition={{ duration: 0.15 }}
-                  >
-                    <IconComp size={17} strokeWidth={isActive ? 2.2 : 1.8} />
-                  </motion.span>
-                </motion.div>
-
-                {/* Label */}
-                <AnimatePresence>
-                  {expanded && (
-                    <motion.span
-                      variants={labelVariants}
-                      initial="hide"
-                      animate="show"
-                      exit="hide"
-                      style={{
-                        fontSize: 14,
-                        fontWeight: isActive ? 600 : 450,
-                        color: isActive ? '#1E1E2E' : '#6B7280',
-                        letterSpacing: '-0.01em',
-                        whiteSpace: 'nowrap',
-                        flex: 1,
-                        textAlign: 'left',
-                        position: 'relative',
-                        zIndex: 1,
-                      }}
-                    >
-                      {item.label}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-
-                {/* Badge */}
-                {item.badge != null && item.badge > 0 && (
-                  <motion.span
-                    animate={{ opacity: 1, scale: 1 }}
-                    initial={{ opacity: 0, scale: 0.6 }}
                     style={{
-                      minWidth: 20,
-                      height: 20,
-                      borderRadius: 10,
-                      background: '#EF4444',
-                      color: '#FFF',
-                      fontSize: 10,
-                      fontWeight: 800,
+                      width: 24,
+                      height: 24,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      padding: '0 5px',
+                      flexShrink: 0,
                       position: 'relative',
                       zIndex: 1,
                     }}
                   >
-                    {item.badge}
-                  </motion.span>
-                )}
-              </motion.button>
+                    <motion.span
+                      animate={{ color: isActive ? '#111111' : isHovered ? '#374151' : '#6B7280' }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      <IconComp size={17} strokeWidth={isActive ? 2.2 : 1.8} />
+                    </motion.span>
+                  </motion.div>
 
-            </div>
+                  {/* Label */}
+                  <AnimatePresence>
+                    {expanded && (
+                      <motion.span
+                        variants={labelVariants}
+                        initial="hide"
+                        animate="show"
+                        exit="hide"
+                        style={{
+                          fontSize: 14,
+                          fontWeight: isActive ? 600 : 450,
+                          color: isActive ? '#1E1E2E' : '#6B7280',
+                          letterSpacing: '-0.01em',
+                          whiteSpace: 'nowrap',
+                          flex: 1,
+                          textAlign: 'left',
+                          position: 'relative',
+                          zIndex: 1,
+                        }}
+                      >
+                        {item.label}
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Badge */}
+                  {item.badge != null && item.badge > 0 && (
+                    <motion.span
+                      animate={{ opacity: 1, scale: 1 }}
+                      initial={{ opacity: 0, scale: 0.6 }}
+                      style={{
+                        minWidth: 20,
+                        height: 20,
+                        borderRadius: 10,
+                        background: '#EF4444',
+                        color: '#FFF',
+                        fontSize: 10,
+                        fontWeight: 800,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '0 5px',
+                        position: 'relative',
+                        zIndex: 1,
+                      }}
+                    >
+                      {item.badge}
+                    </motion.span>
+                  )}
+                </motion.button>
+              </div>
+            </React.Fragment>
           );
         })}
         </div>

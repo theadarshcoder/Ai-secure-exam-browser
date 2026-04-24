@@ -4,12 +4,11 @@ const ExamSession = require('../models/ExamSession');
 const User = require('../models/User');
 const Setting = require('../models/Setting');
 const { setCache } = require('../services/cacheService');
+const { getRedisConnection } = require('../config/redis');
 
-const REDIS_OPTIONS = {
-    connection: {
-        url: process.env.REDIS_URL || 'redis://127.0.0.1:6373',
-    }
-};
+// 🚀 Use the shared singleton connection
+const connection = getRedisConnection();
+
 
 /**
  * 🛠️ Intelligence Worker Logic
@@ -114,7 +113,8 @@ const startIntelligenceWorker = () => {
             console.error(`❌ Worker error for student ${studentId}:`, err.message);
             throw err;
         }
-    }, REDIS_OPTIONS);
+    }, { connection });
+
 
     worker.on('failed', (job, err) => {
         console.error(`💥 Job ${job.id} failed:`, err.message);

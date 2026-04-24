@@ -1,12 +1,13 @@
 const { Queue, Worker } = require('bullmq');
 const { executeCode } = require('../services/judge0');
+const { getRedisConnection } = require('../config/redis');
 
-// Use REDIS_URL from .env (standard across our platform)
-const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+// 🚀 Use the shared singleton connection
+const connection = getRedisConnection();
 
 // 1. Initialize Queue (Producer)
 const codeEvaluationQueue = new Queue('CodeEvaluation', { 
-    connection: { url: redisUrl } 
+    connection
 });
 
 /**
@@ -25,7 +26,6 @@ const addCodeEvaluationJob = async (jobData) => {
 };
 
 // 2. Setup Worker (Consumer)
-// This runner processes jobs in the background and broadcasts results via Socket.IO
 const setupCodeEvaluationWorker = (io) => {
     if (!io) {
         console.warn('⚠️ [Worker] Socket.IO instance missing. Worker results will not be broadcasted.');
@@ -63,7 +63,6 @@ const setupCodeEvaluationWorker = (io) => {
                         error: executionResult.error,
                         status: executionResult.status
                     });
-                    // On fatal execution error, we might stop further test cases for this code
                     break;
                 }
             } catch (err) {
@@ -74,7 +73,7 @@ const setupCodeEvaluationWorker = (io) => {
             }
         }
 
-        // Final result broadcast to student's private socket room
+        // Final result broadcast
         if (io) {
             io.to(`user_${studentId}`).emit('code_evaluation_result', {
                 questionId,
@@ -86,8 +85,8 @@ const setupCodeEvaluationWorker = (io) => {
 
         return { allPassed, results };
     }, { 
-        connection: { url: redisUrl },
-        concurrency: 5 // Process 5 codes in parallel (Adjust based on Judge0 tier)
+        connection,
+        concurrency: 5 
     });
 
     worker.on('completed', (job) => {

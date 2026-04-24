@@ -125,7 +125,8 @@ const createRedisStore = (label) => {
         return undefined; 
     }
     return new RedisStore({
-        sendCommand: (...args) => client.sendCommand(args),
+        // ioredis uses .call() for raw commands
+        sendCommand: (...args) => client.call(...args),
         prefix: `vision_rl:${label}:`,
     });
 };

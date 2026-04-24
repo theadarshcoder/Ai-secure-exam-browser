@@ -858,14 +858,14 @@ export default function AdminDashboard() {
   };
 
   const tabs = [
-    { id: 'Overview', label: 'Overview', icon: LayoutDashboard, access: ['admin', 'super_mentor'] },
-    { id: 'LiveMonitoring', label: 'Live Monitoring', icon: Radio, access: ['admin', 'super_mentor', 'mentor'], badge: liveSessions.length },
-    { id: 'Users', label: 'User Management', icon: Users, access: ['admin', 'super_mentor'] },
-    { id: 'Candidates', label: 'Candidates', icon: ScanFace, access: ['admin', 'super_mentor'] },
-    { id: 'Exams', label: 'Exam Library', icon: FileText, access: ['admin', 'super_mentor'] },
-    { id: 'Results', label: 'Results & Reports', icon: BarChart3, access: ['admin', 'super_mentor'] },
-    { id: 'Academics', label: 'Academic Insights', icon: TrendingUp, access: ['admin', 'super_mentor', 'mentor'] },
-    { id: 'Settings', label: 'System Settings', icon: Settings, access: ['admin'] },
+    { id: 'Overview', label: 'Overview', icon: LayoutDashboard, access: ['admin', 'super_mentor'], section: 'System Main' },
+    { id: 'LiveMonitoring', label: 'Live Monitoring', icon: Radio, access: ['admin', 'super_mentor', 'mentor'], badge: liveSessions.length, section: 'System Main' },
+    { id: 'Users', label: 'User Management', icon: Users, access: ['admin', 'super_mentor'], section: 'User Management' },
+    { id: 'Candidates', label: 'Candidates', icon: ScanFace, access: ['admin', 'super_mentor'], section: 'User Management' },
+    { id: 'Exams', label: 'Exam Library', icon: FileText, access: ['admin', 'super_mentor'], section: 'Management' },
+    { id: 'Results', label: 'Results & Reports', icon: BarChart3, access: ['admin', 'super_mentor'], section: 'Intelligence & Oversight' },
+    { id: 'Academics', label: 'Academic Insights', icon: TrendingUp, access: ['admin', 'super_mentor', 'mentor'], section: 'Intelligence & Oversight' },
+    { id: 'Settings', label: 'System Settings', icon: Settings, access: ['admin'], section: 'Platform' },
   ];
 
   const visibleTabs = tabs.filter(t => t.access.includes(userRole));

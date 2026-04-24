@@ -7,13 +7,16 @@
 const { Queue, Worker } = require('bullmq');
 const { sendInviteEmail } = require('../services/emailService');
 const ExamInvite = require('../models/ExamInvite');
+const { getRedisConnection } = require('../config/redis');
 
-const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+// 🚀 Use the shared singleton connection
+const connection = getRedisConnection();
 
 // ─── Queue (Producer) ────────────────────────────────────
 const inviteEmailQueue = new Queue('InviteEmail', {
-    connection: { url: redisUrl }
+    connection
 });
+
 
 /**
  * Add multiple invite email jobs in a single Redis transaction.
@@ -72,9 +75,10 @@ const setupInviteEmailWorker = () => {
 
         return result;
     }, {
-        connection: { url: redisUrl },
+        connection,
         concurrency: 3  // Process 3 emails in parallel (Resend free tier friendly)
     });
+
 
     worker.on('completed', (job) => {
         console.log(`✅ [Invite Worker] Job ${job.id} completed for ${job.data.email}`);
