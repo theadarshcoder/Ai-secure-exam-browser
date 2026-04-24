@@ -972,6 +972,7 @@ export default function ExamCockpit() {
   const [helpStatus, setHelpStatus] = useState("idle");
   const [isTabViolation, setIsTabViolation] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
+  const [blockReason, setBlockReason] = useState("");
   const [activeWarning, setActiveWarning] = useState(null);
   const [camError, setCamError] = useState(false);
   const [settings, setSettings] = useState(null);
@@ -1080,6 +1081,24 @@ export default function ExamCockpit() {
     socket.on("code_evaluation_error", handleCodeEvaluationError);
     socket.on("warning", handleWarning);
 
+    // 🛡️ Proctoring: Real-time Block/Unblock Handlers
+    socket.on("force_block_screen", (data) => {
+      console.log("🔒 Received force_block_screen:", data);
+      setBlockReason(data.reason || "");
+      setIsBlocked(true);
+      toast.error(data.reason || "Your screen has been blocked by an administrator.", { 
+        id: "force-block-toast",
+        duration: Infinity 
+      });
+    });
+
+    socket.on("unblock_screen", () => {
+      console.log("🔓 Received unblock_screen");
+      setIsBlocked(false);
+      toast.dismiss("force-block-toast");
+      toast.success("Screen unblocked by supervisor. You may resume.", { duration: 5000 });
+    });
+
     // 🛡️ Sync Socket if Token Refreshed
     socketService.reAuth();
 
@@ -1089,6 +1108,8 @@ export default function ExamCockpit() {
       socket.off("code_evaluation_result", handleCodeEvaluationResult);
       socket.off("code_evaluation_error", handleCodeEvaluationError);
       socket.off("warning", handleWarning);
+      socket.off("force_block_screen");
+      socket.off("unblock_screen");
     };
   }, [examId]);
 
@@ -1283,7 +1304,7 @@ export default function ExamCockpit() {
   const handleRequestHelp = async () => {
     try {
       setHelpStatus("loading");
-      await requestHelp("Student needs manual intervention or has a query.");
+      await requestHelp(examId, "Student needs manual intervention or has a query.");
       setHelpStatus("success");
       toast.success("Help request sent to supervisor.");
       setTimeout(() => setHelpStatus("idle"), 5000);
@@ -2753,7 +2774,7 @@ export default function ExamCockpit() {
         )}
       </AnimatePresence>
 
-      <FullBlockOverlay isOpen={isBlocked} />
+      <FullBlockOverlay isOpen={isBlocked} reason={blockReason} />
 
       <StudentMessageModal 
         userId={sessionStorage.getItem("vision_id") || sessionStorage.getItem("vision_email")} 
