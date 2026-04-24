@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { getStudentReport } from '../services/api';
 import { 
     TrendingUp, 
     AlertTriangle, 
@@ -36,7 +36,6 @@ const StudentIntelligenceDashboard = () => {
     const { studentId } = useParams();
     const navigate = useNavigate();
     const dashboardRef = useRef(null);
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
     
     const [loading, setLoading] = useState(true);
     const [report, setReport] = useState(null);
@@ -46,10 +45,7 @@ const StudentIntelligenceDashboard = () => {
         const fetchIntelligence = async () => {
             try {
                 setLoading(true);
-                const token = sessionStorage.getItem('vision_token');
-                const { data } = await axios.get(`${API_URL}/api/admin/students/${studentId}/report?page=${page}&limit=10`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                const data = await getStudentReport(studentId, page, 10);
                 setReport(data);
             } catch (error) {
                 console.error("Failed to fetch student report", error);
