@@ -185,7 +185,7 @@ const ExamCard = ({ exam, now, onLaunch, onViewResults, index }) => {
           ${btnDisabled 
             ? 'bg-transparent text-slate-600 cursor-not-allowed border border-slate-200' 
             : btnSecondary 
-              ? 'bg-slate-50 text-slate-300 hover:bg-slate-100 border border-slate-200'
+              ? 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200'
               : 'bg-slate-900 text-white hover:bg-slate-700 border border-slate-900 shadow-sm hover:shadow active:scale-[0.98]'
           }`}
       >
