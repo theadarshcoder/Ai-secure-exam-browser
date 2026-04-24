@@ -55,7 +55,7 @@ const StudentIntelligenceDashboard = () => {
             }
         };
         fetchIntelligence();
-    }, [studentId, page, API_URL]);
+    }, [studentId, page]);
 
     const handleDownloadPDF = async () => {
         const element = dashboardRef.current;
