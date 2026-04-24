@@ -23,12 +23,22 @@ exports.getStudentIntelligence = asyncHandler(async (req, res) => {
         return res.json(JSON.parse(cachedData));
     }
 
-    // 2. Dynamic Thresholds from Settings
+    // 2. Validate Student ID
+    if (!mongoose.isValidObjectId(studentId)) {
+        return res.status(400).json({ error: 'Invalid Student ID format' });
+    }
+
+    const student = await User.findById(studentId).select('name email profilePicture isVerified').lean();
+    if (!student) {
+        return res.status(404).json({ error: 'Student not found' });
+    }
+
+    // 3. Dynamic Thresholds from Settings
     const settings = await Setting.findOne().lean() || {};
     const ANOMALY_THRESHOLD = settings.anomalyThreshold || 25;
     const MAX_TAB_SWITCHES = settings.maxTabSwitches || 5;
 
-    // 3. Optimized Aggregation Pipeline
+    // 4. Optimized Aggregation Pipeline
     const results = await ExamSession.aggregate([
         { 
             $match: { 
@@ -174,8 +184,6 @@ exports.getStudentIntelligence = asyncHandler(async (req, res) => {
     }
 
     // --- Final Response Structure ---
-    const student = await User.findById(studentId).select('name email profilePicture isVerified').lean();
-    
     const response = {
         student: {
             info: student,
