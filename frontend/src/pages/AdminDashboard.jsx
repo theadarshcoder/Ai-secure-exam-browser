@@ -392,6 +392,7 @@ export default function AdminDashboard() {
   const [notifications, setNotifications] = useState([]);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   const [users, setUsers] = useState([]);
+  const [students, setStudents] = useState([]);
   const [selectedUsers, setSelectedUsers] = useState(new Set());
   const [userRoleFilter, setUserRoleFilter] = useState('ALL');
   const [userSearchQuery, setUserSearchQuery] = useState('');
@@ -552,6 +553,10 @@ export default function AdminDashboard() {
           } else if (tab === 'LiveMonitoring') {
               const res = await getLiveSessions();
               setLiveSessions(res || []);
+          } else if (tab === 'Academics') {
+              const res = await getStudents().catch(() => ({ students: [] }));
+              const studentsData = res?.students || res || [];
+              setStudents(studentsData);
           }
       } catch (err) {
           console.error("Failed fetching data:", err);
@@ -1398,7 +1403,10 @@ export default function AdminDashboard() {
     </div>
   );
 
-  const renderAcademics = () => (
+  const renderAcademics = () => {
+    // We use the dedicated students state here
+
+    return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
         <div>
@@ -1466,6 +1474,7 @@ export default function AdminDashboard() {
       )}
     </div>
   );
+};
 
   const renderResults = () => (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
