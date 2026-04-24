@@ -103,13 +103,31 @@ const StudentIntelligenceDashboard = () => {
 
     if (!report) return <div className="text-center text-red-500 mt-10">Intelligence data not found.</div>;
 
-    const { student, intelligence, insights, timelineData, pagination } = report;
+    const { student, intelligence, insights, timelineData = [], pagination } = report;
     
     // Prepare chart data (reversed to show chronological order)
-    const chartData = [...timelineData].reverse().map(item => ({
-        name: new Date(item.submittedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        score: item.percentage
+    const chartData = (timelineData || []).slice().reverse().map(item => ({
+        name: item.submittedAt ? new Date(item.submittedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A',
+        score: item.percentage || 0
     }));
+
+    if (!student || !student.info) {
+        return (
+            <div className="flex flex-col items-center justify-center h-screen bg-gray-50 p-8 text-center">
+                <div className="bg-white p-8 rounded-3xl shadow-xl border border-red-100 max-w-md">
+                    <AlertTriangle className="text-red-500 mx-auto mb-4" size={48} />
+                    <h2 className="text-xl font-bold text-gray-900 mb-2">Student Not Found</h2>
+                    <p className="text-gray-500 mb-6">The student record you are looking for does not exist or has been removed.</p>
+                    <button 
+                        onClick={() => navigate(-1)}
+                        className="px-6 py-2 bg-gray-900 text-white rounded-xl font-bold text-sm"
+                    >
+                        Return to Dashboard
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div ref={dashboardRef} className="p-4 md:p-8 bg-gray-50 min-h-screen font-sans text-gray-900">
