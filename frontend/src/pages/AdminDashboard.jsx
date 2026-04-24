@@ -1578,15 +1578,6 @@ export default function AdminDashboard() {
                        <><Eye size={12} /> View</>
                      )}
                    </button>
-                   {res.studentId && (
-                     <button 
-                       onClick={() => navigate(`/admin/students/${res.studentId}/intelligence`)}
-                       className="text-blue-600 hover:text-blue-700 font-bold text-[11px] uppercase tracking-widest flex items-center gap-1 active:scale-95"
-                       title="View Intelligence Report"
-                     >
-                       <ShieldCheck size={12} /> Intelligence
-                     </button>
-                   )}
                 </div>
             </td>
           </tr>
