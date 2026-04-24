@@ -59,28 +59,50 @@ const StudentIntelligenceDashboard = () => {
 
     const handleDownloadPDF = async () => {
         const element = dashboardRef.current;
-        if (!element) return;
+        if (!element) {
+            toast.error("Dashboard reference not found.");
+            return;
+        }
 
-        toast.loading("Generating Secure Report...", { id: 'pdf-gen' });
+        const loadingToast = toast.loading("Generating Secure Intelligence Report...");
         try {
+            // Optimization: Scroll to top to ensure all elements are visible for capture
+            window.scrollTo(0, 0);
+
             const canvas = await html2canvas(element, {
                 scale: 2,
                 useCORS: true,
-                logging: false,
-                backgroundColor: '#f9fafb'
+                allowTaint: true,
+                logging: true, // Enable logging for debugging
+                backgroundColor: '#f9fafb',
+                windowWidth: element.scrollWidth,
+                windowHeight: element.scrollHeight,
+                onclone: (clonedDoc) => {
+                    // Hide elements with 'no-print' class in the clone
+                    const noPrintElems = clonedDoc.querySelectorAll('.no-print');
+                    noPrintElems.forEach(el => el.style.display = 'none');
+                }
             });
-            const imgData = canvas.toDataURL('image/png');
+
+            const imgData = canvas.toDataURL('image/png', 1.0);
             const pdf = new jsPDF('p', 'mm', 'a4');
-            const imgProps = pdf.getImageProperties(imgData);
             const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+            const pdfHeight = pdf.internal.pageSize.getHeight();
             
-            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-            pdf.save(`Intelligence_Report_${report.student.info.name.replace(/\s+/g, '_')}.pdf`);
-            toast.success("Report downloaded successfully!", { id: 'pdf-gen' });
+            // Calculate dimensions to fit the page
+            const imgWidth = canvas.width;
+            const imgHeight = canvas.height;
+            const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+            const finalWidth = imgWidth * ratio;
+            const finalHeight = imgHeight * ratio;
+
+            pdf.addImage(imgData, 'PNG', 0, 0, finalWidth, finalHeight, undefined, 'FAST');
+            pdf.save(`Vision_Intelligence_${report.student.info.name.replace(/\s+/g, '_')}.pdf`);
+            
+            toast.success("Intelligence Report ready!", { id: loadingToast });
         } catch (error) {
-            console.error("PDF Generation Error:", error);
-            toast.error("Failed to generate PDF", { id: 'pdf-gen' });
+            console.error("PDF Generation Detailed Error:", error);
+            toast.error("Failed to generate PDF. Please try again.", { id: loadingToast });
         }
     };
 
