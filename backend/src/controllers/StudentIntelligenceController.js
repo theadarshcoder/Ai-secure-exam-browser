@@ -119,7 +119,7 @@ exports.getStudentIntelligence = asyncHandler(async (req, res) => {
         }
     ]);
 
-    const data = results[0];
+    const data = results[0] || { overviewData: [], categoryPerformance: [], recentTrend: [], timeline: [], totalCount: [] };
     const overview = data.overviewData[0] || { totalExams: 0, totalPercentage: 0, passedExams: 0, totalTabSwitches: 0, allViolations: [] };
     const totalExams = overview.totalExams;
 
