@@ -145,7 +145,7 @@ const globalLimiter = rateLimit({
 // Auth Rate Limiter — Strict limits for Login/Register endpoints
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 10,
+    max: 100,
     store: createRedisStore('auth'),
     message: {
         error: 'Too many login attempts! Please try again in 15 minutes.',
