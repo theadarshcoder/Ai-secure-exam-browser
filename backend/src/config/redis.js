@@ -1,42 +1,55 @@
-// ─────────────────────────────────────────────────────────
-// redis.js — Redis Client (Gracefully disabled when no REDIS_URL)
-// ─────────────────────────────────────────────────────────
+const IORedis = require('ioredis');
+const dotenv = require('dotenv');
 
-let redisClient = null;
+dotenv.config();
 
-const connectRedis = async () => {
-    if (!process.env.REDIS_URL) {
-        console.log('⚠️  Redis caching is DISABLED (no REDIS_URL found).');
-        return;
-    }
+const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6373';
 
-    try {
-        const { createClient } = require('redis');
-        redisClient = createClient({
-            url: process.env.REDIS_URL,
-            socket: {
-                reconnectStrategy: (retries) => {
-                    if (retries > 3) {
-                        console.warn('⚠️  Redis: Max reconnect attempts reached. Running without cache.');
-                        return false; // Stop retrying
-                    }
-                    return Math.min(retries * 500, 3000);
+let redisInstance = null;
+
+/**
+ * 🚀 Centralized Redis connection singleton
+ * Reused across API, Queues, and Workers to prevent connection leakage.
+ */
+const getRedisConnection = () => {
+    if (!redisInstance) {
+        console.log('🔄 Initializing singleton Redis connection...');
+        redisInstance = new IORedis(redisUrl, {
+            maxRetriesPerRequest: null, // Required for BullMQ
+            enableReadyCheck: false,
+            reconnectOnError: (err) => {
+                const targetError = 'READONLY';
+                if (err.message.includes(targetError)) {
+                    return true;
                 }
-            }
+            },
         });
 
-        redisClient.on('error', (err) => {
-            console.warn('⚠️  Redis client error (non-fatal):', err.message);
+        redisInstance.on('connect', () => {
+            console.log('✅ Redis connected successfully (Singleton)');
         });
 
-        await redisClient.connect();
-        console.log('✅ Redis connected successfully.');
-    } catch (err) {
-        console.warn('⚠️  Redis connection failed (non-fatal):', err.message);
-        redisClient = null; // Ensure null so app runs without cache
+        redisInstance.on('error', (err) => {
+            console.error('❌ Redis connection error:', err.message);
+        });
     }
+    return redisInstance;
 };
 
-const getRedisClient = () => (redisClient && redisClient.isOpen ? redisClient : null);
+/**
+ * Legacy support for the existing API
+ */
+const connectRedis = async () => {
+    return getRedisConnection();
+};
 
-module.exports = { connectRedis, getRedisClient };
+const getRedisClient = () => {
+    return getRedisConnection();
+};
+
+module.exports = {
+    connectRedis,
+    getRedisClient,
+    getRedisConnection,
+    redisUrl
+};

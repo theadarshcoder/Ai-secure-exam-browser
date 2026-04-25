@@ -31,6 +31,7 @@ const uploadRoutes = require('./routes/uploadRoutes');
 const { setupCodeEvaluationWorker } = require('./queues/codeGradingQueue');
 const { setupFrontendEvaluationWorker } = require('./queues/frontendGradingQueue');
 const { setupInviteEmailWorker } = require('./queues/inviteEmailQueue');
+const { startIntelligenceWorker } = require('./queues/intelligenceWorker');
 const traceMiddleware = require('./middlewares/traceMiddleware');
 
 const app = express();
@@ -124,7 +125,8 @@ const createRedisStore = (label) => {
         return undefined; 
     }
     return new RedisStore({
-        sendCommand: (...args) => client.sendCommand(args),
+        // ioredis uses .call() for raw commands
+        sendCommand: (...args) => client.call(...args),
         prefix: `vision_rl:${label}:`,
     });
 };
@@ -197,6 +199,8 @@ app.set('io', io);
 setupCodeEvaluationWorker(io);
 setupFrontendEvaluationWorker(io);
 setupInviteEmailWorker();
+startIntelligenceWorker();
+startHealthMonitor(io);
 
 // Socket.IO Authentication Middleware
 // Har connection se pehle JWT token verify hoga
@@ -294,9 +298,7 @@ app.use(errorHandler);
 // ═══════════════════════════════════════════════════════════
 // Ab yahan sirf authenticated users hi pahunchenge
 
-const ExamSession = require('./models/ExamSession');
-const Exam = require('./models/Exam');
-const Setting = require('./models/Setting');
+
 
 io.on('connection', (socket) => {
     console.log(`⚡ Connected: ${socket.id} | User: ${socket.user.email} (${socket.user.role})`);
@@ -352,6 +354,8 @@ io.on('connection', (socket) => {
             socket.emit('session_expired', { message: 'Session expired. Please re-authenticate.' });
             return socket.disconnect(true);
         }
+
+
 
         // Validation: Only students should report violations
         if (socket.user.role !== 'student') {
@@ -438,21 +442,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('mentor_broadcast', (data) => {
-        // Mentors, admins, or super_mentors can broadcast to students
-        if (!['mentor', 'admin', 'super_mentor'].includes(socket.user.role)) {
-            return socket.emit('error', { message: 'Only mentors/admins can broadcast.' });
-        }
-        console.log(`Broadcast from ${socket.user.email}:`, data);
-        
-        // 🛡️ Fix Bug A: Scoped broadcast to specific exam room to prevent cross-exam data leaks
-        io.to(`exam_${data.examId}`).emit('exam_broadcast', {
-            message: data.message,
-            examId: data.examId,
-            sender: socket.user.name || socket.user.email,
-            timestamp: new Date()
-        });
-    });
 
     // --- 🛡️ PROCTORING ACTIONS: Block / Unblock / Warning ---
 

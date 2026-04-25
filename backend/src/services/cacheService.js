@@ -22,7 +22,8 @@ const saveUserSession = async (userId, token) => {
 
     try {
         const key = `${SESSION_PREFIX}${userId}`;
-        await redis.set(key, token, { EX: DEFAULT_TTL });
+        // ioredis syntax: .set(key, value, 'EX', ttl)
+        await redis.set(key, token, 'EX', DEFAULT_TTL);
         console.log(`📡 Redis: Cached session for user ${userId}`);
     } catch (err) {
         console.warn('⚠️  Redis: Failed to save user session:', err.message);
@@ -68,7 +69,7 @@ const setCache = async (key, data, ttl = TTL_API_CACHE) => {
     const redis = getRedisClient();
     if (!redis) return;
     try {
-        await redis.set(key, JSON.stringify(data), { EX: ttl });
+        await redis.set(key, JSON.stringify(data), 'EX', ttl);
     } catch (err) {
         console.warn(`⚠️  Redis: Failed to set cache for ${key}:`, err.message);
     }
@@ -102,6 +103,23 @@ const clearCache = async (key) => {
     }
 };
 
+/**
+ * 🗑️ Clear Cache by Pattern (e.g., "active_exams_user_*")
+ */
+const clearPattern = async (pattern) => {
+    const redis = getRedisClient();
+    if (!redis) return;
+    try {
+        const keys = await redis.keys(pattern);
+        if (keys && keys.length > 0) {
+            await redis.del(keys);
+            console.log(`📡 Redis: Cleared ${keys.length} keys matching pattern: ${pattern}`);
+        }
+    } catch (err) {
+        console.warn(`⚠️  Redis: Failed to clear pattern ${pattern}:`, err.message);
+    }
+};
+
 module.exports = {
     saveUserSession,
     getUserSession,
@@ -109,6 +127,7 @@ module.exports = {
     setCache,
     getCache,
     clearCache,
+    clearPattern,
     TTL_ACTIVE_SESSION,
     TTL_API_CACHE
 };

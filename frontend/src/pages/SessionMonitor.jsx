@@ -381,6 +381,7 @@ export default function SessionMonitor() {
   const [sessionData, setSessionData] = useState({
     id: searchParams.get('id') || '',
     name: searchParams.get('name') || 'Unknown Student',
+    email: searchParams.get('email') || '',
     exam: searchParams.get('exam') || 'General Exam',
     examId: searchParams.get('examId') || searchParams.get('id') || '',
     risk: searchParams.get('risk') || 'Low',
@@ -439,7 +440,10 @@ export default function SessionMonitor() {
           // Update violations if available
           if (session.violations) {
             const mappedViolations = session.violations.map(v => {
-               const act = ACTIVITY_TYPES.find(a => a.label.toLowerCase().includes(v.type.toLowerCase())) || ACTIVITY_TYPES[0];
+               const act = ACTIVITY_TYPES.find(a => 
+                (a.type && a.type.toLowerCase() === v.type.toLowerCase()) || 
+                a.label.toLowerCase().includes(v.type.toLowerCase())
+              ) || ACTIVITY_TYPES[0];
                return {
                  id: v._id || `v-${Date.now()}-${Math.random()}`,
                  ...act,
@@ -489,7 +493,10 @@ export default function SessionMonitor() {
     // 📡 Fix 2: Listen for real incident alerts from backend
     socketService.onMentorAlert((data) => {
       if (data.studentId === sessionData.id) {
-        const typeMatch = ACTIVITY_TYPES.find(a => a.label.toLowerCase().includes((data.type || '').toLowerCase())) || ACTIVITY_TYPES[0];
+        const typeMatch = ACTIVITY_TYPES.find(a => 
+          (a.type && a.type.toLowerCase() === (data.type || '').toLowerCase()) || 
+          a.label.toLowerCase().includes((data.type || '').toLowerCase())
+        ) || ACTIVITY_TYPES[0];
         
         const incidentLog = {
           id: `alert-${Date.now()}`,
@@ -522,7 +529,13 @@ export default function SessionMonitor() {
       }
     });
 
-    return () => { /* socket service disconnect handled globally or by context if needed */ };
+    return () => {
+        if (socketService.socket) {
+            socketService.socket.off('student_need_help');
+            socketService.socket.off('mentor_alert');
+            socketService.socket.off('receive_admin_message');
+        }
+    };
   }, [sessionData.id, sessionData.email, sessionData.examId]);
 
   // 🛑 Mock Connection Flicker Removed
@@ -581,7 +594,7 @@ export default function SessionMonitor() {
   const handleFlagSession = () => {
     socketService.emitFlagSession({
       studentId: sessionData.id,
-      examId: examId,
+      examId: sessionData.examId,
       reason: `Manually flagged by admin during live monitoring.`
     });
     toast.success("Student session flagged for review.");

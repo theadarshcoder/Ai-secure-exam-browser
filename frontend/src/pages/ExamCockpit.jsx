@@ -939,6 +939,8 @@ export default function ExamCockpit() {
   const [answers, setAnswers] = useState({}); // Keyed by ORIGINAL question index/ID
   const [markedForReview, setMarkedForReview] = useState({}); // Keyed by ORIGINAL index
   const [visited, setVisited] = useState({}); // Keyed by ORIGINAL index
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
   const [submitted, setSubmitted] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [faceBoxes, setFaceBoxes] = useState([]);
@@ -1067,18 +1069,6 @@ export default function ExamCockpit() {
       });
     };
 
-    const handleForceBlock = (data) => {
-      setIsBlocked(true);
-      toast.error(data.reason || "Your session has been blocked!", {
-        duration: 10000,
-      });
-    };
-
-    const handleUnblock = () => {
-      setIsBlocked(false);
-      toast.success("Your session has been unblocked. You may resume.");
-    };
-
     const handleWarning = (data) => {
       setActiveWarning(data.message);
       toast(data.message, { icon: '⚠️' });
@@ -1088,12 +1078,7 @@ export default function ExamCockpit() {
     socket.on("time_extended", handleTimeExtension);
     socket.on("code_evaluation_result", handleCodeEvaluationResult);
     socket.on("code_evaluation_error", handleCodeEvaluationError);
-    socket.on("force_block_screen", handleForceBlock);
-    socket.on("unblock_screen", handleUnblock);
     socket.on("warning", handleWarning);
-    socket.on("exam_broadcast", (data) => {
-        toast(data.message, { icon: '📩', duration: 6000 });
-    });
 
     // 🛡️ Sync Socket if Token Refreshed
     socketService.reAuth();
@@ -1103,11 +1088,7 @@ export default function ExamCockpit() {
       socket.off("time_extended", handleTimeExtension);
       socket.off("code_evaluation_result", handleCodeEvaluationResult);
       socket.off("code_evaluation_error", handleCodeEvaluationError);
-      socket.off("force_block_screen", handleForceBlock);
-      socket.off("unblock_screen", handleUnblock);
       socket.off("warning", handleWarning);
-      socket.off("exam_broadcast");
-      socketService.disconnect();
     };
   }, [examId]);
 
@@ -1412,6 +1393,7 @@ export default function ExamCockpit() {
           );
           socketService.emitViolationReport("TAB_HIDDEN", duration, examId);
           bgHiddenTimeRef.current = null;
+          setIsTabViolation(true);
         }
       }
     };
@@ -1490,7 +1472,7 @@ export default function ExamCockpit() {
           localStorage.getItem("vision_terminated_sessions") || "[]",
         );
         const hit = list.find(
-          (t) => t.studentId === studentId || t.examId === examId,
+          (t) => t.studentId === studentId && t.examId === examId,
         );
         if (hit) setTerminated(hit);
       } catch (_err) {
@@ -1536,9 +1518,17 @@ export default function ExamCockpit() {
     return () => clearInterval(timer);
   }, [cooldownSeconds]);
 
-  const handleFinalSubmit = useCallback(async () => {
+   const handleFinalSubmit = useCallback(async () => {
+    if (isSubmittingRef.current || submitted) {
+      console.warn("⚠️ Submission already in progress or completed. Ignoring call.");
+      return;
+    }
+
     try {
-      // 🛡️ Fix 1: Professional submission flow
+      isSubmittingRef.current = true;
+      setIsSubmitting(true);
+      
+      // 🛡️ Professional submission flow
       toast.loading("Finalizing your submission... Please wait.", { id: "submit-toast" });
       
       await api.post("/api/exams/submit", { 
@@ -1556,16 +1546,18 @@ export default function ExamCockpit() {
         setCameraActive(false);
       }
       
-      toast.success("Exam submitted successfully!", { id: "submit-toast" });
+       toast.success("Exam submitted successfully!", { id: "submit-toast" });
       setSubmitted(true);
     } catch (err) {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
       console.error("Submission error:", err);
       toast.error(
-        err.message || "Submission failed! Please check your internet and try again.", 
+        err.response?.data?.message || err.message || "Submission failed! Please try again.", 
         { id: "submit-toast" }
       );
     }
-  }, [examId, answers, stream]);
+  }, [examId, answers, stream, submitted]);
 
   const handleFinalSubmitRef = useRef(handleFinalSubmit);
   useEffect(() => {
@@ -1582,7 +1574,7 @@ export default function ExamCockpit() {
         const remainingMs = Math.max(0, endRef.current - Date.now());
         const remainingSec = Math.floor(remainingMs / 1000);
 
-        if (remainingSec === 0 && secondsLeft > 0) {
+        if (remainingSec === 0 && secondsLeft > 0 && !isSubmittingRef.current) {
           setSecondsLeft(0);
           handleFinalSubmitRef.current();
         } else {

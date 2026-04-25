@@ -391,4 +391,16 @@ export const resendInvite = async (examId, email) => {
     }
 };
 
+// Student Intelligence Report
+export const getStudentReport = async (studentId, page = 1, limit = 10) => {
+    try {
+        const response = await api.get(`/api/admin/students/${studentId}/report`, {
+            params: { page, limit }
+        });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
 export default api;

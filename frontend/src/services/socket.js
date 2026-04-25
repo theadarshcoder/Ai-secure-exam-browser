@@ -95,17 +95,7 @@ class SocketService {
     }
   }
 
-  emitBroadcast(message, examId) {
-    if (this.socket && this.socket.connected) {
-      this.socket.emit('mentor_broadcast', { message, examId });
-    }
-  }
 
-  onBroadcast(callback) {
-    if (this.socket) {
-      this.socket.on('exam_broadcast', callback);
-    }
-  }
 
   onStudentHelp(callback) {
     if (this.socket) {

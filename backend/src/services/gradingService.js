@@ -123,7 +123,8 @@ async function gradeCoding(question, studentCode) {
 
     // Proportional marks based on test cases passed
     const proportion = testCases.length > 0 ? passedCount / testCases.length : 0;
-    const marksObtained = Math.round(proportion * maxMarks);
+    // Fix: Exact marks division (e.g., 33.33 for 1/3 of 100)
+    const marksObtained = parseFloat((proportion * maxMarks).toFixed(2));
 
     let status = 'incorrect';
     if (passedCount === testCases.length) status = 'correct';

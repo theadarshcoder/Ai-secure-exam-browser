@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { verifyToken, checkRole } = require('../middlewares/authMiddleware');
 const adminController = require('../controllers/adminController');
+const studentIntelligenceController = require('../controllers/StudentIntelligenceController');
 
 // ═══════════════════════════════════════════════════════════
 //  Admin / Mentor Dashboard APIs
@@ -62,5 +63,8 @@ router.post('/settings', verifyToken, checkRole(['admin', 'super_mentor']), admi
 router.get('/candidates', verifyToken, checkRole(['admin', 'super_mentor']), adminController.getCandidates);
 router.put('/candidates/verify/:userId', verifyToken, checkRole(['admin', 'super_mentor']), adminController.verifyCandidate);
 router.put('/candidates/unverify/:userId', verifyToken, checkRole(['admin', 'super_mentor']), adminController.unverifyCandidate);
+
+// Student Intelligence Report
+router.get('/students/:studentId/report', verifyToken, checkRole(['admin', 'mentor']), studentIntelligenceController.getStudentIntelligence);
 
 module.exports = router;
