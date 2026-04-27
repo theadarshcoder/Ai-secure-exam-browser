@@ -6,7 +6,14 @@ const crypto = require('crypto');
 const ELECTRON_SECRET = 'VisionSecure_Alpha2026_Enterprise_X'; // Match with Backend .env
 const APP_URL = 'https://vision-live.pages.dev/'; // 🚀 Production Frontend URL
 
-function createWindow() {
+// 🔒 Register Custom Protocol for Auto-Launch
+if (process.defaultApp) {
+    if (process.argv.length >= 2) {
+        app.setAsDefaultProtocolClient('vision-secure', process.execPath, [path.resolve(process.argv[1])]);
+    }
+} else {
+    app.setAsDefaultProtocolClient('vision-secure');
+}
     const win = new BrowserWindow({
         fullscreen: true,
         kiosk: true, // Optional: strictly locks the app

@@ -516,12 +516,24 @@ export default function StudentDashboard() {
         Assessments are only accessible via the <b>VISION Secure Node</b>. Download the installer to proceed.
       </p>
 
-      <a 
-        href="https://github.com/codervinitjangir/Ai-secure-exam-browser/releases/download/v1.0.0/VISION_Secure_Setup.exe"
-        className="w-full h-12 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all flex items-center justify-center gap-3 shadow-xl shadow-black/10 active:scale-95 relative z-10"
-      >
-        <Power size={14} className="rotate-90 stroke-[3px]" /> Download Vision
-      </a>
+      <div className="flex flex-col gap-3 relative z-10">
+        <button 
+          onClick={() => {
+            window.location.href = 'vision-secure://launch';
+            toast.success('Attempting to launch VISION...', { icon: '🚀' });
+          }}
+          className="w-full h-12 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-emerald-700 transition-all flex items-center justify-center gap-3 shadow-xl shadow-emerald-500/10 active:scale-95"
+        >
+          <Activity size={14} className="stroke-[3px]" /> Open App
+        </button>
+
+        <a 
+          href="https://github.com/codervinitjangir/Ai-secure-exam-browser/releases/download/v1.0.0/VISION_Secure_Setup.exe"
+          className="w-full h-12 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all flex items-center justify-center gap-3 shadow-xl shadow-black/10 active:scale-95"
+        >
+          <Power size={14} className="rotate-90 stroke-[3px]" /> Download App
+        </a>
+      </div>
     </div>
 
     {/* Exit FAB — Global Candidate Style */}
