@@ -79,19 +79,6 @@ const sendInviteEmail = async ({ to, studentName, password, examName, verifyLink
                                 </tr>
                             </table>
 
-                            <!-- Secure Browser Notice (Added V6) -->
-                            <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;margin-bottom:20px;">
-                                <tr>
-                                    <td style="padding:14px 16px;">
-                                        <p style="margin:0;color:#1e40af;font-size:12px;line-height:1.5;">
-                                            🛡️ <strong>Requirement:</strong> This exam requires the <strong>VISION Secure Browser</strong>. If you haven't installed it yet, please download it below:
-                                            <br>
-                                            <a href="https://github.com/codervinitjangir/Ai-secure-exam-browser/releases/download/v1.0.0/VISION_Secure_Setup.exe" style="color:#2563eb;font-weight:700;text-decoration:underline;">Download VISION Setup (.exe)</a>
-                                        </p>
-                                    </td>
-                                </tr>
-                            </table>
-
                             <!-- Credentials Box -->
                             <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#fafafa;border:1px solid #e4e4e7;border-radius:8px;margin-bottom:24px;">
                                 <tr>
@@ -107,6 +94,20 @@ const sendInviteEmail = async ({ to, studentName, password, examName, verifyLink
                                                 <td style="color:#18181b;font-size:13px;font-weight:600;font-family:monospace;padding:3px 0;">${password}</td>
                                             </tr>
                                         </table>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Security Warning Box -->
+                            <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#fff7ed;border:1px solid #ffedd5;border-radius:8px;margin-bottom:24px;">
+                                <tr>
+                                    <td style="padding:12px 16px;">
+                                        <p style="margin:0;color:#9a3412;font-size:12px;font-weight:700;line-height:1.4;">
+                                            🔒 SECURE BROWSER REQUIRED:
+                                        </p>
+                                        <p style="margin:4px 0 0;color:#c2410c;font-size:12px;line-height:1.4;">
+                                            This exam can ONLY be taken using the <b>VISION Secure Browser</b>. Please download it from your dashboard after logging in.
+                                        </p>
                                     </td>
                                 </tr>
                             </table>
