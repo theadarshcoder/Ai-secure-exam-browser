@@ -10,7 +10,7 @@ const codeExecutionLimiter = rateLimit({
     max: 1, // Limit each user to 1 request per window
     standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
     legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-    validate: { default: false },
+    validate: false,
     keyGenerator: (req) => {
         // Limit by user ID since students are authenticated
         return req.user?.id || req.ip;
@@ -32,7 +32,7 @@ const telemetryLimiter = rateLimit({
     max: 10, // Max 10 telemetry logs per minute
     standardHeaders: true,
     legacyHeaders: false,
-    validate: { default: false },
+    validate: false,
     keyGenerator: (req) => req.user?.id || req.ip,
     message: {
         success: false,
@@ -49,7 +49,7 @@ const importLimiter = rateLimit({
     max: 5, // Limit each user to 5 import requests per minute
     standardHeaders: true,
     legacyHeaders: false,
-    validate: { default: false },
+    validate: false,
     keyGenerator: (req) => req.user?.id || req.ip,
     message: {
         success: false,
@@ -66,7 +66,7 @@ const autosaveLimiter = rateLimit({
     max: 20, // 20 requests allowed per 30 sec
     standardHeaders: true,
     legacyHeaders: false,
-    validate: { default: false },
+    validate: false,
     keyGenerator: (req) => req.user?.id || req.ip,
     message: 'Too many autosave requests, please wait'
 });

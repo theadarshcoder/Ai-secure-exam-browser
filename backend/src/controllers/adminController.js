@@ -168,7 +168,7 @@ exports.getAllAdmins = asyncHandler(async (req, res) => {
 
 exports.deleteStudent = asyncHandler(async (req, res) => {
     const studentId = req.params.id;
-    const deletedStudent = await User.findByIdAndDelete(studentId);
+    const deletedStudent = await User.findOneAndDelete({ _id: studentId, role: 'student' });
     
     if (!deletedStudent) {
         res.status(404);
@@ -176,7 +176,7 @@ exports.deleteStudent = asyncHandler(async (req, res) => {
     }
 
     await AuditLog.create({
-        adminId: req.user.id,
+        performedBy: req.user.id,
         action: 'DELETE_STUDENT',
         details: { name: deletedStudent.name, email: deletedStudent.email }
     });
@@ -186,7 +186,7 @@ exports.deleteStudent = asyncHandler(async (req, res) => {
 
 exports.deleteMentor = asyncHandler(async (req, res) => {
     const mentorId = req.params.id;
-    const deletedMentor = await User.findByIdAndDelete(mentorId);
+    const deletedMentor = await User.findOneAndDelete({ _id: mentorId, role: { $in: ['mentor', 'super_mentor'] } });
     
     if (!deletedMentor) {
         res.status(404);
@@ -194,7 +194,7 @@ exports.deleteMentor = asyncHandler(async (req, res) => {
     }
 
     await AuditLog.create({
-        adminId: req.user.id,
+        performedBy: req.user.id,
         action: 'DELETE_MENTOR',
         details: { name: deletedMentor.name, email: deletedMentor.email }
     });
@@ -230,7 +230,7 @@ exports.getSystemHealth = asyncHandler(async (req, res) => {
 
 exports.getAuditLogs = asyncHandler(async (req, res) => {
     const logs = await AuditLog.find()
-        .populate('adminId', 'name email')
+        .populate('performedBy', 'name email role')
         .sort({ createdAt: -1 })
         .limit(100);
     res.json(logs);
@@ -283,10 +283,16 @@ exports.bulkImportUsers = asyncHandler(async (req, res) => {
         
         const hashedPassword = await bcrypt.hash(plainPassword, salt);
 
+        // Security Fix: Restrict role to student/mentor only via bulk import
+        let role = userData.role ? String(userData.role).toLowerCase().trim() : 'student';
+        if (!['student', 'mentor'].includes(role)) {
+            role = 'student'; // Default to student for safety
+        }
+
         validUsersToInsert.push({
             name: userData.name,
             email: userData.email,
-            role: userData.role ? String(userData.role).toLowerCase().trim() : 'student',
+            role: role,
             password: hashedPassword
         });
 
@@ -308,8 +314,12 @@ exports.bulkDeleteUsers = asyncHandler(async (req, res) => {
         throw new Error('Please provide an array of user IDs to delete');
     }
 
+    // Security Fix: Prevent deletion of admins and ensure filtered IDs are valid
     const filteredIds = userIds.filter(id => id.toString() !== req.user.id.toString());
-    const result = await User.deleteMany({ _id: { $in: filteredIds } });
+    const result = await User.deleteMany({ 
+        _id: { $in: filteredIds },
+        role: { $ne: 'admin' } // Never delete admin accounts via bulk operation
+    });
     res.json({ message: `${result.deletedCount} users deleted successfully` });
 });
 
@@ -377,128 +387,6 @@ exports.unverifyCandidate = asyncHandler(async (req, res) => {
 // ═══════════════════════════════════════════════════════════
 // ULTIMATE: AI-Powered Student Intelligence Engine
 // ═══════════════════════════════════════════════════════════
-exports.getStudentIntelligenceReport = asyncHandler(async (req, res) => {
-    const studentId = req.params.studentId;
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
-
-    const statsCacheKey = `student_stats_${studentId}`;
-    const timelineCacheKey = `student_timeline_${studentId}_p${page}`;
-
-    let globalStats = await getCache(statsCacheKey);
-    let timelineData = await getCache(timelineCacheKey);
-
-    if (!globalStats) {
-        console.log(`🧠 AI Sync: Triggering background pre-computation for ${studentId}`);
-        const { addIntelligenceJob } = require('../queues/intelligenceQueue');
-        addIntelligenceJob(studentId).catch(err => console.error('Queue trigger failed:', err.message));
-        
-        const systemSettings = await Setting.findOne().lean() || {};
-        const ANOMALY_THRESHOLD = systemSettings.anomalyThreshold || 20;
-        const TAB_SWITCH_LIMIT = systemSettings.maxTabSwitches || 5;
-
-        const reports = await ExamSession.aggregate([
-            { 
-                $facet: {
-                    "globalData": [
-                        { $match: { student: new mongoose.Types.ObjectId(studentId), status: { $in: ['submitted', 'reviewed', 'auto_submitted', 'flagged'] } } },
-                        {
-                            $group: {
-                                _id: null,
-                                totalExams: { $sum: 1 },
-                                totalPercentage: { $sum: "$percentage" },
-                                passedExams: { $sum: { $cond: ["$passed", 1, 0] } },
-                                totalTabSwitches: { $sum: "$tabSwitchCount" },
-                                allViolations: { $push: "$violations" }
-                            }
-                        }
-                    ],
-                    "timeline": [
-                        { $match: { student: new mongoose.Types.ObjectId(studentId) } },
-                        { $sort: { startedAt: -1 } },
-                        { $skip: skip },
-                        { $limit: limit },
-                        {
-                            $lookup: {
-                                from: 'exams',
-                                localField: 'exam',
-                                foreignField: '_id',
-                                as: 'examInfo'
-                            }
-                        },
-                        { $unwind: "$examInfo" },
-                        {
-                            $project: {
-                                examTitle: "$examInfo.title",
-                                category: "$examInfo.category",
-                                score: 1,
-                                percentage: 1,
-                                passed: 1,
-                                status: 1,
-                                tabSwitches: "$tabSwitchCount",
-                                totalViolations: { $size: "$violations" },
-                                startedAt: 1,
-                                submittedAt: 1
-                            }
-                        }
-                    ]
-                }
-            }
-        ]);
-
-        const rawGlobal = reports[0].globalData[0] || { totalExams: 0, totalPercentage: 0, passedExams: 0, totalTabSwitches: 0, allViolations: [] };
-        let weightedRisk = 0;
-        rawGlobal.allViolations.flat().forEach(v => {
-            if (!v) return;
-            if (v.severity === 'critical') weightedRisk += 5;
-            else if (v.severity === 'high') weightedRisk += 3;
-            else weightedRisk += 1;
-        });
-        weightedRisk += (rawGlobal.totalTabSwitches * 1);
-
-        const avgPercentage = rawGlobal.totalExams > 0 ? (rawGlobal.totalPercentage / rawGlobal.totalExams).toFixed(1) : 0;
-        const passRate = rawGlobal.totalExams > 0 ? ((rawGlobal.passedExams / rawGlobal.totalExams) * 100).toFixed(0) : 0;
-        const normalizedRisk = rawGlobal.totalExams > 0 ? Math.min((weightedRisk / (rawGlobal.totalExams * 15)) * 100, 100).toFixed(0) : 0;
-
-        let anomalyDetected = null;
-        if (reports[0].timeline.length >= 2) {
-            const latest = reports[0].timeline[0];
-            const prevAvg = (rawGlobal.totalPercentage - latest.percentage) / (rawGlobal.totalExams - 1 || 1);
-            if ((latest.percentage - prevAvg) > ANOMALY_THRESHOLD && latest.tabSwitches >= TAB_SWITCH_LIMIT) {
-                anomalyDetected = {
-                    message: `Suspicious score spike (+${(latest.percentage - prevAvg).toFixed(1)}%) with high tab switching.`,
-                    exam: latest.examTitle
-                };
-            }
-        }
-
-        globalStats = {
-            totalLifetimeExams: rawGlobal.totalExams,
-            avgPercentage: `${avgPercentage}%`,
-            passRate: `${passRate}%`,
-            totalTabSwitches: rawGlobal.totalTabSwitches,
-            riskScore: `${normalizedRisk}%`,
-            riskLevel: normalizedRisk > 40 ? 'High 🔴' : normalizedRisk > 15 ? 'Medium 🟡' : 'Low 🟢',
-            anomalyDetected,
-            violationsBreakdown: {},
-            isFallback: true
-        };
-
-        timelineData = reports[0].timeline;
-        await setCache(statsCacheKey, globalStats, 3600);
-        await setCache(timelineCacheKey, timelineData, 300);
-    }
-
-    const student = await User.findById(studentId).select('name email profilePicture isVerified').lean();
-
-    res.json({
-        student,
-        overview: globalStats,
-        timelineData,
-        generatedAt: new Date()
-    });
-});
 
 // ═══════════════════════════════════════════════════════════
 // Absolute Timer Sync
@@ -506,7 +394,15 @@ exports.getStudentIntelligenceReport = asyncHandler(async (req, res) => {
 exports.extendExamTime = asyncHandler(async (req, res) => {
     const { examId, extraMinutes } = req.body;
     const extraSeconds = extraMinutes * 60;
-    const result = await ExamSession.updateMany({ exam: examId, status: 'in_progress' }, { $inc: { remainingTimeSeconds: extraSeconds } });
+    // Security Fix: Only extend sessions that are actually active (remainingTime > 0)
+    const result = await ExamSession.updateMany(
+        { 
+            exam: examId, 
+            status: 'in_progress',
+            remainingTimeSeconds: { $gt: 0 } 
+        },
+        { $inc: { remainingTimeSeconds: extraSeconds } }
+    );
     const io = req.app.get('io'); 
     io.to(`exam_${examId}`).emit('time_extended', { extraSeconds, extraMinutes, serverSyncTime: Date.now() });
     res.status(200).json({ success: true, message: `Time extended for ${result.modifiedCount} students.` });

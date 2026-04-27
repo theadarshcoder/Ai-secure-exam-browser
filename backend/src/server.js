@@ -14,6 +14,9 @@ require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const { verifyToken, checkRole } = require('./middlewares/authMiddleware');
 const User = require('./models/User');
+const Exam = require('./models/Exam');
+const ExamSession = require('./models/ExamSession');
+const Setting = require('./models/Setting');
 const { connectRedis, getRedisClient } = require('./config/redis');
 const { RedisStore } = require('rate-limit-redis');
 const cacheService = require('./services/cacheService');
@@ -307,6 +310,19 @@ io.on('connection', (socket) => {
     socket.join(`role_${socket.user.role}`);
     socket.join(`user_${socket.user.id}`);
 
+    // --- 🛡️ SECURITY: Socket Rate Limiting (Anti-DDoS) ---
+    const lastEmissions = new Map();
+    const isRateLimited = (eventName, limitMs = 2000) => {
+        const now = Date.now();
+        const last = lastEmissions.get(eventName) || 0;
+        if (now - last < limitMs) {
+            socket.emit('error', { message: `Slow down! You are sending '${eventName}' events too fast.` });
+            return true;
+        }
+        lastEmissions.set(eventName, now);
+        return false;
+    };
+
     // --- 🛡️ Silent Re-Authentication (Bug Fix 5) ---
     socket.on('re_auth', (token) => {
         try {
@@ -349,55 +365,116 @@ io.on('connection', (socket) => {
     }
 
     socket.on('student_violation', async (data) => {
-        // Bug 11: Real-time token expiry validation
+        if (isRateLimited('student_violation', 3000)) return;
+        
         if (socket.expiresAt && Date.now() > socket.expiresAt) {
             socket.emit('session_expired', { message: 'Session expired. Please re-authenticate.' });
             return socket.disconnect(true);
         }
 
-
-
-        // Validation: Only students should report violations
         if (socket.user.role !== 'student') {
             return socket.emit('error', { message: 'Only students can report violations.' });
         }
 
-        console.log(`🚨 Violation from ${socket.user.email}:`, data);
-        
-        // 🛡️ Fix Bug 1.C: Scope violation alerts to exam-specific monitor room
-        io.to(`exam_monitor_${data.examId}`).to('role_admin').emit('mentor_alert', {
-            ...data,
-            studentEmail: socket.user.email,
-            studentId: socket.user.id,
-            timestamp: new Date()
-        });
-        
-        // Database mein save karo (audit trail)
-        try {
-            if (data.examId) {
-                await ExamSession.findOneAndUpdate(
-                    { exam: data.examId, student: socket.user.id },
-                    {
-                        $push: { violations: {
-                            $each: [{
-                                type: data.type || data.reason || 'Unknown',
-                                severity: data.severity || 'medium',
-                                details: data.details || '',
-                                timestamp: new Date()
-                            }],
-                            $slice: -100
-                        }},
-                        $inc: data.type === 'Tab Switch' ? { tabSwitchCount: 1 } : {}
-                    },
-                    { upsert: false }
-                );
-            }
-        } catch (err) {
-            console.error('Socket violation DB save failed:', err.message);
-        }
+        // 🛡️ Fix Bug 2: All violations now pass through the Rule Engine
+        // This ensures student_violation also triggers auto-blocking
+        await handleViolationEngine(socket, data);
     });
 
+    socket.on('violation_report', async (data) => {
+        if (isRateLimited('violation_report', 3000)) return;
+        await handleViolationEngine(socket, data);
+    });
+
+    // 🛡️ Consistently Unified Rule Engine Function
+    async function handleViolationEngine(socket, data) {
+        const { examId, type, duration, severity, details } = data;
+        const studentId = socket.user.id;
+
+        try {
+            const settings = await Setting.findOne() || new Setting();
+            const maxViolations = settings.maxViolations || 5;
+            const bgLimit = settings.backgroundLimitSeconds || 10;
+
+            let shouldBlock = false;
+            let blockReason = '';
+            let updatePayload = { 
+                $push: { violations: { timestamp: new Date() } }, 
+                $inc: { violationCount: 1 } 
+            };
+
+            // Mapping raw violation types to standardized ones
+            if (type === 'TAB_HIDDEN' || type === 'Tab Switch') {
+                if (duration > bgLimit) {
+                    shouldBlock = true;
+                    blockReason = `Background limit exceeded (${duration}s > ${bgLimit}s)`;
+                } else {
+                    updatePayload.$push.violations.type = 'Tab Switch';
+                    updatePayload.$push.violations.severity = 'low';
+                    updatePayload.$push.violations.details = details || `Background duration: ${duration}s`;
+                    updatePayload.$inc.tabSwitchCount = 1;
+                }
+            } else if (type === 'CHEATING_FLAG' || type === 'Suspicious Activity') {
+                updatePayload.$push.violations.type = 'Suspicious Activity';
+                updatePayload.$push.violations.severity = severity || 'medium';
+                updatePayload.$push.violations.details = details || 'AI proctor flagged multiple suspicious behaviors';
+                updatePayload.$inc.faceDetectionCount = 1;
+            } else {
+                // Default handling for other violation types
+                updatePayload.$push.violations.type = type || 'Unknown';
+                updatePayload.$push.violations.severity = severity || 'medium';
+                updatePayload.$push.violations.details = details || '';
+            }
+
+            const session = await ExamSession.findOneAndUpdate(
+                { student: studentId, exam: examId, status: { $in: ['in_progress', 'flagged'] } },
+                { ...updatePayload, $set: { lastActivity: new Date() } },
+                { new: true }
+            );
+
+            if (!session) return;
+
+            // Broadcast to monitor room
+            io.to(`exam_monitor_${examId}`).emit('mentor_alert', {
+                ...data,
+                studentEmail: socket.user.email,
+                studentId: socket.user.id,
+                violationCount: session.violations.length,
+                timestamp: new Date()
+            });
+
+            if (!shouldBlock && session.violations.length > maxViolations) {
+                shouldBlock = true;
+                blockReason = `Maximum violations limit exceeded (${session.violations.length} > ${maxViolations})`;
+            }
+
+            if (shouldBlock) {
+                await ExamSession.findByIdAndUpdate(session._id, { isBlocked: true, status: 'blocked', blockReason });
+                io.to(`user_${studentId}`).emit('force_block_screen', { reason: blockReason });
+                
+                io.to(`exam_monitor_${examId}`).emit('mentor_alert', {
+                    type: 'VIOLATION_BLOCK',
+                    studentId: session.student,
+                    studentName: socket.user.name || socket.user.email,
+                    reason: blockReason,
+                    examId: examId,
+                    timestamp: new Date()
+                });
+            } else if (session.violations.length > 0) {
+                const warningsLeft = maxViolations - session.violations.length + 1;
+                if (warningsLeft > 0) {
+                    const msg = `Security Warning: Suspicious activity detected. You have ${warningsLeft} warning(s) left before auto-termination.`;
+                    io.to(`user_${studentId}`).emit('warning', { message: msg, timestamp: new Date() });
+                }
+            }
+        } catch (err) {
+            console.error('Rule engine failure:', err.message);
+        }
+    }
+
     socket.on('student_need_help', async (data) => {
+        if (isRateLimited('student_need_help', 5000)) return;
+        
         // Bug 11: Real-time token expiry validation
         if (socket.expiresAt && Date.now() > socket.expiresAt) {
             socket.emit('session_expired', { message: 'Session expired. Please re-authenticate.' });
@@ -411,8 +488,8 @@ io.on('connection', (socket) => {
 
         console.log(`🆘 Help request from ${socket.user.email}:`, data);
         
-        // 🛡️ Fix Bug 1.C: Scope help requests to exam-specific monitor room
-        io.to(`exam_monitor_${data.examId}`).to('role_admin').emit('student_need_help', {
+        // 🛡️ Fix Bug B: Scope help requests ONLY to exam-specific monitor room
+        io.to(`exam_monitor_${data.examId}`).emit('student_need_help', {
             studentId: socket.user.id,
             studentEmail: socket.user.email,
             examId: data.examId,
@@ -493,90 +570,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // --- 🛡️ NEW: Backend-Authoritative Auto-Blocking Rule Engine ---
-    socket.on('violation_report', async (data) => {
-        if (socket.user.role !== 'student') return;
-        const { examId, type, duration } = data;
-        const studentId = socket.user.id;
-
-        try {
-            // Find active session
-            const session = await ExamSession.findOne({ student: studentId, exam: examId, status: { $in: ['in_progress', 'flagged'] } });
-            if (!session) return;
-
-            // Fetch Settings
-            const settings = await Setting.findOne() || new Setting();
-            const maxViolations = settings.maxViolations || 5;
-            const bgLimit = settings.backgroundLimitSeconds || 10;
-
-            let shouldBlock = false;
-            let blockReason = '';
-
-            if (type === 'TAB_HIDDEN') {
-                if (duration > bgLimit) {
-                    shouldBlock = true;
-                    blockReason = `Background limit exceeded (${duration}s > ${bgLimit}s)`;
-                } else {
-                    // 🛡️ Fix Bug 6: Increment tabSwitchCount for risk scoring
-                    session.violations.push({
-                        type: 'Tab Switch',
-                        severity: 'low',
-                        details: `Background duration: ${duration}s`,
-                        timestamp: new Date()
-                    });
-                    session.tabSwitchCount = (session.tabSwitchCount || 0) + 1;
-                }
-            } else if (type === 'CHEATING_FLAG') {
-                session.violations.push({
-                    type: 'Suspicious Activity',
-                    severity: 'medium',
-                    details: 'AI proctor flagged multiple suspicious behaviors',
-                    timestamp: new Date()
-                });
-                session.faceDetectionCount = (session.faceDetectionCount || 0) + 1;
-            }
-
-            // Always sync violationCount for backwards compatibility or fast querying if needed
-            session.violationCount = session.violations.length;
-
-            if (session.violations.length > maxViolations && !shouldBlock) {
-                shouldBlock = true;
-                blockReason = `Maximum violations limit exceeded (${session.violations.length} > ${maxViolations})`;
-            }
-
-            if (shouldBlock) {
-                session.isBlocked = true;
-                session.status = 'blocked';
-                session.blockReason = blockReason;
-                await session.save();
-
-                console.log(`🔒 Auto-Blocking student ${studentId}: ${blockReason}`);
-                io.to(`user_${studentId}`).emit('force_block_screen', { reason: blockReason });
-                
-                // 🛡️ Fix Bug 1.🚨: Scope auto-block alerts to specific exam monitor room to prevent cross-contamination
-                // ✅ Fix 2: Also emit to role_mentor for global dashboard awareness
-                io.to(`exam_monitor_${examId}`).to('role_admin').to('role_mentor').emit('mentor_alert', {
-                    type: 'VIOLATION_BLOCK',
-                    studentId: session.student,
-                    studentName: socket.user.name || socket.user.email,
-                    reason: blockReason,
-                    examId: examId,
-                    timestamp: new Date()
-                });
-            } else {
-                await session.save();
-                // Send progressive warning based on violationCount vs maxViolations
-                if (session.violationCount > 0 && session.violationCount <= maxViolations) {
-                    const warningsLeft = maxViolations - session.violationCount + 1;
-                    const msg = `Security Warning: Suspicious activity detected. You have ${warningsLeft} warning(s) left before auto-termination.`;
-                    io.to(`user_${studentId}`).emit('warning', { message: msg, timestamp: new Date() });
-                }
-            }
-
-        } catch (err) {
-            console.error('Violation report processing error:', err);
-        }
-    });
 
     socket.on('send_warning', async (data) => {
         if (!['mentor', 'admin', 'super_mentor'].includes(socket.user.role)) return;
@@ -609,7 +602,6 @@ io.on('connection', (socket) => {
     socket.on('join_exam_room', async ({ examId }) => {
         if (!examId) return;
         
-        // 🛡️ Security Fix 3: Mandatory authorization check for joining rooms
         try {
             const user = socket.user;
             const exam = await Exam.findById(examId);
@@ -617,6 +609,7 @@ io.on('connection', (socket) => {
 
             const isAllowed = 
                 user.role === 'admin' || 
+                user.role === 'super_mentor' || // Explicitly allow super_mentor
                 exam.creator.toString() === user.id ||
                 (user.role === 'student' && await ExamSession.exists({ exam: examId, student: user.id }));
 
@@ -626,10 +619,17 @@ io.on('connection', (socket) => {
                 return;
             }
 
-            socket.examId = examId; // Track examId for disconnect logging
+            // 🛡️ Fix Bug C: Leave previous rooms to prevent event leaks
+            if (socket.lastJoinedExamRoom) {
+                socket.leave(socket.lastJoinedExamRoom);
+                socket.leave(`exam_monitor_${socket.lastJoinedExamRoom.replace('exam_', '')}`);
+                console.log(`[Socket] ${user.email} left previous rooms for exam: ${socket.lastJoinedExamRoom}`);
+            }
+
+            socket.examId = examId; 
+            socket.lastJoinedExamRoom = `exam_${examId}`;
             socket.join(`exam_${examId}`);
             
-            // 🛡️ If mentor/admin/super_mentor joins, also put them in the monitor room
             if (['mentor', 'admin', 'super_mentor'].includes(user.role)) {
                 socket.join(`exam_monitor_${examId}`);
             }
@@ -640,12 +640,8 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 🛡️ Compatibility handler for AdminHealthCockpit
-    socket.on('join_exam', ({ examId }) => {
-        if (!examId) return;
-        socket.join(`exam_monitor_${examId}`);
-        console.log(`[Socket] Admin ${socket.user.email} monitoring exam: ${examId}`);
-    });
+    // 🛡️ Fix Bug A: Removed unsecured 'join_exam' legacy handler.
+    // Use 'join_exam_room' which has proper authorization.
 
     // Secure Admin/Mentor Message Emitter
     socket.on('send_admin_message', (payload) => {
@@ -681,10 +677,10 @@ io.on('connection', (socket) => {
     });
 
     socket.on('message_ack', ({ messageId, studentId, examId }) => {
-        // 🛡️ Fix Bug 2: Correctly route ACKs to the specific exam's monitoring room
-        const targetRoom = examId ? `exam_monitor_${examId}` : (studentId ? `exam_monitor_${studentId}` : 'role_admin');
+        // 🛡️ Fix Bug B: Scope ACKs ONLY to the specific exam's monitoring room
+        const targetRoom = examId ? `exam_monitor_${examId}` : `exam_monitor_global`; 
         
-        io.to(targetRoom).to('role_admin').emit('ack_received', {
+        io.to(targetRoom).emit('ack_received', {
             messageId,
             studentId: studentId || socket.user.id,
             studentEmail: socket.user.email,

@@ -26,8 +26,28 @@ exports.register = asyncHandler(async (req, res) => {
         'admin':        ['create_exam', 'view_live_grid', 'manage_users', 'view_reports']
     };
 
-    // Role resolution: Use the role provided in the request, or default to student
-    const assignedRole = role || 'student';
+    // 🛡️ Security Fix: Anti-Privilege Escalation
+    const validRoles = ['student', 'mentor', 'super_mentor', 'admin'];
+    let assignedRole = role || 'student';
+
+    if (!validRoles.includes(assignedRole)) {
+        res.status(400);
+        throw new Error(`Invalid role provided. Allowed roles: ${validRoles.join(', ')}`);
+    }
+
+    if (assignedRole !== 'student') {
+        const requesterId = req.user?.id; // Requires verifyToken middleware on the route
+        if (!requesterId) {
+            res.status(403);
+            throw new Error('Unauthorized role assignment. Public registration is limited to student accounts.');
+        }
+        
+        const adminUser = await User.findById(requesterId);
+        if (!adminUser || (adminUser.role !== 'admin' && adminUser.role !== 'super_mentor')) {
+            res.status(403);
+            throw new Error('Only administrators can register mentors or admins.');
+        }
+    }
 
     const user = new User({
         name,
@@ -63,10 +83,7 @@ exports.login = asyncHandler(async (req, res) => {
     }
 
     let searchEmail = email.trim();
-    if (searchEmail.toLowerCase() === 'vinit') {
-        if (requestedRole === 'mentor') searchEmail = 'vinit.mentor';
-        if (requestedRole === 'student') searchEmail = 'vinit.student';
-    }
+    // 🛡️ Remove hardcoded backdoor logic (Bug 7)
 
     const user = await User.findOne({ email: searchEmail });
     if (!user) {
@@ -86,8 +103,10 @@ exports.login = asyncHandler(async (req, res) => {
             const io = req.app.get('io');
             if (io) {
                 console.log(`🔒 Anti-Cheating: Disconnecting previous session for ${user.email} (New device detected)`);
-                io.to(`user_${user._id}`).emit('force_logout', {
-                    message: 'Security Alert: Account accessed from another device. Your session has been terminated.'
+                // 🛡️ Security Fix: Use room for previous device and ensure it clears before new token is valid
+                io.to(`user_${user._id.toString()}`).emit('force_logout', {
+                    message: 'Security Alert: Account accessed from another device. Your session has been terminated.',
+                    code: 'SESSION_REPLACED'
                 });
             }
         }
@@ -115,7 +134,13 @@ exports.login = asyncHandler(async (req, res) => {
     }
 
     const token = jwt.sign(
-        { id: user._id, email: user.email, role: finalRole },
+        { 
+            id: user._id, 
+            email: user.email, 
+            role: user.role,         // 🛡️ Fix Bug 4: Always use the REAL role for API access
+            displayRole: finalRole,  // Keep finalRole for frontend UI if needed
+            permissions: user.permissions || [] 
+        },
         process.env.JWT_SECRET,
         { expiresIn: '24h' }
     );
@@ -123,8 +148,12 @@ exports.login = asyncHandler(async (req, res) => {
     user.currentSessionToken = token;
     await user.save();
 
-    // ⚡ SYNC TO CACHE: Scalability guard
-    await cacheService.saveUserSession(user._id, token);
+    // ⚡ SYNC TO CACHE: Scalability guard (Bug 1: Fail-safe fallback)
+    try {
+        await cacheService.saveUserSession(user._id, token);
+    } catch (cacheErr) {
+        console.warn('🛡️ Cache sync failed during login (Redis down):', cacheErr.message);
+    }
 
     res.json({
         message: 'Login Successful!',
@@ -154,8 +183,12 @@ exports.logout = asyncHandler(async (req, res) => {
     user.currentSessionToken = null;
     await user.save();
 
-    // ⚡ SYNC TO CACHE: Scalability guard
-    await cacheService.removeUserSession(userId);
+    // ⚡ SYNC TO CACHE: Scalability guard (Bug 1: Fail-safe fallback)
+    try {
+        await cacheService.removeUserSession(userId);
+    } catch (cacheErr) {
+        console.warn('🛡️ Cache sync failed during logout (Redis down):', cacheErr.message);
+    }
     
     res.json({
         message: 'Logout successful',
