@@ -38,10 +38,7 @@ const FloatingPillMenu = ({
   }, [status]);
 
   const Divider = () => (
-    <motion.div 
-      layout
-      className="w-px h-4 bg-slate-200/50 mx-1.5 shrink-0" 
-    />
+    <div className="w-px h-4 bg-slate-200/50 mx-1.5 shrink-0" />
   );
 
   const getPluralLabel = (count, label) => {
@@ -66,17 +63,7 @@ const FloatingPillMenu = ({
             transition={{ type: 'spring', stiffness: 450, damping: 35 }}
             className="pointer-events-auto"
           >
-            <motion.div 
-              layout
-              transition={{ 
-                type: 'spring', 
-                stiffness: 450, 
-                damping: 35, 
-                mass: 0.8,
-                layout: { duration: 0.3 } 
-              }}
-              className="bg-white/70 backdrop-blur-2xl px-4 py-2 rounded-full shadow-[0_15px_30px_rgba(0,0,0,0.12)] border border-white/40 flex items-center ring-1 ring-black/5 overflow-hidden"
-            >
+            <div className="bg-surface px-4 py-2 rounded-full shadow-2xl border border-main flex items-center ring-1 ring-black/5 overflow-hidden">
               <AnimatePresence mode="wait">
                 {!status ? (
                   <motion.div 
@@ -88,64 +75,61 @@ const FloatingPillMenu = ({
                     transition={{ duration: 0.2 }}
                   >
                     {/* Count Group */}
-                    <motion.div layout className="flex items-center px-1.5">
-                      <motion.span 
-                        layout="position"
-                        className="text-slate-500 text-[11px] font-bold whitespace-nowrap uppercase tracking-wider"
-                      >
+                    <div className="flex items-center px-1.5">
+                      <span className="text-muted text-[11px] font-bold whitespace-nowrap uppercase tracking-wider">
                         {selectedCount} {itemLabel}
-                      </motion.span>
-                    </motion.div>
+                      </span>
+                    </div>
 
                     <Divider />
 
                     {/* General Group */}
-                    <motion.div layout className="flex items-center">
+                    <div className="flex items-center">
                       <button
                         onClick={onClear}
-                        className="px-3 py-1.5 text-slate-700 hover:text-slate-900 text-[11px] font-bold uppercase tracking-wider transition-all rounded-full hover:bg-slate-50/50 active:scale-95"
+                        className="px-3 py-1.5 text-primary hover:text-emerald-500 text-[11px] font-bold uppercase tracking-wider transition-all rounded-full hover:bg-surface-hover active:scale-95"
                       >
                         {clearLabel}
                       </button>
 
                       <button
                         onClick={() => handleAction(onCopy, copySuccessMsg, <Check size={14} className="text-emerald-500" />)}
-                        className="p-2 text-slate-600 hover:text-slate-900 transition-all rounded-full hover:bg-slate-50/50 active:scale-90"
+                        className="p-2 text-secondary hover:text-primary transition-all rounded-full hover:bg-surface-hover active:scale-90"
                         title={copyLabel}
                       >
                         <Copy size={14} />
                       </button>
-                    </motion.div>
+                    </div>
 
                     <Divider />
 
                     {/* Key Action Group (Export) */}
-                    <motion.div layout className="flex items-center">
+                    <div className="flex items-center">
                       <button
                         onClick={() => handleAction(onDownload, downloadSuccessMsg, <Download size={14} className="text-emerald-500" />)}
-                        className="flex items-center gap-2 px-4 py-1.5 text-emerald-600 hover:text-emerald-700 font-bold text-[11px] uppercase tracking-wider transition-all rounded-full hover:bg-emerald-50/40 active:scale-95"
+                        className="flex items-center gap-2 px-4 py-1.5 text-emerald-500 hover:text-emerald-400 font-bold text-[11px] uppercase tracking-wider transition-all rounded-full hover:bg-emerald-500/10 active:scale-95"
                       >
                         <Download size={14} strokeWidth={2.5} />
-                        <motion.span layout="position" className="whitespace-nowrap">
+                        <span className="whitespace-nowrap">
                           {downloadLabel} {selectedCount} {itemLabel}
-                        </motion.span>
+                        </span>
                       </button>
-                    </motion.div>
+                    </div>
 
                     <Divider />
 
                     {/* Destructive Group (Delete) */}
-                    <motion.div layout className="flex items-center">
+                    <div className="flex items-center">
                       <button
                         onClick={onSave}
-                        className="flex items-center gap-2 px-3 py-1.5 text-red-500 hover:text-red-600 font-bold text-[11px] uppercase tracking-wider transition-all rounded-full hover:bg-red-50/40 active:scale-95"
+                        className="flex items-center gap-2 px-3 py-1.5 text-red-500 hover:text-red-400 font-bold text-[11px] uppercase tracking-wider transition-all rounded-full hover:bg-red-500/10 active:scale-95"
                       >
                         <Trash2 size={14} strokeWidth={2.5} />
-                        <motion.span layout="position" className="whitespace-nowrap">
+                        <span className="whitespace-nowrap">
                           {saveLabel} {selectedCount} {itemLabel}
-                        </motion.span>
+                        </span>
                       </button>
-                    </motion.div>
+                    </div>
                   </motion.div>
                 ) : (
                   <motion.div
@@ -167,14 +151,14 @@ const FloatingPillMenu = ({
                       initial={{ opacity: 0, x: 5 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.15 }}
-                      className="text-slate-900 text-[11px] font-bold uppercase tracking-[0.12em]"
+                      className="text-primary text-[11px] font-bold uppercase tracking-[0.12em]"
                     >
                       {status.message}
                     </motion.span>
                   </motion.div>
                 )}
               </AnimatePresence>
-            </motion.div>
+            </div>
           </motion.div>
         </div>
       )}

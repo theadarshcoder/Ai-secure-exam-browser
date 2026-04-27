@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Send, Radio, MessageSquare, AlertTriangle, Info, OctagonX } from 'lucide-react';
+﻿import React, { useState, useRef, useEffect } from 'react';
+import { Send, Radio, MessageSquare, AlertTriangle, Info, OctagonX, Search, ChevronDown, X } from 'lucide-react';
 import socketService from '../services/socket';
 import { toast } from 'react-hot-toast';
 
@@ -12,9 +12,42 @@ const SEVERITY_OPTIONS = [
 const AdminMessageControls = ({ examId, activeStudents = [], mode = 'full' }) => {
     const [msgType, setMsgType] = useState('broadcast');
     const [targetStudentId, setTargetStudentId] = useState('');
+    const [targetStudentName, setTargetStudentName] = useState('');
     const [messageText, setMessageText] = useState('');
     const [severity, setSeverity] = useState('info');
     const [isSending, setIsSending] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const dropdownRef = useRef(null);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+                setIsDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const filteredStudents = activeStudents.filter(st =>
+        st.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        st.email?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    const handleSelectStudent = (st) => {
+        setTargetStudentId(st._id || st.id);
+        setTargetStudentName(st.name);
+        setSearchQuery('');
+        setIsDropdownOpen(false);
+    };
+
+    const handleClearStudent = () => {
+        setTargetStudentId('');
+        setTargetStudentName('');
+        setSearchQuery('');
+    };
 
     // Initialize compact mode defaults
     React.useEffect(() => {
@@ -101,59 +134,110 @@ const AdminMessageControls = ({ examId, activeStudents = [], mode = 'full' }) =>
 
     // Full mode for Dashboard pages
     return (
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-surface border border-main rounded-[2rem] shadow-sm overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
             {/* Header */}
-            <div className="px-5 py-4 bg-slate-50 border-b border-slate-100 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-slate-900 flex items-center justify-center text-white shadow-sm">
-                    <Radio size={14} />
+            <div className="px-6 py-5 bg-surface-hover/30 border-b border-main flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-500 shadow-sm">
+                    <Radio size={18} strokeWidth={2.2} />
                 </div>
                 <div>
-                    <h3 className="text-[11px] font-bold text-slate-900 uppercase tracking-widest">Send Exam Alert</h3>
-                    <p className="text-[10px] text-slate-400 font-medium">Broadcast or direct message to students</p>
+                    <h3 className="text-[13px] font-bold text-primary uppercase tracking-widest leading-none mb-1">Send Exam Alert</h3>
+                    <p className="text-[11px] text-muted font-medium">Broadcast or direct message to students</p>
                 </div>
             </div>
 
-            <div className="p-5 space-y-4">
+            <div className="p-6 space-y-5">
                 {/* Message Type + Target */}
-                <div className="flex gap-3">
-                    <div className="flex bg-slate-100 rounded-xl p-1 gap-1">
+                <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex bg-main rounded-xl p-1 gap-1 w-fit">
                         <button
                             onClick={() => setMsgType('broadcast')}
-                            className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${
+                            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all ${
                                 msgType === 'broadcast' 
-                                    ? 'bg-white text-slate-900 shadow-sm' 
-                                    : 'text-slate-500 hover:text-slate-700'
+                                    ? 'bg-surface text-primary shadow-sm' 
+                                    : 'text-muted hover:text-primary'
                             }`}
                         >
-                            📡 Broadcast
+                            <Radio size={14} /> Broadcast
                         </button>
                         {activeStudents.length > 0 && (
                             <button
                                 onClick={() => setMsgType('direct')}
-                                className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${
+                                className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all ${
                                     msgType === 'direct' 
-                                        ? 'bg-white text-slate-900 shadow-sm' 
-                                        : 'text-slate-500 hover:text-slate-700'
+                                        ? 'bg-surface text-primary shadow-sm' 
+                                        : 'text-muted hover:text-primary'
                                 }`}
                             >
-                                👤 Direct
+                                <MessageSquare size={14} /> Direct
                             </button>
                         )}
                     </div>
 
                     {msgType === 'direct' && activeStudents.length > 0 && (
-                        <select
-                            value={targetStudentId}
-                            onChange={(e) => setTargetStudentId(e.target.value)}
-                            className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-slate-400 bg-white"
-                        >
-                            <option value="">Select Student...</option>
-                            {activeStudents.map(st => (
-                                <option key={st._id || st.id} value={st._id || st.id}>
-                                    {st.name} {st.rollNo ? `(${st.rollNo})` : `(${st.email})`}
-                                </option>
-                            ))}
-                        </select>
+                        <div className="relative flex-1 min-w-[220px]" ref={dropdownRef}>
+                            {/* Inline search trigger */}
+                            <div
+                                onClick={() => { setIsDropdownOpen(true); }}
+                                className={`w-full flex items-center gap-2 border bg-surface rounded-xl px-4 py-2.5 cursor-text transition-colors ${isDropdownOpen ? 'border-primary-500/60 ring-2 ring-primary-500/10' : 'border-main hover:border-primary-500/40'}`}
+                            >
+                                <Search size={13} className="text-muted shrink-0" />
+                                <input
+                                    type="text"
+                                    value={isDropdownOpen ? searchQuery : targetStudentName}
+                                    onChange={(e) => { setSearchQuery(e.target.value); setIsDropdownOpen(true); }}
+                                    onFocus={() => { setIsDropdownOpen(true); setSearchQuery(''); }}
+                                    placeholder="Select Student..."
+                                    className="flex-1 bg-transparent text-xs text-primary placeholder-muted/50 focus:outline-none min-w-0"
+                                    readOnly={!isDropdownOpen}
+                                />
+                                <div className="flex items-center gap-1 shrink-0">
+                                    {targetStudentId && !isDropdownOpen && (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); handleClearStudent(); }}
+                                            className="p-0.5 rounded-full hover:bg-surface-hover text-muted hover:text-primary transition-colors"
+                                        >
+                                            <X size={12} />
+                                        </button>
+                                    )}
+                                    <ChevronDown size={14} className={`text-muted transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                                </div>
+                            </div>
+
+                            {/* Results dropdown */}
+                            {isDropdownOpen && (
+                                <div className="absolute z-50 top-full mt-1.5 left-0 right-0 bg-surface border border-main rounded-2xl shadow-2xl overflow-hidden">
+                                    {/* Results list */}
+                                    <ul className="max-h-52 overflow-y-auto py-1">
+                                        {filteredStudents.length > 0 ? filteredStudents.map(st => (
+                                            <li
+                                                key={st._id || st.id}
+                                                onClick={() => handleSelectStudent(st)}
+                                                className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-primary-500/5 transition-colors ${
+                                                    targetStudentId === (st._id || st.id) ? 'bg-primary-500/10 text-primary-500' : 'text-primary'
+                                                }`}
+                                            >
+                                                <div className="w-7 h-7 rounded-full bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-[10px] font-bold text-primary-500 shrink-0">
+                                                    {st.name?.charAt(0).toUpperCase()}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-[12px] font-semibold truncate">{st.name}</p>
+                                                    <p className="text-[10px] text-muted truncate">{st.rollNo || st.email}</p>
+                                                </div>
+                                                {targetStudentId === (st._id || st.id) && (
+                                                    <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary-500 shrink-0" />
+                                                )}
+                                            </li>
+                                        )) : (
+                                            <li className="px-4 py-6 text-center text-[11px] text-muted">
+                                                No students found for &ldquo;{searchQuery}&rdquo;
+                                            </li>
+                                        )}
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
                     )}
                 </div>
 
@@ -162,26 +246,33 @@ const AdminMessageControls = ({ examId, activeStudents = [], mode = 'full' }) =>
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
                     placeholder="Type your message... e.g., 'Time extension: 5 extra minutes granted'"
-                    className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200 resize-none h-20 transition-all"
+                    className="w-full border border-main bg-surface-hover/30 rounded-2xl px-5 py-4 text-[13px] text-primary placeholder-muted/40 focus:outline-none focus:border-primary-500 transition-all resize-none h-24 shadow-inner"
                     onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
                 />
 
                 {/* Severity + Send */}
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pt-2">
+                    <div className="flex flex-wrap items-center gap-3">
                         {SEVERITY_OPTIONS.map(opt => {
                             const Icon = opt.icon;
+                            // Customize dark mode friendly colors for the severity badges
+                            const severityStyles = {
+                                info: 'text-blue-500 border-blue-500/20 bg-blue-500/10',
+                                warning: 'text-amber-500 border-amber-500/20 bg-amber-500/10',
+                                critical: 'text-red-500 border-red-500/20 bg-red-500/10'
+                            };
+                            
                             return (
                                 <button
                                     key={opt.value}
                                     onClick={() => setSeverity(opt.value)}
-                                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all active:scale-95 ${
+                                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest border transition-all active:scale-95 ${
                                         severity === opt.value
-                                            ? `${opt.bg} ${opt.color} ${opt.border} shadow-sm`
-                                            : 'bg-white text-slate-400 border-slate-100 hover:border-slate-200'
+                                            ? `${severityStyles[opt.value]} shadow-sm`
+                                            : 'bg-surface text-muted border-main hover:border-primary-500/30 hover:text-primary'
                                     }`}
                                 >
-                                    <Icon size={12} />
+                                    <Icon size={14} strokeWidth={2.5} />
                                     {opt.label}
                                 </button>
                             );
@@ -191,9 +282,9 @@ const AdminMessageControls = ({ examId, activeStudents = [], mode = 'full' }) =>
                     <button
                         onClick={handleSend}
                         disabled={!messageText.trim() || isSending}
-                        className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-slate-900/10"
+                        className="flex items-center justify-center gap-3 bg-primary text-surface px-8 py-3.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shadow-xl hover:shadow-2xl sm:w-auto w-full"
                     >
-                        <Send size={13} />
+                        <Send size={14} />
                         {isSending ? 'Sending...' : 'Send Alert'}
                     </button>
                 </div>

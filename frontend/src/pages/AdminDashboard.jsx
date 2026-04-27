@@ -14,6 +14,7 @@ import {
 import VisionLogo from '../components/VisionLogo';
 import PremiumSidebar from '../components/PremiumSidebar';
 import ToggleSwitch from '../components/ToggleSwitch';
+import { ThemeToggle } from '../contexts/ThemeContext';
 import BouncingDotLoader from '../components/BouncingDotLoader';
 import CSVHelper from '../components/CSVHelper';
 import api, { 
@@ -45,42 +46,53 @@ import api, {
 
 const Badge = ({ children, color }) => {
   const styles = {
-    zinc: 'bg-slate-100 text-slate-600 border-slate-200',
-    emerald: 'bg-green-50 text-green-700 border-green-200',
-    amber: 'bg-amber-50 text-amber-700 border-amber-200',
-    red: 'bg-red-50 text-red-700 border-red-200',
+    zinc:    'bg-surface-hover text-muted border-main',
+    emerald: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+    amber:   'bg-primary-500/10 text-primary-500 border-primary-500/20',
+    red:     'bg-red-500/10 text-red-500 border-red-500/20',
+    indigo:  'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+    sky:     'bg-sky-500/10 text-sky-400 border-sky-500/20',
+    teal:    'bg-teal-500/10 text-teal-400 border-teal-500/20',
   };
   return (
-    <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border ${styles[color] || styles.zinc} capitalize`}>
+    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black border ${styles[color] || styles.zinc} uppercase tracking-widest font-sans`}>
       {children}
     </span>
   );
 };
 
 const DataTable = ({ headers, data, renderRow, loading }) => (
-  <div className="w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-    <div className="overflow-x-auto">
+  <div className="w-full overflow-hidden rounded-2xl bg-surface shadow-sm" style={{ border: '1px solid #1f1f1f' }}>
+    <div className="overflow-x-auto custom-scrollbar">
       <table className="w-full text-left border-collapse">
-        <thead className="bg-slate-50 border-b border-slate-200 font-sans">
+        <thead className="bg-surface-hover/50" style={{ borderBottom: '1px solid #1f1f1f' }}>
           <tr>
             {headers.map((h, i) => (
-              <th key={i} className="px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              <th key={i} className={`px-5 py-3 text-[10px] font-bold text-muted uppercase tracking-wider ${h === 'SCORE' ? 'text-center' : 'text-left'}`}>
                 {h}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100">
+        <tbody className="">
           {loading ? (
              <tr>
-               <td colSpan={headers.length} className="bg-white p-0">
+               <td colSpan={headers.length} className="bg-surface p-0">
                  <BouncingDotLoader text="Syncing system data..." />
                </td>
              </tr>
           ) : data.length === 0 ? (
             <tr>
-              <td colSpan={headers.length} className="px-6 py-12 text-center text-slate-400 font-medium">
-                No active records found.
+              <td colSpan={headers.length} className="px-8 py-16 text-center">
+                 <div className="flex flex-col items-center gap-3">
+                    <div className="w-14 h-14 rounded-xl bg-surface-hover border border-main flex items-center justify-center text-muted/40 shadow-sm">
+                       <FileText size={28} strokeWidth={1.5} />
+                    </div>
+                    <div>
+                       <p className="text-[14px] font-bold text-muted">No Active Records</p>
+                       <p className="text-[12px] text-muted/50 font-medium mt-1">System is standing by for incoming transmission</p>
+                    </div>
+                 </div>
               </td>
             </tr>
           ) : (
@@ -155,24 +167,24 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
   const hasPendingReview = sessionData.questions?.some(q => q.status === 'pending_review');
 
   return (
-    <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-300" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-300" onClick={onClose}>
+      <div className="bg-surface rounded-3xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] w-full max-w-4xl max-h-[90vh] overflow-hidden border border-main animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
         
         {/* Header */}
-        <div className="flex items-center justify-between px-8 py-5 border-b border-slate-200 bg-slate-50 font-sans">
+        <div className="flex items-center justify-between px-8 py-6 border-b border-main bg-surface-hover/50 font-sans">
           <div>
-            <h3 className="text-base font-bold text-slate-900 uppercase tracking-wider">{sessionData.exam?.title || 'Exam Report'} — Detail</h3>
-            <p className="text-xs text-slate-500 mt-1">
-              Student: <span className="font-bold text-slate-700">{sessionData.student?.name || 'Unknown'}</span> ({sessionData.student?.email || 'N/A'})
+            <h3 className="text-base font-black text-primary uppercase tracking-[0.2em]">{sessionData.exam?.title || 'Exam Report'} — Intelligence Detail</h3>
+            <p className="text-[10px] text-muted mt-1 uppercase font-black tracking-widest">
+              Subject: <span className="text-primary">{sessionData.student?.name || 'Unknown'}</span> — {sessionData.student?.email || 'N/A'}
             </p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-8">
             <div className="text-right">
-              <p className="text-xl font-semibold text-slate-900 tabular-nums">{sessionData.score ?? 0}/{sessionData.totalMarks ?? 0}</p>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#22c55e]">{sessionData.percentage ?? 0}% — {sessionData.passed ? 'PASSED' : 'FAILED'}</p>
+              <p className="text-2xl font-black text-primary tabular-nums leading-none">{sessionData.score ?? 0}/{sessionData.totalMarks ?? 0}</p>
+              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#22c55e] mt-1">{sessionData.percentage ?? 0}% — {sessionData.passed ? 'PROTOCOL PASSED' : 'PROTOCOL FAILED'}</p>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-all active:scale-95">
-              <X size={18} className="text-slate-400" />
+            <button onClick={onClose} className="p-2.5 hover:bg-surface-hover rounded-2xl transition-all active:scale-95 border border-transparent hover:border-main text-muted hover:text-primary">
+              <X size={20} />
             </button>
           </div>
         </div>
@@ -191,11 +203,11 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
               const isEvaluating = isShort || q.status === 'pending_review';
 
               return (
-                <div key={i} className={`rounded-2xl border p-6 transition-all ${
-                  q.status === 'correct' ? 'border-emerald-200 bg-green-50/20' :
-                  q.status === 'incorrect' ? 'border-red-200 bg-red-50/20' :
-                  q.status === 'partial' ? 'border-amber-200 bg-amber-50/20' :
-                  'border-slate-200 bg-slate-50/30'
+                <div key={i} className={`rounded-[2rem] border p-8 transition-all ${
+                  q.status === 'correct' ? 'border-emerald-500/20 bg-emerald-500/[0.02]' :
+                  q.status === 'incorrect' ? 'border-red-500/20 bg-red-500/[0.02]' :
+                  q.status === 'partial' ? 'border-primary-500/20 bg-primary-500/[0.02]' :
+                  'border-main bg-surface-hover/30'
                 }`}>
                   {/* Question Info */}
                   <div className="flex items-center justify-between mb-4">
@@ -216,28 +228,28 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
                     </div>
                     <div className="flex items-center gap-3">
                       {isEvaluating ? (
-                        <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Award:</span>
+                        <div className="flex items-center gap-3 bg-surface px-4 py-2 rounded-2xl border border-main shadow-sm">
+                          <span className="text-[9px] font-black text-muted uppercase tracking-[0.2em]">Award:</span>
                           <input 
                             type="number" 
                             max={q.maxMarks || q.marks} 
                             min="0"
                             value={localGrades[qId]?.marksObtained ?? q.marksObtained ?? 0}
                             onChange={(e) => handleGradeChange(qId, 'marksObtained', e.target.value)}
-                            className="w-12 text-center text-xs font-bold text-slate-900 focus:outline-none"
+                            className="w-12 bg-transparent text-center text-sm font-black text-primary focus:outline-none"
                           />
-                          <span className="text-slate-300 font-bold">/</span>
-                          <span className="text-xs font-bold text-slate-400">{q.maxMarks || q.marks || 0}</span>
+                          <span className="text-muted/30 font-black">/</span>
+                          <span className="text-sm font-black text-muted">{q.maxMarks || q.marks || 0}</span>
                         </div>
                       ) : (
-                        <span className="text-sm font-bold text-slate-900 tabular-nums bg-white px-3 py-1 rounded-lg border border-slate-100">
-                          {q.marksObtained ?? 0} <span className="text-slate-300 font-bold mx-0.5">/</span> {q.maxMarks || q.marks || 0}
+                        <span className="text-sm font-black text-primary tabular-nums bg-surface px-4 py-2 rounded-2xl border border-main shadow-sm">
+                          {q.marksObtained ?? 0} <span className="text-muted/30 font-black mx-1">/</span> {q.maxMarks || q.marks || 0}
                         </span>
                       )}
                     </div>
                   </div>
 
-                  <p className="text-sm text-slate-800 font-semibold leading-relaxed mb-6">{q.questionText}</p>
+                  <p className="text-[13px] text-primary font-bold leading-relaxed mb-8 opacity-90">{q.questionText}</p>
 
                   {/* Specific answer views */}
                   {q.type === 'mcq' && q.options && (
@@ -246,17 +258,17 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
                         const isCorrect = oi === q.correctChoice;
                         const isStudent = oi === q.studentChoice;
                         return (
-                          <div key={oi} className={`px-4 py-3 rounded-xl text-xs flex items-center gap-3 border transition-all ${
-                            isCorrect ? 'bg-green-100 border-emerald-200 text-green-800 font-bold' :
-                            isStudent ? 'bg-red-50 border-red-200 text-red-700 font-bold' :
-                            'bg-white border-slate-100 text-slate-500'
+                          <div key={oi} className={`px-5 py-4 rounded-2xl text-[11px] flex items-center gap-4 border transition-all ${
+                            isCorrect ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500 font-black' :
+                            isStudent ? 'bg-red-500/10 border-red-500/20 text-red-500 font-black' :
+                            'bg-surface border-main text-muted font-bold'
                           }`}>
-                            <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
-                               isCorrect ? 'bg-green-500 text-white' :
+                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 shadow-sm ${
+                               isCorrect ? 'bg-emerald-500 text-white' :
                                isStudent ? 'bg-red-500 text-white' : 
-                               'bg-slate-100 text-slate-400'
+                               'bg-surface-hover text-muted/30 border border-main'
                             }`}>
-                              {isCorrect ? <Check size={12} /> : isStudent ? <X size={12} /> : <div className="w-1.5 h-1.5 rounded-full bg-current" />}
+                              {isCorrect ? <Check size={14} strokeWidth={3} /> : isStudent ? <X size={14} strokeWidth={3} /> : <div className="w-1.5 h-1.5 rounded-full bg-current" />}
                             </div>
                             <span className="flex-1">{opt}</span>
                           </div>
@@ -268,10 +280,10 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
                   {q.type === 'coding' && q.studentAnswer && (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Submission Artifact</p>
-                         <span className="text-[10px] font-bold text-slate-400 uppercase bg-slate-100 px-2 py-0.5 rounded">Source Code</span>
+                         <p className="text-[9px] font-black text-muted uppercase tracking-[0.2em]">Source Code Artifact</p>
+                         <span className="text-[9px] font-black text-primary-500 uppercase bg-primary-500/10 px-3 py-1 rounded-lg border border-primary-500/20 tracking-widest">Encrypted Stream</span>
                       </div>
-                      <pre className="bg-slate-900 text-slate-100 p-5 rounded-2xl text-[11px] font-mono leading-relaxed overflow-x-auto max-h-48 border border-white/5 custom-scrollbar">
+                      <pre className="bg-[#0a0c10] text-slate-300 p-8 rounded-[1.5rem] text-[11px] font-mono leading-relaxed overflow-x-auto max-h-64 border border-white/5 custom-scrollbar shadow-2xl">
                         {typeof q.studentAnswer === 'object' ? q.studentAnswer.code : q.studentAnswer}
                       </pre>
                     </div>
@@ -310,33 +322,33 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
 
                   {q.type === 'short' && (
                     <div className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <CheckCircle size={12} className="text-slate-300" /> Student's Response
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-surface border border-main rounded-2xl p-6 shadow-sm">
+                          <p className="text-[9px] font-black text-muted uppercase tracking-[0.2em] mb-4 flex items-center gap-3">
+                            <CheckCircle size={14} className="text-primary-500" /> Student Response
                           </p>
-                          <div className="text-xs text-slate-700 leading-relaxed italic">
-                            {typeof q.studentAnswer === 'object' ? q.studentAnswer.code : (q.studentAnswer || "No content provided.")}
+                          <div className="text-[13px] text-primary leading-relaxed opacity-80">
+                            {typeof q.studentAnswer === 'object' ? q.studentAnswer.code : (q.studentAnswer || "Transmission missing.")}
                           </div>
                         </div>
-                        <div className="bg-green-50/50 border border-green-100 rounded-xl p-4 shadow-sm">
-                          <p className="text-[10px] font-bold text-[#22c55e] uppercase tracking-widest mb-2 flex items-center gap-2">
-                             <Star size={12} className="text-green-400" /> Expected Blueprint
+                        <div className="bg-emerald-500/[0.03] border border-emerald-500/20 rounded-2xl p-6 shadow-sm">
+                          <p className="text-[9px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-4 flex items-center gap-3">
+                             <Star size={14} className="text-emerald-500" /> System Blueprint
                           </p>
-                          <div className="text-xs text-green-800 leading-relaxed font-medium">
-                            {q.expectedAnswer || "Static evaluation criteria not configured."}
+                          <div className="text-[13px] text-emerald-500 leading-relaxed font-bold opacity-90">
+                            {q.expectedAnswer || "Unstructured criteria."}
                           </div>
                         </div>
                       </div>
                       
                       {isEvaluating && (
-                        <div className="mt-4">
-                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">Mentor Feedback</label>
+                        <div className="mt-6">
+                          <label className="text-[9px] font-black text-muted uppercase tracking-[0.2em] mb-3 block">Mentor Intelligence Feedback</label>
                           <textarea 
                             value={localGrades[qId]?.mentorFeedback ?? q.mentorFeedback ?? ''}
                             onChange={(e) => handleGradeChange(qId, 'mentorFeedback', e.target.value)}
-                            placeholder="Add your feedback for the student here..."
-                            className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-green-500 transition-all min-h-[80px]"
+                            placeholder="Add evaluation insights..."
+                            className="w-full px-6 py-4 bg-surface border border-main rounded-2xl text-sm text-primary focus:outline-none focus:border-primary-500 transition-all min-h-[100px] shadow-inner"
                           />
                         </div>
                       )}
@@ -349,13 +361,13 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
         </div>
 
         {/* Footer */}
-        <div className="px-8 py-5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-3">
-           <p className="text-[11px] font-bold text-slate-400 mr-auto flex items-center gap-2">
-             <ShieldCheck size={14} className="text-emerald-500" /> Secure Exam Artifact — System Verified
+        <div className="px-10 py-6 border-t border-main bg-surface-hover/50 flex items-center justify-end gap-5">
+           <p className="text-[9px] font-black text-muted mr-auto flex items-center gap-3 uppercase tracking-widest">
+             <ShieldCheck size={16} className="text-emerald-500" /> Node Verified — Integrity Hash Match
            </p>
            <button 
              onClick={onClose}
-             className="px-6 py-2.5 text-slate-500 text-[11px] font-bold uppercase tracking-widest rounded-xl hover:bg-slate-100 transition-all active:scale-95"
+             className="px-8 py-3 text-muted text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-surface-hover border border-transparent hover:border-main transition-all active:scale-95"
            >
              Close
            </button>
@@ -363,10 +375,10 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
              <button 
                onClick={handleSubmitEvaluation}
                disabled={isSubmitting}
-               className="px-8 py-2.5 bg-[#4ade80] text-white text-[11px] font-bold uppercase tracking-widest rounded-xl hover:bg-green-700 transition-all active:scale-95 shadow-lg shadow-green-500/20 flex items-center gap-2 disabled:opacity-50"
+               className="px-10 py-3 bg-primary-500 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-primary-600 transition-all active:scale-95 shadow-2xl shadow-primary-500/20 flex items-center gap-3 disabled:opacity-50"
              >
-               {isSubmitting ? <RefreshCw size={14} className="animate-spin" /> : <Check size={14} />}
-               Finalize Evaluation
+               {isSubmitting ? <RefreshCw size={16} className="animate-spin" /> : <Check size={16} strokeWidth={3} />}
+               Finalize Intelligence Evaluation
              </button>
            )}
         </div>
@@ -518,9 +530,10 @@ export default function AdminDashboard() {
       setLoading(true);
       try {
           if (tab === 'Overview') {
-              const [res, logsRes] = await Promise.all([
+              const [res, logsRes, studentsRes] = await Promise.all([
                   getDashboardStats().catch(() => ({})),
-                  getAuditLogs().catch(() => [])
+                  getAuditLogs().catch(() => []),
+                  getStudents().catch(() => ({ students: [] }))
               ]);
               setStats({
                   totalStudents: res.totalStudents || 0,
@@ -529,6 +542,7 @@ export default function AdminDashboard() {
                   totalViolations: res.flaggedSessions || 0
               });
               setAuditLogs(logsRes || []);
+              setStudents(studentsRes?.students || studentsRes || []);
           } else if (tab === 'Users') {
               const [studentsRes, mentorsRes, adminsRes] = await Promise.all([
                   getStudents().catch(() => ({ students: [] })),
@@ -886,96 +900,105 @@ export default function AdminDashboard() {
 
   const renderOverview = () => (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
         {STAT_CARDS.map((stat, i) => (
-          <div key={i} className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-2.5 rounded-xl bg-emerald-50 text-[#22c55e]">
-                <stat.icon size={20} />
-              </div>
+          <div key={i} className="p-6 rounded-2xl bg-surface border border-main shadow-sm hover:shadow-md transition-all hover:border-primary-500/30 group active:scale-95 cursor-pointer relative overflow-hidden flex flex-col gap-4" style={{ fontFamily: "'Inter', sans-serif" }}>
+            <div className="w-10 h-10 rounded-[10px] bg-surface-hover border border-main flex items-center justify-center text-primary-500 shadow-sm group-hover:bg-primary-500 group-hover:text-white transition-all duration-500 relative z-10">
+              <stat.icon size={18} strokeWidth={2.2} />
             </div>
-            <h3 className="text-[32px] font-semibold text-[#0F0F0F]">{stat.value}</h3>
-            <p className="text-sm font-medium text-[#7A7A7A] mt-1">{stat.label}</p>
+            <div className="relative z-10">
+              <h3 className="text-3xl font-bold text-primary tracking-tight leading-none">{stat.value}</h3>
+              <p className="text-[13px] font-medium text-muted mt-1.5">{stat.label}</p>
+            </div>
           </div>
         ))}
       </div>
 
       <div className="mb-2">
-        <AdminMessageControls activeStudents={[]} mode="full" />
+        <AdminMessageControls activeStudents={students} mode="full" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Left Column: Audit Logs */}
-        <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm flex flex-col h-[500px]">
-          <div className="flex items-center justify-between mb-6 shrink-0">
-             <div className="flex items-center gap-3">
-               <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600"><FileText size={16} /></div>
-               <h4 className="text-base font-semibold text-[#0F0F0F]">System Audit Logs</h4>
+        <div className="p-6 rounded-3xl bg-surface border border-main shadow-sm hover:shadow-md transition-shadow flex flex-col h-[500px] relative overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
+          <div className="flex items-center justify-between mb-6 shrink-0 relative z-10">
+             <div className="flex items-center gap-4">
+               <div className="w-10 h-10 rounded-xl bg-surface-hover border border-main flex items-center justify-center text-primary-500 shadow-sm"><FileText size={18} strokeWidth={2.2} /></div>
+               <div>
+                 <h4 className="text-lg font-bold text-primary tracking-tight leading-none">Intelligence Logs</h4>
+                 <p className="text-[12px] font-medium text-muted mt-1">Platform-wide operation trail</p>
+               </div>
              </div>
              <div className="flex items-center gap-3">
                {auditLogs.length > 0 && (
-                 <button onClick={handleClearAllLogs} className="text-[10px] font-bold text-red-500 hover:text-red-600 uppercase tracking-widest px-3 py-1 rounded-lg hover:bg-red-50 transition-all">Clear All</button>
+                 <button onClick={handleClearAllLogs} className="text-xs font-semibold text-red-500 hover:text-red-600 px-4 py-2 rounded-lg border border-red-500/10 hover:bg-red-500/5 transition-all shadow-sm">Clear All</button>
                )}
-               {loading && <RefreshCw size={14} className="animate-spin text-slate-400" />}
+               {loading && <RefreshCw size={14} className="animate-spin text-muted/50" />}
              </div>
           </div>
-          <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3">
+          <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3 relative z-10">
              {auditLogs.length > 0 ? auditLogs.map((log) => (
-                <div key={log._id} className="group relative flex flex-col p-4 bg-slate-50 border border-slate-100 rounded-2xl hover:border-slate-200 transition-all">
-                   <div className="flex items-center justify-between mb-2">
+                <div key={log._id} className="group relative flex flex-col p-4 bg-surface-hover/30 border border-main rounded-2xl hover:border-primary-500/30 transition-all duration-300">
+                   <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <Badge color={log.action.includes('DELETE') ? 'red' : 'zinc'}>{log.action}</Badge>
-                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">{new Date(log.createdAt).toLocaleString()}</span>
+                        <span className="text-[10px] font-medium text-muted opacity-60">{new Date(log.createdAt).toLocaleString()}</span>
                       </div>
-                      <button onClick={() => handleDeleteLog(log._id)} className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-400 hover:text-red-500 transition-all"><Trash2 size={14} /></button>
+                      <button onClick={() => handleDeleteLog(log._id)} className="opacity-0 group-hover:opacity-100 p-1.5 text-muted/40 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-all"><Trash2 size={14} /></button>
                    </div>
-                   <p className="text-[11px] text-slate-600 font-semibold mb-2">By: {log.adminId?.name || 'Admin'} <span className="opacity-40 font-medium ml-1">({log.adminId?.email || 'N/A'})</span></p>
+                   <p className="text-xs text-primary font-semibold tracking-tight mb-2">Principal: {log.adminId?.name || 'System'} <span className="opacity-50 font-medium ml-1">({log.adminId?.email || 'AUTH_INTERNAL'})</span></p>
                    {log.details && (
-                      <div className="p-3 bg-white/60 rounded-xl border border-slate-100 text-[10px] font-medium text-slate-500 break-all leading-relaxed shadow-inner">
+                      <div className="p-3 bg-surface border border-main rounded-xl text-[11px] font-mono text-muted/70 break-all leading-relaxed shadow-sm">
                          {JSON.stringify(log.details)}
                       </div>
                    )}
                 </div>
              )) : (
-                <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-3">
-                   <Activity size={32} className="opacity-20 translate-y-2" />
-                   <p className="text-sm font-medium text-slate-400">Audit trail is empty</p>
+                <div className="h-full flex flex-col items-center justify-center text-muted/30 gap-4 grayscale">
+                   <Activity size={48} strokeWidth={1} />
+                   <p className="text-[13px] font-semibold tracking-wide">No artifacts recorded</p>
                 </div>
              )}
           </div>
         </div>
 
         {/* Right Column: Student Activity */}
-        <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm flex flex-col h-[500px]">
-           <div className="flex items-center justify-between mb-6 shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center text-orange-600"><AlertCircle size={16} /></div>
-                <h4 className="text-base font-semibold text-[#0F0F0F]">Active Student Signals</h4>
+        <div className="p-6 rounded-3xl bg-surface border border-main shadow-sm hover:shadow-md transition-shadow flex flex-col h-[500px] relative overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
+           <div className="flex items-center justify-between mb-6 shrink-0 relative z-10">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-500 shadow-sm"><AlertCircle size={18} strokeWidth={2.2} /></div>
+                <div>
+                  <h4 className="text-lg font-bold text-primary tracking-tight leading-none">Active Signals</h4>
+                  <p className="text-[12px] font-medium text-muted mt-1">Real-time candidate telemetry</p>
+                </div>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-green-500 text-white text-[10px] font-bold uppercase tracking-wider">LIVE FEED</span>
+              <div className="flex items-center gap-2 bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                <span className="text-[10px] font-bold text-emerald-600 tracking-wider">LIVE</span>
+              </div>
            </div>
            
-           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
+           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4 relative z-10">
               {helpRequests.length === 0 && notifications.filter(n => n.type === 'violation').length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-3">
-                   <Radio size={32} className="opacity-20" />
-                   <p className="text-sm font-medium text-slate-400">No active signals from candidates</p>
+                <div className="h-full flex flex-col items-center justify-center text-muted/30 gap-4 grayscale">
+                   <Radio size={48} strokeWidth={1} />
+                   <p className="text-[13px] font-semibold tracking-wide">Standing by for signals</p>
                 </div>
               ) : (
                 <>
                   {/* Help Requests specifically */}
                   {helpRequests.map(req => (
-                    <div key={req.id} className="p-5 bg-emerald-50 border border-green-100 rounded-2xl relative overflow-hidden group">
+                    <div key={req.id} className="p-5 bg-emerald-500/[0.03] border border-emerald-500/10 rounded-2xl relative overflow-hidden group/alert hover:bg-emerald-500/[0.05] transition-colors duration-300">
                        <div className="absolute top-0 right-0 p-3">
-                          <button onClick={() => handleResolveHelp(req.id)} className="p-1.5 bg-white text-[#22c55e] rounded-lg shadow-sm hover:bg-[#4ade80] hover:text-white transition-all"><Check size={14} /></button>
+                          <button onClick={() => handleResolveHelp(req.id)} className="w-8 h-8 bg-surface border border-emerald-500/20 text-emerald-500 rounded-lg shadow-sm hover:bg-emerald-500 hover:text-white transition-all active:scale-95 flex items-center justify-center"><Check size={16} strokeWidth={2.5} /></button>
                        </div>
-                       <div className="flex items-center gap-2 mb-3">
-                          <div className="w-2 h-2 bg-green-500 rounded-full animate-ping" />
-                          <span className="text-[10px] font-bold text-[#22c55e] uppercase tracking-widest">Help Requested</span>
+                       <div className="flex items-center gap-3 mb-5">
+                          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,1)]" />
+                          <span className="text-[9px] font-black text-emerald-500 uppercase tracking-[0.2em]">Prioritized assistance req</span>
                        </div>
-                       <h5 className="text-xs font-bold text-slate-900 mb-1">{req.studentName}</h5>
-                       <p className="text-[11px] text-slate-500 font-bold mb-3">{req.studentEmail}</p>
-                       <div className="p-3 bg-white rounded-xl border border-green-100 text-xs font-semibold text-emerald-900 shadow-sm italic">
+                       <h5 className="text-sm font-black text-primary uppercase tracking-tight mb-1">{req.studentName}</h5>
+                       <p className="text-[10px] text-muted font-black uppercase tracking-widest mb-6 opacity-50">{req.studentEmail}</p>
+                       <div className="p-5 bg-surface border border-emerald-500/10 rounded-2xl text-[11px] font-black text-emerald-500/90 shadow-inner leading-relaxed">
                           "{req.message}"
                        </div>
                     </div>
@@ -983,17 +1006,17 @@ export default function AdminDashboard() {
 
                   {/* Violations from Notifications state */}
                   {notifications.filter(n => n.type === 'violation').map(notif => (
-                    <div key={notif.id} className="p-5 bg-red-50 border border-red-100 rounded-2xl">
-                       <div className="flex items-center gap-2 mb-3">
-                          <ShieldAlert size={14} className="text-red-500" />
-                          <span className="text-[10px] font-bold text-red-600 uppercase tracking-widest">Security Alert</span>
-                          <span className="ml-auto text-[9px] font-bold text-red-400 capitalize">{new Date(notif.timestamp).toLocaleTimeString()}</span>
+                    <div key={notif.id} className="p-8 bg-red-500/[0.03] border border-red-500/10 rounded-[2rem] relative overflow-hidden group/violation hover:bg-red-500/[0.05] transition-colors duration-500">
+                       <div className="flex items-center gap-3 mb-5">
+                          <ShieldAlert size={16} className="text-red-500" strokeWidth={3} />
+                          <span className="text-[9px] font-black text-red-500 uppercase tracking-[0.2em]">Integrity Violation Protocol</span>
+                          <span className="ml-auto text-[9px] font-black text-red-400/50 uppercase tracking-widest">{new Date(notif.timestamp).toLocaleTimeString()}</span>
                        </div>
-                       <p className="text-xs font-bold text-slate-900 leading-relaxed">
-                          <span className="text-red-600">{notif.studentId}</span> triggered a <span className="underline decoration-red-200">{notif.type}</span> violation.
+                       <p className="text-[12px] font-black text-primary leading-relaxed uppercase tracking-tight">
+                          <span className="text-red-500">{notif.studentId}</span> triggered a <span className="text-red-500 underline underline-offset-4 decoration-2">{notif.type}</span> anomaly.
                        </p>
-                       <button onClick={() => setActiveTab('LiveMonitoring')} className="mt-3 text-[10px] font-bold text-red-500 uppercase tracking-widest flex items-center gap-1 hover:gap-2 transition-all">
-                          Investigate Session <ChevronRight size={12} />
+                       <button onClick={() => setActiveTab('LiveMonitoring')} className="mt-6 text-[10px] font-black text-red-500 uppercase tracking-[0.2em] flex items-center gap-3 hover:gap-5 transition-all group-hover/violation:translate-x-2 duration-500">
+                          Initiate Countermeasures <ChevronRight size={14} strokeWidth={3} />
                        </button>
                     </div>
                   ))}
@@ -1006,51 +1029,51 @@ export default function AdminDashboard() {
   );
 
   const renderUsers = () => (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
+    <div className="space-y-8 ">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-surface p-6 rounded-3xl border border-main shadow-sm relative overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
+        <div className="flex items-center gap-6">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted/60" size={16} strokeWidth={2.5} />
             <input 
               type="text" 
-              placeholder="Search users..."
+              placeholder="Search unit registry..."
               value={userSearchQuery}
               onChange={(e) => setUserSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 w-64 transition-all bg-white shadow-sm"
+              className="pl-11 pr-4 py-3 bg-surface border border-main rounded-2xl text-[13px] font-medium text-primary focus:outline-none focus:border-primary-500 w-[280px] transition-all placeholder:text-muted/40 shadow-inner"
             />
           </div>
-          <div className="hidden lg:flex bg-slate-100 p-1 rounded-lg">
+          <div className="hidden lg:flex bg-surface p-1 rounded-xl border border-main shadow-sm">
             {[
               { id: 'ALL', label: 'All' },
               { id: 'student', label: 'Students' },
               { id: 'mentor', label: 'Mentors' },
               { id: 'admin', label: 'Admins' }
             ].map(f => (
-              <button 
+               <button 
                 key={f.id}
                 onClick={() => setUserRoleFilter(f.id)}
-                className={`px-4 py-1.5 rounded-md text-[10px] font-bold tracking-widest uppercase transition-all ${userRoleFilter === f.id ? 'bg-white text-[#22c55e] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`px-5 py-2 rounded-lg text-[12px] font-semibold transition-all ${userRoleFilter === f.id ? 'bg-surface text-primary shadow-sm border border-main' : 'text-muted hover:text-primary hover:bg-surface-hover'}`}
               >
                 {f.label}
               </button>
             ))}
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <input type="file" accept=".csv" ref={fileInputRef} className="hidden" onChange={handleCsvImport} />
           <button 
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all uppercase tracking-wider rounded-xl shadow-sm active:scale-95"
+            className="flex items-center gap-2 px-5 py-2.5 bg-surface border border-main text-[12px] font-semibold text-primary hover:bg-surface-hover hover:border-primary-500/30 transition-all rounded-xl shadow-sm active:scale-95"
           >
-            <FileUp size={14} /> Import CSV
+            <FileUp size={16} strokeWidth={2.5} className="text-muted" /> Import .CSV
           </button>
           <CSVHelper format="name, email" example="John Doe, john@example.com" />
           {userRole === 'admin' && (
             <button 
               onClick={() => setShowAddUserModal(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-[#4ade80] text-white text-xs font-bold hover:bg-green-700 transition-all uppercase tracking-wider rounded-xl shadow-lg shadow-green-500/20 active:scale-95"
+              className="flex items-center gap-2 px-6 py-2.5 bg-primary-500 text-white text-[12px] font-bold hover:bg-primary-600 transition-all rounded-xl shadow-lg shadow-primary-500/20 active:scale-95"
             >
-              <UserPlus size={14} /> Add User
+              <UserPlus size={16} strokeWidth={2.5} /> Add Operator
             </button>
           )}
         </div>
@@ -1067,7 +1090,7 @@ export default function AdminDashboard() {
           <button 
             key={f.id}
             onClick={() => setUserRoleFilter(f.id)}
-            className={`px-4 py-1.5 rounded-md text-[10px] font-bold tracking-widest uppercase transition-all whitespace-nowrap ${userRoleFilter === f.id ? 'bg-white text-[#22c55e] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`px-4 py-1.5 rounded-md text-[10px] font-bold tracking-widest uppercase transition-all whitespace-nowrap ${userRoleFilter === f.id ? 'bg-white text-primary-500 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
           >
             {f.label}
           </button>
@@ -1080,7 +1103,7 @@ export default function AdminDashboard() {
         headers={[
           <input 
              type="checkbox" 
-             className="w-4 h-4 rounded border-slate-300 text-[#22c55e] focus:ring-green-500"
+             className="w-4 h-4 rounded border-main bg-surface text-primary-500 focus:ring-primary-500/20"
              checked={
                (() => {
                   const filtered = users.filter(u => {
@@ -1100,7 +1123,7 @@ export default function AdminDashboard() {
                 toggleAllUsers(filtered);
              }}
           />, 
-          'Name', 'Email', 'Role', 'Date Added', 'Actions'
+          'Principal Name', 'Secure Channel (Email)', 'Access Level', 'Registration Sync', 'Action'
         ]}
         data={users.filter(u => {
           const matchesRole = userRoleFilter === 'ALL' || 
@@ -1114,66 +1137,75 @@ export default function AdminDashboard() {
             
           return matchesRole && matchesSearch;
         })}
-        renderRow={(user) => (
-          <tr key={user._id} className={selectedUsers.has(user._id) ? "bg-green-50/50" : "hover:bg-slate-50/80 transition-colors"}>
+        renderRow={(user) => {
+          const isSelected = selectedUsers.has(user._id);
+          return (
+          <tr key={user._id} className={isSelected ? "bg-primary-500/[0.04]" : "hover:bg-surface-hover/50 transition-colors group/row"}>
             <td className="px-6 py-4">
                <input 
                  type="checkbox" 
-                 checked={selectedUsers.has(user._id)}
+                 checked={isSelected}
                  onChange={() => toggleUserSelection(user._id)}
-                 className="w-4 h-4 rounded border-slate-300 text-[#22c55e] focus:ring-green-500"
+                 className="w-4 h-4 rounded border-main bg-surface text-primary-500 focus:ring-primary-500/20"
                />
             </td>
-            <td className="px-6 py-4 text-sm font-semibold text-slate-900">{user.name}</td>
-            <td className="px-6 py-4 text-sm text-slate-500">{user.email}</td>
             <td className="px-6 py-4">
-               <Badge color={user.role === 'admin' ? 'red' : user.role === 'super_mentor' ? 'amber' : user.role === 'mentor' ? 'emerald' : 'zinc'}>
+              <span className={`text-[14px] font-semibold transition-colors ${isSelected ? 'text-primary' : 'text-primary group-hover/row:text-primary-500'}`}>{user.name}</span>
+            </td>
+            <td className={`px-6 py-4 text-[13px] font-medium ${isSelected ? 'text-primary/80' : 'text-secondary'}`}>{user.email}</td>
+            <td className="px-6 py-4">
+               <Badge color={user.role === 'admin' ? 'indigo' : user.role === 'super_mentor' ? 'sky' : user.role === 'mentor' ? 'teal' : 'zinc'}>
                  {user.role}
                </Badge>
             </td>
-            <td className="px-6 py-4 text-[13px] text-slate-500">{new Date(user.createdAt).toLocaleDateString()}</td>
+            <td className={`px-6 py-4 text-[12px] font-medium ${isSelected ? 'text-primary/80' : 'text-secondary'}`}>{new Date(user.createdAt).toLocaleDateString()}</td>
             <td className="px-6 py-4">
               <button 
                 onClick={(e) => { e.stopPropagation(); handleDeleteUser(user._id, user.role); }} 
-                className="text-slate-400 hover:text-red-600 transition-colors active:scale-90"
+                className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all active:scale-95 ${isSelected ? 'text-primary hover:text-red-500 hover:bg-red-500/10' : 'text-muted/50 hover:text-red-500 hover:bg-red-500/10'}`}
               >
-                <Trash2 size={16} />
+                <Trash2 size={16} strokeWidth={2} />
               </button>
             </td>
           </tr>
-        )}
+        )}}
       />
 
        {/* Add User Modal */}
        {showAddUserModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center">
-            <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
-               <h3 className="text-lg font-bold text-slate-900 mb-6 uppercase tracking-wider">Add New User</h3>
-               <form onSubmit={handleCreateUser} className="space-y-4">
-                  <div>
-                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Full Name</label>
-                      <input required type="text" value={newUser.name} onChange={e=>setNewUser({...newUser, name: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 text-sm rounded-xl focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all" />
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-50 flex items-center justify-center p-6">
+            <div className="bg-surface p-10 rounded-[3rem] shadow-2xl w-full max-w-lg border border-main animate-in zoom-in-95 duration-300 relative overflow-hidden">
+               <div className="absolute top-0 left-0 w-full h-1 bg-primary-500/10" />
+               <h3 className="text-2xl font-bold text-primary mb-6">Commission Unit</h3>
+               <form onSubmit={handleCreateUser} className="space-y-6">
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                        <label className="block text-[9px] font-black text-muted uppercase tracking-[0.3em] mb-3">Operator Name</label>
+                        <input required type="text" placeholder="FULL NAME" value={newUser.name} onChange={e=>setNewUser({...newUser, name: e.target.value})} className="w-full px-6 py-4 bg-surface-hover border border-main text-[13px] font-black text-primary rounded-2xl focus:outline-none focus:border-primary-500/50 transition-all placeholder:text-muted/20" />
+                    </div>
+                    <div>
+                        <label className="block text-[9px] font-black text-muted uppercase tracking-[0.3em] mb-3">Auth Channel</label>
+                        <input required type="email" placeholder="EMAIL ADDRESS" value={newUser.email} onChange={e=>setNewUser({...newUser, email: e.target.value})} className="w-full px-6 py-4 bg-surface-hover border border-main text-[13px] font-black text-primary rounded-2xl focus:outline-none focus:border-primary-500/50 transition-all placeholder:text-muted/20" />
+                    </div>
                   </div>
                   <div>
-                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Email</label>
-                      <input required type="email" value={newUser.email} onChange={e=>setNewUser({...newUser, email: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 text-sm rounded-xl focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all" />
+                      <label className="block text-[9px] font-black text-muted uppercase tracking-[0.3em] mb-3">Access Protocol (Password)</label>
+                      <input required type="password" placeholder="SECURE KEY" value={newUser.password} onChange={e=>setNewUser({...newUser, password: e.target.value})} className="w-full px-6 py-4 bg-surface-hover border border-main text-[13px] font-mono font-black text-primary rounded-2xl focus:outline-none focus:border-primary-500/50 transition-all placeholder:text-muted/20 tracking-widest" />
                   </div>
                   <div>
-                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Password</label>
-                      <input required type="password" value={newUser.password} onChange={e=>setNewUser({...newUser, password: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 text-sm rounded-xl focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all" />
-                  </div>
-                  <div>
-                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Role Type</label>
-                      <select value={newUser.role} onChange={e=>setNewUser({...newUser, role: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 text-sm rounded-xl focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all bg-white">
-                         <option value="student">Student</option>
-                         <option value="mentor">Mentor</option>
-                         <option value="super_mentor">Super Mentor</option>
-                         <option value="admin">Administrator</option>
+                      <label className="block text-[9px] font-black text-muted uppercase tracking-[0.3em] mb-3">Clearance Level</label>
+                      <select value={newUser.role} onChange={e=>setNewUser({...newUser, role: e.target.value})} className="w-full px-6 py-4 bg-surface-hover border border-main text-[11px] font-black text-primary uppercase tracking-widest rounded-2xl focus:outline-none focus:border-primary-500/50 transition-all appearance-none">
+                         <option value="student">Candidate / Student</option>
+                         <option value="mentor">Monitor / Mentor</option>
+                         <option value="super_mentor">Superintendent</option>
+                         <option value="admin">Platform Admin</option>
                       </select>
                   </div>
-                  <div className="flex items-center justify-end gap-3 pt-6 border-t border-slate-100 mt-4">
-                     <button type="button" onClick={() => setShowAddUserModal(false)} className="px-5 py-2.5 text-xs font-bold text-slate-500 uppercase hover:bg-slate-50 rounded-xl transition-all active:scale-95">Cancel</button>
-                     <button type="submit" className="px-5 py-2.5 bg-[#4ade80] text-white text-xs font-bold uppercase hover:bg-green-700 rounded-xl transition-all shadow-lg shadow-green-500/20 active:scale-95">Save User</button>
+                  <div className="flex items-center justify-end gap-4 pt-10 border-t border-main mt-6">
+                     <button type="button" onClick={() => setShowAddUserModal(false)} className="px-8 py-3.5 text-[11px] font-black text-muted uppercase tracking-widest hover:text-primary transition-all active:scale-95">Abort</button>
+                     <button type="submit" className="px-10 py-4 bg-primary-500 text-white text-[11px] font-black uppercase tracking-widest hover:bg-primary-600 rounded-2xl transition-all shadow-2xl shadow-primary-500/20 active:scale-95 flex items-center gap-3">
+                       Commit Operator <Check size={16} strokeWidth={3} />
+                     </button>
                   </div>
                </form>
             </div>
@@ -1182,15 +1214,131 @@ export default function AdminDashboard() {
     </div>
   );
 
+  const renderCandidatesOld = () => (
+    <div className="space-y-10 ">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 bg-surface p-10 rounded-[2.5rem] border border-main shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1 bg-primary-500/10" />
+        <div className="flex items-center gap-8">
+           <div className="w-14 h-14 rounded-2xl bg-surface-hover border border-main flex items-center justify-center text-primary-500 shadow-xl">
+             <ScanFace size={28} strokeWidth={2.5} />
+           </div>
+           <div>
+             <h2 className="text-2xl font-bold text-primary">Identity Registry</h2>
+             <p className="text-sm text-muted mt-1">E-KYC Verification & Biometric Status</p>
+           </div>
+        </div>
+        <div className="flex items-center gap-4">
+           <div className="hidden lg:flex bg-surface-hover p-1.5 rounded-2xl border border-main shadow-inner">
+             {[
+               { id: 'ALL', label: 'All' },
+               { id: 'PENDING', label: 'Pending' },
+               { id: 'VERIFIED', label: 'Verified' },
+               { id: 'ISSUES', label: 'Flags' }
+             ].map(f => (
+               <button 
+                 key={f.id}
+                 onClick={() => setCandidateFilter(f.id)}
+                 className={`px-6 py-2.5 rounded-xl text-[9px] font-black tracking-widest uppercase transition-all ${candidateFilter === f.id ? 'bg-surface text-primary-500 shadow-xl border border-main' : 'text-muted hover:text-primary'}`}
+               >
+                 {f.label}
+               </button>
+             ))}
+           </div>
+           <button 
+             onClick={handleVerifyAllCandidates}
+             disabled={verifyingAll}
+             className="px-8 py-3.5 bg-primary-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all rounded-2xl shadow-2xl shadow-primary-500/20 active:scale-95 disabled:opacity-50"
+           >
+             {verifyingAll ? 'Processing...' : 'Verify Registry'}
+           </button>
+        </div>
+      </div>
+
+      <DataTable 
+        loading={loading}
+        headers={['Candidate Principal', 'Identity Proof', 'Biometric Score', 'Status', 'Clearance']}
+        data={candidates.filter(c => {
+          if (candidateFilter === 'VERIFIED') return c.isVerified;
+          if (candidateFilter === 'PENDING') return !c.isVerified && !c.verificationIssue;
+          if (candidateFilter === 'ISSUES') return !!c.verificationIssue;
+          return true;
+        })}
+        renderRow={(c) => (
+          <tr key={c._id} className="hover:bg-surface-hover/50 transition-colors group/row last:border-0">
+            <td className="px-8 py-6">
+              <div className="flex flex-col">
+                <span className="font-black text-[13px] text-primary uppercase tracking-tight group-hover/row:text-primary-500 transition-colors">{c.name}</span>
+                <span className="text-[9px] font-black text-muted uppercase tracking-widest mt-1 opacity-40">{c.email}</span>
+              </div>
+            </td>
+            <td className="px-8 py-6">
+               <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-surface-hover border border-main overflow-hidden shadow-inner group/img cursor-pointer" onClick={() => setSelectedCandidate(c)}>
+                     <img src={c.profilePicture || 'https://ui-avatars.com/api/?name='+c.name} alt="Face" className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-500" />
+                  </div>
+                  <div className="w-12 h-12 rounded-xl bg-surface-hover border border-main overflow-hidden shadow-inner group/img cursor-pointer" onClick={() => setSelectedCandidate(c)}>
+                     <img src={c.idCardUrl || 'https://via.placeholder.com/150?text=ID+CARD'} alt="ID" className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-500" />
+                  </div>
+               </div>
+            </td>
+            <td className="px-8 py-6">
+               <div className="flex items-center gap-3">
+                  <div className="w-20 h-1.5 bg-main rounded-full overflow-hidden">
+                     <div className="h-full bg-emerald-500" style={{ width: '94%' }} />
+                  </div>
+                  <span className="text-[11px] font-black text-emerald-500 tabular-nums">94%</span>
+               </div>
+            </td>
+            <td className="px-8 py-6">
+               {c.verificationIssue ? (
+                 <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[9px] font-black border bg-red-500/10 text-red-500 border-red-500/20 uppercase tracking-widest">
+                   <AlertCircle size={10} strokeWidth={3} /> {c.verificationIssue}
+                 </span>
+               ) : c.isVerified ? (
+                 <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[9px] font-black border bg-emerald-500/10 text-emerald-500 border-emerald-500/20 uppercase tracking-widest">
+                   <ShieldCheck size={10} strokeWidth={3} /> Verified
+                 </span>
+               ) : (
+                 <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[9px] font-black border bg-amber-500/10 text-amber-500 border-amber-500/20 uppercase tracking-widest">
+                   <Clock size={10} strokeWidth={3} /> Pending Review
+                 </span>
+               )}
+            </td>
+            <td className="px-8 py-6">
+               <div className="flex items-center gap-4">
+                  <button 
+                    onClick={() => handleVerifyCandidate(c._id, !c.isVerified)}
+                    className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all active:scale-95 ${c.isVerified ? 'text-red-500 bg-red-500/10 border border-red-500/20' : 'text-emerald-500 bg-emerald-500/10 border border-emerald-500/20'}`}
+                    title={c.isVerified ? "Revoke Verification" : "Authorize Candidate"}
+                  >
+                    {c.isVerified ? <X size={18} strokeWidth={3} /> : <Check size={18} strokeWidth={3} />}
+                  </button>
+                  <button 
+                    onClick={() => setSelectedCandidate(c)}
+                    className="w-10 h-10 flex items-center justify-center text-muted/30 hover:text-primary-500 hover:bg-primary-500/10 border border-transparent hover:border-primary-500/20 rounded-xl transition-all active:scale-95"
+                  >
+                    <Eye size={18} strokeWidth={3} />
+                  </button>
+               </div>
+            </td>
+          </tr>
+        )}
+      />
+    </div>
+  );
+
   const renderExams = () => (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-slate-900 tracking-tight">Exam Library</h2>
+    <div className="space-y-8 ">
+      <div className="flex items-center justify-between bg-surface p-6 rounded-3xl border border-main shadow-sm relative overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
+        <div className="relative z-10">
+          <h2 className="text-xl font-bold text-primary tracking-tight leading-none">Exam Library</h2>
+          <p className="text-[12px] text-muted font-medium mt-1">Global assessment library orchestration</p>
+        </div>
         <button 
           onClick={() => navigate('/mentor/create-exam?returnTo=/admin')}
-          className="flex items-center gap-2 px-4 py-2.5 bg-[#4ade80] text-white text-xs font-bold hover:bg-green-700 transition-all uppercase tracking-wider rounded-xl shadow-lg shadow-green-500/20 active:scale-95"
+          className="relative z-10 flex items-center gap-2 px-6 py-3 bg-primary-500 text-white text-[13px] font-semibold hover:bg-primary-600 transition-all rounded-xl shadow-lg shadow-primary-500/20 active:scale-95"
         >
-          <Plus size={14} /> Create Exam
+          <Plus size={16} strokeWidth={2.5} /> Create Exam
         </button>
       </div>
       <DataTable 
@@ -1198,10 +1346,12 @@ export default function AdminDashboard() {
         headers={['Exam Title', 'Created By', 'Category', 'Status', 'Actions']}
         data={exams}
         renderRow={(exam) => (
-          <tr key={exam.id || exam._id} className="hover:bg-slate-50/80 transition-colors">
-            <td className="px-6 py-4 text-sm font-semibold text-slate-900">{exam.name || exam.title}</td>
-            <td className="px-6 py-4 text-sm text-slate-500">{exam.creatorName || exam.creator?.name || 'Unknown'}</td>
-            <td className="px-6 py-4 text-sm text-slate-500">{exam.category || 'Standard'}</td>
+          <tr key={exam.id || exam._id} className="hover:bg-surface-hover/50 transition-colors group/row">
+            <td className="px-6 py-4">
+              <span className="text-[14px] font-semibold text-primary group-hover/row:text-primary-500 transition-colors">{exam.name || exam.title}</span>
+            </td>
+            <td className="px-6 py-4 text-[13px] font-medium text-muted">{exam.creatorName || exam.creator?.name || 'Unknown'}</td>
+            <td className="px-6 py-4 text-[13px] font-medium text-muted">{exam.category || 'Standard'}</td>
             <td className="px-6 py-4">
                {(() => {
                  const now = new Date();
@@ -1209,56 +1359,47 @@ export default function AdminDashboard() {
                  const start = startDateStr ? new Date(startDateStr) : null;
                  const end = start ? new Date(start.getTime() + (exam.duration || 60) * 60 * 1000) : null;
 
-                 // Draft → always amber
-                 if (exam.status === 'draft') {
-                   return <Badge color="amber">Draft</Badge>;
-                 }
-                 // Scheduled in the future → upcoming
-                 if (start && now < start) {
-                   return <Badge color="zinc">Upcoming</Badge>;
-                 }
-                 // Has a strict end window and it's passed → ended
-                 if (end && now > end && startDateStr) {
-                   return <Badge color="zinc">Ended</Badge>;
-                 }
-                 // Published (running now, or no date set) → Live
+                 if (exam.status === 'draft') return <Badge color="amber">Draft</Badge>;
+                 if (start && now < start) return <Badge color="zinc">Upcoming</Badge>;
+                 if (end && now > end && startDateStr) return <Badge color="zinc">Expired</Badge>;
+                 
                  return (
-                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200">
-                     <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse inline-block" />
-                     Live
+                   <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[11px] font-semibold border bg-emerald-500/10 text-emerald-500 border-emerald-500/20 tracking-wide">
+                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,1)]" />
+                     Live Active
                    </span>
                  );
                })()}
             </td>
             <td className="px-6 py-4">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-4">
                 <button 
                   onClick={() => handleTogglePublishResults(exam.id || exam._id, exam.resultsPublished)} 
-                  className={`p-2 rounded-xl transition-all active:scale-95 ${exam.resultsPublished ? 'text-[#22c55e] hover:bg-green-50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
-                  title={exam.resultsPublished ? "Results Published (Visible to Students)" : "Results Hidden from Students"}
+                  className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all active:scale-95 ${exam.resultsPublished ? 'text-emerald-500 bg-emerald-500/10' : 'text-muted/50 hover:text-emerald-500 hover:bg-emerald-500/10'}`}
+                  title={exam.resultsPublished ? "Results Published" : "Results Hidden"}
                 >
-                  {exam.resultsPublished ? <CheckCircle size={16} /> : <EyeOff size={16} />} 
+                  {exam.resultsPublished ? <CheckCircle size={16} strokeWidth={2} /> : <EyeOff size={16} strokeWidth={2} />} 
                 </button>
                 <button 
                   onClick={() => navigate(`/mentor/create-exam?id=${exam.id || exam._id}&view=true&returnTo=/admin`)} 
-                  className="p-2 text-slate-400 hover:text-[#22c55e] hover:bg-green-50 rounded-xl transition-all active:scale-95"
+                  className="w-8 h-8 flex items-center justify-center text-muted/50 hover:text-primary-500 hover:bg-primary-500/10 rounded-lg transition-all active:scale-95"
                   title="View Exam"
                 >
-                  <Eye size={16} />
+                  <Eye size={16} strokeWidth={2} />
                 </button>
                 <button 
                   onClick={() => navigate(`/mentor/create-exam?id=${exam.id || exam._id}&returnTo=/admin`)} 
-                  className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all active:scale-95"
+                  className="w-8 h-8 flex items-center justify-center text-muted/50 hover:text-amber-500 hover:bg-amber-500/10 rounded-lg transition-all active:scale-95"
                   title="Edit Exam"
                 >
-                  <Edit3 size={16} />
+                  <Edit3 size={16} strokeWidth={2} />
                 </button>
                 <button 
                   onClick={() => handleDeleteExam(exam.id || exam._id)} 
-                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all active:scale-95"
+                  className="w-8 h-8 flex items-center justify-center text-muted/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all active:scale-95"
                   title="Delete Exam"
                 >
-                  <Trash2 size={16} />
+                  <Trash2 size={16} strokeWidth={2} />
                 </button>
               </div>
             </td>
@@ -1269,72 +1410,72 @@ export default function AdminDashboard() {
   );
 
   const renderSettings = () => (
-    <div className="max-w-4xl mx-auto pb-32 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="mb-10">
-        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Global System Control</h2>
-        <p className="text-xs text-slate-500 font-semibold uppercase tracking-[0.15em] mt-1.5 opacity-70">Unified Security & Proctoring Architecture</p>
+    <div className="max-w-4xl mx-auto pb-32 ">
+      <div className="mb-8 py-4 relative overflow-hidden">
+        <h2 className="text-2xl font-bold text-primary tracking-tight">Global System Control</h2>
+        <p className="text-[9px] font-semibold text-muted uppercase tracking-[0.2em] mt-1.5 opacity-70">Unified Security & Proctoring Architecture</p>
       </div>
 
       {/* Card 1: Session Tolerances */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm mb-8 overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Session Tolerances</h3>
+      <div className="bg-surface border border-white/15 rounded-2xl shadow-sm mb-6 overflow-hidden">
+        <div className="px-6 py-3.5 bg-surface-hover/30">
+          <h3 className="text-[9px] font-bold text-muted uppercase tracking-[0.15em]">Session Tolerances</h3>
         </div>
-        <div className="divide-y divide-slate-100">
-          <div className="flex items-center justify-between p-6 hover:bg-slate-50/30 transition-colors">
+        <div className="">
+          <div className="flex items-center justify-between p-6 hover:bg-surface-hover/30 transition-colors">
             <div className="max-w-[70%]">
-              <p className="text-sm font-bold text-slate-900">Max Allowed Tab Switches</p>
-              <p className="text-xs text-slate-500 mt-1 leading-relaxed">Automatic session termination trigger when tab switching exceeds this limit.</p>
+              <p className="text-[13px] font-bold text-primary tracking-tight">Max Allowed Tab Switches</p>
+              <p className="text-[11px] text-muted mt-0.5 font-medium leading-relaxed opacity-80">Automatic session termination trigger when tab switching exceeds this limit.</p>
             </div>
             <input 
               type="number" 
               value={settings.maxTabSwitches} 
               onChange={e => setSettingsState(prev => ({...prev, maxTabSwitches: Number(e.target.value)}))}
-              className="w-24 px-3 py-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 text-center focus:ring-4 focus:ring-green-500/10 focus:border-green-500 outline-none transition-all" 
+              className="w-16 px-3 py-1.5 bg-surface border border-main rounded-lg text-[13px] font-bold text-primary text-center focus:border-primary-500 outline-none transition-all shadow-sm" 
             />
           </div>
 
-          <div className="flex items-center justify-between p-6 hover:bg-slate-50/30 transition-colors">
+          <div className="flex items-center justify-between p-6 hover:bg-surface-hover/30 transition-colors">
             <div className="max-w-[70%]">
-              <p className="text-sm font-bold text-slate-900">Violation Tolerance Cap</p>
-              <p className="text-xs text-slate-500 mt-1 leading-relaxed">Permitted threshold for integrity flags before a permanent lockout occurs.</p>
+              <p className="text-[13px] font-bold text-primary tracking-tight">Violation Tolerance Cap</p>
+              <p className="text-[11px] text-muted mt-0.5 font-medium leading-relaxed opacity-80">Permitted threshold for integrity flags before a permanent lockout occurs.</p>
             </div>
             <input 
               type="number" 
               value={settings.maxViolations || 5} 
               onChange={e => setSettingsState(prev => ({...prev, maxViolations: Number(e.target.value)}))}
-              className="w-24 px-3 py-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 text-center focus:ring-4 focus:ring-green-500/10 focus:border-green-500 outline-none transition-all" 
+              className="w-16 px-3 py-1.5 bg-surface border border-main rounded-lg text-[13px] font-bold text-primary text-center focus:border-primary-500 outline-none transition-all shadow-sm" 
             />
           </div>
 
-          <div className="flex items-center justify-between p-6 hover:bg-slate-50/30 transition-colors">
+          <div className="flex items-center justify-between p-6 hover:bg-surface-hover/30 transition-colors">
             <div className="max-w-[70%]">
-              <p className="text-sm font-bold text-slate-900">Background Idle Limit</p>
-              <p className="text-xs text-slate-500 mt-1 leading-relaxed">Maximum seconds permitted in background before session suspension.</p>
+              <p className="text-[13px] font-bold text-primary tracking-tight">Background Idle Limit</p>
+              <p className="text-[11px] text-muted mt-0.5 font-medium leading-relaxed opacity-80">Maximum seconds permitted in background before session suspension.</p>
             </div>
             <div className="relative">
               <input 
                 type="number" 
                 value={settings.backgroundLimitSeconds || 10} 
                 onChange={e => setSettingsState(prev => ({...prev, backgroundLimitSeconds: Number(e.target.value)}))}
-                className="w-28 pl-3 pr-10 py-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 text-center focus:ring-4 focus:ring-green-500/10 focus:border-green-500 outline-none transition-all" 
+                className="w-24 pl-4 pr-10 py-1.5 bg-surface border border-main rounded-lg text-[13px] font-bold text-primary text-center focus:border-primary-500 outline-none transition-all shadow-sm" 
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-300 uppercase">SEC</span>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-muted/50 uppercase">SEC</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Card 2: Environment Security */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm mb-8 overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Environment Security</h3>
+      <div className="bg-surface border border-white/15 rounded-2xl shadow-sm mb-6 overflow-hidden">
+        <div className="px-6 py-3.5 bg-surface-hover/30">
+          <h3 className="text-[9px] font-bold text-muted uppercase tracking-[0.15em]">Browser Security</h3>
         </div>
-        <div className="divide-y divide-slate-100">
-          <div className="flex items-center justify-between p-6 hover:bg-slate-50/30 transition-colors">
+        <div className="">
+          <div className="flex items-center justify-between p-6 hover:bg-surface-hover/30 transition-colors">
             <div className="max-w-[70%]">
-              <p className="text-sm font-bold text-slate-900">Strict Environment Enforcement</p>
-              <p className="text-xs text-slate-500 mt-1 leading-relaxed">Lock the examination interface into a restricted kiosk-style fullscreen mode.</p>
+              <p className="text-[13px] font-bold text-primary tracking-tight">Force Fullscreen Mode</p>
+              <p className="text-[11px] text-muted mt-0.5 font-medium leading-relaxed opacity-80">Require students to keep the exam in fullscreen mode at all times.</p>
             </div>
             <ToggleSwitch
               checked={!!settings.forceFullscreen}
@@ -1342,10 +1483,10 @@ export default function AdminDashboard() {
             />
           </div>
 
-          <div className="flex items-center justify-between p-6 hover:bg-slate-50/30 transition-colors">
+          <div className="flex items-center justify-between p-6 hover:bg-surface-hover/30 transition-colors">
             <div className="max-w-[70%]">
-              <p className="text-sm font-bold text-slate-900">Hard Integrity Shield</p>
-              <p className="text-xs text-slate-500 mt-1 leading-relaxed">Globally disable clipboard actions (Copy/Paste) and browser context menus.</p>
+              <p className="text-[13px] font-bold text-primary tracking-tight">Disable Copy & Paste</p>
+              <p className="text-[11px] text-muted mt-0.5 font-medium leading-relaxed opacity-80">Prevent students from copying, pasting, or right-clicking during the exam.</p>
             </div>
             <ToggleSwitch
               checked={!!settings.disableCopyPaste}
@@ -1353,32 +1494,32 @@ export default function AdminDashboard() {
             />
           </div>
 
-          <div className="flex items-center justify-between p-6 hover:bg-slate-50/30 transition-colors">
+          <div className="flex items-center justify-between p-6 hover:bg-surface-hover/30 transition-colors">
             <div className="max-w-[70%]">
-              <p className="text-sm font-bold text-slate-900">Student Exit Authorization</p>
-              <p className="text-xs text-slate-500 mt-1 leading-relaxed">Master security key required for candidates to manually terminate a session.</p>
+              <p className="text-[13px] font-bold text-primary tracking-tight">Exam Exit Password</p>
+              <p className="text-[11px] text-muted mt-0.5 font-medium leading-relaxed opacity-80">Require a password for students to submit or exit the exam early.</p>
             </div>
             <input 
               type="text" 
-              placeholder="NO KEY"
+              placeholder="NO KEY SET"
               value={settings.exitPassword || ''} 
               onChange={e => setSettingsState(prev => ({...prev, exitPassword: e.target.value}))}
-              className="w-48 px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-mono font-bold text-slate-900 text-center focus:ring-4 focus:ring-green-500/10 focus:border-green-500 outline-none transition-all tracking-widest placeholder:text-[9px] placeholder:font-black placeholder:uppercase" 
+              className="w-40 px-4 py-2 bg-surface border border-main rounded-xl text-[13px] font-mono font-bold text-primary text-center focus:border-primary-500 outline-none transition-all tracking-widest placeholder:text-[10px] placeholder:font-medium" 
             />
           </div>
         </div>
       </div>
 
       {/* Card 3: Identity & Proctoring */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm mb-8 overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Identity & Proctoring</h3>
+      <div className="bg-surface border border-white/15 rounded-2xl shadow-sm mb-6 overflow-hidden">
+        <div className="px-6 py-3.5 bg-surface-hover/30">
+          <h3 className="text-[9px] font-bold text-muted uppercase tracking-[0.15em]">Camera & ID Settings</h3>
         </div>
-        <div className="divide-y divide-slate-100">
-          <div className="flex items-center justify-between p-6 hover:bg-slate-50/30 transition-colors">
+        <div className="">
+          <div className="flex items-center justify-between p-6 hover:bg-surface-hover/30 transition-colors">
             <div className="max-w-[70%]">
-              <p className="text-sm font-bold text-slate-900">Global Webcam Monitoring</p>
-              <p className="text-xs text-slate-500 mt-1 leading-relaxed">Enable continuous front-camera feeds for biometric presence and gaze tracking.</p>
+              <p className="text-[13px] font-bold text-primary tracking-tight">Enable Webcam Monitoring</p>
+              <p className="text-[11px] text-muted mt-0.5 font-medium leading-relaxed opacity-80">Record the student's webcam to monitor their face and behavior during the exam.</p>
             </div>
             <ToggleSwitch
               checked={!!settings.enableWebcam}
@@ -1386,10 +1527,10 @@ export default function AdminDashboard() {
             />
           </div>
 
-          <div className="flex items-center justify-between p-6 hover:bg-slate-50/30 transition-colors">
+          <div className="flex items-center justify-between p-6 hover:bg-surface-hover/30 transition-colors">
             <div className="max-w-[70%]">
-              <p className="text-sm font-bold text-slate-900">Universal ID Verification</p>
-              <p className="text-xs text-slate-500 mt-1 leading-relaxed">Require official government/institutional ID validation before session start.</p>
+              <p className="text-[13px] font-bold text-primary tracking-tight">Require ID Verification</p>
+              <p className="text-[11px] text-muted mt-0.5 font-medium leading-relaxed opacity-80">Ask students to verify their identity with a photo ID before starting the exam.</p>
             </div>
             <ToggleSwitch
               checked={!!settings.requireIDVerification}
@@ -1398,8 +1539,6 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
-
-      {/* Sticky Footer Triggered via Tab Condition in Main Render */}
     </div>
   );
 
@@ -1407,69 +1546,59 @@ export default function AdminDashboard() {
     // We use the dedicated students state here
 
     return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+    <div className="space-y-6 ">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <TrendingUp size={24} className="text-blue-600" /> Academic Intelligence
-          </h2>
-          <p className="text-xs text-slate-500 mt-1 font-medium uppercase tracking-widest">Global Student Behavioral Analytics</p>
+          <h2 className="text-xl font-bold text-primary tracking-tight">Student Profiles</h2>
+          <p className="text-[12px] text-muted font-medium mt-0.5">View performance reports for enrolled students</p>
         </div>
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="relative flex-1 md:w-64">
-             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-             <input 
-               type="text" 
-               placeholder="Search students..." 
-               value={userSearchQuery}
-               onChange={e => setUserSearchQuery(e.target.value)}
-               className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
-             />
-          </div>
+        <div className="relative w-full sm:w-72">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted/50" />
+          <input
+            type="text"
+            placeholder="Search by name or email..."
+            value={userSearchQuery}
+            onChange={e => setUserSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-4 py-2.5 bg-surface border border-main rounded-xl text-[13px] text-primary focus:border-primary-500/50 focus:outline-none transition-all placeholder:text-muted/40 shadow-sm"
+          />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {students.filter(s => 
-          !userSearchQuery || 
+      {/* Student Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {students.filter(s =>
+          !userSearchQuery ||
           s.name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
           s.email.toLowerCase().includes(userSearchQuery.toLowerCase())
         ).map((student) => (
-          <div key={student._id} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:scale-125 transition-transform duration-500">
-              <Star size={64} className="text-blue-600" />
+          <div
+            key={student._id}
+            className="bg-surface border border-main rounded-2xl p-5 flex items-center gap-4 hover:border-primary-500/30 hover:shadow-md transition-all group cursor-pointer"
+            onClick={() => navigate(`/admin/students/${student._id}/intelligence`)}
+          >
+            <div className="w-10 h-10 rounded-xl bg-surface-hover border border-main flex items-center justify-center text-muted font-bold text-base shrink-0">
+              {student.name.charAt(0).toUpperCase()}
             </div>
-            
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-lg shadow-sm">
-                {student.name.charAt(0)}
-              </div>
-              <div>
-                <h3 className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{student.name}</h3>
-                <p className="text-[11px] text-slate-400 font-medium">{student.email}</p>
-              </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-semibold text-primary truncate group-hover:text-primary-500 transition-colors">{student.name}</p>
+              <p className="text-[11px] text-muted truncate mt-0.5">{student.email}</p>
+              <p className="text-[10px] text-muted/50 mt-0.5 font-medium">Enrolled {new Date(student.createdAt).toLocaleDateString()}</p>
             </div>
-
-            <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-50">
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Enrolled On</span>
-                <span className="text-xs font-semibold text-slate-600">{new Date(student.createdAt).toLocaleDateString()}</span>
-              </div>
-              <button 
-                onClick={() => navigate(`/admin/students/${student._id}/intelligence`)}
-                className="px-4 py-2 bg-blue-600 text-white text-[10px] font-bold uppercase tracking-widest rounded-lg hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 active:scale-95 flex items-center gap-2"
-              >
-                <ShieldCheck size={14} /> Analysis
-              </button>
-            </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); navigate(`/admin/students/${student._id}/intelligence`); }}
+              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-surface-hover border border-main rounded-lg text-[10px] font-semibold text-muted hover:text-primary-500 hover:border-primary-500/30 hover:bg-primary-500/5 transition-all active:scale-95"
+            >
+              <ShieldCheck size={13} strokeWidth={2} /> View
+            </button>
           </div>
         ))}
       </div>
-      
+
       {students.length === 0 && (
-        <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
-          <Users size={48} className="mx-auto text-slate-200 mb-4" />
-          <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">No students found to analyze.</p>
+        <div className="text-center py-20 bg-surface rounded-2xl border border-dashed border-main">
+          <Users size={40} strokeWidth={1.5} className="mx-auto text-muted/20 mb-3" />
+          <p className="text-[12px] text-muted font-medium">No students enrolled yet</p>
         </div>
       )}
     </div>
@@ -1477,108 +1606,106 @@ export default function AdminDashboard() {
 };
 
   const renderResults = () => (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-      <div className="flex items-center justify-between">
-         <div className="flex items-center gap-4">
-           <h2 className="text-lg font-bold text-slate-900 tracking-tight">System-Wide Results & Reports</h2>
-           <div className="hidden md:flex bg-slate-100/80 p-1 rounded-lg">
-             {['ALL', 'PENDING', 'PAST'].map(f => (
-               <button 
-                 key={f}
-                 onClick={() => setResultFilter(f)}
-                 className={`px-4 py-1.5 rounded-md text-[10px] font-bold tracking-widest uppercase transition-all ${resultFilter === f ? 'bg-white text-[#22c55e] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-               >
-                 {f === 'PAST' ? 'EVALUATED / PAST' : f}
-               </button>
-             ))}
-           </div>
+    <div className="space-y-6 ">
+      <div className="flex items-center justify-between py-4 relative overflow-hidden">
+         <div className="flex items-center gap-8">
+            <h2 className="text-xl font-bold text-primary tracking-tight">System-Wide Results & Reports</h2>
+            
+            <div className="hidden lg:flex bg-surface-hover/50 p-1 rounded-xl border border-main">
+              {['ALL', 'PENDING', 'EVALUATED / PAST'].map(f => (
+                <button 
+                  key={f}
+                  onClick={() => setResultFilter(f)}
+                  className={`px-6 py-2 rounded-lg text-[10px] font-bold tracking-wider transition-all ${resultFilter === f ? 'bg-surface text-primary shadow-sm border border-main' : 'text-muted hover:text-primary'}`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
          </div>
          <div className="flex items-center gap-3">
-           <button 
-             onClick={handleExportCsv}
-             className="flex items-center gap-2 text-xs font-bold text-slate-600 border border-slate-200 px-4 py-2 rounded-xl hover:bg-white shadow-sm transition-all active:scale-95"
-           >
-              <Download size={14} /> Export CSV
-           </button>
-           <button 
-             onClick={() => fetchDataForTab('Results')}
-             className="p-2 border border-slate-200 rounded-xl text-slate-500 hover:bg-slate-50 transition-all active:scale-95"
-           >
-             <RefreshCw size={14} />
-           </button>
-          </div>
-        </div>
+            <button 
+              onClick={handleExportCsv}
+              className="flex items-center gap-2.5 text-[10px] font-bold text-muted bg-surface border border-main px-5 py-2.5 rounded-xl hover:bg-surface-hover hover:text-primary transition-all active:scale-95 shadow-sm"
+            >
+               <Download size={15} className="opacity-70" /> Export CSV
+            </button>
+            <button 
+              onClick={() => fetchDataForTab('Results')}
+              className="w-10 h-10 flex items-center justify-center border border-main rounded-xl bg-surface text-muted hover:text-primary transition-all active:scale-95 shadow-sm"
+            >
+              <RefreshCw size={16} className="opacity-70" />
+            </button>
+         </div>
+      </div>
       {/* Mobile filter bar */}
-      <div className="md:hidden flex bg-slate-100/80 p-1 rounded-lg w-full overflow-x-auto scroll-thin mb-4 mt-2">
-        {['ALL', 'PENDING', 'PAST'].map(f => (
+      <div className="lg:hidden flex bg-surface-hover/50 p-1 rounded-xl border border-main w-full overflow-x-auto scroll-thin mb-8">
+        {['ALL', 'PENDING', 'EVALUATED / PAST'].map(f => (
           <button 
             key={f}
             onClick={() => setResultFilter(f)}
-            className={`px-4 py-1.5 rounded-md text-[10px] font-bold tracking-widest uppercase transition-all whitespace-nowrap ${resultFilter === f ? 'bg-white text-[#22c55e] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`px-6 py-2 rounded-lg text-[10px] font-bold tracking-wider transition-all whitespace-nowrap ${resultFilter === f ? 'bg-surface text-primary shadow-sm border border-main' : 'text-muted hover:text-primary'}`}
           >
-            {f === 'PAST' ? 'EVALUATED / PAST' : f}
+            {f}
           </button>
         ))}
       </div>
 
       <DataTable 
         loading={loading}
-        headers={['Student', 'Exam', 'Score', 'Status', 'Violations', 'Submitted', 'Action']}
+        headers={['STUDENT', 'EXAM', 'SCORE', 'STATUS', 'VIOLATIONS', 'SUBMITTED', 'ACTION']}
         data={adminResults.filter(r => {
           if (resultFilter === 'ALL') return true;
           if (resultFilter === 'PENDING') return r.status === 'pending_review';
-          if (resultFilter === 'PAST') return r.status === 'submitted' || r.status === 'evaluated' || r.status === 'completed';
+          if (resultFilter === 'EVALUATED / PAST') return r.status === 'submitted' || r.status === 'evaluated' || r.status === 'completed';
           return true;
         })}
         renderRow={(res, idx) => (
-          <tr key={res._id || idx} className="hover:bg-slate-50/80 transition-colors">
+          <tr key={res._id || idx} className="hover:bg-slate-50/50 transition-colors last:border-0">
             <td className="px-6 py-4">
               <div>
-                <p className="text-sm font-semibold text-slate-800">{res.studentName || 'Student'}</p>
-                <p className="text-[10px] text-slate-400">{res.studentEmail || ''}</p>
+                <p className="text-[12px] font-bold text-primary tracking-tight">{res.studentName || 'Student'}</p>
+                <p className="text-[10px] font-medium text-muted mt-0.5 opacity-60">{res.studentEmail || ''}</p>
               </div>
             </td>
-            <td className="px-6 py-4 text-xs font-medium text-slate-600">{res.examTitle || 'Exam'}</td>
-            <td className="px-6 py-4">
-               <div className="flex items-center gap-2">
-                 <div className="max-w-[100px] flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${(res.percentage || 0) >= 80 ? 'bg-green-500' : 'bg-amber-400'}`} style={{ width: `${res.percentage || 0}%` }} />
-                 </div>
-                 <span className={`text-xs font-bold tabular-nums ${(res.percentage || 0) >= 80 ? 'text-emerald-700' : 'text-amber-700'}`}>{res.percentage || 0}%</span>
+            <td className="px-5 py-4">
+               <span className="text-[11px] font-semibold text-primary/80">{res.examTitle || 'Exam'}</span>
+            </td>
+            <td className="px-5 py-4">
+               <div className="flex items-center justify-center gap-2">
+                  <div className="w-8 h-[2px] bg-surface-hover rounded-full overflow-hidden shrink-0">
+                     <div className={`h-full rounded-full ${(res.percentage || 0) >= 80 ? 'bg-emerald-500' : (res.percentage || 0) >= 40 ? 'bg-amber-400' : 'bg-slate-300'}`} style={{ width: `${res.percentage || 0}%` }} />
+                  </div>
+                  <span className="w-9 text-[10px] font-semibold text-primary tabular-nums text-left">{res.percentage || 0}%</span>
                </div>
             </td>
-            <td className="px-6 py-4">
-               <Badge color={
-                 res.status === 'submitted' ? 'emerald' :
-                 res.status === 'pending_review' ? 'amber' :
-                 res.status === 'in_progress' ? 'zinc' : 'zinc'
-               }>
-                 {res.status === 'pending_review' ? '⏳ Needs Review' :
-                  res.status === 'submitted' ? '✅ Graded' :
-                  res.status}
-               </Badge>
+            <td className="px-5 py-4">
+               <div className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[9px] font-bold border ${
+                 res.totalViolations > 8 ? 'bg-blue-50 text-blue-600 border-blue-200/50' :
+                 res.status === 'submitted' ? 'bg-emerald-50 text-emerald-600 border-emerald-200/50' :
+                 'bg-slate-100 text-slate-600 border-slate-200/50'
+               }`}>
+                 {res.status === 'submitted' && <span className="mr-1">✅</span>}
+                 {res.totalViolations > 8 ? 'Blocked' : res.status === 'submitted' ? 'Graded' : res.status}
+               </div>
             </td>
-            <td className="px-6 py-4 text-xs font-semibold text-red-500 tabular-nums">{res.totalViolations || 0} Flags</td>
-            <td className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-               {res.submittedAt ? new Date(res.submittedAt).toLocaleString() : 'N/A'}
+            <td className="px-5 py-4">
+               <span className={`text-[11px] font-bold tracking-tight ${res.totalViolations > 0 ? 'text-red-500' : 'text-slate-400'}`}>
+                 {res.totalViolations || 0} Flags
+               </span>
             </td>
-            <td className="px-6 py-4">
-                <div className="flex items-center gap-4">
-                   <button 
-                     onClick={() => handleViewSession(res._id)}
-                     className={`font-bold text-[11px] uppercase tracking-widest flex items-center gap-1 active:scale-95 ${
-                       res.status === 'pending_review' 
-                         ? 'text-amber-600 hover:text-amber-700' 
-                         : 'text-[#22c55e] hover:text-emerald-700'
-                     }`}
-                   >
-                     {res.status === 'pending_review' ? (
-                       <><Edit3 size={12} /> Evaluate</>
-                     ) : (
-                       <><Eye size={12} /> View</>
-                     )}
-                   </button>
-                </div>
+            <td className="px-5 py-4">
+               <span className="text-[10px] font-semibold text-muted opacity-60">
+                 {res.submittedAt ? new Date(res.submittedAt).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }) : 'N/A'}
+               </span>
+            </td>
+            <td className="px-5 py-4">
+               <button 
+                 onClick={() => handleViewSession(res._id)}
+                 className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-[#22c55e] hover:text-emerald-700 transition-colors"
+               >
+                 <Eye size={13} className="opacity-80" /> View
+               </button>
             </td>
           </tr>
         )}
@@ -1845,7 +1972,7 @@ export default function AdminDashboard() {
                     {c.isVerified ? 'Verified' : c.verificationIssue ? 'Issue Flagged' : c.profilePicture ? 'Pending' : 'No Photo'}
                   </span>
                   {c.verificationIssue && (
-                    <span className="text-[9px] font-bold text-red-500 italic truncate ml-2">
+                    <span className="text-[9px] font-bold text-red-500 truncate ml-2">
                       {c.verificationIssue}
                     </span>
                   )}
@@ -1972,25 +2099,27 @@ export default function AdminDashboard() {
 
   const renderLiveMonitoring = () => (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-            <input 
-              type="text" 
-              placeholder="Search live students..."
-              value={liveSearchQuery}
-              onChange={(e) => setLiveSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-green-500 w-64 transition-all bg-white shadow-sm"
-            />
-          </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 text-[#22c55e] rounded-lg border border-green-100 animate-pulse">
-            <div className="w-2 h-2 bg-[#22c55e] rounded-full" />
-            <span className="text-[10px] font-bold uppercase tracking-widest">{liveSessions.length} Online Now</span>
+      <div className="flex flex-col gap-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" size={16} />
+              <input 
+                type="text" 
+                placeholder="Search live students..."
+                value={liveSearchQuery}
+                onChange={(e) => setLiveSearchQuery(e.target.value)}
+                className="pl-11 pr-4 py-3 bg-surface border border-main rounded-2xl text-[13px] font-medium text-primary focus:outline-none focus:border-primary-500 w-[300px] transition-all shadow-sm placeholder:text-muted/50"
+              />
+            </div>
+            <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500/10 text-emerald-500 rounded-xl border border-emerald-500/20 shadow-sm">
+              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+              <span className="text-[11px] font-bold uppercase tracking-widest">{liveSessions.length} Online Now</span>
+            </div>
           </div>
         </div>
         
-        <div className="w-full md:w-auto">
+        <div className="w-full">
            <AdminMessageControls activeStudents={liveSessions.map(s => ({ _id: s.studentId, name: s.studentName, email: s.studentEmail }))} mode="full" />
         </div>
       </div>
@@ -2098,7 +2227,7 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="flex h-screen bg-white font-sans text-slate-900 select-none antialiased">
+    <div className="flex h-screen bg-main font-sans text-primary select-none antialiased">
       
       <PremiumSidebar
         expanded={sidebarExpanded}
@@ -2116,102 +2245,127 @@ export default function AdminDashboard() {
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         
         {/* Header */}
-        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-8 shrink-0 relative z-40">
-          <div className="flex items-center gap-3 text-[13px] font-medium text-slate-400 tracking-wide">
-            <span className="hover:text-slate-900 transition-colors cursor-pointer">Admin Dashboard</span>
+        <header className="h-14 bg-surface/80 backdrop-blur-md border-b border-main flex items-center justify-between px-8 shrink-0 relative z-40">
+          <div className="flex items-center gap-3 text-sm font-semibold text-muted">
+            <span className="hover:text-primary transition-colors cursor-pointer">Admin Dashboard</span>
             <ChevronRight size={14} className="opacity-40" />
-            <span className="text-slate-900 font-semibold">{activeTab}</span>
+            <span className="text-primary font-bold">{activeTab}</span>
           </div>
 
           <div className="flex items-center gap-5">
             <div className="relative ml-2 flex items-center gap-4">
+                <ThemeToggle />
                 <button 
                   onClick={() => {
                     setShowNotifDropdown(!showNotifDropdown);
                     if (!showNotifDropdown) markAllRead();
                   }}
-                  className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-900 hover:bg-white hover:border-slate-200 transition-all active:scale-95 relative"
+                  className="w-10 h-10 rounded-xl bg-main border border-main flex items-center justify-center text-muted hover:text-primary transition-all active:scale-95 relative"
                 >
                   <Bell size={20} />
                   {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-main animate-pulse">
                       {unreadCount}
                     </span>
                   )}
                 </button>
 
                 {showNotifDropdown && (
-                  <div className="absolute right-0 top-14 w-80 bg-white rounded-3xl shadow-2xl border border-slate-100 z-50 overflow-hidden animate-in slide-in-from-top-2 duration-200">
-                    <div className="px-6 py-4 border-b border-slate-50 bg-slate-50/50 flex items-center justify-between">
-                      <h5 className="text-[10px] font-bold text-slate-900 uppercase tracking-wider">Alert Center</h5>
-                      <button onClick={handleClearNotifications} className="text-[9px] font-bold text-slate-400 hover:text-red-500 uppercase tracking-widest">Clear All</button>
+                  <div className="absolute right-0 top-14 w-80 bg-surface rounded-2xl shadow-xl z-50 overflow-hidden" style={{ border: '1px solid #1f1f1f' }}>
+                    
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #1f1f1f' }}>
+                      <div className="flex items-center gap-2">
+                        <Bell size={13} className="text-muted" />
+                        <span className="text-[11px] font-bold text-primary">Notifications</span>
+                        {notifications.filter(n => n.unread).length > 0 && (
+                          <span className="text-[9px] font-bold bg-primary-500 text-white px-1.5 py-0.5 rounded-full">
+                            {notifications.filter(n => n.unread).length}
+                          </span>
+                        )}
+                      </div>
+                      {notifications.length > 0 && (
+                        <button
+                          onClick={handleClearNotifications}
+                          className="text-[10px] font-medium text-muted hover:text-primary transition-colors"
+                        >
+                          Clear all
+                        </button>
+                      )}
                     </div>
-                    <div className="max-h-80 overflow-y-auto custom-scrollbar">
+
+                    {/* Body */}
+                    <div className="max-h-72 overflow-y-auto custom-scrollbar">
                       {notifications.length === 0 ? (
-                        <div className="py-12 text-center">
-                          <AlertCircle size={32} className="mx-auto text-slate-100 mb-3" />
-                          <p className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">No active alerts</p>
+                        <div className="py-10 flex flex-col items-center gap-2">
+                          <Bell size={20} className="text-muted opacity-25" />
+                          <p className="text-[11px] text-muted font-medium">No notifications</p>
                         </div>
                       ) : (
                         notifications.map((n) => (
-                          <div key={n.id} className={`p-4 border-b border-slate-50 hover:bg-slate-50 transition-all ${n.unread ? 'bg-green-50/20' : ''}`}>
-                             <div className="flex gap-3">
-                                <div className={`w-8 h-8 rounded-lg shrink-0 flex items-center justify-center ${
-                                  n.type === 'help' ? 'bg-green-100 text-[#22c55e]' : 'bg-red-100 text-red-600'
-                                }`}>
-                                   {n.type === 'help' ? <MessageCircle size={14} /> : <AlertTriangle size={14} />}
+                          <div key={n.id} className={`px-4 py-3 hover:bg-surface-hover transition-colors ${n.unread ? 'bg-primary-500/[0.03]' : ''}`} style={{ borderBottom: '1px solid #1f1f1f' }}>
+                            <div className="flex gap-3 items-start">
+                              <div className={`w-7 h-7 rounded-lg shrink-0 flex items-center justify-center ${
+                                n.type === 'help' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-primary-500/10 text-primary-500'
+                              }`}>
+                                {n.type === 'help'
+                                  ? <MessageCircle size={13} strokeWidth={2.5} />
+                                  : <AlertTriangle size={13} strokeWidth={2.5} />
+                                }
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2 mb-0.5">
+                                  <p className="text-[11px] font-semibold text-primary truncate">
+                                    {n.type === 'help' ? 'Support Request' : 'Security Alert'}
+                                  </p>
+                                  <span className="text-[10px] text-muted shrink-0">
+                                    {n.timestamp ? new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now'}
+                                  </span>
                                 </div>
-                                <div className="flex-1">
-                                   <div className="flex items-center justify-between mb-1">
-                                      <p className="text-xs font-bold text-slate-900">
-                                        {n.type === 'help' ? `Support Needed` : `Security Violation`}
-                                      </p>
-                                      <span className="text-[10px] font-medium text-slate-400">
-                                        {n.timestamp ? new Date(n.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Now'}
-                                      </span>
-                                   </div>
-                                   <p className="text-[11px] font-bold text-zinc-700 leading-tight mb-1">
-                                      {n.type === 'help' ? n.studentName : (n.studentName || n.studentId)}
-                                   </p>
-                                   <p className="text-[11px] text-slate-500 line-clamp-2">
-                                      {n.type === 'help' ? n.message : `Violation detected: ${n.type}`}
-                                   </p>
-                                </div>
-                             </div>
+                                <p className="text-[11px] font-medium text-primary truncate">
+                                  {n.type === 'help' ? n.studentName : (n.studentName || n.studentId)}
+                                </p>
+                                <p className="text-[10px] text-muted truncate mt-0.5">
+                                  {n.type === 'help' ? n.message : `Violation: ${n.type}`}
+                                </p>
+                              </div>
+                              {n.unread && (
+                                <div className="w-1.5 h-1.5 rounded-full bg-primary-500 shrink-0 mt-1.5" />
+                              )}
+                            </div>
                           </div>
                         ))
                       )}
                     </div>
                   </div>
                 )}
+
               </div>
-              <div className="flex items-center gap-3 cursor-pointer group px-2">
-               {/* Optional Header Actions space */}
-             </div>
+
           </div>
         </header>
 
         {/* Content Section */}
-        <section className="flex-1 overflow-y-auto p-10 custom-scrollbar">
+        <section className="flex-1 overflow-y-auto p-10 custom-scrollbar bg-main">
            {renderContent()}
         </section>
 
         {/* Sticky Action Footer for Settings */}
         {activeTab === 'Settings' && (
           <div 
-            className="fixed bottom-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-100 p-4 flex justify-end gap-4 z-40 transition-all duration-300 ease-in-out"
-            style={{ left: sidebarExpanded ? 260 : 76 }}
+            className="fixed bottom-0 right-0 bg-surface/80 backdrop-blur-xl border-t border-white/10 p-4 flex justify-end z-40 shadow-2xl"
+            style={{ left: sidebarExpanded ? 220 : 76 }}
           >
-            <div className="max-w-4xl w-full mx-auto flex justify-end items-center gap-5">
-               <div className="flex flex-col items-end mr-1">
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Active Security Policy</p>
-                  <p className="text-[10px] font-black text-slate-900">v2.4.0 Engine Enabled</p>
+            <div className="max-w-6xl w-full mx-auto flex justify-end items-center gap-6">
+               <div className="flex flex-col items-end">
+                  <p className="text-[9px] font-bold text-muted uppercase tracking-wider mb-0.5 opacity-60">Security Info</p>
+                  <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Engine v2.4.0 Active</p>
                </div>
                <button 
                  onClick={handleSaveSettings} 
-                 className="px-6 py-2.5 bg-[#4ade80] text-slate-900 text-xs font-bold hover:bg-[#22c55e] transition-all rounded-xl shadow-lg shadow-green-500/10 active:scale-95 flex items-center gap-2"
+                 className="px-8 py-2.5 bg-emerald-500 text-white text-[10px] font-bold hover:bg-emerald-600 transition-all rounded-xl shadow-lg shadow-emerald-500/20 active:scale-95 flex items-center gap-2 uppercase tracking-widest"
                >
-                  <ShieldCheck size={15} /> Deploy Configuration
+                  <ShieldCheck size={14} strokeWidth={2.5} /> Publish Exam
                </button>
             </div>
           </div>
@@ -2222,9 +2376,9 @@ export default function AdminDashboard() {
       {/* Evaluation Modal */}
       {showEvalModal && (
         evalLoading ? (
-          <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center">
-             <div className="bg-white rounded-3xl p-8 flex items-center justify-center shadow-2xl animate-in zoom-in-95 h-[300px] w-[300px]">
-                <BouncingDotLoader text="Accessing secure data layer..." />
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
+             <div className="bg-surface rounded-[2.5rem] p-12 flex items-center justify-center shadow-2xl animate-in zoom-in-95 h-[320px] w-[320px] border border-main">
+                <BouncingDotLoader text="Loading..." />
              </div>
           </div>
         ) : (
@@ -2238,16 +2392,16 @@ export default function AdminDashboard() {
 
       {/* Confirm Modal */}
       {confirmModal.show && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-8 shadow-2xl w-full max-w-sm border border-slate-200 animate-in zoom-in-95 duration-200">
-            <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto mb-5">
-              <AlertOctagon size={24} className="text-amber-500" />
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-surface rounded-[2.5rem] p-10 shadow-2xl w-full max-w-sm border border-main animate-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 rounded-[1.5rem] bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto mb-8 shadow-xl shadow-amber-500/10">
+              <AlertOctagon size={32} className="text-amber-500" strokeWidth={2.5} />
             </div>
-            <h3 className="text-sm font-bold text-slate-900 text-center uppercase tracking-wider mb-2">Confirm Action</h3>
-            <p className="text-xs text-slate-500 text-center mb-8 font-medium">{confirmModal.msg}</p>
-            <div className="flex items-center gap-3">
-              <button onClick={closeConfirm} className="flex-1 h-12 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider hover:bg-slate-50 transition-all active:scale-95">Cancel</button>
-              <button onClick={() => { confirmModal.onConfirm?.(); closeConfirm(); }} className="flex-1 h-12 rounded-xl bg-red-600 text-white text-xs font-bold uppercase tracking-wider hover:bg-red-700 transition-all shadow-lg shadow-red-900/20 active:scale-95">Confirm</button>
+            <h3 className="text-sm font-black text-primary text-center uppercase tracking-[0.2em] mb-3">Settings</h3>
+            <p className="text-[11px] text-muted text-center mb-10 font-black uppercase tracking-widest leading-relaxed opacity-60">{confirmModal.msg}</p>
+            <div className="flex items-center gap-4">
+              <button onClick={closeConfirm} className="flex-1 h-14 rounded-2xl border border-main text-[10px] font-black text-muted uppercase tracking-widest hover:bg-main transition-all active:scale-95">Cancel</button>
+              <button onClick={() => { confirmModal.onConfirm?.(); closeConfirm(); }} className="flex-1 h-14 rounded-2xl bg-primary-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-xl shadow-primary-500/20 active:scale-95">Authorize</button>
             </div>
           </div>
         </div>
@@ -2270,12 +2424,9 @@ export default function AdminDashboard() {
         itemTypeLabel="Users"
       />
 
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
-      `}</style>
+
     </div>
   );
 }
+
+

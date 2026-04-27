@@ -20,13 +20,23 @@ const ThemeEnforcer = () => {
   const { pathname } = useLocation();
   const { theme } = useTheme();
 
+  // Apply synchronously on every render (not just after mount)
+  // so there is zero gap between navigation and theme application.
+  const isAdmin = pathname.startsWith('/admin');
+  const isMentor = pathname.startsWith('/mentor');
+  if (isAdmin || isMentor) {
+    document.documentElement.setAttribute('data-theme', theme);
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+  }
+
   useEffect(() => {
-    // Force the app into dark mode when visiting the Landing Page
-    if (pathname === '/') {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    } else {
-      // Re-apply the global theme based on contextual state when navigating away
+    const isAdmin = pathname.startsWith('/admin');
+    const isMentor = pathname.startsWith('/mentor');
+    if (isAdmin || isMentor) {
       document.documentElement.setAttribute('data-theme', theme);
+    } else {
+      document.documentElement.removeAttribute('data-theme');
     }
   }, [pathname, theme]);
 

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import PremiumSidebar from '../components/PremiumSidebar';
+import { ThemeToggle } from '../contexts/ThemeContext';
 import BouncingDotLoader from '../components/BouncingDotLoader';
 import FloatingPillMenu from '../components/FloatingPillMenu';
 import AdminMessageControls from '../components/AdminMessageControls';
@@ -40,13 +41,13 @@ import AnimatedStatusIcon from '../components/AnimatedStatusIcon';
 
 const Badge = ({ children, color }) => {
   const styles = {
-    zinc: 'bg-slate-100 text-slate-600 border-slate-200',
-    emerald: 'bg-green-50 text-green-700 border-green-200',
-    amber: 'bg-amber-50 text-amber-700 border-amber-200',
-    red: 'bg-red-50 text-red-700 border-red-200',
+    zinc: 'bg-surface-hover text-muted border-main',
+    emerald: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+    amber: 'bg-primary-500/10 text-primary-500 border-primary-500/20',
+    red: 'bg-red-500/10 text-red-500 border-red-500/20',
   };
   return (
-    <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${styles[color] || styles.zinc} capitalize font-sans`}>
+    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black border ${styles[color] || styles.zinc} uppercase tracking-widest font-sans`}>
       {children}
     </span>
   );
@@ -106,27 +107,31 @@ const FloatingHelpPanel = ({ requests, onResolve }) => {
   if (requests.length === 0) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 w-80 z-[60] animate-in slide-in-from-bottom-5 duration-300">
-      <div className="bg-white/90 backdrop-blur-xl border border-slate-200 rounded-[24px] shadow-2xl overflow-hidden flex flex-col max-h-[400px]">
-        <div className="px-5 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <h3 className="text-[10px] font-bold text-slate-900 uppercase tracking-widest">Help Requests ({requests.length})</h3>
+    <div className="fixed bottom-8 right-8 w-[380px] z-[200] animate-in slide-in-from-bottom-10 duration-500">
+      <div className="bg-surface border border-main rounded-[2.5rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col max-h-[500px]">
+        <div className="px-8 py-6 bg-surface-hover/50 border-b border-main flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="relative w-2.5 h-2.5">
+              <div className="absolute inset-0 bg-primary-500 rounded-full animate-ping opacity-40" />
+              <div className="w-2.5 h-2.5 rounded-full bg-primary-500 relative" />
+            </div>
+            <h3 className="text-[11px] font-black text-primary uppercase tracking-[0.2em]">Priority Assistance ({requests.length})</h3>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
           {requests.map((req, i) => (
-            <div key={req.id || i} className="bg-white border border-slate-100 rounded-2xl p-4 hover:border-emerald-200 transition-all shadow-sm group">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold text-slate-900 truncate max-w-[150px]">{req.studentName}</span>
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{new Date(req.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            <div key={req.id || i} className="bg-surface-hover border border-main rounded-2xl p-6 hover:border-primary-500/30 transition-all duration-500 group relative overflow-hidden shadow-sm">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-primary-500/5 rounded-full blur-2xl -mr-12 -mt-12 group-hover:bg-primary-500/10 transition-colors" />
+              <div className="flex items-center justify-between mb-4 relative z-10">
+                <span className="text-xs font-black text-primary uppercase tracking-tight truncate max-w-[200px]">{req.studentName}</span>
+                <span className="text-[9px] font-black text-muted uppercase tracking-[0.2em] opacity-50">{new Date(req.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
-              <p className="text-[11px] text-slate-500 font-medium leading-relaxed mb-4 italic">"{req.message}"</p>
+              <p className="text-[11px] text-muted font-bold leading-relaxed mb-6 relative z-10 opacity-70">"{req.message}"</p>
               <button 
                 onClick={() => onResolve(req.id)}
-                className="w-full py-2 rounded-xl bg-slate-900 hover:bg-[#4ade80] text-white text-[10px] font-bold uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-slate-900/10"
+                className="w-full h-12 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-[10px] font-black uppercase tracking-[0.2em] transition-all active:scale-95 shadow-xl shadow-primary-500/20 relative z-10"
               >
-                Mark Resolved
+                Dismiss
               </button>
             </div>
           ))}
@@ -138,29 +143,37 @@ const FloatingHelpPanel = ({ requests, onResolve }) => {
 
 
 const DataTable = ({ headers, data, renderRow, loading }) => (
-  <div className="w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-    <div className="overflow-x-auto">
+  <div className="w-full overflow-hidden rounded-2xl bg-surface shadow-sm" style={{ border: '1px solid #1f1f1f' }}>
+    <div className="overflow-x-auto custom-scrollbar">
       <table className="w-full text-left border-collapse">
-        <thead className="bg-slate-50 border-b border-slate-200 font-sans">
+        <thead className="bg-surface-hover/50" style={{ borderBottom: '1px solid #1f1f1f' }}>
           <tr>
             {headers.map((h, i) => (
-              <th key={i} className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              <th key={i} className={`px-5 py-3 text-[10px] font-bold text-muted uppercase tracking-wider ${h === 'Score' || h === 'SCORE' ? 'text-center' : 'text-left'}`}>
                 {h}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100">
+        <tbody className="">
           {loading ? (
             <tr>
-              <td colSpan={headers.length} className="bg-white p-0">
-                <BouncingDotLoader text="Syncing system data..." />
+              <td colSpan={headers.length} className="p-0">
+                <BouncingDotLoader text="Loading..." />
               </td>
             </tr>
           ) : data.length === 0 ? (
             <tr>
-              <td colSpan={headers.length} className="px-6 py-12 text-center text-slate-400 font-medium">
-                No active records found.
+              <td colSpan={headers.length} className="px-8 py-16 text-center">
+                 <div className="flex flex-col items-center gap-3">
+                    <div className="w-14 h-14 rounded-xl bg-surface-hover border border-main flex items-center justify-center text-muted/40 shadow-sm">
+                       <FileText size={28} strokeWidth={1.5} />
+                    </div>
+                    <div>
+                       <p className="text-[14px] font-bold text-muted">No Active Records</p>
+                       <p className="text-[12px] text-muted/50 font-medium mt-1">No records found</p>
+                    </div>
+                 </div>
               </td>
             </tr>
           ) : (
@@ -210,46 +223,46 @@ const EvaluationModal = ({ sessionData, onClose, onGradeSubmit, submitStatus }) 
   const hasPendingReview = sessionData.questions?.some(q => q.status === 'pending_review');
 
   return (
-    <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-300" onClick={onClose}>
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-300" onClick={onClose}>
+      <div className="bg-surface rounded-[2.5rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] w-full max-w-4xl max-h-[90vh] overflow-hidden border border-main animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
         
         {/* Header */}
-        <div className="flex items-center justify-between px-8 py-6 border-b border-slate-100 bg-slate-50/50">
+        <div className="flex items-center justify-between px-10 py-8 border-b border-main bg-surface-hover/50">
           <div>
-            <h3 className="text-base font-bold text-slate-900 uppercase tracking-wider">{sessionData.exam?.title || 'Exam'} — Evaluation</h3>
-            <p className="text-xs text-slate-500 mt-1">
-              Student: <span className="font-bold text-slate-700">{sessionData.student?.name}</span> ({sessionData.student?.email})
+            <h3 className="text-base font-black text-primary uppercase tracking-[0.2em]">{sessionData.exam?.title || 'Exam'} — Score Review</h3>
+            <p className="text-[10px] text-muted mt-2 uppercase font-black tracking-widest">
+              Candidate: <span className="text-primary">{sessionData.student?.name}</span> — {sessionData.student?.email}
             </p>
           </div>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-10">
             <div className="text-right">
-              <p className="text-2xl font-black text-slate-900 tabular-nums leading-none">{sessionData.score}/{sessionData.totalMarks}</p>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#22c55e] mt-1">{sessionData.percentage}% — {sessionData.passed ? 'Passed' : 'Failed'}</p>
+              <p className="text-3xl font-black text-primary tabular-nums leading-none">{sessionData.score}/{sessionData.totalMarks}</p>
+              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#22c55e] mt-2">{sessionData.percentage}% — {sessionData.passed ? 'PASSED' : 'FAILED'}</p>
             </div>
-            <button onClick={onClose} className="p-2.5 hover:bg-slate-100 rounded-xl transition-all active:scale-95 text-slate-400 hover:text-slate-600">
-              <X size={20} />
+            <button onClick={onClose} className="p-3 hover:bg-surface-hover rounded-2xl transition-all active:scale-95 border border-transparent hover:border-main text-muted hover:text-primary">
+              <X size={24} />
             </button>
           </div>
         </div>
 
         {/* Questions List */}
-        <div className="overflow-y-auto max-h-[60vh] p-6 space-y-4 custom-scrollbar">
+        <div className="overflow-y-auto max-h-[60vh] p-10 space-y-6 custom-scrollbar">
           {sessionData.questions?.map((q, i) => (
-            <div key={i} className={`rounded-xl border p-5 ${
-              q.status === 'correct' ? 'border-emerald-200 bg-green-50/30' :
-              q.status === 'incorrect' ? 'border-red-200 bg-red-50/30' :
-              q.status === 'partial' ? 'border-amber-200 bg-amber-50/30' :
-              q.status === 'manually_graded' ? 'border-blue-200 bg-blue-50/30' :
-              'border-slate-200 bg-white'
+            <div key={i} className={`rounded-[2rem] border p-8 transition-all ${
+              q.status === 'correct' ? 'border-emerald-500/20 bg-emerald-500/[0.02]' :
+              q.status === 'incorrect' ? 'border-red-500/20 bg-red-500/[0.02]' :
+              q.status === 'partial' ? 'border-primary-500/20 bg-primary-500/[0.02]' :
+              q.status === 'manually_graded' ? 'border-blue-500/20 bg-blue-500/[0.02]' :
+              'border-main bg-surface-hover/30'
             }`}>
               {/* Question Header */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Q{q.index + 1}</span>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                    q.type === 'mcq' ? 'bg-blue-100 text-blue-700' :
-                    q.type === 'coding' ? 'bg-purple-100 text-purple-700' :
-                    'bg-orange-100 text-orange-700'
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-4">
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted">Q{q.index + 1}</span>
+                  <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${
+                    q.type === 'mcq' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                    q.type === 'coding' ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
+                    'bg-primary-500/10 text-primary-500 border-primary-500/20'
                   }`}>
                     {q.type === 'mcq' && '🔘 MCQ'}
                     {q.type === 'coding' && '💻 Coding'}
@@ -257,23 +270,28 @@ const EvaluationModal = ({ sessionData, onClose, onGradeSubmit, submitStatus }) 
                   </span>
                   <StatusBadge status={q.status} />
                 </div>
-                <span className="text-sm font-bold tabular-nums text-slate-700">{q.marksObtained}/{q.maxMarks}</span>
+                <span className="text-sm font-black tabular-nums text-primary bg-surface px-4 py-1.5 rounded-xl border border-main shadow-sm">{q.marksObtained} <span className="text-muted/30 mx-1">/</span> {q.maxMarks}</span>
               </div>
 
-              <p className="text-sm text-slate-800 font-medium mb-3">{q.questionText}</p>
+              <p className="text-[13px] text-primary font-bold mb-6 opacity-90 leading-relaxed">{q.questionText}</p>
 
               {/* MCQ Detail */}
               {q.type === 'mcq' && (
-                <div className="space-y-1.5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {q.options?.map((opt, oi) => (
-                    <div key={oi} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs ${
-                      oi === q.correctChoice && oi === q.studentChoice ? 'bg-green-100 text-green-800 font-bold' :
-                      oi === q.correctChoice ? 'bg-green-100 text-green-800 font-bold' :
-                      oi === q.studentChoice ? 'bg-red-100 text-red-800 font-bold' :
-                      'bg-slate-50 text-slate-600'
+                    <div key={oi} className={`flex items-center gap-3 px-4 py-3 rounded-xl text-[11px] border transition-all ${
+                      oi === q.correctChoice && oi === q.studentChoice ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 font-black' :
+                      oi === q.correctChoice ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 font-black' :
+                      oi === q.studentChoice ? 'bg-red-500/10 text-red-500 border-red-500/20 font-black' :
+                      'bg-surface border-main text-muted font-bold'
                     }`}>
-                      {oi === q.correctChoice && <Check size={12} />}
-                      {oi === q.studentChoice && oi !== q.correctChoice && <X size={12} />}
+                      <div className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 shadow-sm ${
+                         oi === q.correctChoice ? 'bg-emerald-500 text-white' :
+                         oi === q.studentChoice ? 'bg-red-500 text-white' : 
+                         'bg-surface-hover text-muted/30 border border-main'
+                      }`}>
+                        {oi === q.correctChoice ? <Check size={12} strokeWidth={3} /> : oi === q.studentChoice ? <X size={12} strokeWidth={3} /> : <div className="w-1.5 h-1.5 rounded-full bg-current" />}
+                      </div>
                       <span>{opt}</span>
                     </div>
                   ))}
@@ -282,84 +300,95 @@ const EvaluationModal = ({ sessionData, onClose, onGradeSubmit, submitStatus }) 
 
               {/* Coding Detail */}
               {q.type === 'coding' && (
-                <div className="space-y-2">
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    Test Cases: {q.passedTestCases}/{q.totalTestCases} Passed
-                  </p>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[9px] font-black text-muted uppercase tracking-[0.2em]">
+                      Test Matrices: {q.passedTestCases}/{q.totalTestCases} Verified
+                    </p>
+                  </div>
                   {q.studentAnswer && (
-                    <pre className="bg-slate-900 text-slate-100 p-3 rounded-lg text-xs overflow-x-auto max-h-40">
+                    <pre className="bg-[#0a0c10] text-slate-300 p-6 rounded-2xl text-[11px] font-mono leading-relaxed overflow-x-auto max-h-48 border border-white/5 shadow-2xl custom-scrollbar">
                       {typeof q.studentAnswer === 'object' ? q.studentAnswer.code : q.studentAnswer}
                     </pre>
                   )}
-                  {q.testCaseResults?.map((tc, ti) => (
-                    <div key={ti} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs ${
-                      tc.passed ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
-                    }`}>
-                      {tc.passed ? <Check size={12} /> : <X size={12} />}
-                      <span>Test #{tc.testCaseIndex + 1}: {tc.passed ? 'Passed' : (tc.error || `Expected "${tc.expectedOutput}", got "${tc.actualOutput}"`)}</span>
-                    </div>
-                  ))}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {q.testCaseResults?.map((tc, ti) => (
+                      <div key={ti} className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-[10px] border font-black uppercase tracking-widest ${
+                        tc.passed ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'
+                      }`}>
+                        {tc.passed ? <Check size={14} strokeWidth={3} /> : <X size={14} strokeWidth={3} />}
+                        <span className="truncate">Matrix #{tc.testCaseIndex + 1}: {tc.passed ? 'PASS' : 'FAIL'}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
               {/* Short Answer Detail */}
               {q.type === 'short' && (
-                <div className="space-y-3">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Student's Answer</p>
-                      <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs text-slate-700 min-h-[60px]">
-                        {typeof q.studentAnswer === 'object' ? q.studentAnswer.code : (q.studentAnswer || <span className="italic text-slate-400">No answer provided</span>)}
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-surface border border-main rounded-2xl p-6 shadow-sm">
+                      <p className="text-[9px] font-black text-muted uppercase tracking-[0.2em] mb-4 flex items-center gap-3">
+                        <User size={14} className="text-primary-500" /> Student Response
+                      </p>
+                      <div className="text-[13px] text-primary leading-relaxed opacity-80 min-h-[80px]">
+                        {typeof q.studentAnswer === 'object' ? q.studentAnswer.code : (q.studentAnswer || <span className="text-muted/30">No answer submitted</span>)}
                       </div>
                     </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Expected Answer</p>
-                      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-700 min-h-[60px]">
-                        {q.expectedAnswer || <span className="italic text-slate-400">Not configured</span>}
+                    <div className="bg-emerald-500/[0.03] border border-emerald-500/20 rounded-2xl p-6 shadow-sm">
+                      <p className="text-[9px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-4 flex items-center gap-3">
+                        <Target size={14} className="text-emerald-500" /> Expected Blueprint
+                      </p>
+                      <div className="text-[13px] text-emerald-500 leading-relaxed font-bold opacity-90 min-h-[80px]">
+                        {q.expectedAnswer || <span className="text-muted/30">Blueprint missing</span>}
                       </div>
                     </div>
                   </div>
 
                   {/* AI Suggestion */}
                   {q.aiSuggestedMarks != null && (
-                    <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Star size={12} className="text-indigo-600" />
-                        <p className="text-[10px] font-bold text-indigo-700 uppercase tracking-widest">AI Suggestion: {q.aiSuggestedMarks}/{q.maxMarks}</p>
+                    <div className="bg-primary-500/5 border border-primary-500/20 rounded-[1.5rem] p-6 shadow-sm relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-primary-500/5 rounded-full blur-2xl -mr-16 -mt-16" />
+                      <div className="flex items-center gap-3 mb-3 relative z-10">
+                        <Sparkles size={16} className="text-primary-500" />
+                        <p className="text-[9px] font-black text-primary-500 uppercase tracking-[0.2em]">AI Suggested Marks: {q.aiSuggestedMarks} <span className="text-muted/30">/</span> {q.maxMarks}</p>
                       </div>
-                      <p className="text-xs text-indigo-600">{q.aiReasoning}</p>
+                      <p className="text-[11px] text-primary-500 font-bold opacity-80 relative z-10 leading-relaxed">{q.aiReasoning}</p>
                     </div>
                   )}
 
                   {/* Mentor Grading Inputs (only for pending_review) */}
                   {q.status === 'pending_review' && grades[q.index] !== undefined && (
-                    <div className="bg-white border-2 border-amber-300 rounded-xl p-4 space-y-3">
-                      <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest flex items-center gap-1.5">
-                        <Edit3 size={12} /> Mentor Evaluation
-                      </p>
-                      <div className="flex items-center gap-4">
-                        <label className="text-xs font-bold text-slate-600">Marks:</label>
-                        <input
-                          type="number"
-                          min="0"
-                          max={q.maxMarks}
-                          value={grades[q.index]?.marksObtained ?? 0}
-                          onChange={e => setGrades(prev => ({
-                            ...prev,
-                            [q.index]: { ...prev[q.index], marksObtained: Number(e.target.value) }
-                          }))}
-                          className="w-20 px-3 py-2 border border-slate-200 text-sm text-center rounded-xl focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
-                        />
-                        <span className="text-xs text-slate-400">/ {q.maxMarks}</span>
+                    <div className="bg-surface border-2 border-primary-500/30 rounded-[1.5rem] p-6 space-y-5 shadow-2xl">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[9px] font-black text-primary-500 uppercase tracking-[0.2em] flex items-center gap-3">
+                          <Edit3 size={14} /> Manual Grading
+                        </p>
+                        <div className="flex items-center gap-4 bg-surface-hover px-4 py-2 rounded-xl border border-main">
+                          <label className="text-[10px] font-black text-muted uppercase tracking-widest">Marks:</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max={q.maxMarks}
+                            value={grades[q.index]?.marksObtained ?? 0}
+                            onChange={e => setGrades(prev => ({
+                              ...prev,
+                              [q.index]: { ...prev[q.index], marksObtained: Number(e.target.value) }
+                            }))}
+                            className="w-12 bg-transparent text-sm font-black text-center text-primary focus:outline-none"
+                          />
+                          <span className="text-muted/30 font-black">/ {q.maxMarks}</span>
+                        </div>
                       </div>
                       <textarea
-                        placeholder="Mentor feedback (optional)..."
+                        placeholder="Encrypted mentor feedback..."
                         value={grades[q.index]?.mentorFeedback || ''}
                         onChange={e => setGrades(prev => ({
                           ...prev,
                           [q.index]: { ...prev[q.index], mentorFeedback: e.target.value }
                         }))}
-                        className="w-full px-3 py-2 border border-slate-200 text-xs rounded-xl focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 min-h-[60px] resize-none"
+                        className="w-full px-6 py-4 bg-surface-hover border border-main text-[13px] rounded-2xl focus:outline-none focus:border-primary-500 transition-all min-h-[100px] resize-none shadow-inner text-primary"
                       />
                     </div>
                   )}
@@ -379,17 +408,17 @@ const EvaluationModal = ({ sessionData, onClose, onGradeSubmit, submitStatus }) 
 
         {/* Footer */}
         {hasPendingReview && (
-          <div className="px-8 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-3">
-            <button onClick={onClose} className="px-5 py-2.5 text-xs font-bold text-slate-500 uppercase hover:bg-slate-100 rounded-xl transition-all active:scale-95">
-              Cancel
+          <div className="px-10 py-6 border-t border-main bg-surface-hover/50 flex items-center justify-end gap-5">
+            <button onClick={onClose} className="px-8 py-3 text-[10px] font-black text-muted uppercase tracking-[0.2em] hover:bg-surface-hover rounded-2xl border border-transparent hover:border-main transition-all active:scale-95">
+              Abort
             </button>
             <button
               onClick={handleSubmit}
               disabled={submitStatus !== 'idle'}
-              className="min-w-[150px] px-5 py-2.5 bg-[#4ade80] text-white text-xs font-bold uppercase hover:bg-green-700 rounded-xl transition-all shadow-lg shadow-green-500/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="min-w-[180px] h-12 bg-primary-500 text-white text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 rounded-2xl transition-all shadow-2xl shadow-primary-500/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
             >
-              <AnimatedStatusIcon status={submitStatus} icon={<Check size={14} />} size={14} />
-              {submitStatus === 'loading' ? 'Submitting' : submitStatus === 'success' ? 'Submitted' : 'Submit Grades'}
+              <AnimatedStatusIcon status={submitStatus} icon={<Check size={16} strokeWidth={3} />} size={16} />
+              {submitStatus === 'loading' ? 'Encrypting...' : submitStatus === 'success' ? 'Deployed' : 'Deploy Evaluation'}
             </button>
           </div>
         )}
@@ -506,9 +535,13 @@ export default function MentorDashboard() {
     setLoading(true);
     try {
       if (tab === 'Overview') {
-        const res = await getMentorStats();
+        const [res, studentsRes] = await Promise.all([
+          getMentorStats().catch(() => ({ stats: {}, activity: [] })),
+          getStudents().catch(() => ({ students: [] }))
+        ]);
         setStats(res.stats || { liveStudents: 0, totalSubmissions: 0, flags: 0, totalExams: 0 });
         setActivity(Array.isArray(res.activity) ? res.activity : []);
+        setStudents(studentsRes?.students || studentsRes || []);
       } else if (tab === 'Exam Management') {
         const res = await getMentorExamList();
         setExams(Array.isArray(res) ? res : []);
@@ -738,8 +771,7 @@ export default function MentorDashboard() {
   const navItems = [
     { id: 'Overview', label: 'Overview', icon: LayoutDashboard, section: 'System Main' },
     { id: 'Exam Management', label: 'Exam Library', icon: FileText, section: 'Management' },
-    { id: 'Results & Reports', label: 'Results & Reports', icon: BarChart3, section: 'Intelligence & Oversight' },
-    { id: 'Candidates', label: 'E-KYC Verification', icon: ScanFace, section: 'Intelligence & Oversight' },
+    { id: 'Results & Reports', label: 'Results & Reports', icon: BarChart3, section: 'Reports' },
     { id: 'Academics', label: 'Student Analytics', icon: TrendingUp, section: 'Academics' },
   ];
 
@@ -748,121 +780,152 @@ export default function MentorDashboard() {
      ───────────────────────────────────────────────────────── */
 
   const STAT_CARDS = [
-    { label: 'Active Test Takers', value: stats.liveStudents, icon: Users },
-    { label: 'Violations / Flags', value: stats.flags, icon: AlertTriangle },
-    { label: 'Exams Published', value: stats.totalExams, icon: FileText },
+    { label: 'Active Candidates', value: stats.liveStudents, icon: Users, color: 'emerald' },
+    { label: 'Security Alerts', value: stats.flags, icon: AlertTriangle, color: 'primary' },
+    { label: 'Published Exams', value: stats.totalExams, icon: FileText, color: 'primary' },
   ];
 
   const renderOverview = () => (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+    <div className="space-y-8 ">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {STAT_CARDS.map((stat, i) => (
-          <div key={i} className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-2.5 rounded-xl bg-emerald-50 text-[#22c55e]">
-                <stat.icon size={20} />
-              </div>
+          <div key={i} className="p-6 rounded-2xl bg-surface border border-main shadow-sm hover:border-primary-500/20 transition-all group flex flex-col gap-3">
+            <div className={`w-9 h-9 rounded-lg ${stat.color === 'emerald' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-primary-500/10 text-primary-500'} border border-current/10 flex items-center justify-center`}>
+              <stat.icon size={16} strokeWidth={2.2} />
             </div>
-            <h3 className="text-[32px] font-semibold text-[#0F0F0F]">{stat.value}</h3>
-            <p className="text-sm font-medium text-[#7A7A7A] mt-1">{stat.label}</p>
+            <div>
+              <h3 className="text-2xl font-bold text-primary tracking-tight">{stat.value}</h3>
+              <p className="text-[12px] font-medium text-muted mt-0.5">{stat.label}</p>
+            </div>
           </div>
         ))}
       </div>
 
-      <div className="mb-2">
-        <AdminMessageControls activeStudents={[]} mode="full" />
-      </div>
 
-      <div className="mb-8">
-        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Live Exam Health</h4>
-        {/* Note: This is an overview. If you have multiple exams, you'd iterate. 
-            For now, we'll show it for the primary/latest active exam if one exists. */}
-        <AdminHealthCockpit currentUserId={sessionStorage.getItem('vision_id') || sessionStorage.getItem('vision_email')} />
+      <div className="mb-2">
+        <AdminMessageControls activeStudents={students} mode="full" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-8 p-8 rounded-[32px] bg-white border border-slate-200 shadow-sm flex flex-col h-[500px]">
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">
-                <ShieldCheck size={20} />
+        <div className="lg:col-span-8 p-8 rounded-[2.5rem] bg-surface border border-main shadow-sm flex flex-col h-[520px] relative overflow-hidden group/feed">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/[0.01] rounded-full blur-3xl -mr-32 -mt-32" />
+          
+          <div className="flex items-center justify-between mb-8 relative z-10">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-surface-hover border border-main flex items-center justify-center text-primary-500">
+                <ShieldCheck size={20} strokeWidth={2} />
               </div>
-              <h4 className="text-base font-bold text-slate-900 uppercase tracking-tight">Real-Time Integrity Feed</h4>
+              <div>
+                <h4 className="text-lg font-bold text-primary tracking-tight">Security Overview</h4>
+                <p className="text-[11px] font-medium text-muted mt-0.5">Real-time integrity telemetry</p>
+              </div>
             </div>
-            <button onClick={() => setActiveTab('Results & Reports')} className="text-[10px] font-bold text-[#22c55e] uppercase tracking-wider hover:bg-green-50 px-4 py-2 rounded-xl transition-all">View Analytics</button>
+            <button onClick={() => setActiveTab('Results & Reports')} className="text-[11px] font-bold text-primary-500 hover:text-primary transition-colors">View All</button>
           </div>
-          <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
+          
+          <div className="flex-1 overflow-y-auto pr-4 custom-scrollbar space-y-4 relative z-10">
              {/* Socket violations take priority, then API activity */}
              {violations.length > 0 ? violations.map((v) => (
-                <div key={v.id} className="flex items-center justify-between p-5 bg-red-50/40 border border-red-100/50 rounded-2xl animate-in slide-in-from-right-3 duration-500">
-                   <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shadow-sm">
-                        <AlertTriangle size={18} />
+                <div key={v.id} className="flex items-center justify-between p-6 bg-red-500/[0.03] border border-red-500/10 rounded-[1.5rem] animate-in slide-in-from-right-5 duration-500 group/item hover:bg-red-500/[0.05] transition-colors">
+                   <div className="flex items-center gap-5">
+                      <div className="w-12 h-12 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center shadow-lg shadow-red-500/10 border border-red-500/20">
+                         <AlertTriangle size={20} strokeWidth={2.5} />
                       </div>
                       <div>
-                         <p className="text-sm font-bold text-slate-900">{v.student}</p>
-                         <p className="text-[10px] text-red-500 font-semibold uppercase tracking-wider">{v.type}</p>
+                        <h5 className="text-[13px] font-black text-primary uppercase tracking-tight group-hover/item:text-red-500 transition-colors">{v.student}</h5>
+                        <p className="text-[10px] font-black text-red-500/70 uppercase tracking-widest mt-1">{v.type}</p>
                       </div>
                    </div>
-                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-white px-3 py-1 rounded-lg border border-slate-100">{v.time}</span>
+                   <div className="text-right">
+                      <span className="text-[10px] font-black text-muted uppercase tracking-widest font-mono opacity-50">{v.time}</span>
+                   </div>
                 </div>
              )) : activity.length > 0 ? activity.map((a, i) => (
-                <div key={i} className={`flex items-center justify-between p-5 ${a.type === 'flag' ? 'bg-red-50/40 border border-red-100/50' : 'bg-slate-50 border border-slate-100'} rounded-2xl`}>
-                   <div className="flex items-center gap-4">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${a.type === 'flag' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-[#22c55e]'}`}>
-                        {a.type === 'flag' ? <AlertTriangle size={18} /> : <CheckCircle2 size={18} />}
+                <div key={i} className={`flex items-center justify-between p-6 ${a.type === 'flag' ? 'bg-red-500/[0.03] border border-red-500/10' : 'bg-surface-hover/50 border border-main'} rounded-[1.5rem] group/item hover:border-primary-500/30 transition-all duration-500`}>
+                   <div className="flex items-center gap-5">
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-lg shadow-black/20 border ${a.type === 'flag' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'}`}>
+                        {a.type === 'flag' ? <AlertTriangle size={20} strokeWidth={2.5} /> : <CheckCircle2 size={20} strokeWidth={2.5} />}
                       </div>
                       <div>
-                         <p className="text-sm font-bold text-slate-900">{a.name}</p>
-                         <p className="text-[11px] text-slate-500 font-medium uppercase tracking-tight">{a.action} {a.exam}</p>
+                         <h5 className="text-[13px] font-black text-primary uppercase tracking-tight group-hover/item:text-primary-500 transition-colors">{a.name}</h5>
+                         <p className="text-[10px] font-black text-muted uppercase tracking-widest mt-1 opacity-50">{a.action} {a.exam}</p>
                       </div>
                    </div>
-                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-white px-3 py-1 rounded-lg border border-slate-100">{a.time}</span>
+                   <div className="text-right">
+                      <span className="text-[10px] font-black text-muted uppercase tracking-widest font-mono opacity-50">{a.time}</span>
+                   </div>
                 </div>
              )) : (
-               <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-4 opacity-40">
-                  <ShieldCheck size={48} strokeWidth={1} />
-                  <p className="text-[11px] font-black uppercase tracking-[0.3em] text-center">Protocol Active <br/>Zero Violations Detected</p>
-               </div>
+                <div className="h-full flex flex-col items-center justify-center text-center opacity-40 grayscale">
+                   <div className="w-20 h-20 rounded-[2.5rem] bg-surface-hover border-2 border-dashed border-main flex items-center justify-center text-muted mb-6">
+                      <ShieldCheck size={40} strokeWidth={1} />
+                   </div>
+                   <h5 className="text-xs font-black text-primary uppercase tracking-[0.3em]">No Anomalies Detected</h5>
+                   <p className="text-[10px] text-muted font-black uppercase tracking-widest mt-2">All security checks passed</p>
+                </div>
              )}
           </div>
         </div>
-        <div className="lg:col-span-4 p-8 rounded-[32px] bg-white border border-slate-200 shadow-sm">
-           <div className="flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#22c55e] flex items-center justify-center">
-                <CheckCircle2 size={20} />
-              </div>
-              <h4 className="text-base font-bold text-slate-900 uppercase tracking-tight">System Health</h4>
-           </div>
-           <div className="space-y-8">
-              <div>
-                 <div className="flex justify-between items-center text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">
-                    <span>Submissions</span>
-                    <span className="text-[#22c55e]">{stats.totalSubmissions} / {stats.liveStudents + stats.totalSubmissions}</span>
-                 </div>
-                 <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-green-500 transition-all duration-700 ease-out" style={{ width: `${Math.min((stats.totalSubmissions / Math.max(stats.totalSubmissions + stats.liveStudents, 1)) * 100, 100)}%` }} />
-                 </div>
-              </div>
-              <div>
-                 <div className="flex justify-between items-center text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">
-                    <span>Integrity Flags</span>
-                    <span className={stats.flags > 0 ? 'text-red-600' : 'text-[#22c55e]'}>{stats.flags} Sessions</span>
-                 </div>
-                 <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div className={`h-full transition-all duration-700 ease-out ${stats.flags > 0 ? 'bg-red-400' : 'bg-green-500'}`} style={{ width: `${Math.min((stats.flags / Math.max(stats.totalSubmissions, 1)) * 100, 100)}%` }} />
-                 </div>
-              </div>
-           </div>
-           <div className="mt-12 p-5 bg-slate-50 rounded-2xl border border-slate-100">
-             <p className="text-[11px] text-slate-500 leading-relaxed italic font-medium">
-               "Vision Engine is monitoring all nodes. Secure environment verified."
-             </p>
-           </div>
+
+        <div className="lg:col-span-4 flex flex-col gap-8">
+          <div className="p-8 rounded-[2.5rem] bg-surface border border-main shadow-sm flex flex-col relative overflow-hidden group/health">
+             <div className="flex items-center gap-4 mb-8 relative z-10">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center border border-emerald-500/20">
+                  <CheckCircle2 size={20} strokeWidth={2} />
+                </div>
+                <div>
+                  <h4 className="text-lg font-bold text-primary tracking-tight">System Health</h4>
+                  <p className="text-[11px] font-medium text-muted mt-0.5">Active surveillance node</p>
+                </div>
+             </div>
+             
+             <div className="space-y-8 relative z-10">
+                <div>
+                   <div className="flex justify-between items-center text-[10px] font-bold text-muted uppercase tracking-wider mb-3">
+                      <span>Active Load</span>
+                      <span className="text-emerald-500">{stats.totalSubmissions} / {stats.liveStudents + stats.totalSubmissions} PKTS</span>
+                   </div>
+                   <div className="h-1.5 bg-main rounded-full overflow-hidden">
+                      <div className="h-full bg-emerald-500 transition-all duration-1000 ease-out" style={{ width: `${Math.min((stats.totalSubmissions / Math.max(stats.totalSubmissions + stats.liveStudents, 1)) * 100, 100)}%` }} />
+                   </div>
+                </div>
+                <div>
+                   <div className="flex justify-between items-center text-[10px] font-bold text-muted uppercase tracking-wider mb-3">
+                      <span>Anomaly Counter</span>
+                      <span className={stats.flags > 0 ? 'text-primary-500' : 'text-emerald-500'}>{stats.flags} UNITS</span>
+                   </div>
+                   <div className="h-1.5 bg-main rounded-full overflow-hidden">
+                      <div className={`h-full transition-all duration-1000 ease-out ${stats.flags > 0 ? 'bg-primary-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min((stats.flags / 20) * 100, 100)}%` }} />
+                   </div>
+                </div>
+             </div>
+
+             <div className="mt-10 pt-8 border-t border-main relative z-10">
+                <h5 className="text-[10px] font-bold text-muted uppercase tracking-widest mb-4">Diagnostics</h5>
+                <div className="flex items-center justify-between py-3 group/row">
+                   <span className="text-[11px] font-semibold text-muted uppercase tracking-wider group-hover/row:text-primary transition-colors">Relay Link</span>
+                   <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                      <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">Active</span>
+                   </div>
+                </div>
+                <div className="mt-8">
+                   <button className="w-full h-12 rounded-xl bg-surface border border-main text-muted hover:text-primary hover:border-primary-500/20 font-bold text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-2 group/btn">
+                      <RefreshCw size={14} className="group-hover/btn:rotate-180 transition-transform duration-700" />
+                      Refresh
+                   </button>
+                </div>
+             </div>
+          </div>
         </div>
       </div>
     </div>
   );
+
+
+
+
+
 
   const renderCandidates = () => {
     const filteredCandidates = candidates.filter(c => {
@@ -877,40 +940,40 @@ export default function MentorDashboard() {
     });
 
     return (
-      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="space-y-10 ">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">Identity Verification</h2>
-            <p className="text-sm text-slate-500 mt-0.5">Review and authorize candidate E-KYC submissions</p>
+            <h2 className="text-2xl font-bold text-primary">Identity Verification</h2>
+            <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] mt-1 opacity-50">Review and authorize biometric telemetry</p>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
              <button
               onClick={handleAutoAIIdentify}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-sm font-semibold hover:bg-slate-800 transition-all shadow-sm"
+              className="flex items-center gap-3 px-6 py-3 bg-surface border border-main text-primary hover:border-primary-500/30 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-xl group"
             >
-              <Activity size={16} className="text-emerald-400" />
-              AI Quality Check
+              <Activity size={16} className="text-primary-500 group-hover:animate-pulse" />
+              Biometric Scan
             </button>
             <button
               onClick={handleVerifyAllCandidates}
               disabled={verifyingAll}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-all shadow-sm disabled:opacity-50"
+              className="flex items-center gap-3 px-6 py-3 bg-primary-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-xl shadow-primary-500/20 disabled:opacity-50"
             >
-              {verifyingAll ? <RefreshCw size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
-              Verify All Visible
+              {verifyingAll ? <RefreshCw size={16} className="animate-spin" /> : <ShieldCheck size={16} strokeWidth={2.5} />}
+              Verify All Units
             </button>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="flex bg-slate-100 p-1 rounded-xl">
+        <div className="flex flex-wrap items-center gap-6 bg-surface p-6 rounded-[2rem] border border-main shadow-2xl">
+          <div className="flex bg-main p-1.5 rounded-2xl">
             {['ALL', 'PENDING', 'VERIFIED', 'ISSUES'].map(f => (
               <button
                 key={f}
                 onClick={() => setCandidateFilter(f)}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  candidateFilter === f ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                className={`px-6 py-2.5 rounded-xl text-[10px] font-black transition-all uppercase tracking-widest ${
+                  candidateFilter === f ? 'bg-surface text-primary-500 shadow-xl' : 'text-muted hover:text-primary'
                 }`}
               >
                 {f}
@@ -918,26 +981,26 @@ export default function MentorDashboard() {
             ))}
           </div>
 
-          <div className="flex-1 min-w-[240px] relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+          <div className="flex-1 min-w-[280px] relative group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted group-focus-within:text-primary-500 transition-colors" size={18} />
             <input
               type="text"
-              placeholder="Search by name or email..."
+              placeholder="SEARCH REGISTRY..."
               value={candidateSearch}
               onChange={(e) => setCandidateSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10 transition-all"
+              className="w-full pl-12 pr-6 py-4 bg-main border border-transparent rounded-[1.5rem] text-xs font-black text-primary placeholder:text-muted/30 focus:outline-none focus:border-primary-500/30 focus:bg-surface transition-all uppercase tracking-widest"
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
           {filteredCandidates.map((candidate) => (
             <div 
               key={candidate._id}
-              className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-all group"
+              className="bg-surface rounded-[2.5rem] border border-main shadow-2xl overflow-hidden hover:border-primary-500/30 transition-all duration-500 group/card relative"
             >
-              <div className="aspect-[16/9] relative bg-slate-100 flex overflow-hidden">
-                <div className="flex-1 relative border-r border-slate-200">
+              <div className="aspect-[16/10] relative bg-main flex overflow-hidden">
+                <div className="flex-1 relative border-r border-main">
                   <img 
                     src={candidate.profilePicture || 'https://ui-avatars.com/api/?name=' + candidate.name} 
                     alt="Live Capture"
@@ -960,7 +1023,7 @@ export default function MentorDashboard() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
                   <button 
                     onClick={() => setSelectedCandidate(candidate)}
-                    className="w-full py-2 bg-white/20 backdrop-blur-md border border-white/30 text-white rounded-lg text-xs font-bold hover:bg-white/30 transition-all"
+                    className="w-full py-2 bg-primary-500/20 backdrop-blur-md border border-primary-500/30 text-white rounded-lg text-xs font-black uppercase tracking-widest hover:bg-primary-500/30 transition-all"
                   >
                     View HD Proofs
                   </button>
@@ -970,59 +1033,60 @@ export default function MentorDashboard() {
               <div className="p-5">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="font-bold text-slate-900 truncate max-w-[150px]">{candidate.name}</h3>
-                    <p className="text-[11px] text-slate-500 font-medium">{candidate.email}</p>
+                    <h3 className="font-black text-primary uppercase tracking-tight group-hover/card:text-primary-500 transition-colors">{candidate.name}</h3>
+                    <p className="text-[10px] text-muted font-black uppercase tracking-widest mt-1 opacity-50">{candidate.email}</p>
                   </div>
                   {candidate.isVerified ? (
-                    <div className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100">
-                      <ShieldCheck size={14} />
-                      <span className="text-[10px] font-black uppercase">Verified</span>
+                    <div className="flex items-center gap-1.5 text-emerald-500 bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/20 shadow-lg shadow-emerald-500/5">
+                      <ShieldCheck size={14} strokeWidth={3} />
+                      <span className="text-[9px] font-black uppercase tracking-widest">Verified</span>
                     </div>
                   ) : candidate.verificationIssue ? (
-                    <div className="flex items-center gap-1 text-red-600 bg-red-50 px-2 py-1 rounded-lg border border-red-100">
-                      <AlertCircle size={14} />
-                      <span className="text-[10px] font-black uppercase">Flagged</span>
+                    <div className="flex items-center gap-1.5 text-red-500 bg-red-500/10 px-3 py-1.5 rounded-xl border border-red-500/20 shadow-lg shadow-red-500/5">
+                      <AlertCircle size={14} strokeWidth={3} />
+                      <span className="text-[9px] font-black uppercase tracking-widest">Flagged</span>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-1 text-amber-600 bg-amber-50 px-2 py-1 rounded-lg border border-amber-100">
-                      <Clock size={14} />
-                      <span className="text-[10px] font-black uppercase">Pending</span>
+                    <div className="flex items-center gap-1.5 text-primary-500 bg-primary-500/10 px-3 py-1.5 rounded-xl border border-primary-500/20 shadow-lg shadow-primary-500/5">
+                      <Clock size={14} strokeWidth={3} />
+                      <span className="text-[9px] font-black uppercase tracking-widest">Pending</span>
                     </div>
                   )}
                 </div>
 
                 {candidate.verificationIssue && (
-                  <div className="mt-3 p-2 bg-red-50/50 rounded-lg border border-red-100/50">
-                    <p className="text-[10px] text-red-700 font-semibold italic flex items-center gap-1.5">
-                      <AlertOctagon size={12} /> {candidate.verificationIssue}
+                  <div className="mt-4 p-4 bg-red-500/5 rounded-[1.25rem] border border-red-500/10 relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-red-500" />
+                    <p className="text-[10px] text-red-500 font-black uppercase tracking-widest flex items-center gap-2">
+                      <AlertOctagon size={14} strokeWidth={3} /> {candidate.verificationIssue}
                     </p>
                   </div>
                 )}
 
-                <div className="mt-4 pt-4 border-t border-slate-50 flex items-center gap-2">
+                <div className="mt-6 pt-6 border-t border-main flex items-center gap-3">
                   {candidate.isVerified ? (
                     <button
                       onClick={() => handleVerifyCandidate(candidate._id, false)}
-                      className="flex-1 py-2 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-xl text-xs font-bold transition-all border border-transparent hover:border-red-100"
+                      className="flex-1 py-3 bg-surface border border-main text-muted hover:text-red-500 hover:bg-red-500/5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-sm"
                     >
-                      Revoke
+                      Revoke Access
                     </button>
                   ) : (
                     <>
                       <button
                         onClick={() => handleVerifyCandidate(candidate._id, true)}
-                        className="flex-1 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all shadow-sm"
+                        className="flex-1 py-3 bg-primary-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-xl shadow-primary-500/20 active:scale-95 flex items-center justify-center gap-2"
                       >
-                        Approve
+                        <Check size={14} strokeWidth={3} /> Authorize
                       </button>
                       <button
                         onClick={() => {
                           const reason = prompt('Reason for flagging? (e.g., Blurry ID, Name mismatch)');
                           if (reason) handleReportIssue(candidate._id, reason);
                         }}
-                        className="flex-1 py-2 text-slate-600 hover:bg-slate-100 rounded-xl text-xs font-bold transition-all"
+                        className="flex-1 py-3 bg-surface border border-main text-muted hover:text-primary hover:bg-surface-hover rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-sm"
                       >
-                        Flag Issue
+                        Flag Unit
                       </button>
                     </>
                   )}
@@ -1034,65 +1098,65 @@ export default function MentorDashboard() {
 
         {/* HD Viewer Modal */}
         {selectedCandidate && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-             <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md" onClick={() => setSelectedCandidate(null)} />
-             <div className="relative bg-white w-full max-w-5xl rounded-[32px] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-                <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+             <div className="absolute inset-0 bg-black/90 backdrop-blur-xl" onClick={() => setSelectedCandidate(null)} />
+             <div className="relative bg-surface w-full max-w-6xl rounded-[3rem] overflow-hidden shadow-2xl border border-main animate-in zoom-in-95 duration-300">
+                <div className="p-10 border-b border-main flex items-center justify-between bg-surface-hover/50">
                   <div>
-                    <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">{selectedCandidate.name}</h3>
-                    <p className="text-sm text-slate-500 font-medium">Detailed Evidence Review</p>
+                    <h3 className="text-2xl font-bold text-primary">{selectedCandidate.name}</h3>
+                    <p className="text-[10px] text-muted mt-2 font-black uppercase tracking-[0.3em] opacity-50">View Details</p>
                   </div>
-                  <button onClick={() => setSelectedCandidate(null)} className="p-2 hover:bg-slate-100 rounded-full transition-all">
-                    <X size={24} className="text-slate-400" />
+                  <button onClick={() => setSelectedCandidate(null)} className="w-14 h-14 bg-surface border border-main rounded-2xl flex items-center justify-center text-muted hover:text-primary transition-all active:scale-95 shadow-xl">
+                    <X size={24} strokeWidth={3} />
                   </button>
                 </div>
                 
-                <div className="grid grid-cols-1 lg:grid-cols-2 bg-slate-50">
-                  <div className="p-8 border-r border-slate-200 flex flex-col gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 bg-surface">
+                  <div className="p-10 border-r border-main flex flex-col gap-6 bg-surface">
                     <div className="flex items-center justify-between px-2">
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Live Enrollment Photo</span>
-                      <Badge color="zinc">Source: Browser Cam</Badge>
+                      <span className="text-[10px] font-black text-muted uppercase tracking-[0.2em]">Biometric Enrollment Photo</span>
+                      <Badge color="zinc">Node: Camera_01</Badge>
                     </div>
-                    <div className="aspect-square bg-black rounded-3xl overflow-hidden shadow-inner flex items-center justify-center border-4 border-white">
-                      <img src={selectedCandidate.profilePicture} className="w-full h-full object-cover" />
+                    <div className="aspect-square bg-surface-hover rounded-[2.5rem] overflow-hidden shadow-inner flex items-center justify-center border-4 border-main group/img">
+                      <img src={selectedCandidate.profilePicture} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                     </div>
                   </div>
-                  <div className="p-8 flex flex-col gap-4">
+                  <div className="p-10 flex flex-col gap-6 bg-surface">
                     <div className="flex items-center justify-between px-2">
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Government Identity Proof</span>
-                      <Badge color="zinc">Source: Manual Upload</Badge>
+                      <span className="text-[10px] font-black text-muted uppercase tracking-[0.2em]">Government Identity Evidence</span>
+                      <Badge color="zinc">Node: Upload_Auth</Badge>
                     </div>
-                    <div className="aspect-square bg-black rounded-3xl overflow-hidden shadow-inner flex items-center justify-center border-4 border-white">
-                      <img src={selectedCandidate.idCardUrl} className="w-full h-full object-cover" />
+                    <div className="aspect-square bg-surface-hover rounded-[2.5rem] overflow-hidden shadow-inner flex items-center justify-center border-4 border-main group/img">
+                      <img src={selectedCandidate.idCardUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                     </div>
                   </div>
                 </div>
 
-                <div className="p-8 bg-white border-t border-slate-100 flex items-center justify-between">
-                  <div className="flex items-center gap-6">
+                <div className="p-10 bg-surface-hover/50 border-t border-main flex items-center justify-between">
+                  <div className="flex items-center gap-10">
                     <div className="flex flex-col">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Student ID</span>
-                      <span className="text-sm font-mono font-bold text-slate-900">{selectedCandidate._id}</span>
+                      <span className="text-[9px] font-black text-muted uppercase tracking-[0.3em] mb-2">Internal UID</span>
+                      <span className="text-[11px] font-black font-mono text-primary uppercase tracking-widest">{selectedCandidate._id}</span>
                     </div>
-                    <div className="w-px h-8 bg-slate-100" />
+                    <div className="w-px h-10 bg-main" />
                     <div className="flex flex-col">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Current Status</span>
+                      <span className="text-[9px] font-black text-muted uppercase tracking-[0.3em] mb-2">Registry Status</span>
                       <div className="mt-0.5">
-                        {selectedCandidate.isVerified ? <Badge color="emerald">Authorized</Badge> : <Badge color="amber">Unverified</Badge>}
+                        {selectedCandidate.isVerified ? <Badge color="emerald">AUTHORIZED UNIT</Badge> : <Badge color="amber">UNVERIFIED DATA</Badge>}
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-6">
                     <button 
                       onClick={() => handleVerifyCandidate(selectedCandidate._id, !selectedCandidate.isVerified)}
-                      className={`px-8 py-3 rounded-2xl text-sm font-black transition-all shadow-lg ${
+                      className={`px-10 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all shadow-2xl active:scale-95 ${
                         selectedCandidate.isVerified 
-                        ? 'bg-red-50 text-red-600 hover:bg-red-100' 
-                        : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-200'
+                        ? 'bg-surface border border-red-500/30 text-red-500 hover:bg-red-500/5' 
+                        : 'bg-primary-500 text-white hover:bg-primary-600 shadow-primary-500/20'
                       }`}
                     >
-                      {selectedCandidate.isVerified ? 'REVOKE ACCESS' : 'APPROVE CANDIDATE'}
+                      {selectedCandidate.isVerified ? 'REVOKE ALL ACCESS' : 'AUTHORIZE CANDIDATE'}
                     </button>
                   </div>
                 </div>
@@ -1105,27 +1169,35 @@ export default function MentorDashboard() {
 
 
   const renderExamLibrary = () => (
-    <div className="space-y-6 animate-in fade-in duration-300">
-      <div className="flex items-center justify-between">
-         <h2 className="text-lg font-bold text-slate-900 tracking-tight">Exam Library</h2>
+    <div className="space-y-8 ">
+      <div className="flex items-center justify-between bg-surface p-6 rounded-3xl shadow-sm relative overflow-hidden" style={{ border: '1px solid #1f1f1f' }}>
+         <div className="relative z-10">
+           <h2 className="text-xl font-bold text-primary tracking-tight leading-none">Exam Library</h2>
+           <p className="text-[12px] text-muted font-medium mt-1">Global assessment library management</p>
+         </div>
          <button 
            onClick={() => navigate('/mentor/create-exam')}
-           className="flex items-center gap-2 bg-[#4ade80] text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-green-700 transition-all active:scale-95 shadow-lg shadow-green-500/20"
+           className="relative z-10 flex items-center gap-2 bg-primary-500 text-white px-6 py-3 rounded-xl text-[13px] font-semibold hover:bg-primary-600 transition-all active:scale-95 shadow-lg shadow-primary-500/20"
          >
-            <Plus size={16} /> Create New Exam
+            <Plus size={16} strokeWidth={2.5} /> Create Exam
          </button>
       </div>
 
       <DataTable 
         loading={loading}
-        headers={['Assessment Title', 'Category', 'Duration', 'Questions', 'Status', 'Actions']}
+        headers={['Exam Title', 'Category', 'Duration', 'Questions', 'Status', 'Actions']}
         data={exams}
         renderRow={(exam) => (
-          <tr key={exam.id || exam._id} className="hover:bg-slate-50 transition-colors">
-            <td className="px-6 py-4 font-semibold text-sm text-slate-900">{exam.name || exam.title}</td>
-            <td className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{exam.category || 'Standard'}</td>
-            <td className="px-6 py-4 text-xs text-slate-500 tabular-nums font-medium">{exam.duration || '—'} MIN</td>
-            <td className="px-6 py-4 text-xs text-slate-500 tabular-nums font-medium">{exam.questionsCount || 0} Qs</td>
+          <tr key={exam.id || exam._id} className="hover:bg-surface-hover/50 transition-colors group/row last:border-0">
+            <td className="px-6 py-4">
+              <div className="flex flex-col">
+                <span className="font-semibold text-[14px] text-primary group-hover/row:text-primary-500 transition-colors">{exam.name || exam.title}</span>
+                <span className="text-[12px] font-medium text-muted mt-0.5 opacity-60">ID: {exam.id || exam._id}</span>
+              </div>
+            </td>
+            <td className="px-6 py-4 text-[13px] font-medium text-muted">{exam.category || 'Standard'}</td>
+            <td className="px-6 py-4 text-[13px] text-primary font-medium">{exam.duration || '—'} min</td>
+            <td className="px-6 py-4 text-[13px] text-primary font-medium">{exam.questionsCount || 0} qs</td>
             <td className="px-6 py-4">
                <StatusBadge status={exam.status || 'draft'} />
             </td>
@@ -1133,29 +1205,31 @@ export default function MentorDashboard() {
                <div className="flex items-center gap-4">
                   <button 
                     onClick={() => handleTogglePublishResults(exam.id || exam._id, exam.resultsPublished)} 
-                    className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95 ${exam.resultsPublished ? 'text-[#22c55e] hover:text-emerald-700' : 'text-slate-400 hover:text-[#22c55e]'}`}
+                    className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all active:scale-95 ${exam.resultsPublished ? 'text-emerald-500 bg-emerald-500/10' : 'text-muted/50 hover:text-emerald-500 hover:bg-emerald-500/10'}`}
                     title={exam.resultsPublished ? "Results visible to students" : "Results hidden from students"}
                   >
-                    {exam.resultsPublished ? <CheckCircle size={14} /> : <EyeOff size={14} />} 
-                    {exam.resultsPublished ? 'Published' : 'Hidden'}
+                    {exam.resultsPublished ? <CheckCircle size={16} strokeWidth={2} /> : <EyeOff size={16} strokeWidth={2} />} 
                   </button>
                   <button 
                     onClick={() => navigate(`/mentor/create-exam?id=${exam.id || exam._id}&view=true`)}
-                    className="text-xs font-bold text-slate-500 hover:text-[#22c55e] uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95"
+                    className="w-8 h-8 flex items-center justify-center text-muted/50 hover:text-primary-500 hover:bg-primary-500/10 rounded-lg transition-all active:scale-95"
+                    title="View Details"
                   >
-                    <Eye size={14} /> View
+                    <Eye size={16} strokeWidth={2} /> 
                   </button>
                   <button 
                     onClick={() => navigate(`/mentor/create-exam?id=${exam.id || exam._id}`)}
-                    className="text-xs font-bold text-slate-500 hover:text-amber-600 uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95"
+                    className="w-8 h-8 flex items-center justify-center text-muted/50 hover:text-amber-500 hover:bg-amber-500/10 rounded-lg transition-all active:scale-95"
+                    title="Edit Exam"
                   >
-                    <Edit3 size={14} /> Edit
+                    <Edit3 size={16} strokeWidth={2} /> 
                   </button>
                   <button 
                     onClick={() => handleDeleteExam(exam.id || exam._id)}
-                    className="text-xs font-bold text-slate-400 hover:text-red-600 uppercase tracking-wider flex items-center gap-1 transition-colors active:scale-95"
+                    className="w-8 h-8 flex items-center justify-center text-muted/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all active:scale-95"
+                    title="Delete Exam"
                   >
-                    <Trash2 size={14} /> Delete
+                    <Trash2 size={16} strokeWidth={2} /> 
                   </button>
                </div>
             </td>
@@ -1166,47 +1240,48 @@ export default function MentorDashboard() {
   );
 
   const renderResults = () => (
-    <div className="space-y-6 animate-in fade-in duration-300">
-      <div className="flex items-center justify-between">
-         <div className="flex items-center gap-4">
-           <h2 className="text-lg font-bold text-slate-900 tracking-tight">Post-Exam Analytics</h2>
-           <div className="hidden md:flex bg-slate-100/80 p-1 rounded-lg">
-             {['ALL', 'PENDING', 'PAST'].map(f => (
-               <button 
-                 key={f}
-                 onClick={() => setResultFilter(f)}
-                 className={`px-4 py-1.5 rounded-md text-[10px] font-bold tracking-widest uppercase transition-all ${resultFilter === f ? 'bg-white text-[#22c55e] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-               >
-                 {f === 'PAST' ? 'EVALUATED / PAST' : f}
-               </button>
-             ))}
-           </div>
+    <div className="space-y-6 ">
+      <div className="flex items-center justify-between py-4 relative overflow-hidden">
+         <div className="flex items-center gap-8">
+            <h2 className="text-xl font-bold text-primary tracking-tight">System-Wide Results & Reports</h2>
+            
+            <div className="hidden lg:flex bg-surface-hover/50 p-1 rounded-xl border border-main">
+              {['ALL', 'PENDING', 'EVALUATED / PAST'].map(f => (
+                <button 
+                  key={f}
+                  onClick={() => setResultFilter(f)}
+                  className={`px-6 py-2 rounded-lg text-[10px] font-bold tracking-wider transition-all ${resultFilter === f ? 'bg-surface text-primary shadow-sm border border-main' : 'text-muted hover:text-primary'}`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
          </div>
          <div className="flex items-center gap-3">
-           <button 
-             onClick={handleExportCsv}
-             className="flex items-center gap-2 text-xs font-bold text-slate-600 border border-slate-200 px-4 py-2 rounded-xl hover:bg-white shadow-sm transition-all active:scale-95"
-           >
-              <Download size={14} /> Export CSV
-           </button>
-           <button 
-             onClick={() => fetchDataForTab('Results & Reports')}
-             className="p-2 border border-slate-200 rounded-xl text-slate-500 hover:bg-slate-50 transition-all active:scale-95"
-           >
-             <RefreshCw size={14} />
-           </button>
+            <button 
+              onClick={handleExportCsv}
+              className="flex items-center gap-2.5 text-[10px] font-bold text-muted bg-surface border border-main px-5 py-2.5 rounded-xl hover:bg-surface-hover hover:text-primary transition-all active:scale-95 shadow-sm"
+            >
+               <Download size={15} className="opacity-70" /> Export CSV
+            </button>
+            <button 
+              onClick={() => fetchDataForTab('Results & Reports')}
+              className="w-10 h-10 flex items-center justify-center border border-main rounded-xl bg-surface text-muted hover:text-primary transition-all active:scale-95 shadow-sm"
+            >
+              <RefreshCw size={16} className="opacity-70" />
+            </button>
          </div>
       </div>
-      
+
       {/* Mobile filter bar */}
-      <div className="md:hidden flex bg-slate-100/80 p-1 rounded-lg w-full overflow-x-auto scroll-thin mb-4">
-        {['ALL', 'PENDING', 'PAST'].map(f => (
+      <div className="lg:hidden flex bg-surface-hover/50 p-1 rounded-xl border border-main w-full overflow-x-auto scroll-thin mb-8">
+        {['ALL', 'PENDING', 'EVALUATED / PAST'].map(f => (
           <button 
             key={f}
             onClick={() => setResultFilter(f)}
-            className={`px-4 py-1.5 rounded-md text-[10px] font-bold tracking-widest uppercase transition-all whitespace-nowrap ${resultFilter === f ? 'bg-white text-[#22c55e] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`px-6 py-2 rounded-lg text-[10px] font-bold tracking-wider transition-all whitespace-nowrap ${resultFilter === f ? 'bg-surface text-primary shadow-sm border border-main' : 'text-muted hover:text-primary'}`}
           >
-            {f === 'PAST' ? 'EVALUATED / PAST' : f}
+            {f}
           </button>
         ))}
       </div>
@@ -1216,24 +1291,25 @@ export default function MentorDashboard() {
         headers={[
           <input 
             type="checkbox" 
-            className="w-4 h-4 rounded border-slate-300 text-[#22c55e] focus:ring-green-500"
+            key="header-cb"
+            className="w-4 h-4 rounded border-main bg-main text-primary-500 focus:ring-primary-500/20"
             checked={results.length > 0 && results.every(r => selectedResults.has(r._id))}
             onChange={() => {
               if (selectedResults.size === results.length) setSelectedResults(new Set());
               else setSelectedResults(new Set(results.map(r => r._id)));
             }}
           />,
-          'Student', 'Exam Name', 'Result', 'Status', 'Violations', 'Submitted', 'Action'
+          'CANDIDATE', 'EXAM', 'SCORE', 'STATUS', 'VIOLATIONS', 'SUBMITTED', 'ACTION'
         ]}
         data={results.filter(r => {
           if (resultFilter === 'ALL') return true;
           if (resultFilter === 'PENDING') return r.status === 'pending_review';
-          if (resultFilter === 'PAST') return r.status === 'submitted' || r.status === 'evaluated' || r.status === 'completed';
+          if (resultFilter === 'EVALUATED / PAST') return r.status === 'submitted' || r.status === 'evaluated' || r.status === 'completed';
           return true;
         })}
         renderRow={(res, idx) => (
-          <tr key={res._id || idx} className={`${selectedResults.has(res._id) ? 'bg-green-50/50' : 'hover:bg-slate-50'} transition-colors`}>
-            <td className="px-6 py-4">
+          <tr key={res._id || idx} className={`${selectedResults.has(res._id) ? 'bg-primary-500/5' : 'hover:bg-slate-50/50'} transition-colors`}>
+            <td className="px-5 py-4">
               <input 
                 type="checkbox" 
                 checked={selectedResults.has(res._id)}
@@ -1243,57 +1319,62 @@ export default function MentorDashboard() {
                   else next.add(res._id);
                   setSelectedResults(next);
                 }}
-                className="w-4 h-4 rounded border-slate-300 text-[#22c55e] focus:ring-green-500"
+                className="w-4 h-4 rounded border-main bg-main text-primary-500 focus:ring-primary-500/20"
               />
             </td>
-            <td className="px-6 py-4">
-              <div>
-                <p className="text-sm font-semibold text-slate-800">{res.studentName || 'Student'}</p>
-                <p className="text-[10px] text-slate-400">{res.studentEmail || ''}</p>
+            <td className="px-5 py-4">
+              <div className="flex flex-col">
+                <p className="text-[12px] font-bold text-primary tracking-tight">{res.studentName || 'Student'}</p>
+                <p className="text-[10px] font-medium text-muted mt-0.5 opacity-60">{res.studentEmail || ''}</p>
               </div>
             </td>
-            <td className="px-6 py-4 text-xs font-medium text-slate-600">{res.examTitle || 'Exam'}</td>
-            <td className="px-6 py-4">
-               <div className="flex items-center gap-2">
-                 <div className="max-w-[100px] flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${(res.percentage || 0) >= 80 ? 'bg-green-500' : 'bg-amber-400'}`} style={{ width: `${res.percentage || 0}%` }} />
-                 </div>
-                 <span className={`text-xs font-bold tabular-nums ${(res.percentage || 0) >= 80 ? 'text-emerald-700' : 'text-amber-700'}`}>{res.percentage || 0}%</span>
+            <td className="px-5 py-4">
+               <span className="text-[11px] font-semibold text-primary/80">{res.examTitle || 'Exam'}</span>
+            </td>
+            <td className="px-5 py-4">
+               <div className="flex items-center justify-center gap-2">
+                  <div className="w-8 h-[2px] bg-surface-hover rounded-full overflow-hidden shrink-0">
+                     <div className={`h-full rounded-full ${(res.percentage || 0) >= 80 ? 'bg-emerald-500' : (res.percentage || 0) >= 40 ? 'bg-amber-400' : 'bg-slate-300'}`} style={{ width: `${res.percentage || 0}%` }} />
+                  </div>
+                  <span className="w-9 text-[10px] font-semibold text-primary tabular-nums text-left">{res.percentage || 0}%</span>
                </div>
             </td>
-            <td className="px-6 py-4">
-               <StatusBadge status={res.status || 'submitted'} />
+            <td className="px-5 py-4">
+               <div className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[9px] font-bold border ${
+                 res.totalViolations > 8 ? 'bg-blue-50 text-blue-600 border-blue-200/50' :
+                 res.status === 'submitted' ? 'bg-emerald-50 text-emerald-600 border-emerald-200/50' :
+                 'bg-slate-100 text-slate-600 border-slate-200/50'
+               }`}>
+                 {res.status === 'submitted' && <span className="mr-1">✅</span>}
+                 {res.totalViolations > 8 ? 'Blocked' : res.status === 'submitted' ? 'Graded' : res.status}
+               </div>
             </td>
-            <td className="px-6 py-4 text-xs font-bold text-red-500 tabular-nums">{res.totalViolations || 0} Flags</td>
-            <td className="px-6 py-4 text-[10px] font-bold text-slate-400 flex items-center gap-1.5 uppercase tracking-wider">
-               <Clock size={12} /> {res.submittedAt ? new Date(res.submittedAt).toLocaleString() : 'N/A'}
+            <td className="px-5 py-4">
+               <span className={`text-[11px] font-bold tracking-tight ${res.totalViolations > 0 ? 'text-red-500' : 'text-slate-400'}`}>
+                 {res.totalViolations || 0} Flags
+               </span>
             </td>
-            <td className="px-6 py-4">
-                <div className="flex items-center gap-4">
-                   <button 
-                     onClick={() => handleViewSession(res._id)}
-                     className={`font-bold text-[11px] uppercase tracking-widest flex items-center gap-1 active:scale-95 ${
-                       res.status === 'pending_review' 
-                         ? 'text-amber-600 hover:text-amber-700' 
-                         : 'text-[#22c55e] hover:text-emerald-700'
-                     }`}
+            <td className="px-5 py-4">
+               <span className="text-[10px] font-semibold text-muted opacity-60">
+                 {res.submittedAt ? new Date(res.submittedAt).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }) : 'N/A'}
+               </span>
+            </td>
+            <td className="px-5 py-4">
+               <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => handleViewSession(res._id)}
+                    className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-[#22c55e] hover:text-emerald-700 transition-colors"
+                  >
+                    <Eye size={13} className="opacity-80" /> View
+                  </button>
+                  <button 
+                      onClick={() => navigate(`/admin/students/${res.studentId}/intelligence`)}
+                      className="text-primary-500 hover:text-primary transition-all active:scale-95"
+                      title="View Profile"
                    >
-                     {res.status === 'pending_review' ? (
-                       <><Edit3 size={12} /> Evaluate</>
-                     ) : (
-                       <><Eye size={12} /> View Report</>
-                     )}
-                   </button>
-                   {res.studentId && (
-                     <button 
-                       onClick={() => navigate(`/admin/students/${res.studentId}/intelligence`)}
-                       className="text-blue-600 hover:text-blue-700 font-bold text-[11px] uppercase tracking-widest flex items-center gap-1 active:scale-95"
-                       title="View Intelligence Report"
-                     >
-                       <ShieldCheck size={12} /> Intelligence
-                     </button>
-                   )}
-                </div>
+                     <ShieldCheck size={16} />
+                  </button>
+               </div>
             </td>
           </tr>
         )}
@@ -1302,74 +1383,65 @@ export default function MentorDashboard() {
   );
 
   const renderAcademics = () => (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+    <div className="space-y-6 ">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <TrendingUp size={24} className="text-blue-600" /> Academic Intelligence
-          </h2>
-          <p className="text-xs text-slate-500 mt-1 font-medium uppercase tracking-widest">Global Student Behavioral Analytics</p>
+          <h2 className="text-xl font-bold text-primary tracking-tight">Student Profiles</h2>
+          <p className="text-[12px] text-muted font-medium mt-0.5">View performance reports for enrolled students</p>
         </div>
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="relative flex-1 md:w-64">
-             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-             <input 
-               type="text" 
-               placeholder="Search students..." 
-               value={userSearchQuery}
-               onChange={e => setUserSearchQuery(e.target.value)}
-               className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
-             />
-          </div>
+        <div className="relative w-full sm:w-72">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted/50" />
+          <input
+            type="text"
+            placeholder="Search by name or email..."
+            value={userSearchQuery}
+            onChange={e => setUserSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-4 py-2.5 bg-surface border border-main rounded-xl text-[13px] text-primary focus:border-primary-500/50 focus:outline-none transition-all placeholder:text-muted/40 shadow-sm"
+          />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {students.filter(s => 
-          !userSearchQuery || 
+      {/* Student Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {students.filter(s =>
+          !userSearchQuery ||
           s.name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
           s.email.toLowerCase().includes(userSearchQuery.toLowerCase())
         ).map((student) => (
-          <div 
-            key={student._id} 
+          <div
+            key={student._id}
+            className="bg-surface border border-main rounded-2xl p-5 flex items-center gap-4 hover:border-primary-500/30 hover:shadow-md transition-all group cursor-pointer"
             onClick={() => navigate(`/admin/students/${student._id}/intelligence`)}
-            className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all group relative overflow-hidden cursor-pointer"
           >
-            <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-[0.07] group-hover:scale-125 transition-all duration-500">
-              <Star size={64} className="text-blue-600" />
+            <div className="w-10 h-10 rounded-xl bg-surface-hover border border-main flex items-center justify-center text-muted font-bold text-base shrink-0">
+              {student.name.charAt(0).toUpperCase()}
             </div>
-            
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-lg shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-all">
-                {student.name.charAt(0)}
-              </div>
-              <div>
-                <h3 className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{student.name}</h3>
-                <p className="text-[11px] text-slate-400 font-medium">{student.email}</p>
-              </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-semibold text-primary truncate group-hover:text-primary-500 transition-colors">{student.name}</p>
+              <p className="text-[11px] text-muted truncate mt-0.5">{student.email}</p>
+              <p className="text-[10px] text-muted/50 mt-0.5 font-medium">Enrolled {new Date(student.createdAt).toLocaleDateString()}</p>
             </div>
-
-            <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-50">
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Enrollment</span>
-                <span className="text-xs font-semibold text-slate-600">{new Date(student.createdAt).toLocaleDateString()}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-blue-600 font-bold text-[10px] uppercase tracking-widest group-hover:translate-x-1 transition-transform">
-                Full Profile <ChevronRight size={14} />
-              </div>
-            </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); navigate(`/admin/students/${student._id}/intelligence`); }}
+              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-surface-hover border border-main rounded-lg text-[10px] font-semibold text-muted hover:text-primary-500 hover:border-primary-500/30 hover:bg-primary-500/5 transition-all active:scale-95"
+            >
+              <ShieldCheck size={13} strokeWidth={2} /> View
+            </button>
           </div>
         ))}
       </div>
-      
+
       {students.length === 0 && (
-        <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
-          <Users size={48} className="mx-auto text-slate-200 mb-4" />
-          <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">No students found to analyze.</p>
+        <div className="text-center py-20 bg-surface rounded-2xl border border-dashed border-main">
+          <Users size={40} strokeWidth={1.5} className="mx-auto text-muted/20 mb-3" />
+          <p className="text-[12px] text-muted font-medium">No students enrolled yet</p>
         </div>
       )}
     </div>
   );
+
+
 
   const renderContent = () => {
     switch (activeTab) {
@@ -1383,7 +1455,7 @@ export default function MentorDashboard() {
   };
 
   return (
-    <div className="flex h-screen bg-white font-sans text-slate-900 select-none antialiased">
+    <div className="flex h-screen bg-main font-sans text-primary select-none antialiased">
       <PremiumSidebar
         navItems={navItems.map(n => ({ ...n, icon: n.icon }))}
         activeTab={activeTab}
@@ -1397,32 +1469,31 @@ export default function MentorDashboard() {
       {/* Main Container */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Header */}
-        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-8 shrink-0 relative z-40">
-          <div className="flex items-center gap-3 text-[13px] font-medium text-slate-400 tracking-wide">
-            <span className="hover:text-slate-900 transition-colors cursor-pointer">Mentor Dashboard</span>
+        <header className="h-14 bg-surface/80 backdrop-blur-md border-b border-main flex items-center justify-between px-8 shrink-0 relative z-40">
+          <div className="flex items-center gap-3 text-sm font-semibold text-muted">
+            <span className="hover:text-primary transition-colors cursor-pointer">Mentor Dashboard</span>
             <ChevronRight size={14} className="opacity-40" />
-            <span className="text-slate-900 font-semibold">{activeTab}</span>
+            <span className="text-primary font-bold">{activeTab}</span>
           </div>
 
           <div className="flex items-center gap-5">
             <div className="relative ml-2 flex items-center gap-2">
-              <button className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-900 hover:bg-white hover:border-slate-200 transition-all active:scale-95 relative">
+              <ThemeToggle />
+              <button className="w-10 h-10 rounded-xl bg-main border border-main flex items-center justify-center text-muted hover:text-primary transition-all active:scale-95 relative">
                  <Bell size={20} />
                  {violations.length > 0 && (
-                   <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white animate-pulse">
+                   <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-main animate-pulse">
                      {violations.length}
                    </span>
                  )}
               </button>
-              <div className="flex items-center gap-3 cursor-pointer group px-2">
-                {/* Optional Header Actions space */}
-              </div>
+
             </div>
           </div>
         </header>
 
         {/* Content Section */}
-        <section className="flex-1 overflow-y-auto p-10 custom-scrollbar">
+        <section className="flex-1 overflow-y-auto p-10 custom-scrollbar bg-main">
            {renderContent()}
         </section>
       </main>
@@ -1430,8 +1501,8 @@ export default function MentorDashboard() {
       {/* Evaluation Modal */}
       {showEvalModal && (
         evalLoading ? (
-          <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center">
-             <div className="bg-white rounded-3xl p-8 flex items-center justify-center shadow-2xl animate-in zoom-in-95 h-[300px] w-[300px]">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
+             <div className="bg-surface rounded-3xl p-8 flex items-center justify-center shadow-2xl animate-in zoom-in-95 h-[300px] w-[300px] border border-main">
                 <BouncingDotLoader text="Loading session details..." />
              </div>
           </div>
@@ -1447,28 +1518,23 @@ export default function MentorDashboard() {
 
       {/* Modal confirmations */}
       {confirmModal.show && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-8 shadow-2xl w-full max-w-sm border border-slate-200 animate-in zoom-in-95 duration-200">
-            <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto mb-5">
-              <AlertOctagon size={24} className="text-amber-500" />
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+          <div className="bg-surface rounded-[2.5rem] p-10 shadow-2xl w-full max-w-sm border border-main animate-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 rounded-[1.5rem] bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto mb-8 shadow-xl shadow-amber-500/10">
+              <AlertOctagon size={32} className="text-amber-500" strokeWidth={2.5} />
             </div>
-            <h3 className="text-[13px] font-black text-slate-900 text-center uppercase tracking-widest mb-2">Confirm Action</h3>
-            <p className="text-xs text-slate-500 text-center mb-8 font-medium">{confirmModal.msg}</p>
-            <div className="flex items-center gap-3">
-              <button onClick={closeConfirm} className="flex-1 h-12 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-widest hover:bg-slate-50 transition-all active:scale-95">Cancel</button>
-              <button onClick={() => { confirmModal.onConfirm?.(); closeConfirm(); }} className="flex-1 h-12 rounded-xl bg-slate-900 text-white text-xs font-bold uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 active:scale-95">Confirm</button>
+            <h3 className="text-sm font-black text-primary text-center uppercase tracking-[0.2em] mb-3">Settings</h3>
+            <p className="text-[11px] text-muted text-center mb-10 font-black uppercase tracking-widest leading-relaxed opacity-60">{confirmModal.msg}</p>
+            <div className="flex items-center gap-4">
+              <button onClick={closeConfirm} className="flex-1 h-14 rounded-2xl border border-main text-[10px] font-black text-muted uppercase tracking-widest hover:bg-main transition-all active:scale-95">Cancel</button>
+              <button onClick={() => { confirmModal.onConfirm?.(); closeConfirm(); }} className="flex-1 h-14 rounded-2xl bg-primary-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-xl shadow-primary-500/20 active:scale-95">Authorize</button>
             </div>
           </div>
         </div>
       )}
 
 
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
-      `}</style>
+
       <FloatingPillMenu 
         isVisible={selectedResults.size > 0}
         selectedCount={selectedResults.size}
@@ -1492,3 +1558,5 @@ export default function MentorDashboard() {
     </div>
   );
 }
+
+

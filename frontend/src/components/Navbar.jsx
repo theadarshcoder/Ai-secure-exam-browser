@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Shield, LogOut, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import VisionLogo from './VisionLogo';
-import { ThemeToggle } from '../contexts/ThemeContext';
+
 
 export function Navbar({ role, hideSignOut }) {
   const navigate = useNavigate();
@@ -47,7 +47,7 @@ export function Navbar({ role, hideSignOut }) {
                   <LogOut size={14} /> Sign Out
                 </button>
               )}
-              {role !== 'Student' && <ThemeToggle />}
+
               
               {!role && (
                 <div className="hidden md:flex flex-row gap-3">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-
+import { ThemeToggle } from '../contexts/ThemeContext';
 // Success Modal
 const SuccessModal = ({ isOpen, examId, onInvite, onReturn }) => {
   const examLink = `${window.location.origin}/exam/${examId}`;
@@ -8,65 +8,58 @@ const SuccessModal = ({ isOpen, examId, onInvite, onReturn }) => {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ type: "spring", damping: 20, stiffness: 300 }}
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 relative overflow-hidden"
-          >
-            {/* Header Section */}
-            <div className="text-center">
-              <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-500">
-                <CheckCircle size={32} strokeWidth={2} />
-              </div>
-              <h2 className="text-2xl font-bold text-slate-900 mb-2">System Deployed</h2>
-              <p className="text-slate-500 text-sm leading-relaxed max-w-[280px] mx-auto">
-                Assessment protocol is now active across all proctor nodes.
-              </p>
+        <motion.div 
+          initial={{ opacity: 0, x: 20, y: -20, scale: 0.95 }}
+          animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
+          exit={{ opacity: 0, x: 20, y: -20, scale: 0.95 }}
+          className="fixed top-24 right-8 z-[200] w-[300px] bg-surface rounded-2xl shadow-2xl border border-main p-5 overflow-hidden backdrop-blur-xl bg-surface/90"
+        >
+          {/* Success Indicator */}
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-9 h-9 bg-primary-500/10 rounded-xl flex items-center justify-center text-primary-500 shrink-0">
+              <CheckCircle size={18} strokeWidth={3} />
             </div>
-
-            {/* The Link Box (SaaS Style) */}
-            <div className="mt-8 mb-8 relative">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">
-                STUDENT EXAM LINK
-              </label>
-              <div className="p-1 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between group hover:border-slate-300 transition-colors">
-                <div className="font-mono text-[13px] text-slate-600 truncate px-3 flex-1 select-all">
-                  {examLink}
-                </div>
-                <button 
-                  onClick={() => { 
-                    navigator.clipboard.writeText(examLink); 
-                  }}
-                  className="p-2 bg-white border border-slate-200 shadow-sm rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all flex items-center gap-2 focus:ring-2 focus:ring-slate-200 outline-none"
-                >
-                  <Copy size={14} />
-                  <span className="text-[11px] font-bold">Copy</span>
-                </button>
-              </div>
+            <div>
+              <h2 className="text-[13px] font-black text-primary tracking-tight">System Published</h2>
+              <p className="text-[9px] text-muted font-bold uppercase tracking-wider opacity-60">Protocol Active</p>
             </div>
+          </div>
 
-            {/* Action Buttons */}
-            <div className="space-y-3">
+          {/* Compact Link Box */}
+          <div className="mb-5 bg-surface-hover/50 p-3 rounded-xl border border-main">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-[8px] font-black text-muted uppercase tracking-[0.2em]">Exam Link</label>
               <button 
-                onClick={onInvite}
-                className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-900/10 active:scale-[0.98]"
+                onClick={() => { 
+                  navigator.clipboard.writeText(examLink); 
+                }}
+                className="flex items-center gap-1 text-[8px] font-black text-primary-500 uppercase tracking-widest hover:opacity-70 transition-opacity"
               >
-                <Users size={16} />
-                Invite Students
-              </button>
-              <button 
-                onClick={onReturn}
-                className="w-full text-slate-500 font-bold py-2 hover:text-slate-900 transition-colors flex items-center justify-center gap-2 text-sm"
-              >
-                Return to Module
-                <ArrowLeft size={16} className="rotate-180" />
+                <Copy size={10} /> Copy
               </button>
             </div>
-          </motion.div>
-        </div>
+            <div className="font-mono text-[9px] text-primary truncate opacity-80">
+              {examLink}
+            </div>
+          </div>
+
+          {/* Action Row */}
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={onInvite}
+              className="flex-1 h-9 bg-primary-500 text-white font-black rounded-xl hover:bg-primary-600 transition-all flex items-center justify-center gap-1.5 shadow-md shadow-primary-500/20 active:scale-95 uppercase tracking-widest text-[9px]"
+            >
+              <Users size={12} />
+              Invite
+            </button>
+            <button 
+              onClick={onReturn}
+              className="flex-1 h-9 bg-surface border border-main text-muted font-black hover:text-primary rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-95 text-[9px] uppercase tracking-widest"
+            >
+              Done
+            </button>
+          </div>
+        </motion.div>
       )}
     </AnimatePresence>
   );
@@ -82,7 +75,7 @@ import {
   Upload, FilePlus, FileSpreadsheet, Lock,
   LayoutDashboard, Users, BarChart3, Settings, Bell,
   ChevronRight, LogOut, Eye, Edit3, Star, RefreshCw,
-  Download, UploadCloud, Link, Calendar, ScanFace
+  Download, UploadCloud, Link, Calendar, ScanFace, LayoutList, PlusCircle, TrendingUp
 } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -100,8 +93,8 @@ const typeColors = { mcq: '#3b82f6', short: '#8b5cf6', coding: '#10b981', 'front
 const typeIcons = { mcq: <ListChecks size={13} />, short: <AlignLeft size={13} />, coding: <Code size={13} />, 'frontend-react': <LayoutDashboard size={13} /> };
 
 // --- Styles ---
-const INPUT_BASE = "w-full bg-white border border-zinc-200 rounded-xl px-4 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all shadow-sm";
-const LABEL_BASE = "text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 block ml-0.5";
+const INPUT_BASE = "w-full bg-surface border border-main rounded-xl px-4 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all shadow-sm";
+const LABEL_BASE = "text-[10px] font-bold text-muted uppercase tracking-widest mb-2 block ml-0.5";
 
 // --- Components ---
 
@@ -138,31 +131,31 @@ function StepperInput({ value, onChange, min = 0, max = 999, step = 1, icon: Ico
   };
 
   const handleStep = (delta) => {
-    const next = Math.min(max, Math.max(min, (value ?? 0) + delta));
+    const next = parseFloat(Math.min(max, Math.max(min, (value ?? 0) + delta)).toFixed(2));
     onChange(next);
   };
 
   return (
-    <div className={`relative flex items-center bg-white border h-11 rounded-xl transition-all duration-300 shadow-sm ${isFocused ? 'border-emerald-500 ring-2 ring-emerald-500/10' : 'border-slate-200 hover:border-slate-300'}`}>
+    <div className={`relative flex items-center bg-surface border h-11 rounded-xl transition-all duration-300 shadow-sm ${isFocused ? 'border-primary-500 ring-2 ring-primary-500/10' : 'border-main hover:border-primary-500/30'}`}>
       <div className="w-10 flex items-center justify-center shrink-0">
-        {Icon && <Icon size={14} className={`text-slate-400 ${isFocused ? 'text-emerald-500' : ''}`} />}
+        {Icon && <Icon size={14} className={`text-muted ${isFocused ? 'text-primary-500' : ''}`} />}
       </div>
       <input
         type="text"
-        inputMode="numeric"
+        inputMode="decimal"
         value={display}
         onChange={handleChange}
         onFocus={() => setIsFocused(true)}
         onBlur={handleBlur}
-        className="flex-1 min-w-0 bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-sm font-semibold text-slate-900 h-full text-center"
+        className="flex-1 min-w-0 bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-sm font-bold text-primary h-full text-center"
       />
-      <div className="w-10 flex items-center justify-center shrink-0">
+      <div className="w-10 flex items-center justify-center shrink-0 border-l border-main">
         <div className="flex flex-col">
-          <button type="button" onClick={() => handleStep(step)} className="p-0.5 hover:text-emerald-500 text-slate-300 transition-colors">
-            <ChevronUp size={12} strokeWidth={2.5} />
+          <button type="button" onClick={() => handleStep(step)} className="p-0.5 hover:text-primary-500 text-muted transition-colors active:scale-110">
+            <ChevronUp size={12} strokeWidth={3} />
           </button>
-          <button type="button" onClick={() => handleStep(-step)} className="p-0.5 hover:text-red-400 text-slate-300 transition-colors">
-            <ChevronDown size={12} strokeWidth={2.5} />
+          <button type="button" onClick={() => handleStep(-step)} className="p-0.5 hover:text-red-500 text-muted transition-colors active:scale-110">
+            <ChevronDown size={12} strokeWidth={3} />
           </button>
         </div>
       </div>
@@ -177,20 +170,20 @@ const CustomDatePicker = ({ selected, onChange }) => {
       type="button"
       onClick={onClick} 
       ref={ref}
-      className="w-full h-12 bg-white hover:bg-slate-50 border border-slate-200 hover:border-emerald-300 rounded-xl transition-all duration-300 shadow-sm flex items-center justify-between px-3 group"
+      className="w-full h-12 bg-surface hover:bg-surface-hover border border-main hover:border-primary-500/30 rounded-xl transition-all duration-300 shadow-sm flex items-center justify-between px-3 group"
     >
       <div className="flex-1 min-w-0 flex items-center gap-3 overflow-hidden">
-        <div className={`shrink-0 p-1.5 rounded-lg transition-colors ${value ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400 group-hover:text-emerald-500 group-hover:bg-emerald-50'}`}>
+        <div className={`shrink-0 p-1.5 rounded-lg transition-colors ${value ? 'bg-primary-500/20 text-primary-500' : 'bg-surface-hover text-muted group-hover:text-primary-500 group-hover:bg-primary-500/10'}`}>
           {value && value.includes(':') ? <Clock size={14} /> : <Calendar size={14} />}
         </div>
-        <span className={`text-sm font-bold tracking-tight truncate ${value ? 'text-slate-900' : 'text-slate-400'}`}>
+        <span className={`text-sm font-bold tracking-tight truncate ${value ? 'text-primary' : 'text-muted'}`}>
           {value || 'Set Schedule'}
         </span>
       </div>
       {value ? (
-        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse shrink-0 ml-2" />
+        <div className="w-1.5 h-1.5 rounded-full bg-primary-500 shadow-[0_0_8px_rgba(255,59,0,0.8)] animate-pulse shrink-0 ml-2" />
       ) : (
-        <div className="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0 ml-2" />
+        <div className="w-1.5 h-1.5 rounded-full bg-main shrink-0 ml-2" />
       )}
     </button>
   ));
@@ -229,8 +222,8 @@ const CustomDatePicker = ({ selected, onChange }) => {
       dateFormat="yyyy MMM d - h:mm aa"
       customInput={<CustomInput />}
       wrapperClassName="w-full"
-      popperClassName="!z-50 shadow-2xl rounded-2xl border border-slate-200 bg-white"
       portalId="root"
+      popperClassName="!z-[200] shadow-2xl rounded-2xl border border-main bg-surface overflow-hidden"
     />
   );
 };
@@ -257,13 +250,13 @@ const McqEditor = ({ question, updateQ }) => {
           {/* Selection Toggle */}
           <button 
             onClick={() => updateQ(question.id, { correctOption: oi })} 
-            className={`w-6 h-6 rounded-full border cursor-pointer flex items-center justify-center transition-all shrink-0 ${question.correctOption === oi ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'border-slate-300 text-transparent hover:border-emerald-400'}`}
+            className={`w-6 h-6 rounded-full border cursor-pointer flex items-center justify-center transition-all shrink-0 ${question.correctOption === oi ? 'bg-primary-500 border-primary-500 text-white shadow-lg shadow-primary-500/20' : 'border-main text-transparent hover:border-primary-500/30'}`}
           >
             <Check size={12} strokeWidth={4} />
           </button>
           
           {/* Label */}
-          <span className="text-sm font-bold text-slate-400 w-6 text-center shrink-0">
+          <span className="text-xs font-black text-muted w-6 text-center shrink-0">
             {String.fromCharCode(65 + oi)}
           </span>
 
@@ -275,14 +268,14 @@ const McqEditor = ({ question, updateQ }) => {
               options[oi] = e.target.value;
               updateQ(question.id, { options });
             }} 
-            className={`flex-1 px-4 py-2.5 border rounded-2xl text-[13.5px] font-medium text-slate-800 outline-none transition-all shadow-sm ${question.correctOption === oi ? 'border-emerald-500 ring-4 ring-emerald-500/5 bg-emerald-50/10' : 'border-slate-200 focus:border-emerald-200 focus:ring-4 focus:ring-emerald-500/5 bg-white'}`} 
+            className={`flex-1 px-5 py-3 border rounded-2xl text-[14px] font-medium text-primary outline-none transition-all shadow-sm ${question.correctOption === oi ? 'border-primary-500 ring-4 ring-primary-500/5 bg-primary-500/5 font-bold' : 'border-main focus:border-primary-500/30 focus:ring-4 focus:ring-primary-500/5 bg-surface-hover placeholder:text-muted/30'}`} 
             placeholder={`Option ${String.fromCharCode(65 + oi)}...`}
           />
 
           {/* Delete Action */}
           <button 
             onClick={() => removeOption(oi)}
-            className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100 shrink-0"
+            className="w-9 h-9 flex items-center justify-center rounded-xl text-muted/30 hover:text-red-500 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100 shrink-0 active:scale-95"
           >
             <Trash2 size={16} />
           </button>
@@ -292,9 +285,9 @@ const McqEditor = ({ question, updateQ }) => {
       {/* Add Option Action */}
       <button 
         onClick={addOption}
-        className="flex items-center gap-2 mt-2 text-sm font-bold text-slate-500 hover:text-emerald-600 transition-all w-fit px-3 py-2 rounded-xl hover:bg-emerald-50 group"
+        className="flex items-center gap-2 mt-2 text-[11px] font-black uppercase tracking-widest text-muted hover:text-primary-500 transition-all w-fit px-4 py-2.5 rounded-xl hover:bg-primary-500/5 group"
       >
-        <Plus size={16} className="group-hover:rotate-90 transition-transform" />
+        <Plus size={16} className="group-hover:rotate-90 transition-transform stroke-[3px]" />
         Add Option
       </button>
     </div>
@@ -304,19 +297,19 @@ const McqEditor = ({ question, updateQ }) => {
 const ShortEditor = ({ question, updateQ }) => (
   <div className="space-y-4">
     <div>
-      <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5 block">Expected Answer / Keywords</label>
+      <label className="text-[9px] font-bold text-muted uppercase tracking-widest mb-1.5 block">Expected Answer / Keywords</label>
       <textarea 
         value={question.expectedAnswer} 
         onChange={e => updateQ(question.id, { expectedAnswer: e.target.value })} 
         placeholder="Enter expected keywords or a model answer for AI evaluation..." 
         rows={3} 
-        className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all resize-none shadow-sm" 
+        className="w-full bg-surface-hover border border-main rounded-xl px-4 py-3 text-sm text-primary placeholder:text-muted/30 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 transition-all resize-none shadow-sm" 
       />
     </div>
     
     <div className="flex items-end justify-between gap-6 pt-2">
       <div className="flex-1 max-w-[160px]">
-        <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-2 block">Word Limit</label>
+        <label className="text-[9px] font-bold text-muted uppercase tracking-widest mb-2 block">Word Limit</label>
         <StepperInput 
           value={question.maxWords || 150} 
           onChange={v => updateQ(question.id, { maxWords: v })} 
@@ -327,7 +320,7 @@ const ShortEditor = ({ question, updateQ }) => (
         />
       </div>
       <div className="flex-1 text-right">
-        <p className="text-[9px] text-zinc-400 font-medium leading-relaxed italic">
+        <p className="text-[9px] text-muted font-medium leading-relaxed italic">
           AI will use this limit to <br/> evaluate the student's response.
         </p>
       </div>
@@ -337,14 +330,14 @@ const ShortEditor = ({ question, updateQ }) => (
 
 const CodingEditor = ({ question, updateQ }) => (
   <div className="space-y-3">
-    <div className="flex items-center gap-2 text-[9px] text-zinc-500 font-bold uppercase tracking-widest">
+    <div className="flex items-center gap-2 text-[9px] text-muted font-bold uppercase tracking-widest">
       Language:
       <select 
         value={question.language} 
         onChange={e => updateQ(question.id, { language: e.target.value })} 
-        className="bg-white border border-zinc-200 rounded-lg px-2 py-1 text-xs text-zinc-900 focus:outline-none focus:border-emerald-500/50 shadow-sm"
+        className="bg-surface border border-main rounded-lg px-2 py-1 text-xs text-primary focus:outline-none focus:border-primary-500/50 shadow-sm"
       >
-        {['javascript','python','java','cpp','c'].map(l => <option key={l} value={l}>{l}</option>)}
+        {['javascript','python','java','cpp','c'].map(l => <option key={l} value={l} className="bg-surface">{l}</option>)}
       </select>
     </div>
     <textarea 
@@ -352,10 +345,10 @@ const CodingEditor = ({ question, updateQ }) => (
       onChange={e => updateQ(question.id, { initialCode: e.target.value })} 
       placeholder="// Starter code..." 
       rows={5} 
-      className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-xs text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-emerald-500/50 font-mono resize-none shadow-inner" 
+      className="w-full bg-page border border-main rounded-xl px-4 py-3 text-xs text-primary placeholder:text-muted/30 focus:outline-none focus:border-primary-500/50 font-mono resize-none shadow-inner" 
     />
     <div className="space-y-1.5">
-      <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest">Test Cases</p>
+      <p className="text-[9px] text-muted font-bold uppercase tracking-widest">Test Cases</p>
       {question.testCases.map((tc, ti) => (
         <div key={ti} className="flex gap-1.5">
           <input 
@@ -366,7 +359,7 @@ const CodingEditor = ({ question, updateQ }) => (
               updateQ(question.id, { testCases });
             }} 
             placeholder="Input" 
-            className="flex-1 bg-white border border-zinc-200 rounded-lg px-2.5 py-1.5 text-xs text-zinc-800 placeholder:text-zinc-400 font-mono focus:outline-none focus:border-emerald-500/50 shadow-sm" 
+            className="flex-1 bg-surface-hover border border-main rounded-lg px-2.5 py-1.5 text-xs text-primary placeholder:text-muted/30 font-mono focus:outline-none focus:border-primary-500/50 shadow-sm" 
           />
           <input 
             value={tc.expectedOutput} 
@@ -376,10 +369,10 @@ const CodingEditor = ({ question, updateQ }) => (
               updateQ(question.id, { testCases });
             }} 
             placeholder="Output" 
-            className="flex-1 bg-white border border-zinc-200 rounded-lg px-2.5 py-1.5 text-xs text-zinc-800 placeholder:text-zinc-400 font-mono focus:outline-none focus:border-emerald-500/50 shadow-sm" 
+            className="flex-1 bg-surface-hover border border-main rounded-lg px-2.5 py-1.5 text-xs text-primary placeholder:text-muted/30 font-mono focus:outline-none focus:border-primary-500/50 shadow-sm" 
           />
           {question.testCases.length > 1 && (
-            <button onClick={() => updateQ(question.id, { testCases: question.testCases.filter((_, i) => i !== ti) })} className="text-zinc-800 hover:text-red-400">
+            <button onClick={() => updateQ(question.id, { testCases: question.testCases.filter((_, i) => i !== ti) })} className="text-muted hover:text-red-500 transition-colors">
               <Trash2 size={11} />
             </button>
           )}
@@ -387,7 +380,7 @@ const CodingEditor = ({ question, updateQ }) => (
       ))}
       <button 
         onClick={() => updateQ(question.id, { testCases: [...question.testCases, { input: '', expectedOutput: '' }] })} 
-        className="text-[10px] text-emerald-400/70 hover:text-emerald-400 font-medium flex items-center gap-1"
+        className="text-[10px] text-primary-500/70 hover:text-primary-500 font-bold uppercase tracking-widest flex items-center gap-1 transition-all"
       >
         <Plus size={10} /> Add case
       </button>
@@ -398,7 +391,7 @@ const CodingEditor = ({ question, updateQ }) => (
 const FrontendReactEditor = ({ question, updateQ }) => (
   <div className="space-y-4">
     <div className="space-y-2">
-      <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest">Main File (App.jsx)</p>
+      <p className="text-[9px] text-muted font-bold uppercase tracking-widest">Main File (App.jsx)</p>
       <textarea 
         value={question.frontendTemplate?.files?.['/App.jsx'] || ''} 
         onChange={e => {
@@ -407,20 +400,20 @@ const FrontendReactEditor = ({ question, updateQ }) => (
         }} 
         placeholder="import React from 'react';\n\nexport default function App() {\n  return <div>Hello World</div>;\n}" 
         rows={8} 
-        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-xs text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-indigo-500/50 font-mono resize-none shadow-inner" 
+        className="w-full bg-page border border-main rounded-xl px-4 py-3 text-xs text-primary placeholder:text-muted/30 focus:outline-none focus:border-primary-500/50 font-mono resize-none shadow-inner" 
       />
     </div>
     
     <div className="space-y-2">
-      <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest">UI Test Cases (JSDOM based)</p>
+      <p className="text-[9px] text-muted font-bold uppercase tracking-widest">UI Test Cases (JSDOM based)</p>
       {question.frontendTestCases?.map((test, ti) => (
-        <div key={ti} className="bg-white border border-zinc-100 rounded-xl p-4 space-y-3 shadow-sm">
+        <div key={ti} className="bg-surface-hover border border-main rounded-xl p-4 space-y-3 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-[9px] font-black text-indigo-500 uppercase">Test Case {ti + 1}</span>
+            <span className="text-[9px] font-black text-primary-500 uppercase">Test Case {ti + 1}</span>
             <button onClick={() => {
               const tests = question.frontendTestCases.filter((_, i) => i !== ti);
               updateQ(question.id, { frontendTestCases: tests });
-            }} className="text-zinc-400 hover:text-red-500 transition-colors">
+            }} className="text-muted/50 hover:text-red-500 transition-colors">
               <Trash2 size={12} />
             </button>
           </div>
@@ -432,7 +425,7 @@ const FrontendReactEditor = ({ question, updateQ }) => (
               updateQ(question.id, { frontendTestCases: tests });
             }} 
             placeholder="Description (e.g., Should render a button)" 
-            className="w-full bg-zinc-50 border-none text-[11px] font-bold text-zinc-800 placeholder:text-zinc-400 focus:ring-0"
+            className="w-full bg-transparent border-none text-[11px] font-bold text-primary placeholder:text-muted/30 focus:ring-0"
           />
           <textarea 
             value={test.testCode} 
@@ -443,7 +436,7 @@ const FrontendReactEditor = ({ question, updateQ }) => (
             }} 
             placeholder="return document.querySelector('button') !== null" 
             rows={2} 
-            className="w-full bg-zinc-50 border border-zinc-100 rounded-lg px-3 py-2 text-[10px] font-mono text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:border-indigo-500/50 resize-none" 
+            className="w-full bg-page border border-main rounded-lg px-3 py-2 text-[10px] font-mono text-primary placeholder:text-muted/30 focus:outline-none focus:border-primary-500/50 resize-none shadow-inner" 
           />
         </div>
       ))}
@@ -452,7 +445,7 @@ const FrontendReactEditor = ({ question, updateQ }) => (
           const tests = [...(question.frontendTestCases || []), { description: '', testCode: '', isHidden: true }];
           updateQ(question.id, { frontendTestCases: tests });
         }} 
-        className="text-[10px] text-indigo-500/70 hover:text-indigo-500 font-medium flex items-center gap-1"
+        className="text-[10px] text-primary-500/70 hover:text-primary-500 font-bold uppercase tracking-widest flex items-center gap-1 transition-all"
       >
         <Plus size={10} /> Add UI Test Case
       </button>
@@ -626,6 +619,7 @@ export default function CreateExam() {
     { id: 'Overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'Exam Management', label: 'Exam Library', icon: FileText },
     { id: 'Results & Reports', label: 'Results & Reports', icon: BarChart3 },
+    { id: 'Academics', label: 'Student Analytics', icon: TrendingUp },
   ];
 
   const handleLogout = () => {
@@ -1248,7 +1242,7 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
   const totalM = questions.reduce((s, q) => s + (q.marks || 0), 0);
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans text-slate-900 select-none antialiased overflow-hidden">
+    <div className="flex h-screen bg-page font-sans text-primary select-none antialiased overflow-hidden">
       {/* Premium Sidebar (Aligned with Admin/Mentor Dashboards) */}
       <PremiumSidebar
         navItems={navItems}
@@ -1261,30 +1255,56 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
       />
 
       {/* Main Container */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden relative bg-zinc-50">
+      <main className="flex-1 flex flex-col h-screen overflow-hidden relative bg-page">
         {/* Header (Breadcrumbs) */}
-        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-zinc-200 flex items-center justify-between px-10 relative z-20">
-          <div className="flex items-center gap-3 text-[13px] font-medium text-slate-400 tracking-wide">
-            <span onClick={() => navigate(returnTo)} className="hover:text-slate-900 transition-colors cursor-pointer">{returnTo === '/admin' ? 'Admin Dashboard' : 'Mentor Dashboard'}</span>
+        <header className="h-14 bg-surface/80 backdrop-blur-md border-b border-main flex items-center justify-between px-10 relative z-20">
+          <div className="flex items-center gap-3 text-sm font-semibold text-muted">
+            <span onClick={() => navigate(returnTo)} className="hover:text-primary transition-colors cursor-pointer">{returnTo === '/admin' ? 'Admin Dashboard' : 'Mentor Dashboard'}</span>
             <ChevronRight size={14} className="opacity-40" />
-            <span className="hover:text-slate-900 transition-colors cursor-pointer" onClick={() => navigate(returnTo)}>Exam Library</span>
+            <span className="hover:text-primary transition-colors cursor-pointer" onClick={() => navigate(returnTo)}>Exam Library</span>
             <ChevronRight size={14} className="opacity-40" />
-            <span className="text-slate-900 font-semibold">{editId ? 'Edit' : 'Create'} Assessment</span>
+            <span className="text-primary font-bold">{editId ? 'Edit' : 'Create'} Assessment</span>
           </div>
 
           <div className="flex items-center gap-6">
-            <div className="relative group cursor-pointer">
-               <Bell size={20} className="text-slate-400 hover:text-slate-900 transition-colors" />
+            {/* Header Notifications Area */}
+            <div className="flex flex-col items-end gap-2 pointer-events-none mr-2">
+              <AnimatePresence>
+                {toasts.map(t => {
+                  const isError = t.type === 'error';
+                  const accentColor = isError ? '#ef4444' : '#10b981';
+                  return (
+                    <motion.div 
+                      key={t.id}
+                      initial={{ opacity: 0, x: 20, scale: 0.95 }}
+                      animate={{ opacity: 1, x: 0, scale: 1 }}
+                      exit={{ opacity: 0, x: 10, scale: 0.9 }}
+                      className="pointer-events-auto h-8 pl-3 pr-4 bg-surface border rounded-full flex items-center gap-2.5 shadow-sm backdrop-blur-xl transition-all"
+                      style={{ 
+                        borderColor: accentColor + '30',
+                        background: `linear-gradient(to right, ${accentColor}05, transparent)`,
+                        boxShadow: `0 2px 10px ${accentColor}10`
+                      }}
+                    >
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ background: accentColor }} />
+                      <span className="text-[10px] font-black text-primary uppercase tracking-tight truncate max-w-[200px]">
+                        {t.msg}
+                      </span>
+                      <button 
+                        onClick={() => setToasts(p => p.filter(x => x.id !== t.id))}
+                        className="hover:opacity-60 transition-opacity ml-1"
+                      >
+                        <X size={10} className="text-muted" />
+                      </button>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
             </div>
-            <div className="h-6 w-px bg-slate-100" />
-            <div className="flex items-center gap-3 cursor-pointer group">
-              <div className="text-right">
-                <p className="text-[11px] font-bold text-slate-900 group-hover:text-emerald-600 transition-colors uppercase tracking-tight leading-none">{sessionStorage.getItem('vision_name') || 'Mentor'}</p>
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mt-1">Authorized</p>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center font-black text-slate-600 uppercase text-sm shadow-sm group-hover:border-emerald-200 transition-all">
-                {(sessionStorage.getItem('vision_name') || 'M').charAt(0)}
-              </div>
+
+            <ThemeToggle />
+            <div className="relative group cursor-pointer">
+               <Bell size={20} className="text-muted hover:text-primary transition-colors" />
             </div>
           </div>
         </header>
@@ -1292,23 +1312,23 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-10 custom-scrollbar relative">
           {/* Subtle Background Glow */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-emerald-500/[0.03] blur-[120px] rounded-full pointer-events-none" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-primary-500/[0.03] blur-[120px] rounded-full pointer-events-none" />
 
           <div className="max-w-7xl mx-auto">
             {/* Title Header */}
-            <div className="mb-10">
+            <div className="mb-8">
               <div className="flex items-center justify-between mb-2">
-                <h1 className="text-3xl font-black text-zinc-900 tracking-tight uppercase">
+                <h1 className="text-2xl font-bold text-primary">
                   {editId ? 'Edit Assessment' : 'New Assessment'}
-                  {initialLoading && <Loader2 size={24} className="inline ml-4 animate-spin text-zinc-700" />}
+                  {initialLoading && <Loader2 size={24} className="inline ml-4 animate-spin text-primary-500" />}
                 </h1>
                 <div className="flex items-center gap-3">
-                  <div className={`px-4 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest flex items-center gap-2 ${totalM === exam.totalMarks ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-amber-500/10 border-amber-500/30 text-amber-400'}`}>
+                  <div className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-2 ${totalM === exam.totalMarks ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500' : 'bg-primary-500/10 border-primary-500/30 text-primary-500'}`}>
                     <Award size={14} /> {totalM} / {exam.totalMarks} Marks Assigned
                   </div>
                 </div>
               </div>
-              <p className="text-xs text-zinc-500 font-medium uppercase tracking-[0.1em]">Configure your secure testing environment</p>
+              <p className="text-sm text-muted">Configure your secure testing environment.</p>
             </div>
 
             <div className="flex flex-col lg:flex-row gap-10 items-start">
@@ -1316,12 +1336,15 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
               <div className="flex-1 space-y-12 min-w-0 pb-32">
                 
                 {/* Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â SECTION 1: Details Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â */}
-                <section className="bg-white/80 backdrop-blur-xl rounded-[32px] border border-zinc-200 p-10 shadow-2xl relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent" />
-                  <div className="mb-8 items-center flex justify-between">
+                <section className="bg-surface rounded-[32px] border border-main p-10 shadow-2xl relative overflow-hidden group/params">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-primary-500/10 group-hover/params:bg-primary-500/20 transition-all" />
+                  <div className="mb-10 flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-primary-500/10 flex items-center justify-center text-primary-500 shadow-lg shadow-primary-500/5">
+                      <Settings size={22} strokeWidth={2.5} />
+                    </div>
                     <div>
-                      <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-wider">Exam Parameters</h2>
-                      <p className="text-[10px] text-zinc-500 mt-1 uppercase font-semibold">Core assessment configuration</p>
+                      <h2 className="text-base font-bold text-primary">Exam Parameters</h2>
+                      <p className="text-sm text-muted">Core assessment configuration hub</p>
                     </div>
                   </div>
                   
@@ -1336,21 +1359,21 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                         <select 
                           value={exam.category} 
                           onChange={e => setExam({...exam, category: e.target.value})} 
-                          className={INPUT_BASE + " h-12 !pl-4 appearance-none cursor-pointer uppercase font-bold text-xs tracking-widest"}
+                          className={INPUT_BASE + " h-12 !pl-4 appearance-none cursor-pointer uppercase font-black text-[11px] tracking-widest"}
                         >
-                          {['DSA', 'Frontend', 'DBMS', 'Cloud', 'Security', 'Other'].map(c => <option key={c} value={c} className="bg-white">{c}</option>)}
+                          {['DSA', 'Frontend', 'DBMS', 'Cloud', 'Security', 'Other'].map(c => <option key={c} value={c} className="bg-surface text-primary font-bold">{c}</option>)}
                         </select>
-                        <ChevronDown size={14} className="absolute right-5 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+                        <ChevronDown size={14} className="absolute right-5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
                       </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mt-10 pt-10 border-t border-slate-100">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mt-10 pt-10 border-t border-main">
                     <div>
                       <label className={LABEL_BASE}>
                         Duration
                         {exam.status !== 'draft' && exam.id && (
-                          <span className="ml-2 text-[8px] text-emerald-600 font-black uppercase tracking-[0.1em] bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-md animate-pulse">
+                          <span className="ml-2 text-[8px] text-primary-500 font-black uppercase tracking-[0.1em] bg-primary-500/10 border border-primary-500/20 px-1.5 py-0.5 rounded-md animate-pulse">
                             Syncs Live
                           </span>
                         )}
@@ -1380,96 +1403,118 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                 </section>
 
                 {/* Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â SECTION 2: AI Engine Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â */}
-                <section className="bg-white rounded-xl border border-slate-200 p-5 relative">
-                  <div className="flex items-center justify-between mb-4">
+                <section className="bg-surface rounded-2xl border border-main p-4 shadow-sm relative overflow-hidden">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <Sparkles size={15} className="text-slate-400" />
-                      <span className="text-xs font-medium text-slate-700">Auto-generate questions</span>
-                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-400 font-medium">Beta</span>
+                      <div className="w-8 h-8 rounded-lg bg-primary-500/10 flex items-center justify-center text-primary-500">
+                        <Sparkles size={15} strokeWidth={2.5} />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-primary leading-none">Generate Questions with AI</h3>
+                        <p className="text-[11px] text-muted mt-0.5">Create questions automatically from your materials</p>
+                      </div>
                     </div>
-                    <button onClick={() => setShowAI(!showAI)} className="text-[11px] font-medium text-slate-500 hover:text-slate-800 transition-colors">
-                      {showAI ? 'Close' : 'Open'}
+                    <button onClick={() => setShowAI(!showAI)} className="px-3 py-1.5 bg-surface-hover hover:bg-primary-500/10 border border-main rounded-lg text-[9px] font-bold uppercase text-muted hover:text-primary transition-all active:scale-95 tracking-widest">
+                      {showAI ? 'Collapse' : 'Expand AI'}
                     </button>
                   </div>
 
                   {showAI && (
-                    <div className="space-y-4">
-                       <div className="flex gap-4 border-b border-slate-100 pb-3">
-                          {[{id:'text', label:'Paste text'}, {id:'file', label:'Upload file'}].map(t => (
-                            <button key={t.id} onClick={() => setInputMode(t.id)} className={`text-xs font-medium pb-1 transition-all ${inputMode === t.id ? 'text-slate-800 border-b-2 border-slate-800' : 'text-slate-400 hover:text-slate-600'}`}>
+                    <div className="space-y-4 mt-4 pt-4" style={{ borderTop: '1px solid #1f1f1f' }}>
+                       <div className="flex gap-6 border-b border-main pb-4">
+                          {[{id:'text', label:'Paste Text'}, {id:'file', label:'Upload File'}].map(t => (
+                            <button key={t.id} onClick={() => setInputMode(t.id)} className={`text-[10px] font-black uppercase tracking-[0.2em] pb-3 transition-all relative ${inputMode === t.id ? 'text-primary' : 'text-muted hover:text-primary'}`}>
                               {t.label}
+                              {inputMode === t.id && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary-500" />}
                             </button>
                           ))}
                        </div>
 
                        {inputMode === 'text' ? (
                          <div className="space-y-4">
-                            <label className="text-[11px] font-medium text-slate-500 mb-1.5 block">Paste your content</label>
-                            <textarea value={syllabus} onChange={e => setSyllabus(e.target.value)} placeholder="Syllabus, lecture notes, topics..." rows={3} className={INPUT_BASE + " resize-none p-3 text-xs"} />
+                            <label className="text-[10px] font-black text-muted uppercase tracking-widest ml-1">Paste Text Content</label>
+                            <textarea value={syllabus} onChange={e => setSyllabus(e.target.value)} placeholder="Syllabus, lecture notes, topics..." rows={4} className={INPUT_BASE + " resize-none p-5 text-sm font-bold bg-surface-hover/50"} />
                          </div>
                        ) : (
                          <div className="space-y-4">
-                            <label className="text-[11px] font-medium text-slate-500 mb-1.5 block">Upload document</label>
-                            <div className="grid grid-cols-2 gap-4 mb-4">
-                                {[{id:'syllabus', label:'Topics Only', icon: ListChecks}, {id:'import', label:'Direct Questions', icon: FileSpreadsheet}].map(t => (
-                                  <button key={t.id} onClick={() => setUploadIntent(t.id)} className={`flex items-center gap-2.5 p-3 rounded-xl border transition-all text-left ${uploadIntent === t.id ? 'bg-slate-50 border-slate-300' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
-                                    <t.icon size={15} className={uploadIntent === t.id ? 'text-slate-700' : 'text-slate-400'} />
-                                    <div><p className={`text-xs font-medium ${uploadIntent === t.id ? 'text-slate-800' : 'text-slate-500'}`}>{t.label}</p><p className="text-[10px] text-slate-400">PDF / CSV</p></div>
+                            <label className="text-[10px] font-black text-muted uppercase tracking-widest ml-1">Upload Document</label>
+                            <div className="grid grid-cols-2 gap-4 mb-6">
+                                {[{id:'syllabus', label:'Generate from Topics', icon: ListChecks}, {id:'import', label:'Upload Questions File', icon: FileSpreadsheet}].map(t => (
+                                  <button key={t.id} onClick={() => setUploadIntent(t.id)} className={`flex items-center gap-4 p-5 rounded-2xl border transition-all text-left group/btn ${uploadIntent === t.id ? 'bg-primary-500/10 border-primary-500/30' : 'bg-surface-hover/50 border-main hover:bg-surface-hover'}`}>
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${uploadIntent === t.id ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/20' : 'bg-surface border border-main text-muted group-hover/btn:text-primary'}`}>
+                                      <t.icon size={18} strokeWidth={2.5} />
+                                    </div>
+                                    <div>
+                                      <p className={`text-[11px] font-black uppercase tracking-tight ${uploadIntent === t.id ? 'text-primary' : 'text-muted'}`}>{t.label}</p>
+                                      <p className="text-[9px] font-black text-muted/40 uppercase tracking-widest mt-0.5">PDF / CSV Format</p>
+                                    </div>
                                   </button>
                                 ))}
                              </div>
                                {!uploadedFile ? (
-                               <div onDragOver={e => {e.preventDefault(); setIsDragOver(true)}} onDragLeave={() => setIsDragOver(false)} onDrop={onDropFile} onClick={() => document.getElementById('ai-file').click()} className={`py-6 border border-dashed rounded-xl flex flex-col items-center justify-center gap-2 transition-all cursor-pointer ${isDragOver ? 'border-slate-400 bg-slate-50' : 'border-slate-200 hover:border-slate-300 bg-white'}`}>
+                               <div onDragOver={e => {e.preventDefault(); setIsDragOver(true)}} onDragLeave={() => setIsDragOver(false)} onDrop={onDropFile} onClick={() => document.getElementById('ai-file').click()} className={`py-12 border-2 border-dashed rounded-[2rem] flex flex-col items-center justify-center gap-4 transition-all cursor-pointer ${isDragOver ? 'border-primary-500 bg-primary-500/5 shadow-2xl shadow-primary-500/10' : 'border-main hover:border-primary-500/30 bg-surface-hover/30 hover:bg-surface-hover/50'}`}>
                                  <input id="ai-file" type="file" className="hidden" onChange={e => handleFile(e.target.files[0])} />
-                                 <Upload size={18} className="text-slate-300" />
+                                 <div className="w-16 h-16 rounded-full bg-surface border border-main flex items-center justify-center text-muted group-hover:text-primary transition-all">
+                                    <Upload size={24} strokeWidth={2.5} />
+                                  </div>
                                  <div className="text-center">
-                                   <p className="text-[11px] text-slate-400">Drop file or click to browse</p>
-                                   <p className="text-[10px] text-slate-300 mt-0.5">Max 10MB</p>
+                                   <p className="text-[11px] font-black text-primary uppercase tracking-widest">Drag & Drop File or Browse</p>
+                                   <p className="text-[10px] text-muted font-bold mt-1 opacity-50">Max file size: 10MB</p>
                                  </div>
                                </div>
                              ) : (
-                               <div className="p-4 bg-white border border-emerald-200 shadow-sm rounded-2xl flex items-center justify-between">
-                                 <div className="flex items-center gap-4">
-                                   <div className="w-12 h-12 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center justify-center text-emerald-500">{uploadedFile.name.endsWith('.pdf') ? <FileText size={20} /> : <FileSpreadsheet size={20} />}</div>
-                                   <div><p className="text-sm font-bold text-slate-900 truncate max-w-[200px]">{uploadedFile.name}</p><p className="text-[10px] text-emerald-600 uppercase font-bold mt-0.5">File Verified</p></div>
+                               <div className="p-6 bg-surface border border-emerald-500/30 shadow-xl rounded-[2rem] flex items-center justify-between group/file relative overflow-hidden">
+                                 <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-500" />
+                                  <div className="flex items-center gap-5">
+                                   <div className="w-14 h-14 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 flex items-center justify-center text-emerald-500 shadow-lg shadow-emerald-500/5">{uploadedFile.name.endsWith('.pdf') ? <FileText size={24} /> : <FileSpreadsheet size={24} />}</div>
+                                   <div>
+                                      <p className="text-sm font-black text-primary truncate max-w-[200px] uppercase tracking-tight">{uploadedFile.name}</p>
+                                      <p className="text-[9px] text-emerald-500 uppercase font-black tracking-widest mt-1.5 flex items-center gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                        File Verified
+                                      </p>
+                                    </div>
                                  </div>
-                                 <button onClick={() => setUploadedFile(null)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-red-500 transition-colors"><X size={18} /></button>
+                                 <button onClick={() => setUploadedFile(null)} className="p-3 bg-surface-hover hover:bg-red-500/10 rounded-xl text-muted hover:text-red-500 transition-all active:scale-90 border border-main"><X size={20} strokeWidth={3} /></button>
                                </div>
                              )}
                          </div>
                        )}
 
-                       <div className="grid grid-cols-3 gap-3 pt-4 border-t border-slate-100">
+                       <div className="grid grid-cols-3 gap-3 pt-4 border-t border-main">
                           <div><label className={LABEL_BASE}>MCQs</label><StepperInput value={aiConfig.mcq} onChange={v => setAiConfig({...aiConfig, mcq:v})} min={0} /></div>
                           <div><label className={LABEL_BASE}>Short Qs</label><StepperInput value={aiConfig.short} onChange={v => setAiConfig({...aiConfig, short:v})} min={0} /></div>
                           <div><label className={LABEL_BASE}>Coding</label><StepperInput value={aiConfig.coding} onChange={v => setAiConfig({...aiConfig, coding:v})} min={0} /></div>
                        </div>
 
-                       <button onClick={generateAI} disabled={aiLoading} className="w-full h-9 bg-slate-800 text-white rounded-lg text-[11px] font-medium hover:bg-slate-700 transition-colors flex items-center justify-center gap-2">
+                       <button onClick={generateAI} disabled={aiLoading} className="w-full h-11 bg-primary-500 text-white rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary-500/20 active:scale-95">
                           {aiLoading ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
                           <span>{aiLoading ? 'Generating...' : 'Generate'}</span>
                        </button>
 
                        {/* Suggestions Area */}
                        {aiSuggestions.length > 0 && (
-                         <div className="pt-5 border-t border-slate-100 space-y-3">
+                         <div className="pt-8 border-t border-main space-y-4">
                             <div className="flex items-center justify-between mb-4 px-2">
-                               <p className="text-[10px] font-semibold text-slate-500 uppercase">{aiSuggestions.length} suggestions</p>
-                               <button onClick={acceptAll} className="text-[10px] font-semibold text-emerald-600 hover:text-emerald-500 uppercase">Accept All</button>
+                               <p className="text-[10px] font-black text-muted uppercase tracking-widest">{aiSuggestions.length} Suggested Questions</p>
+                               <button onClick={acceptAll} className="text-[10px] font-black text-emerald-500 hover:text-emerald-400 uppercase tracking-widest transition-colors">Accept All Questions</button>
                             </div>
                             <div className="grid grid-cols-1 gap-2 max-h-[360px] overflow-y-auto pr-1 custom-scrollbar">
                                {aiSuggestions.map((s, idx) => (
-                                 <div key={idx} className="p-4 bg-slate-50 border border-slate-200 rounded-xl group flex items-start gap-3 hover:border-emerald-200 hover:bg-emerald-50/20 transition-all">
-                                    <div className="w-8 h-8 rounded-xl border border-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-400 shrink-0">{idx+1}</div>
+                                 <div key={idx} className="p-5 bg-surface border border-main rounded-2xl group/suggest flex items-start gap-4 hover:border-primary-500/30 hover:bg-surface-hover transition-all duration-300">
+                                    <div className="w-10 h-10 rounded-xl bg-surface-hover border border-main flex items-center justify-center text-[11px] font-black text-muted shrink-0 group-hover/suggest:text-primary transition-colors">{idx+1}</div>
                                     <div className="flex-1 min-w-0">
                                        <div className="flex items-center gap-2 mb-2">
-                                          <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-slate-200 text-slate-600">{typeLabels[s.type]}</span>
-                                          <span className="text-[8px] font-semibold text-slate-400 uppercase">{s.marks} PTS</span>
+                                          <span className="text-[8px] font-black uppercase px-2 py-1 rounded-lg bg-surface-hover text-primary border border-main">{typeLabels[s.type]}</span>
+                                          <span className="text-[8px] font-black text-muted uppercase tracking-widest">{s.marks} PTS</span>
                                        </div>
-                                       <p className="text-xs font-semibold text-zinc-700 leading-relaxed mb-3">{s.questionText}</p>
-                                       <button onClick={() => acceptSuggestion(s)} className="text-[10px] font-black uppercase text-emerald-500 hover:text-emerald-400">Add to Exam</button>
+                                       <p className="text-[13px] font-bold text-primary leading-relaxed mb-4">{s.questionText}</p>
+                                        <button onClick={() => acceptSuggestion(s)} className="text-[10px] font-black uppercase text-emerald-500 hover:text-emerald-400 tracking-widest flex items-center gap-2 group/add">
+                                          Add Question
+                                          <ArrowRight size={12} className="group-hover/add:translate-x-1 transition-transform" />
+                                        </button>
                                     </div>
-                                    <button onClick={() => setAiSuggestions(prev => prev.filter((_, i) => i !== idx))} className="opacity-0 group-hover:opacity-100 p-2 hover:bg-red-500/10 text-zinc-700 hover:text-red-400 transition-all"><Trash2 size={14} /></button>
+                                    <button onClick={() => setAiSuggestions(prev => prev.filter((_, i) => i !== idx))} className="opacity-0 group-hover/suggest:opacity-100 p-2.5 bg-surface-hover hover:bg-red-500/10 text-muted hover:text-red-500 rounded-xl transition-all border border-main"><Trash2 size={16} /></button>
                                  </div>
                                ))}
                             </div>
@@ -1480,24 +1525,29 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                 </section>
 
                 {/* Questions - Tabbed by Type */}
-                <section className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-sm font-semibold text-slate-800">Questions</h2>
-                      <p className="text-[11px] text-slate-400 mt-0.5">{questions.length} total</p>
+                <section className="space-y-6">
+                  <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-primary-500/10 flex items-center justify-center text-primary-500">
+                        <LayoutList size={22} strokeWidth={2.5} />
+                      </div>
+                      <div>
+                        <h2 className="text-base font-bold text-primary">Exam Questions</h2>
+                        <p className="text-sm text-muted mt-1">{questions.length} Items</p>
+                      </div>
                     </div>
                   </div>
 
                   {/* 4 Section Tabs */}
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                     {['mcq', 'short', 'coding', 'frontend-react'].map(type => {
                       const count = questions.filter(q => q.type === type).length;
                       const isActive = activeQTab === type;
                       return (
-                        <button key={type} onClick={() => setActiveQTab(type)} className={`flex items-center justify-center gap-2 py-3 rounded-lg border text-[12px] font-semibold transition-all ${isActive ? 'bg-white border-slate-300 text-slate-900 shadow-md ring-1 ring-slate-200' : 'bg-white border-slate-200 text-slate-500 hover:text-slate-700 hover:border-slate-300 hover:shadow-sm'}`}>
-                          <span style={{ color: typeColors[type] }}>{typeIcons[type]}</span>
+                        <button key={type} onClick={() => setActiveQTab(type)} className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-[10px] font-bold uppercase tracking-widest transition-all ${isActive ? 'bg-surface border-primary-500 text-primary ring-1 ring-primary-500/10' : 'bg-surface border-main text-muted hover:text-primary hover:border-primary-500/30'}`}>
+                          <span className={isActive ? 'text-primary-500' : 'text-muted/50'}>{typeIcons[type]}</span>
                           <span>{typeLabels[type]}</span>
-                          {count > 0 && <span className={`text-[10px] min-w-[20px] text-center px-1.5 py-0.5 rounded-full font-semibold ${isActive ? 'text-white' : 'bg-slate-100 text-slate-500'}`} style={isActive ? { background: typeColors[type] } : {}}>{count}</span>}
+                          {count > 0 && <span className={`text-[9px] min-w-[18px] text-center px-1 py-0.5 rounded font-bold ${isActive ? 'bg-primary-500 text-white' : 'bg-surface-hover text-muted border border-main'}`}>{count}</span>}
                         </button>
                       );
                     })}
@@ -1507,20 +1557,25 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                   {(() => {
                     const filtered = questions.filter(q => q.type === activeQTab);
                     if (filtered.length === 0) return (
-                      <div className="py-10 border border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-2">
-                        <FilePlus size={20} className="text-slate-300" />
-                        <p className="text-[11px] text-slate-400">No {typeLabels[activeQTab]} questions yet</p>
+                      <div className="py-12 border border-dashed border-main rounded-2xl flex flex-col items-center justify-center gap-4 bg-surface/30">
+                        <div className="w-12 h-12 rounded-xl bg-surface-hover flex items-center justify-center text-muted" style={{ border: '1px solid #1f1f1f' }}>
+                          <PlusCircle size={22} strokeWidth={1.5} />
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[12px] font-bold text-muted">No {typeLabels[activeQTab]} questions yet</p>
+                          <p className="text-[11px] text-muted/50 mt-1">Add questions using the buttons below</p>
+                        </div>
                       </div>
                     );
                     return (
-                      <div className="space-y-1.5">
+                      <div className="space-y-3">
                         {filtered.map((q, i) => (
                           <React.Fragment key={q.id}>
-                            <div className={`group bg-white border rounded-2xl transition-all ${expandedQ === q.id ? 'ring-4 ring-emerald-500/5 border-emerald-200 shadow-sm' : 'border-slate-100 hover:border-slate-200 hover:shadow-sm'}`}>
-                              <div className="flex items-center justify-between px-5 py-4">
-                                <div className="flex items-center gap-4 min-w-0 flex-1">
-                                   <div className="w-7 h-7 rounded-lg bg-slate-50 flex items-center justify-center shrink-0 group-hover:bg-emerald-50 transition-colors">
-                                      <span className="text-[10px] font-bold text-slate-400 group-hover:text-emerald-500">{i + 1}</span>
+                            <div className={`group/q bg-surface border rounded-[2.5rem] transition-all duration-500 ${expandedQ === q.id ? 'ring-1 border-primary-500/50 shadow-2xl shadow-primary-500/5 scale-[1.005]' : 'border-main hover:border-primary-500/30'}`}>
+                              <div className="flex items-center justify-between px-10 py-8">
+                                <div className="flex items-center gap-6 min-w-0 flex-1">
+                                   <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-all duration-500 ${expandedQ === q.id ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/20' : 'bg-surface-hover text-muted group-hover/q:text-primary-500 border border-main'}`}>
+                                      <span className="text-xs font-black uppercase">{i + 1}</span>
                                    </div>
                                    <textarea 
                                      value={q.questionText} 
@@ -1535,65 +1590,65 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                                      }}
                                      placeholder="Describe your question here..." 
                                      rows={1}
-                                     className="bg-transparent border-none text-[14px] font-bold text-slate-800 placeholder:text-slate-300 focus:ring-0 w-full p-0 outline-none resize-none overflow-hidden min-h-[20px] leading-relaxed py-1" 
+                                     className="bg-transparent border-none text-[15px] font-bold text-primary placeholder:text-muted/20 focus:ring-0 w-full p-0 outline-none resize-none overflow-hidden min-h-[24px] leading-relaxed py-1" 
                                    />
-                                   <div className="bg-slate-50 px-2.5 py-1 rounded-lg shrink-0 border border-slate-100/50">
-                                      <span className="text-[10px] font-bold text-slate-400 tabular-nums">{q.marks}pts</span>
+                                   <div className="bg-surface-hover/50 px-4 py-2 rounded-xl shrink-0 border border-main group-hover/q:border-primary-500/20 transition-all">
+                                      <span className="text-[10px] font-black text-muted tabular-nums uppercase tracking-widest group-hover/q:text-primary-500 transition-colors">{q.marks} pts</span>
                                    </div>
                                 </div>
-                                <div className="flex items-center gap-0.5 ml-2">
-                                   <button onClick={() => setExpandedQ(expandedQ === q.id ? null : q.id)} className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition-colors">
-                                     {expandedQ === q.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                <div className="flex items-center gap-2 ml-6">
+                                   <button onClick={() => setExpandedQ(expandedQ === q.id ? null : q.id)} className={`w-11 h-11 flex items-center justify-center rounded-2xl transition-all ${expandedQ === q.id ? 'bg-primary-500/10 text-primary-500 border border-primary-500/20' : 'text-muted/40 hover:text-primary-500 hover:bg-surface-hover border border-transparent hover:border-main'}`}>
+                                     {expandedQ === q.id ? <ChevronUp size={18} strokeWidth={3} /> : <ChevronDown size={18} strokeWidth={3} />}
                                    </button>
-                                   <button onClick={() => dupQ(q.id)} className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-emerald-500 hover:bg-slate-50 transition-colors opacity-0 group-hover:opacity-100">
-                                     <Copy size={12} />
+                                   <button onClick={() => dupQ(q.id)} className="w-11 h-11 flex items-center justify-center rounded-2xl text-muted/30 hover:text-primary-500 hover:bg-primary-500/10 transition-all opacity-0 group-hover/q:opacity-100 border border-transparent hover:border-main">
+                                     <Copy size={16} />
                                    </button>
-                                   <button onClick={() => removeQ(q.id)} className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-red-500 hover:bg-slate-50 transition-colors opacity-0 group-hover:opacity-100">
-                                     <Trash2 size={12} />
+                                   <button onClick={() => removeQ(q.id)} className="w-11 h-11 flex items-center justify-center rounded-2xl text-muted/30 hover:text-red-500 hover:bg-red-500/10 transition-all opacity-0 group-hover/q:opacity-100 border border-transparent hover:border-main">
+                                     <Trash2 size={16} />
                                    </button>
                                 </div>
                               </div>
                             </div>
 
                             {expandedQ === q.id && (
-                              <div className="border-t border-slate-100 animate-in slide-in-from-top-2 duration-300 bg-white rounded-b-2xl overflow-hidden border-x border-b">
+                              <div className="border-t border-main animate-in slide-in-from-top-2 duration-300 bg-surface rounded-b-2xl overflow-hidden border-x border-b">
                                  {/* Section 1: Universal Settings Strip */}
-                                 <div className="bg-slate-50 border-b border-slate-100 px-6 py-3 flex items-center gap-6">
-                                    <div className="flex items-center gap-3">
-                                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Points</span>
+                                 <div className="bg-surface-hover border-b border-main px-8 py-4 flex items-center gap-8">
+                                    <div className="flex items-center gap-4">
+                                       <span className="text-[10px] font-black text-muted uppercase tracking-widest">Points</span>
                                        <input 
                                          type="number" 
                                          value={q.marks} 
                                          onChange={e => updateQ(q.id, { marks: parseInt(e.target.value) || 0 })}
-                                         className="w-20 h-9 bg-white border border-slate-200 rounded-lg px-3 text-sm font-bold text-slate-700 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                                         className="w-24 h-10 bg-surface border border-main rounded-xl px-4 text-sm font-black text-primary focus:ring-primary-500 focus:border-primary-500 outline-none transition-all tabular-nums"
                                        />
                                     </div>
                                     
-                                    <div className="flex items-center gap-3">
-                                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Difficulty</span>
+                                    <div className="flex items-center gap-4">
+                                       <span className="text-[10px] font-black text-muted uppercase tracking-widest">Threat Level</span>
                                        <select 
                                          value={q.difficulty || 'Medium'} 
                                          onChange={e => updateQ(q.id, { difficulty: e.target.value })}
-                                         className="h-9 bg-white border border-slate-200 rounded-lg px-3 text-sm font-medium text-slate-700 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all cursor-pointer"
+                                         className="h-10 bg-surface border border-main rounded-xl px-4 text-[11px] font-black uppercase text-primary focus:ring-primary-500 focus:border-primary-500 outline-none transition-all cursor-pointer tracking-widest"
                                        >
-                                         <option value="Easy">Easy</option>
-                                         <option value="Medium">Medium</option>
-                                         <option value="Hard">Hard</option>
+                                         <option value="Easy">Routine</option>
+                                         <option value="Medium">Standard</option>
+                                         <option value="Hard">Critical</option>
                                        </select>
                                     </div>
 
                                     {q.type === 'coding' && (
-                                       <div className="flex items-center gap-3 ml-auto">
-                                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Language</span>
+                                       <div className="flex items-center gap-4 ml-auto">
+                                          <span className="text-[10px] font-black text-muted uppercase tracking-widest">AI Generated</span>
                                           <select 
                                             value={q.language || 'javascript'} 
                                             onChange={e => updateQ(q.id, { language: e.target.value })}
-                                            className="h-9 bg-white border border-slate-200 rounded-lg px-3 text-sm font-medium text-slate-700 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all cursor-pointer"
+                                            className="h-10 bg-surface border border-main rounded-xl px-4 text-[11px] font-black uppercase text-primary focus:ring-primary-500 focus:border-primary-500 outline-none transition-all cursor-pointer tracking-widest"
                                           >
-                                            <option value="javascript">JavaScript</option>
-                                            <option value="python">Python</option>
-                                            <option value="cpp">C++</option>
-                                            <option value="java">Java</option>
+                                            <option value="javascript">JavaScript (V8)</option>
+                                            <option value="python">Python (3.x)</option>
+                                            <option value="cpp">C++ (GCC)</option>
+                                            <option value="java">Java (JDK)</option>
                                           </select>
                                        </div>
                                     )}
@@ -1620,22 +1675,22 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
               <aside className="w-full lg:w-80 space-y-8 lg:sticky lg:top-10 shrink-0 pb-10">
                 
                 {/* Master Actions */}
-                <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-2xl p-5 space-y-4 shadow-sm relative overflow-hidden group/actions">
+                <div className="bg-surface border border-main rounded-2xl p-6 space-y-4 shadow-sm relative overflow-hidden group/actions">
                   
                   
-                  <div className="space-y-5">
-                    <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest ml-1">Add Content</p>
-                    <div className="bg-white border border-slate-200 rounded-[32px] p-6 shadow-sm space-y-6">
+                  <div className="space-y-4">
+                    <p className="text-sm font-bold text-primary mb-4">Add Content</p>
+                    <div className="space-y-6">
                        <div className="space-y-4">
                           {Object.entries(typeLabels).map(([type, label]) => (
                             <div key={type} className="flex items-center justify-between group/row">
                                <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 group-hover/row:text-emerald-500 group-hover/row:bg-emerald-50 transition-all">
+                                  <div className="w-8 h-8 rounded-lg bg-surface-hover border border-main flex items-center justify-center text-muted group-hover/row:text-primary-500 group-hover/row:bg-primary-500/10 transition-all">
                                     {typeIcons[type]}
                                   </div>
-                                  <span className="text-[12px] font-bold text-slate-700">{label}</span>
+                                  <span className="text-[12px] font-bold text-primary">{label}</span>
                                </div>
-                               <div className="flex items-center bg-slate-50 rounded-lg h-8 w-14 border border-slate-100 focus-within:border-emerald-200 transition-all overflow-hidden">
+                               <div className="flex items-center bg-surface-hover rounded-lg h-8 w-14 border border-main focus-within:border-primary-500/30 transition-all overflow-hidden">
                                   <input 
                                     type="number" 
                                     min="0" 
@@ -1646,7 +1701,7 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                                       const val = e.target.value;
                                       setCounts(prev => ({ ...prev, [type]: val === '' ? 0 : Math.max(0, Math.min(50, parseInt(val) || 0)) }));
                                     }}
-                                    className="w-full bg-transparent border-none text-[12px] font-bold text-slate-900 focus:ring-0 p-0 text-center outline-none shadow-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                    className="w-full bg-transparent border-none text-[12px] font-bold text-primary focus:ring-0 p-0 text-center outline-none shadow-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                   />
                                </div>
                             </div>
@@ -1660,17 +1715,17 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                                if (count > 0) {
                                   addQ(type, count);
                                   totalAdded += count;
-                               }
+                                }
                             });
                             if (totalAdded > 0) {
-                               addToast(`Successfully implemented ${totalAdded} new modules!`, 'success');
+                               addToast(`Successfully added ${totalAdded} new questions!`, 'success');
                                // Reset all to 0 except the first one maybe? Or reset all to 0.
                                setCounts({ mcq: 0, short: 0, coding: 0, 'frontend-react': 0 });
                             }
                          }}
-                         className="w-full h-12 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-2xl font-bold text-[13px] tracking-tight transition-all active:scale-95 border border-emerald-200/50 flex items-center justify-center gap-2 group shadow-sm"
+                         className="w-full h-10 mt-4 bg-surface hover:bg-surface-hover text-primary rounded-xl font-medium text-sm transition-all border border-main flex items-center justify-center gap-2 shadow-sm"
                        >
-                          <Plus size={18} strokeWidth={2.5} className="group-hover:rotate-90 transition-transform" />
+                          <Plus size={16} />
                           Implement Selection
                        </button>
                     </div>
@@ -1689,72 +1744,56 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
 
                   <div className="space-y-4 pt-2">
                     {/* Naye Import / Export Buttons */}
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2 pt-2 border-t border-main">
                       <div className="flex gap-2">
                         <button 
                           onClick={() => document.getElementById('direct-import-file').click()} 
-                          className="flex-1 h-12 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 hover:text-slate-900 rounded-[16px] font-black text-[10px] uppercase tracking-[0.1em] flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm"
+                          className="flex-1 h-10 bg-surface border border-main hover:bg-surface-hover text-primary rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition-all shadow-sm"
                         >
                           <UploadCloud size={16} />
                           File
                         </button>
                         <CSVHelper 
-                          format="Type, QuestionText, Marks, Option1, Option2, Option3, Option4, ExpectedAnswer" 
                           example="mcq, What is React?, 5, Library, Framework, Tool, OS, 1"
                         />
                         <button 
                           onClick={() => setShowLinkModal(true)} 
-                          className="flex-1 h-12 bg-emerald-50 border border-emerald-100 hover:bg-emerald-100 text-emerald-600 rounded-[16px] font-black text-[10px] uppercase tracking-[0.1em] flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm"
+                          className="flex-1 h-10 bg-surface border border-main hover:bg-surface-hover text-primary rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition-all shadow-sm"
                         >
                           <Link size={16} />
                           URL Link
                         </button>
                       </div>
-                      
-                      {/* CSV Helper for CreateExam */}
-                      <div className="mt-2 text-left bg-white/40 backdrop-blur-xl p-4 rounded-[20px] border border-white/60 shadow-sm relative overflow-hidden">
-                         <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500/10" />
-                         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5"><FileText size={12} className="text-slate-400" /> CSV Expected Format</p>
-                         <code className="block text-[10px] font-mono text-emerald-600 bg-emerald-50/50 px-2 py-1.5 rounded-lg border border-emerald-100/50 break-all leading-relaxed">
-                           Type, QuestionText, Marks, Option1, Option2, Option3, Option4, ExpectedAnswer
-                         </code>
-                         <p className="text-[9px] text-slate-400 mt-2 italic font-medium">* Option columns are only required for MCQ.</p>
-                      </div>
-                      <button 
-                        onClick={exportQuestions} 
-                        className="w-full h-10 bg-white border border-slate-200 hover:bg-slate-50 text-slate-500 hover:text-slate-700 rounded-[12px] font-bold text-[9px] uppercase tracking-[0.1em] flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm"
-                      >
-                        <Download size={14} />
-                        Download JSON Data
-                      </button>
                     </div>
-                    <button onClick={handlePublish} disabled={isPublishing || questions.length === 0 || publishStatus !== 'idle'} className="w-full h-10 bg-[#4ade80] hover:bg-[#22c55e] disabled:opacity-50 text-slate-900 rounded-xl font-bold text-[11px] tracking-wide shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95">
-                      <AnimatedStatusIcon status={publishStatus} icon={<Send size={18} />} size={18} />
-                      {publishStatus === 'loading' ? 'Deploying...' : publishStatus === 'success' ? 'Deployed' : 'Deploy Now'}
+
+                    <button onClick={handlePublish} disabled={isPublishing || questions.length === 0 || publishStatus !== 'idle'} className="w-full h-9 bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white rounded-lg font-black text-[10px] uppercase tracking-[0.15em] shadow-md shadow-primary-500/20 flex items-center justify-center gap-1.5 transition-all active:scale-95">
+                      <AnimatedStatusIcon status={publishStatus} icon={<Send size={14} />} size={14} />
+                      {publishStatus === 'loading' ? 'Publishing...' : publishStatus === 'success' ? 'Published' : 'Publish Exam'}
                     </button>
-                    <button onClick={handleSaveDraft} disabled={isSaving || saveStatus !== 'idle'} className="w-full h-10 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl font-semibold text-[11px] tracking-wide flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm">
-                      <AnimatedStatusIcon status={saveStatus} icon={<Save size={18} />} size={18} />
+                    <button onClick={handleSaveDraft} disabled={isSaving || saveStatus !== 'idle'} className="w-full h-9 bg-surface border border-main hover:bg-surface-hover text-muted hover:text-primary rounded-lg font-black text-[10px] uppercase tracking-[0.15em] flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-sm">
+                      <AnimatedStatusIcon status={saveStatus} icon={<Save size={14} />} size={14} />
                       {saveStatus === 'loading' ? 'Saving...' : saveStatus === 'success' ? 'Saved' : 'Save Progress'}
                     </button>
                   </div>
                 </div>
 
+
                 {/* Status Card */}
-                <div className="bg-white border border-white/[0.03] rounded-[32px] p-6 space-y-5">
-                   <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest px-2">Integrity Status</h3>
+                <div className="bg-surface border border-main rounded-[32px] p-6 space-y-5">
+                   <h3 className="text-[10px] font-black text-muted uppercase tracking-widest px-2">Exam Status</h3>
                    <div className="space-y-4">
                       <div className="flex items-center justify-between px-2">
-                         <span className="text-xs text-zinc-400 font-medium tracking-tight">System Identity</span>
-                         <span className="text-[10px] font-bold text-zinc-900 bg-zinc-100 px-2 py-0.5 rounded border border-zinc-200 uppercase tracking-tighter">Vision Pro</span>
+                         <span className="text-xs text-muted font-medium tracking-tight">Platform</span>
+                         <span className="text-[10px] font-bold text-primary bg-surface-hover px-2 py-0.5 rounded border border-main uppercase tracking-tighter">VISION</span>
                       </div>
                       <div className="flex items-center justify-between px-2">
-                         <span className="text-xs text-zinc-400 font-medium tracking-tight">Data Security</span>
-                         <span className="text-[10px] font-bold text-emerald-400 uppercase">AES-256</span>
+                         <span className="text-xs text-muted font-medium tracking-tight">Encryption</span>
+                         <span className="text-[10px] font-bold text-primary-500 uppercase">AES-256 Encrypted</span>
                       </div>
-                      <div className="h-px bg-zinc-50 mx-2" />
-                      <div className="p-4 bg-white rounded-2xl space-y-1">
-                         <p className="text-[9px] font-black text-zinc-700 uppercase leading-none">Assessment ID</p>
-                         <p className="text-[11px] font-mono text-zinc-500 truncate tracking-tight">{editId || 'Generated on Publish'}</p>
+                      <div className="h-px bg-main mx-2" />
+                      <div className="p-4 bg-surface-hover rounded-2xl space-y-1">
+                         <p className="text-[9px] font-black text-secondary uppercase leading-none">Exam ID</p>
+                         <p className="text-[11px] font-mono text-muted truncate tracking-tight">{editId || 'Auto-generated on publish'}</p>
                       </div>
                    </div>
                 </div>
@@ -1766,139 +1805,141 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
 
       {/* Ã°Å¸â€â€” URL-Based Import Modal (Source Link) */}
       {showLinkModal && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 backdrop-blur-md bg-black/60 animate-in fade-in duration-200">
-          <div className="bg-white rounded-[32px] p-8 w-full max-w-md shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-zinc-200 relative overflow-hidden animate-in zoom-in-95 duration-300">
-            {/* Background Accent */}
-            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600" />
-            
-            <div className="flex justify-between items-center mb-8">
-              <div>
-                <h3 className="text-xl font-black uppercase text-zinc-900 tracking-tight flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                    <Link size={16} strokeWidth={3} />
-                  </div>
-                  Vision Engine <span className="text-zinc-400 font-bold ml-1">Import</span>
-                </h3>
-                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mt-2 ml-11">Supporting LeetCode & CodeChef Labs</p>
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 backdrop-blur-sm bg-black/40 animate-in fade-in duration-200">
+          <div className="bg-surface rounded-2xl p-6 w-full max-w-md shadow-xl border border-main animate-in zoom-in-95 duration-200">
+
+            {/* Header */}
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-surface-hover border border-main flex items-center justify-center text-muted">
+                  <Link size={15} strokeWidth={2} />
+                </div>
+                <div>
+                  <h3 className="text-[14px] font-bold text-primary">Import from URL</h3>
+                  <p className="text-[11px] text-muted">LeetCode &amp; CodeChef supported</p>
+                </div>
               </div>
-              <button 
-                onClick={() => setShowLinkModal(false)} 
-                className="p-2.5 bg-zinc-50 hover:bg-red-50 text-zinc-400 hover:text-red-500 rounded-2xl transition-all border border-zinc-100"
+              <button
+                onClick={() => setShowLinkModal(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-surface-hover border border-main text-muted hover:text-primary transition-all active:scale-95"
               >
-                <X size={18} />
+                <X size={15} />
               </button>
             </div>
 
-            <div className="space-y-6 mb-10">
-              <div className="space-y-3">
-                <label className={LABEL_BASE + " ml-0"}>Problem Repository URL</label>
-                <div className="relative group">
-                  <input 
-                    type="url" 
-                    value={importUrl} 
-                    onChange={e => setImportUrl(e.target.value)} 
-                    placeholder="https://leetcode.com/problems/..." 
-                    className={INPUT_BASE + " h-14 pl-5 text-sm font-semibold border-zinc-200 focus:border-emerald-500 bg-zinc-50/50"}
-                  />
-                  <div className="absolute inset-0 rounded-xl border-2 border-emerald-500/0 group-focus-within:border-emerald-500/10 pointer-events-none transition-all" />
-                </div>
+            {/* URL Input */}
+            <div className="space-y-4 mb-5">
+              <div>
+                <label className="text-[10px] font-semibold text-muted uppercase tracking-widest block mb-1.5">Problem URL</label>
+                <input
+                  type="url"
+                  value={importUrl}
+                  onChange={e => setImportUrl(e.target.value)}
+                  placeholder="https://leetcode.com/problems/..."
+                  className={INPUT_BASE + " h-10 text-sm"}
+                />
               </div>
 
-              {/* Platform Chips */}
-              <div className="flex items-center gap-3 px-1">
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-50 border border-zinc-200 rounded-lg">
-                  <div className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
-                  <span className="text-[9px] font-black text-zinc-600 uppercase tracking-tighter">LeetCode Ready</span>
+              {/* Platform badges */}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-surface-hover border border-main rounded-lg">
+                  <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                  <span className="text-[10px] font-medium text-muted">LeetCode</span>
                 </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-50 border border-zinc-200 rounded-lg">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                  <span className="text-[9px] font-black text-zinc-600 uppercase tracking-tighter">CodeChef Alpha</span>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-surface-hover border border-main rounded-lg">
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary-500" />
+                  <span className="text-[10px] font-medium text-muted">CodeChef</span>
                 </div>
               </div>
             </div>
 
-            <button 
-              onClick={handleLinkImport} 
-              disabled={isImportingLink || !importUrl} 
-              className="w-full h-16 bg-zinc-900 border border-white/5 text-white rounded-[20px] font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all enabled:hover:scale-[1.02] enabled:active:scale-[0.98] shadow-2xl disabled:opacity-30 group"
+            {/* Action */}
+            <button
+              onClick={handleLinkImport}
+              disabled={isImportingLink || !importUrl}
+              className="w-full h-10 bg-primary-500 hover:bg-primary-600 disabled:opacity-40 text-white rounded-xl font-semibold text-[13px] flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md shadow-primary-500/20"
             >
               {isImportingLink ? (
-                <Loader2 size={20} className="animate-spin text-emerald-400" />
+                <Loader2 size={16} className="animate-spin" />
               ) : (
-                <RefreshCw size={18} className="group-hover:rotate-180 transition-transform duration-700" />
+                <RefreshCw size={15} />
               )}
-              {isImportingLink ? 'Processing Endpoint...' : 'Initialize Secure Scraping'}
+              {isImportingLink ? 'Importing...' : 'Import Question'}
             </button>
-            
-            <p className="text-[9px] text-zinc-400 font-bold uppercase text-center mt-6 tracking-widest opacity-50">Authorized Mentor Import Only</p>
+
+            <p className="text-[10px] text-muted text-center mt-3">Mentor access only</p>
           </div>
         </div>
       )}
 
       {/* Ã°Å¸Â§Âª Preview & Validation Sidebar Workspace */}
       {showPreviewModal && previewQuestion && (
-        <div className="fixed inset-0 z-[160] flex items-center justify-center p-6 backdrop-blur-sm bg-black/60 animate-in fade-in duration-300">
-          <div className="bg-white rounded-[40px] w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-[0_30px_100px_-20px_rgba(0,0,0,0.5)] border border-zinc-200 flex flex-col animate-in slide-in-from-bottom-12 duration-500">
+        <div className="fixed inset-0 z-[160] flex items-center justify-center p-6 backdrop-blur-md bg-black/90 animate-in fade-in duration-300">
+          <div className="bg-surface rounded-[40px] w-full max-w-5xl max-h-[92vh] overflow-hidden shadow-2xl border border-main flex flex-col animate-in zoom-in-95 duration-500 relative">
             
             {/* Header Area */}
-            <div className="p-8 border-b border-zinc-100 flex justify-between items-start bg-zinc-50/50">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                   <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                   <h3 className="text-2xl font-black uppercase text-zinc-900 tracking-tighter">Scraping <span className="text-zinc-400">Preview</span></h3>
+            <div className="p-10 border-b border-main flex justify-between items-center bg-surface-hover/30">
+              <div className="flex items-center gap-6">
+                <div className="w-16 h-16 rounded-[2rem] bg-primary-500/10 flex items-center justify-center text-primary-500 shadow-xl shadow-primary-500/5">
+                   <Sparkles size={28} strokeWidth={2.5} className="animate-pulse" />
                 </div>
-                <div className="flex gap-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-white border border-zinc-200 text-zinc-500 shadow-sm">Source: <span className="text-emerald-500">{previewQuestion.source}</span></span>
-                  <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-white border border-zinc-200 text-zinc-500 shadow-sm">Difficulty: <span className="text-violet-500">{previewQuestion.difficulty}</span></span>
-                  <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-white border border-zinc-200 text-zinc-500 shadow-sm">Marks: <span className="text-blue-500">{previewQuestion.marks}</span></span>
+                <div>
+                  <h3 className="text-2xl font-black uppercase text-primary tracking-tighter flex items-center gap-3 italic">
+                    Fetching <span className="text-muted font-black">Problem</span>
+                  </h3>
+                  <div className="flex gap-4 mt-3">
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-xl bg-surface border border-main text-muted shadow-sm">Channel: <span className="text-primary-500">{previewQuestion.source}</span></span>
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-xl bg-surface border border-main text-muted shadow-sm">Level: <span className="text-primary-500">{previewQuestion.difficulty}</span></span>
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-xl bg-surface border border-main text-muted shadow-sm">Credit: <span className="text-primary-500">{previewQuestion.marks} PTS</span></span>
+                  </div>
                 </div>
               </div>
               <button 
                 onClick={() => {setShowPreviewModal(false); setPreviewQuestion(null);}} 
-                className="w-12 h-12 flex items-center justify-center bg-white hover:bg-red-50 text-zinc-400 hover:text-red-500 rounded-2xl transition-all border border-zinc-200 shadow-sm group"
+                className="w-14 h-14 flex items-center justify-center bg-surface-hover hover:bg-red-500/10 text-muted hover:text-red-500 rounded-[2rem] transition-all border border-main shadow-xl active:scale-90 group"
               >
-                <X size={20} strokeWidth={3} className="group-hover:rotate-90 transition-transform" />
+                <X size={24} strokeWidth={3} className="group-hover:rotate-90 transition-transform" />
               </button>
             </div>
 
             {/* Scrollable Workspace */}
-            <div className="flex-1 overflow-y-auto p-10 custom-scrollbar space-y-10">
+            <div className="flex-1 overflow-y-auto p-12 custom-scrollbar space-y-12 bg-page/30">
               
               {/* Alert Message */}
-              <div className="bg-amber-50 border border-amber-200/50 p-6 rounded-[32px] flex items-start gap-5 relative overflow-hidden group/warning">
-                  <div className="absolute top-0 right-0 p-4 opacity-[0.05] group-hover/warning:scale-110 transition-transform">
-                    <AlertCircle size={80} />
+              <div className="bg-primary-500/[0.03] border border-primary-500/10 p-8 rounded-[2.5rem] flex items-start gap-6 relative overflow-hidden group/warning">
+                  <div className="absolute top-0 right-0 p-6 opacity-[0.03] group-hover/warning:scale-110 transition-transform text-primary-500">
+                    <AlertCircle size={120} />
                   </div>
-                  <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-lg shadow-amber-500/20 shrink-0">
-                      <AlertCircle size={24} strokeWidth={2.5} />
+                  <div className="w-14 h-14 rounded-2xl bg-primary-500 text-white flex items-center justify-center shadow-2xl shadow-primary-500/30 shrink-0">
+                      <AlertCircle size={28} strokeWidth={3} />
                   </div>
                   <div className="min-w-0">
-                      <h4 className="text-[11px] font-black text-amber-700 uppercase tracking-[0.2em] mb-1.5 flex items-center gap-2">
-                        Heads Up <span className="w-1 h-1 rounded-full bg-amber-400" /> Validation Required
+                      <h4 className="text-[11px] font-black text-primary uppercase tracking-[0.3em] mb-2 flex items-center gap-3">
+                        Attention <div className="w-2 h-2 rounded-full bg-primary-500 animate-ping" />
                       </h4>
-                      <p className="text-xs text-amber-800/70 font-bold leading-relaxed">
-                          Vision Engine has normalized the problem text, but <span className="text-amber-900 underline decoration-amber-500/50 underline-offset-4">test cases require your expert review</span>. Specifically, the "Expected Output" for auto-grading must be manually verified or filled prior to deployment.
+                      <p className="text-[13px] text-muted font-bold leading-relaxed">
+                          Vision Engine has successfully normalized the problem structure. However, <span className="text-primary underline decoration-primary/30 underline-offset-8">test case synchronization requires mentor validation</span>. Please review the I/O mapping before final implementation.
                       </p>
                   </div>
               </div>
 
               {/* Problem Content Editor */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                 <div className="space-y-4">
-                  <label className={LABEL_BASE}>Refine Question Statement</label>
+                  <label className={LABEL_BASE + " ml-1"}>Problem Statement</label>
                   <textarea 
                     value={previewQuestion.questionText} 
                     onChange={e => setPreviewQuestion({...previewQuestion, questionText: e.target.value})}
                     placeholder="Problem text..."
-                    className={INPUT_BASE + " h-[400px] resize-none font-mono text-xs p-6 leading-relaxed bg-zinc-50 border-zinc-200 shadow-inner"} 
+                    className={INPUT_BASE + " h-[450px] resize-none font-mono text-sm p-8 leading-relaxed bg-surface-hover/30 border-main focus:border-primary-500/50 shadow-inner"} 
                   />
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-8">
                   {/* Test Case Logic Workspace */}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <label className={LABEL_BASE}>Logic Validation Set</label>
+                      <label className={LABEL_BASE}>Test Cases</label>
                       <button 
                         onClick={() => setPreviewQuestion({...previewQuestion, testCases: [...previewQuestion.testCases, { input: '', expectedOutput: '', isHidden: false }] })} 
                         className="text-[10px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2 px-3 py-1.5 rounded-lg border border-emerald-500/10 hover:bg-emerald-500/5 transition-all"
@@ -1909,24 +1950,24 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                     
                     <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                       {previewQuestion.testCases.map((tc, index) => (
-                         <div key={index} className="p-6 bg-zinc-50 border border-zinc-200 rounded-[24px] space-y-4 group/tc relative">
+                         <div key={index} className="p-8 bg-surface-hover/30 border border-main rounded-[2rem] space-y-6 group/tc relative">
                             <div className="flex items-center justify-between mb-2">
-                               <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Case #{index + 1}</span>
+                               <span className="text-[9px] font-black text-muted uppercase tracking-[0.2em]">Logic Matrix #{index + 1}</span>
                                {previewQuestion.testCases.length > 1 && (
                                  <button 
                                    onClick={() => {
                                       const filtered = previewQuestion.testCases.filter((_, i) => i !== index);
                                       setPreviewQuestion({...previewQuestion, testCases: filtered});
                                    }}
-                                   className="text-zinc-400 hover:text-red-500 transition-colors"
+                                   className="w-8 h-8 flex items-center justify-center rounded-xl text-muted/30 hover:text-red-500 hover:bg-red-500/10 transition-all border border-transparent hover:border-main"
                                  >
-                                    <Trash2 size={12} />
+                                    <Trash2 size={14} />
                                  </button>
                                )}
                             </div>
-                            <div className="grid grid-cols-1 gap-4">
+                            <div className="grid grid-cols-1 gap-6">
                                <div>
-                                  <p className="text-[8px] font-black text-zinc-500 uppercase mb-2 tracking-tighter">System Input</p>
+                                  <p className="text-[8px] font-black text-muted uppercase mb-3 tracking-widest ml-1">System Input Vector</p>
                                   <textarea 
                                     value={tc.input} 
                                     onChange={(e) => {
@@ -1934,23 +1975,23 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                                        updatedTCs[index].input = e.target.value;
                                        setPreviewQuestion({...previewQuestion, testCases: updatedTCs});
                                     }}
-                                    className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2.5 text-[11px] font-mono focus:border-zinc-400 outline-none resize-none" 
+                                    className="w-full bg-surface border border-main rounded-2xl px-5 py-4 text-[12px] font-mono text-primary focus:border-primary-500/50 outline-none resize-none shadow-inner" 
                                     rows={2}
                                   />
                                </div>
                                <div>
-                                  <p className={`text-[8px] font-black uppercase mb-2 tracking-tighter ${!tc.expectedOutput ? 'text-amber-500' : 'text-zinc-500'}`}>
-                                    {`Grade Requirement (Output) ${!tc.expectedOutput ? '*' : ''}`}
+                                  <p className={`text-[8px] font-black uppercase mb-3 tracking-widest ml-1 ${!tc.expectedOutput ? 'text-primary-500 animate-pulse' : 'text-muted'}`}>
+                                    {`Expected Result Artifact ${!tc.expectedOutput ? '[REQUIRED]' : ''}`}
                                   </p>
                                   <textarea 
-                                    placeholder="Enter expected outcome for grader..." 
+                                    placeholder="Enter expected outcome for validator..." 
                                     value={tc.expectedOutput}
                                     onChange={(e) => {
                                        const updatedTCs = [...previewQuestion.testCases];
                                        updatedTCs[index].expectedOutput = e.target.value;
                                        setPreviewQuestion({...previewQuestion, testCases: updatedTCs});
                                     }}
-                                    className={`w-full border rounded-xl px-3 py-2.5 text-[11px] font-mono outline-none resize-none transition-all ${!tc.expectedOutput ? 'border-amber-400 bg-amber-50 shadow-[0_0_15px_rgba(245,158,11,0.1)]' : 'bg-white border-zinc-200 focus:border-emerald-500'}`}
+                                    className={`w-full border rounded-2xl px-5 py-4 text-[12px] font-mono outline-none resize-none transition-all ${!tc.expectedOutput ? 'border-primary-500 bg-primary-500/5 shadow-2xl shadow-primary-500/10' : 'bg-surface border-main focus:border-emerald-500/50 shadow-inner'}`}
                                     rows={2}
                                   />
                                </div>
@@ -1964,19 +2005,19 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
             </div>
 
             {/* Footer Actions */}
-            <div className="p-8 border-t border-zinc-100 bg-zinc-50/50 flex gap-5">
+            <div className="p-10 border-t border-main bg-surface-hover/50 flex gap-6">
                <button 
                  onClick={() => {setShowPreviewModal(false); setPreviewQuestion(null);}} 
-                 className="flex-1 h-16 bg-white border border-zinc-200 hover:bg-zinc-100 text-zinc-700 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 shadow-sm"
+                 className="flex-1 h-16 bg-surface border border-main hover:bg-surface-hover text-muted hover:text-primary rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 active:scale-95 shadow-sm"
                >
-                  Discard Candidate
+                  Purge Candidate
                </button>
                <button 
                  onClick={confirmLinkImport} 
-                 className="flex-[2] h-16 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all shadow-[0_15px_40px_-10px_rgba(16,185,129,0.3)] active:scale-95 flex items-center justify-center gap-3 group"
+                 className="flex-[2] h-16 bg-primary-500 hover:bg-primary-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] transition-all shadow-2xl shadow-primary-500/20 active:scale-95 flex items-center justify-center gap-4 group"
                >
-                  <CheckCircle size={20} strokeWidth={2.5} className="group-hover:scale-110 transition-transform" />
-                  Finalize & Add to Assessment
+                  <CheckCircle size={20} strokeWidth={3} className="group-hover:scale-110 transition-transform" />
+                  Add to Exam
                </button>
             </div>
           </div>
@@ -1999,19 +2040,6 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
         examTitle={exam.title}
       />
 
-      <div className="fixed bottom-10 right-10 z-[200] space-y-3">
-        {toasts.map(t => (
-          <div key={t.id} className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl border shadow-[0_15px_30px_-5px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom-4 duration-300 bg-white ${t.type === 'error' ? 'border-red-100 text-red-600' : 'border-emerald-100 text-emerald-600'}`}>
-            <div className={`shrink-0 ${t.type === 'error' ? 'text-red-500' : 'text-emerald-500'}`}>
-               {t.type === 'error' ? <AlertCircle size={16} strokeWidth={2.5} /> : <CheckCircle size={16} strokeWidth={2.5} />}
-            </div>
-            <p className="text-[12px] font-bold tracking-tight text-slate-700 whitespace-nowrap">
-              {t.msg}
-            </p>
-          </div>
-        ))}
-      </div>
-
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -2023,7 +2051,12 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
           opacity: 0.5;
           cursor: pointer;
         }
+        @keyframes toastProgress {
+          from { width: 100%; }
+          to   { width: 0%; }
+        }
       `}</style>
     </div>
   );
 }
+
