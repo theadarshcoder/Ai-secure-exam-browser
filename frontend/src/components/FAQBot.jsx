@@ -112,38 +112,38 @@ const FAQBot = ({ examId, userId, isOpen, onClose }) => {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.95 }}
                         transition={{ type: 'spring', damping: 22, stiffness: 300 }}
-                        className="mb-4 bg-white border border-slate-200 rounded-3xl shadow-2xl w-80 h-[420px] flex flex-col overflow-hidden"
+                        className="mb-4 bg-surface border border-main rounded-[2rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] w-80 h-[460px] flex flex-col overflow-hidden"
                     >
                         {/* Header */}
-                        <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between shrink-0">
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-sm">
-                                    🤖
+                        <div className="bg-surface-hover/50 border-b border-main px-6 py-5 flex items-center justify-between shrink-0">
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-lg shadow-xl shadow-primary-500/5">
+                                    <Sparkles size={18} className="text-primary-500" />
                                 </div>
                                 <div>
-                                    <h3 className="text-xs font-bold uppercase tracking-widest">Vision Support</h3>
-                                    <p className="text-[9px] text-slate-400 font-medium">Instant help during exam</p>
+                                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Vision Support</h3>
+                                    <p className="text-[9px] text-muted font-black uppercase tracking-widest opacity-50">Instant Assistance</p>
                                 </div>
                             </div>
                             <button
                                 onClick={onClose}
-                                className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+                                className="w-8 h-8 flex items-center justify-center hover:bg-primary-500/10 rounded-lg transition-all group"
                             >
-                                <X size={14} className="text-slate-400" />
+                                <X size={14} className="text-muted group-hover:text-primary-500" />
                             </button>
                         </div>
 
                         {/* Messages */}
-                        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/50">
+                        <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-surface custom-scrollbar">
                             {messages.map((msg, i) => (
                                 <div
                                     key={i}
                                     className={`flex ${msg.sender === 'student' ? 'justify-end' : 'justify-start'}`}
                                 >
-                                    <div className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-[12px] leading-relaxed font-medium ${
+                                    <div className={`max-w-[90%] px-4 py-3 rounded-2xl text-[11px] leading-relaxed font-bold uppercase tracking-wide transition-all ${
                                         msg.sender === 'student'
-                                            ? 'bg-slate-900 text-white rounded-br-lg'
-                                            : 'bg-white border border-slate-200 text-slate-700 rounded-bl-lg shadow-sm'
+                                            ? 'bg-primary-500 text-white rounded-br-none shadow-lg shadow-primary-500/20'
+                                            : 'bg-surface-hover border border-main text-primary rounded-bl-none shadow-sm'
                                     }`}>
                                         {msg.text}
                                     </div>
@@ -152,44 +152,45 @@ const FAQBot = ({ examId, userId, isOpen, onClose }) => {
                             <div ref={messagesEndRef} />
                         </div>
 
-                        {/* Escalate Button */}
-                        <div className="px-3 py-2 bg-white border-t border-slate-100 flex justify-center shrink-0">
+                        {/* Actions & Input Container */}
+                        <div className="p-4 bg-surface-hover/30 border-t border-main space-y-3">
+                            {/* Escalate Button */}
                             <button
                                 onClick={escalateToAdmin}
                                 disabled={isEscalating}
-                                className="flex items-center gap-1.5 text-[10px] font-bold text-red-600 hover:text-red-700 uppercase tracking-wider transition-colors disabled:opacity-50"
+                                className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-[9px] font-black text-red-500 hover:bg-red-500/5 uppercase tracking-[0.2em] transition-all disabled:opacity-30 border border-transparent hover:border-red-500/20"
                             >
                                 {isEscalating ? (
                                     <>
-                                        <Loader2 size={11} className="animate-spin" />
-                                        Sending...
+                                        <Loader2 size={12} className="animate-spin" />
+                                        Relaying...
                                     </>
                                 ) : (
                                     <>
-                                        <AlertCircle size={11} />
-                                        Contact Admin
+                                        <AlertCircle size={12} />
+                                        Request Supervisor
                                     </>
                                 )}
                             </button>
-                        </div>
 
-                        {/* Input */}
-                        <div className="px-3 pb-3 pt-1 flex gap-2 bg-white shrink-0">
-                            <input
-                                type="text"
-                                value={input}
-                                onChange={(e) => setInput(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                                className="flex-1 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:border-slate-400 transition-all"
-                                placeholder="Type your issue..."
-                            />
-                            <button
-                                onClick={handleSend}
-                                disabled={!input.trim()}
-                                className="w-10 h-10 rounded-xl bg-slate-900 hover:bg-slate-800 text-white flex items-center justify-center transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed shadow-lg shadow-slate-900/10 shrink-0"
-                            >
-                                <Send size={14} />
-                            </button>
+                            {/* Input Area */}
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={input}
+                                    onChange={(e) => setInput(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                                    className="flex-1 bg-surface border border-main rounded-xl px-4 py-2.5 text-[11px] font-bold text-primary placeholder:text-muted/30 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/5 transition-all uppercase tracking-wider"
+                                    placeholder="Type protocol issue..."
+                                />
+                                <button
+                                    onClick={handleSend}
+                                    disabled={!input.trim()}
+                                    className="w-10 h-10 rounded-xl bg-primary-500 hover:bg-primary-600 text-white flex items-center justify-center transition-all active:scale-95 disabled:opacity-20 disabled:grayscale shadow-xl shadow-primary-500/20 shrink-0"
+                                >
+                                    <Send size={14} />
+                                </button>
+                            </div>
                         </div>
                     </motion.div>
                 )}

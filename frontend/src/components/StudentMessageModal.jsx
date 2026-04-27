@@ -36,57 +36,62 @@ const StudentMessageModal = ({ userId, examId }) => {
 
     return (
         <AnimatePresence>
-            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-6">
+            <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[9999] p-8">
                 <motion.div
-                    initial={{ scale: 0.92, y: 20, opacity: 0 }}
+                    initial={{ scale: 0.95, y: 30, opacity: 0 }}
                     animate={{ scale: 1, y: 0, opacity: 1 }}
-                    exit={{ scale: 0.92, y: 20, opacity: 0 }}
-                    transition={{ type: 'spring', damping: 24, stiffness: 300 }}
-                    className="w-full max-w-md"
+                    exit={{ scale: 0.95, y: 30, opacity: 0 }}
+                    transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                    className="w-full max-w-lg"
                 >
-                    <div className={`bg-white rounded-3xl shadow-2xl overflow-hidden border-t-[6px] ${
-                        isCritical ? 'border-red-500' : isWarning ? 'border-amber-500' : 'border-blue-500'
-                    }`}>
+                    <div className="bg-surface rounded-[3rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] overflow-hidden border border-main relative group">
+                        {/* Status Bar Indicator */}
+                        <div className={`absolute top-0 left-0 right-0 h-2 ${
+                            isCritical ? 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]' : 
+                            isWarning ? 'bg-primary-500 shadow-[0_0_15px_rgba(255,59,0,0.5)]' : 
+                            'bg-primary-500'
+                        }`} />
+
                         {/* Header */}
-                        <div className="px-7 pt-7 pb-0">
-                            <div className="flex items-center justify-between mb-1">
-                                <div className="flex items-center gap-3">
-                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shadow-sm ${
-                                        isCritical ? 'bg-red-50 border border-red-100' : 
-                                        isWarning ? 'bg-amber-50 border border-amber-100' : 
-                                        'bg-blue-50 border border-blue-100'
+                        <div className="px-10 pt-10 pb-2">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-5">
+                                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-xl transition-transform duration-500 group-hover:scale-110 ${
+                                        isCritical ? 'bg-red-500/10 border border-red-500/20 text-red-500' : 
+                                        isWarning ? 'bg-primary-500/10 border border-primary-500/20 text-primary-500' : 
+                                        'bg-primary-500/10 border border-primary-500/20 text-primary-500'
                                     }`}>
                                         {isCritical ? '🛑' : isWarning ? '⚠️' : 'ℹ️'}
                                     </div>
                                     <div>
-                                        <h3 className="text-base font-bold text-slate-900 tracking-tight">
-                                            {isCritical ? 'Critical Alert' : isWarning ? 'Proctor Warning' : 'Proctor Message'}
+                                        <h3 className="text-2xl font-black text-primary tracking-tighter uppercase">
+                                            {isCritical ? 'Protocol Halt' : isWarning ? 'System Alert' : 'Transmission'}
                                         </h3>
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                            From {currentMsg.senderRole || 'Admin'} • {new Date(currentMsg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-50">
+                                            From {currentMsg.senderRole || 'Supervisor'} • {new Date(currentMsg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </p>
                                     </div>
                                 </div>
 
                                 {/* Pending badge */}
                                 {messageQueue.length > 1 && (
-                                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
-                                        isCritical ? 'bg-red-50 text-red-600 border-red-200' : 'bg-slate-100 text-slate-600 border-slate-200'
+                                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border animate-pulse ${
+                                        isCritical ? 'bg-red-500/10 text-red-500 border-red-500/30' : 'bg-surface-hover text-primary border-main'
                                     }`}>
-                                        {messageQueue.length} Pending
+                                        {messageQueue.length} BATCHED
                                     </span>
                                 )}
                             </div>
                         </div>
 
                         {/* Message Body */}
-                        <div className="px-7 py-6">
-                            <div className={`p-5 rounded-2xl border ${
-                                isCritical ? 'bg-red-50/50 border-red-100' : 
-                                isWarning ? 'bg-amber-50/50 border-amber-100' : 
-                                'bg-slate-50 border-slate-100'
+                        <div className="px-10 py-8">
+                            <div className={`p-8 rounded-[2rem] border transition-all duration-500 ${
+                                isCritical ? 'bg-red-500/5 border-red-500/10' : 
+                                isWarning ? 'bg-primary-500/5 border-primary-500/10' : 
+                                'bg-surface-hover border-main'
                             }`}>
-                                <p className="text-[15px] font-medium text-slate-800 leading-relaxed">
+                                <p className="text-lg font-black text-primary leading-tight uppercase tracking-tight">
                                     {currentMsg.message}
                                 </p>
                             </div>
@@ -94,19 +99,19 @@ const StudentMessageModal = ({ userId, examId }) => {
 
                         {/* Action */}
                         {currentMsg.requiresAck !== false && (
-                            <div className="px-7 pb-7">
+                            <div className="px-10 pb-10">
                                 <button
                                     onClick={handleAcknowledge}
-                                    className={`w-full h-12 rounded-xl font-bold text-[12px] uppercase tracking-widest transition-all active:scale-[0.97] shadow-lg flex items-center justify-center gap-2 ${
+                                    className={`w-full h-16 rounded-[1.5rem] font-black text-[11px] uppercase tracking-[0.3em] transition-all active:scale-[0.97] shadow-2xl flex items-center justify-center gap-3 ${
                                         isCritical 
-                                            ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-600/20' 
-                                            : 'bg-slate-900 hover:bg-slate-800 text-white shadow-slate-900/20'
+                                            ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-600/30' 
+                                            : 'bg-primary-500 hover:bg-primary-600 text-white shadow-primary-500/30'
                                     }`}
                                 >
-                                    ✓ I Understand
+                                    Confirm Intel
                                     {messageQueue.length > 1 && (
-                                        <span className="text-[10px] opacity-70">
-                                            ({messageQueue.length - 1} more)
+                                        <span className="px-2 py-0.5 bg-black/20 rounded text-[9px]">
+                                            +{messageQueue.length - 1} MORE
                                         </span>
                                     )}
                                 </button>

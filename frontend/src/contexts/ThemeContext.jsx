@@ -12,17 +12,6 @@ export const ThemeProvider = ({ children }) => {
   });
 
   useEffect(() => {
-    const path = window.location.pathname;
-    // Rigidly force specific themes for key entry points/dashboards
-    if (path === '/') {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    } else if (path === '/login' || path === '/student' || path.startsWith('/student/')) {
-      document.documentElement.setAttribute('data-theme', 'light');
-    } else {
-      document.documentElement.setAttribute('data-theme', theme);
-    }
-
-    // Always persist user preference regardless of current page enforcement
     localStorage.setItem('vision_theme', theme);
   }, [theme]);
 
@@ -49,7 +38,7 @@ export const ThemeToggle = ({ className = '' }) => {
         ${isDark
           ? 'border-white/10 bg-white/[0.04] text-zinc-400 hover:text-amber-300 hover:bg-amber-500/10 hover:border-amber-500/20'
           : 'border-black/10 bg-black/[0.04] text-slate-500 hover:text-indigo-500 hover:bg-indigo-500/10 hover:border-indigo-500/20'
-        }m . 
+        }
         active:scale-90 ${className}
       `}
     >

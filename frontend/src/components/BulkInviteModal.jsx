@@ -118,11 +118,11 @@ export default function BulkInviteModal({ isOpen, onClose, examId, examTitle }) 
                         onDrop={handleDrop}
                         onClick={() => fileRef.current?.click()}
                     >
-                        <Upload size={32} color="#10b981" style={{ marginBottom: 12 }} />
+                        <Upload size={40} strokeWidth={2.5} className="text-primary-500" style={{ marginBottom: 20 }} />
                         <p style={S.dropText}>Drop CSV file here or click to browse</p>
-                        <div style={{ marginTop: '16px', display: 'inline-block', textAlign: 'left', background: '#f1f5f9', padding: '10px 16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                            <p style={{ fontSize: '10px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.5px' }}>Expected CSV Format:</p>
-                            <code style={{ fontSize: '12px', color: '#059669', fontFamily: 'monospace', fontWeight: 700 }}>name, email</code>
+                        <div style={{ marginTop: '20px', display: 'inline-block', textAlign: 'left', background: 'var(--bg-surface)', padding: '12px 20px', borderRadius: '16px', border: '1px solid var(--border-main)' }}>
+                            <p style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 900, textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.1em', opacity: 0.5 }}>Expected Format:</p>
+                            <code style={{ fontSize: '13px', color: 'var(--primary-500)', fontFamily: 'monospace', fontWeight: 900 }}>name, email</code>
                         </div>
                         <input ref={fileRef} type="file" accept=".csv" hidden onChange={e => handleFile(e.target.files[0])} />
                     </div>
@@ -207,32 +207,32 @@ export default function BulkInviteModal({ isOpen, onClose, examId, examTitle }) 
 }
 
 const S = {
-    overlay: { position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16 },
-    modal: { background: '#ffffff', border: '1px solid rgba(0,0,0,0.05)', borderRadius: 24, width: '100%', maxWidth: 560, maxHeight: '85vh', overflow: 'auto', padding: '32px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.15)' },
-    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 },
-    title: { color: '#0f172a', fontSize: 20, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 10, letterSpacing: -0.4 },
-    subtitle: { color: '#64748b', fontSize: 13, margin: '4px 0 0', fontWeight: 500 },
-    closeBtn: { background: '#f8fafc', border: '1px solid #f1f5f9', borderRadius: 10, padding: 8, color: '#94a3b8', cursor: 'pointer', transition: 'all 0.2s' },
-    dropZone: { border: '2px dashed #10b98133', borderRadius: 16, padding: '48px 24px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s', background: '#f0fdf444' },
-    dropZoneActive: { borderColor: '#10b981', background: '#f0fdf4' },
-    dropText: { color: '#334155', fontSize: 15, fontWeight: 600, margin: '0 0 4px' },
-    dropHint: { color: '#64748b', fontSize: 12, margin: 0 },
-    sampleBtn: { display: 'flex', alignItems: 'center', gap: 8, margin: '16px auto 0', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 18px', color: '#475569', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' },
-    errorBox: { display: 'flex', gap: 10, alignItems: 'flex-start', background: '#fef2f2', border: '1px solid #fee2e2', borderRadius: 12, padding: '12px 16px', marginTop: 16, color: '#991b1b', fontSize: 13 },
-    tableHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginTop: 16 },
-    badge: { display: 'flex', alignItems: 'center', gap: 8, color: '#059669', fontSize: 13, fontWeight: 600 },
-    clearBtn: { display: 'flex', alignItems: 'center', gap: 6, background: '#fff', border: '1px solid #fee2e2', borderRadius: 8, padding: '6px 12px', color: '#dc2626', fontSize: 11, fontWeight: 600, cursor: 'pointer' },
-    tableWrap: { maxHeight: 300, overflow: 'auto', border: '1px solid #e2e8f0', borderRadius: 12, marginBottom: 20 },
+    overlay: { position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.8)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16 },
+    modal: { background: 'var(--bg-surface)', border: '1px solid var(--border-main)', borderRadius: 32, width: '100%', maxWidth: 560, maxHeight: '85vh', overflow: 'auto', padding: '40px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' },
+    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 },
+    title: { color: 'var(--text-primary)', fontSize: 24, fontWeight: 900, margin: 0, display: 'flex', alignItems: 'center', gap: 12, letterSpacing: -0.8, textTransform: 'uppercase', fontStyle: 'italic' },
+    subtitle: { color: 'var(--text-muted)', fontSize: 11, margin: '6px 0 0', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.2em', opacity: 0.5 },
+    closeBtn: { background: 'var(--bg-surface-hover)', border: '1px solid var(--border-main)', borderRadius: 12, padding: 10, color: 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.2s' },
+    dropZone: { border: '2px dashed var(--border-main)', borderRadius: 24, padding: '60px 24px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s', background: 'var(--bg-surface-hover)' },
+    dropZoneActive: { borderColor: 'var(--primary-500)', background: 'var(--bg-surface)' },
+    dropText: { color: 'var(--text-primary)', fontSize: 15, fontWeight: 900, margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: -0.2 },
+    dropHint: { color: 'var(--text-muted)', fontSize: 12, margin: 0 },
+    sampleBtn: { display: 'flex', alignItems: 'center', gap: 10, margin: '16px auto 0', background: 'var(--bg-surface)', border: '1px solid var(--border-main)', borderRadius: 14, padding: '12px 24px', color: 'var(--text-muted)', fontSize: 10, fontWeight: 900, cursor: 'pointer', transition: 'all 0.2s', textTransform: 'uppercase', letterSpacing: '0.1em' },
+    errorBox: { display: 'flex', gap: 12, alignItems: 'flex-start', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 16, padding: '16px 20px', marginTop: 24, color: '#fca5a5', fontSize: 13 },
+    tableHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, marginTop: 24 },
+    badge: { display: 'flex', alignItems: 'center', gap: 10, color: 'var(--primary-500)', fontSize: 12, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em' },
+    clearBtn: { display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-surface)', border: '1px solid var(--border-main)', borderRadius: 12, padding: '8px 16px', color: '#ef4444', fontSize: 10, fontWeight: 900, cursor: 'pointer', textTransform: 'uppercase' },
+    tableWrap: { maxHeight: 300, overflow: 'auto', border: '1px solid var(--border-main)', borderRadius: 20, marginBottom: 24, background: 'var(--bg-surface-hover)' },
     table: { width: '100%', borderCollapse: 'collapse' },
-    th: { textAlign: 'left', padding: '12px 16px', fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.8, background: '#f8fafc', borderBottom: '1px solid #e2e8f0' },
-    tr: { borderBottom: '1px solid #f1f5f9' },
-    td: { padding: '10px 16px', fontSize: 13, color: '#334155' },
-    removeBtn: { background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 4, transition: 'color 0.2s' },
-    sendBtn: { width: '100%', background: '#0f172a', border: 'none', borderRadius: 12, padding: '14px 24px', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, transition: 'background 0.2s', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' },
-    resultBox: { textAlign: 'center', padding: '24px 0' },
-    statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginTop: 24 },
-    stat: { background: '#f8fafc', border: '1px solid #f1f5f9', borderRadius: 12, padding: '16px 10px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 4 },
-    statNum: { fontSize: 22, fontWeight: 700, color: '#059669' },
-    statLabel: { fontSize: 10, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 },
-    doneBtn: { marginTop: 24, background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 10, padding: '12px 32px', color: '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }
+    th: { textAlign: 'left', padding: '14px 20px', fontSize: 9, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.2em', background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-main)' },
+    tr: { borderBottom: '1px solid var(--border-main)' },
+    td: { padding: '12px 20px', fontSize: 13, color: 'var(--text-primary)', fontWeight: 600 },
+    removeBtn: { background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 6, transition: 'all 0.2s', opacity: 0.3 },
+    sendBtn: { width: '100%', background: 'var(--primary-500)', border: 'none', borderRadius: 16, padding: '16px 24px', color: '#fff', fontSize: 12, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, transition: 'all 0.2s', boxShadow: '0 10px 20px -5px rgba(var(--primary-500-rgb), 0.3)', textTransform: 'uppercase', letterSpacing: '0.1em' },
+    resultBox: { textAlign: 'center', padding: '32px 0' },
+    statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginTop: 32 },
+    stat: { background: 'var(--bg-surface-hover)', border: '1px solid var(--border-main)', borderRadius: 16, padding: '20px 12px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 6 },
+    statNum: { fontSize: 24, fontWeight: 900, color: 'var(--primary-500)' },
+    statLabel: { fontSize: 9, color: 'var(--text-muted)', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.6 },
+    doneBtn: { marginTop: 32, background: 'var(--bg-surface-hover)', border: '1px solid var(--border-main)', borderRadius: 14, padding: '14px 40px', color: 'var(--text-primary)', fontSize: 12, fontWeight: 900, cursor: 'pointer', transition: 'all 0.2s', textTransform: 'uppercase', letterSpacing: '0.1em' }
 };

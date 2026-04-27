@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getStudentReport } from '../services/api';
+import { ThemeToggle } from '../contexts/ThemeContext';
 import { 
     TrendingUp, 
     AlertTriangle, 
@@ -74,7 +75,7 @@ const StudentIntelligenceDashboard = () => {
                 useCORS: true,
                 allowTaint: true,
                 logging: true, // Enable logging for debugging
-                backgroundColor: '#f9fafb',
+                backgroundColor: null, // Transparent to preserve theme colors
                 windowWidth: element.scrollWidth,
                 windowHeight: element.scrollHeight,
                 onclone: (clonedDoc) => {
@@ -108,13 +109,13 @@ const StudentIntelligenceDashboard = () => {
 
     if (loading && !report) {
         return (
-            <div className="flex flex-col justify-center items-center h-screen bg-gray-50">
+            <div className="flex flex-col justify-center items-center h-screen bg-page">
                 <div className="relative w-20 h-20 mb-4">
-                    <div className="absolute inset-0 border-4 border-blue-100 rounded-full"></div>
-                    <div className="absolute inset-0 border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
-                    <Brain className="absolute inset-0 m-auto text-blue-600 animate-pulse" size={32} />
+                    <div className="absolute inset-0 border-4 border-main rounded-full"></div>
+                    <div className="absolute inset-0 border-4 border-primary-500 rounded-full border-t-transparent animate-spin"></div>
+                    <Brain className="absolute inset-0 m-auto text-primary-500 animate-pulse" size={32} />
                 </div>
-                <p className="text-gray-500 font-medium animate-pulse">Analyzing student behavior & performance...</p>
+                <p className="text-muted font-black animate-pulse uppercase tracking-[0.2em] text-[10px]">Analyzing behavioral neural network...</p>
             </div>
         );
     }
@@ -131,16 +132,16 @@ const StudentIntelligenceDashboard = () => {
 
     if (!student || !student.info) {
         return (
-            <div className="flex flex-col items-center justify-center h-screen bg-gray-50 p-8 text-center">
-                <div className="bg-white p-8 rounded-3xl shadow-xl border border-red-100 max-w-md">
-                    <AlertTriangle className="text-red-500 mx-auto mb-4" size={48} />
-                    <h2 className="text-xl font-bold text-gray-900 mb-2">Student Not Found</h2>
-                    <p className="text-gray-500 mb-6">The student record you are looking for does not exist or has been removed.</p>
+            <div className="flex flex-col items-center justify-center h-screen bg-page p-8 text-center">
+                <div className="bg-surface p-12 rounded-[2.5rem] shadow-2xl border border-main max-w-md">
+                    <AlertTriangle className="text-primary-500 mx-auto mb-6" size={56} />
+                    <h2 className="text-2xl font-black text-primary mb-3 tracking-tighter uppercase">Node Missing</h2>
+                    <p className="text-muted text-xs mb-8 font-black uppercase tracking-widest leading-relaxed">The target intelligence profile has been purged or moved.</p>
                     <button 
                         onClick={() => navigate(-1)}
-                        className="px-6 py-2 bg-gray-900 text-white rounded-xl font-bold text-sm"
+                        className="w-full h-14 bg-primary-500 text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-primary-500/20 active:scale-95 transition-all"
                     >
-                        Return to Dashboard
+                        Return to Command Center
                     </button>
                 </div>
             </div>
@@ -148,20 +149,21 @@ const StudentIntelligenceDashboard = () => {
     }
 
     return (
-        <div ref={dashboardRef} className="p-4 md:p-8 bg-gray-50 min-h-screen font-sans text-gray-900">
+        <div ref={dashboardRef} className="p-4 md:p-8 bg-page min-h-screen font-sans text-primary">
             {/* 1. TOP NAVIGATION & ACTION BAR */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 no-print">
                 <button 
                     onClick={() => navigate(-1)}
-                    className="flex items-center gap-2 px-4 py-2 text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition shadow-sm font-medium"
+                    className="flex items-center gap-2 px-4 py-2 text-secondary bg-surface border border-main rounded-xl hover:bg-surface-hover transition shadow-sm font-medium"
                 >
                     <ChevronLeft size={18} /> Back
                 </button>
                 
-                <div className="flex gap-3 w-full md:w-auto">
+                <div className="flex items-center gap-3 w-full md:w-auto">
+                    <ThemeToggle />
                     <button 
                         onClick={handleDownloadPDF}
-                        className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-indigo-200 transition-all active:scale-95"
+                        className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-primary-500 hover:bg-primary-600 text-white font-semibold rounded-xl shadow-lg shadow-primary-500/20 transition-all active:scale-95"
                     >
                         <Download size={18} /> Download Intelligence Report
                     </button>
@@ -169,94 +171,88 @@ const StudentIntelligenceDashboard = () => {
             </div>
 
             {/* 2. STUDENT IDENTITY CARD */}
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mb-8 flex flex-col md:flex-row items-center gap-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 rounded-full -mr-32 -mt-32 opacity-50 blur-3xl"></div>
-                
-                <div className="relative">
-                    <div className="w-24 h-24 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex justify-center items-center text-3xl font-bold text-white shadow-xl shadow-indigo-100 overflow-hidden">
+            <div className="bg-surface p-5 rounded-2xl border border-main mb-6 flex flex-col md:flex-row items-center gap-5">
+                <div className="relative shrink-0">
+                    <div className="w-14 h-14 bg-surface-hover border border-main rounded-xl flex justify-center items-center text-xl font-bold text-muted overflow-hidden">
                         {student.info.profilePicture ? (
                             <img src={student.info.profilePicture} alt="" className="w-full h-full object-cover" />
                         ) : (
-                            student.info.name.charAt(0)
+                            student.info.name.charAt(0).toUpperCase()
                         )}
                     </div>
                     {student.info.isVerified && (
-                        <div className="absolute -bottom-2 -right-2 bg-green-500 text-white p-1 rounded-full border-4 border-white shadow-sm">
-                            <Award size={14} />
+                        <div className="absolute -bottom-1.5 -right-1.5 bg-emerald-500 text-white p-0.5 rounded-full border-2 border-surface shadow-sm">
+                            <Award size={10} />
                         </div>
                     )}
                 </div>
                 
-                <div className="flex-1 text-center md:text-left relative z-10">
-                    <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">{student.info.name}</h1>
-                    <div className="flex flex-wrap justify-center md:justify-start gap-4 text-gray-500 text-sm mt-2">
-                        <span className="flex items-center gap-1.5"><Mail size={14} /> {student.info.email}</span>
-                        <span className="flex items-center gap-1.5 font-mono bg-gray-100 px-2 py-0.5 rounded text-[10px] uppercase tracking-wider">UID: {student.info._id.slice(-8)}</span>
+                <div className="flex-1 text-center md:text-left">
+                    <h1 className="text-xl font-bold text-primary tracking-tight">{student.info.name}</h1>
+                    <div className="flex flex-wrap justify-center md:justify-start gap-3 text-muted text-[12px] mt-1.5">
+                        <span className="flex items-center gap-1.5"><Mail size={12} /> {student.info.email}</span>
+                        <span className="flex items-center gap-1 font-mono bg-surface-hover px-2 py-0.5 rounded text-[10px] border border-main">UID: {student.info._id.slice(-8)}</span>
                     </div>
                 </div>
 
-                <div className="flex flex-col items-center md:items-end gap-2 relative z-10">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">Risk Intelligence Level</span>
-                    <div className={`px-5 py-2 rounded-2xl font-black text-sm flex items-center gap-2 shadow-sm border-2 ${
-                        intelligence.riskLevel === 'High' ? 'bg-red-50 text-red-600 border-red-100' : 
-                        intelligence.riskLevel === 'Medium' ? 'bg-amber-50 text-amber-600 border-amber-100' : 
-                        'bg-emerald-50 text-emerald-600 border-emerald-100'
+                <div className="flex flex-col items-center md:items-end gap-1.5">
+                    <span className="text-[10px] font-semibold text-muted uppercase tracking-widest">Risk Level</span>
+                    <div className={`px-3 py-1.5 rounded-lg font-semibold text-[11px] flex items-center gap-2 border ${
+                        intelligence.riskLevel === 'High' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 
+                        intelligence.riskLevel === 'Medium' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' : 
+                        'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
                     }`}>
-                        <div className={`w-2 h-2 rounded-full animate-pulse ${
+                        <div className={`w-1.5 h-1.5 rounded-full ${
                             intelligence.riskLevel === 'High' ? 'bg-red-500' : 
                             intelligence.riskLevel === 'Medium' ? 'bg-amber-500' : 'bg-emerald-500'
-                        }`}></div>
+                        }`} />
                         {intelligence.riskLevel} Risk
                     </div>
                 </div>
             </div>
 
             {/* 3. PERFORMANCE GRID */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <StatCard 
                     title="Exams Taken" 
                     value={student.overview.totalExams} 
-                    icon={<Calendar className="text-blue-500" size={20} />}
+                    icon={<Calendar size={15} />}
                     sub="Lifetime attempts"
-                    color="blue"
                 />
                 <StatCard 
                     title="Avg Score" 
                     value={`${student.overview.avgPercentage}%`} 
-                    icon={<Award className="text-purple-500" size={20} />}
+                    icon={<Award size={15} />}
                     sub="Overall accuracy"
-                    color="purple"
                 />
                 <StatCard 
                     title="Success Rate" 
                     value={`${student.overview.passRate}%`} 
-                    icon={<TrendingUp className="text-emerald-500" size={20} />}
+                    icon={<TrendingUp size={15} />}
                     sub="Pass percentage"
-                    color="emerald"
                 />
                 <StatCard 
                     title="Risk Score" 
                     value={intelligence.riskScore} 
-                    icon={<AlertTriangle className="text-rose-500" size={20} />}
+                    icon={<AlertTriangle size={15} />}
                     sub="Behavioral index"
-                    color="rose"
                 />
             </div>
 
             {/* 4. MAIN ANALYTICS SECTION */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
                 {/* Performance Trend Chart */}
-                <div className="lg:col-span-2 bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+                <div className="lg:col-span-2 bg-surface p-6 rounded-3xl shadow-sm border border-main">
                     <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h2 className="text-xl font-extrabold text-gray-800 flex items-center gap-2">
-                                <TrendingUp size={22} className="text-indigo-600" /> Performance Trend
+                            <h2 className="text-xl font-extrabold text-primary flex items-center gap-2">
+                                <TrendingUp size={22} className="text-primary-500" /> Performance Trend
                             </h2>
-                            <p className="text-xs text-gray-400 mt-1 font-medium italic">Score progression over last {chartData.length} exams</p>
+                            <p className="text-xs text-muted mt-1 font-medium">Score progression over last {chartData.length} exams</p>
                         </div>
                         <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                            insights.improvementTrend === 'increasing' ? 'bg-emerald-100 text-emerald-600' :
-                            insights.improvementTrend === 'declining' ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600'
+                            insights.improvementTrend === 'increasing' ? 'bg-emerald-500/10 text-emerald-500' :
+                            insights.improvementTrend === 'declining' ? 'bg-red-500/10 text-red-500' : 'bg-surface-hover text-muted'
                         }`}>
                             Trend: {insights.improvementTrend}
                         </div>
@@ -267,37 +263,39 @@ const StudentIntelligenceDashboard = () => {
                             <AreaChart data={chartData}>
                                 <defs>
                                     <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
-                                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                                        <stop offset="5%" stopColor="var(--accent-primary)" stopOpacity={0.1}/>
+                                        <stop offset="95%" stopColor="var(--accent-primary)" stopOpacity={0}/>
                                     </linearGradient>
                                 </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-main)" />
                                 <XAxis 
                                     dataKey="name" 
                                     axisLine={false} 
                                     tickLine={false} 
-                                    tick={{fontSize: 10, fontWeight: 600, fill: '#94a3b8'}}
+                                    tick={{fontSize: 10, fontWeight: 800, fill: 'var(--text-muted)'}}
                                     dy={10}
                                 />
                                 <YAxis 
                                     domain={[0, 100]} 
                                     axisLine={false} 
                                     tickLine={false} 
-                                    tick={{fontSize: 10, fontWeight: 600, fill: '#94a3b8'}}
+                                    tick={{fontSize: 10, fontWeight: 800, fill: 'var(--text-muted)'}}
                                 />
                                 <Tooltip 
                                     contentStyle={{ 
-                                        borderRadius: '16px', 
-                                        border: 'none', 
-                                        boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
-                                        fontSize: '12px',
-                                        fontWeight: '700'
+                                        borderRadius: '20px', 
+                                        border: '1px solid var(--border-main)', 
+                                        background: 'var(--bg-surface)',
+                                        boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.5)',
+                                        fontSize: '11px',
+                                        fontWeight: '900',
+                                        color: 'var(--text-primary)'
                                     }}
                                 />
                                 <Area 
                                     type="monotone" 
                                     dataKey="score" 
-                                    stroke="#6366f1" 
+                                    stroke="var(--accent-primary)" 
                                     strokeWidth={4} 
                                     fillOpacity={1} 
                                     fill="url(#colorScore)" 
@@ -311,10 +309,10 @@ const StudentIntelligenceDashboard = () => {
                 {/* Behavioral & AI Insights */}
                 <div className="flex flex-col gap-6">
                     {/* Insights Card */}
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 bg-gradient-to-br from-white to-gray-50">
-                        <h2 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-                            <Brain size={20} className="text-purple-600" /> AI Insights
-                            <span className="text-[10px] bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter ml-1">BETA</span>
+                    <div className="bg-surface p-6 rounded-3xl shadow-sm border border-main">
+                        <h2 className="text-lg font-bold text-primary mb-6 flex items-center gap-2">
+                            <Brain size={20} className="text-primary-500" /> AI Insights
+                            <span className="text-[10px] bg-primary-500/10 text-primary-500 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter ml-1">BETA</span>
                         </h2>
                         
                         <div className="space-y-4">
@@ -337,18 +335,18 @@ const StudentIntelligenceDashboard = () => {
                                 sub="Behavioral consistency check"
                             />
                             
-                            <div className="pt-4 mt-4 border-t border-dashed border-gray-200">
-                                <div className="flex gap-4 items-start opacity-50 grayscale">
-                                    <div className="mt-1 p-2 bg-gray-50 rounded-lg">
-                                        <Target className="text-gray-400" size={16} />
+                             <div className="pt-4 mt-4 border-t border-dashed border-main">
+                                <div className="flex gap-4 items-start opacity-30 grayscale">
+                                    <div className="mt-1 p-2 bg-surface-hover rounded-lg">
+                                        <Target className="text-muted" size={16} />
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">Predictive Risk</p>
-                                            <span className="text-[8px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-black uppercase tracking-tighter">Coming Soon</span>
+                                            <p className="text-[10px] font-bold text-muted uppercase tracking-widest leading-none">Predictive Risk</p>
+                                            <span className="text-[8px] bg-surface-hover text-muted px-1.5 py-0.5 rounded font-black uppercase tracking-tighter">Coming Soon</span>
                                         </div>
-                                        <p className="text-sm font-black text-gray-400 mt-1">N/A</p>
-                                        <p className="text-[10px] text-gray-400 italic font-medium">Future performance prediction</p>
+                                        <p className="text-sm font-black text-muted mt-1">N/A</p>
+                                        <p className="text-[10px] text-muted font-medium">Future performance prediction</p>
                                     </div>
                                 </div>
                             </div>
@@ -356,11 +354,11 @@ const StudentIntelligenceDashboard = () => {
                     </div>
 
                     {/* Anomaly Detection */}
-                    <div className={`p-6 rounded-3xl border-2 shadow-lg transition-all ${
-                        insights.anomalyDetection ? 'bg-red-50 border-red-100 shadow-red-100' : 'bg-emerald-50 border-emerald-100 shadow-emerald-100'
+                    <div className={`p-6 rounded-3xl border shadow-lg transition-all ${
+                        insights.anomalyDetection ? 'bg-red-500/10 border-red-500/20 shadow-red-500/5' : 'bg-emerald-500/10 border-emerald-500/20 shadow-emerald-500/5'
                     }`}>
                         <h2 className={`text-lg font-black mb-3 flex items-center gap-2 ${
-                            insights.anomalyDetection ? 'text-red-700' : 'text-emerald-700'
+                            insights.anomalyDetection ? 'text-red-500' : 'text-emerald-500'
                         }`}>
                             {insights.anomalyDetection ? <AlertOctagon size={22} /> : <ShieldAlert size={22} />}
                             Anomaly Engine
@@ -368,17 +366,17 @@ const StudentIntelligenceDashboard = () => {
                         
                         {insights.anomalyDetection ? (
                             <div>
-                                <p className="text-red-800 font-bold text-sm leading-snug">{insights.anomalyDetection.type}</p>
-                                <p className="text-red-600 text-xs mt-1 leading-relaxed">{insights.anomalyDetection.message}</p>
-                                <div className="mt-4 bg-white/60 backdrop-blur-sm p-2 rounded-xl text-[10px] font-bold text-red-400 uppercase tracking-widest text-center">
+                                <p className="text-red-600 font-bold text-sm leading-snug">{insights.anomalyDetection.type}</p>
+                                <p className="text-red-500 text-xs mt-1 leading-relaxed">{insights.anomalyDetection.message}</p>
+                                <div className="mt-4 bg-red-500/10 border border-red-500/20 p-2 rounded-xl text-[10px] font-bold text-red-500 uppercase tracking-widest text-center">
                                     Flagged for Review
                                 </div>
                             </div>
                         ) : (
                             <div>
-                                <p className="text-emerald-800 font-bold text-sm">Behavior Consistent</p>
-                                <p className="text-emerald-600 text-xs mt-1">AI verified that performance aligns with historical data and behavioral patterns.</p>
-                                <div className="mt-4 bg-white/60 backdrop-blur-sm p-2 rounded-xl text-[10px] font-bold text-emerald-400 uppercase tracking-widest text-center">
+                                <p className="text-emerald-600 font-bold text-sm">Behavior Consistent</p>
+                                <p className="text-emerald-500 text-xs mt-1">Performance aligns with historical data and behavioral patterns.</p>
+                                <div className="mt-4 bg-emerald-500/10 border border-emerald-500/20 p-2 rounded-xl text-[10px] font-bold text-emerald-600 uppercase tracking-widest text-center">
                                     Trusted Identity
                                 </div>
                             </div>
@@ -390,20 +388,20 @@ const StudentIntelligenceDashboard = () => {
             {/* 5. TIMELINE & VIOLATION BREAKDOWN */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                 {/* Timeline Table */}
-                <div className="lg:col-span-3 bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                        <h2 className="text-lg font-extrabold text-gray-800 flex items-center gap-2">
-                            <Clock size={20} className="text-indigo-600" /> Academic Timeline
+                <div className="lg:col-span-3 bg-surface rounded-3xl shadow-sm border border-main overflow-hidden">
+                    <div className="p-6 border-b border-main flex justify-between items-center bg-surface-hover">
+                        <h2 className="text-lg font-extrabold text-primary flex items-center gap-2">
+                            <Clock size={20} className="text-primary-500" /> Academic Timeline
                         </h2>
                         <div className="flex items-center gap-4">
-                             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Page {page} of {pagination.pages}</span>
+                             <span className="text-[10px] font-bold text-muted uppercase tracking-widest">Page {page} of {pagination.pages}</span>
                         </div>
                     </div>
                     
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
-                                <tr className="text-gray-400 text-[10px] font-bold uppercase tracking-widest border-b border-gray-50">
+                                <tr className="text-muted text-[10px] font-bold uppercase tracking-widest border-b border-main">
                                     <th className="p-5">Exam</th>
                                     <th className="p-5 text-center">Result</th>
                                     <th className="p-5 text-center">Score</th>
@@ -411,47 +409,47 @@ const StudentIntelligenceDashboard = () => {
                                     <th className="p-5 text-right">Date</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-50">
+                            <tbody className="divide-y divide-main">
                                 {timelineData.length > 0 ? timelineData.map((session) => (
-                                    <tr key={session._id} className="hover:bg-indigo-50/20 transition-all group">
-                                        <td className="p-5">
-                                            <p className="font-bold text-gray-800 group-hover:text-indigo-600 transition-colors">{session.examTitle}</p>
-                                            <p className="text-[10px] text-gray-400 font-medium">{session.category}</p>
+                                    <tr key={session._id} className="hover:bg-primary-500/5 transition-all group border-b border-main last:border-0">
+                                        <td className="p-6">
+                                            <p className="font-black text-primary group-hover:text-primary-500 transition-colors uppercase tracking-tight text-sm">{session.examTitle}</p>
+                                            <p className="text-[9px] text-muted font-black uppercase tracking-widest mt-1">{session.category}</p>
                                         </td>
-                                        <td className="p-5 text-center">
-                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${
-                                                session.status === 'flagged' ? 'bg-red-100 text-red-600' :
-                                                session.status === 'reviewed' ? 'bg-blue-100 text-blue-600' :
-                                                'bg-emerald-100 text-emerald-600'
+                                        <td className="p-6 text-center">
+                                            <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${
+                                                session.status === 'flagged' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                                                session.status === 'reviewed' ? 'bg-primary-500/10 text-primary-500 border-primary-500/20' :
+                                                'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
                                             }`}>
                                                 {session.status}
                                             </span>
                                         </td>
-                                        <td className="p-5 text-center">
-                                            <div className={`text-lg font-black ${session.passed ? "text-emerald-600" : "text-rose-500"}`}>
+                                        <td className="p-6 text-center">
+                                            <div className={`text-xl font-black tabular-nums ${session.passed ? "text-emerald-500" : "text-primary-500"}`}>
                                                 {session.percentage}%
                                             </div>
-                                            <p className="text-[9px] font-bold text-gray-300 uppercase tracking-[0.2em]">{session.passed ? 'PASSED' : 'FAILED'}</p>
+                                            <p className="text-[8px] font-black text-muted/30 uppercase tracking-[0.2em]">{session.passed ? 'PASSED' : 'FAILED'}</p>
                                         </td>
-                                        <td className="p-5 text-center">
-                                            <div className="flex flex-col items-center gap-1">
-                                                <div className="flex gap-0.5">
+                                        <td className="p-6 text-center">
+                                            <div className="flex flex-col items-center gap-2">
+                                                <div className="flex gap-1">
                                                     {[1, 2, 3].map((i) => (
-                                                        <div key={i} className={`w-3 h-1.5 rounded-full ${
-                                                            session.violations?.length >= (4-i) ? 'bg-red-400' : 'bg-gray-100'
+                                                        <div key={i} className={`w-4 h-1.5 rounded-full ${
+                                                            session.violations?.length >= (4-i) ? 'bg-primary-500' : 'bg-surface-hover border border-main'
                                                         }`} />
                                                     ))}
                                                 </div>
-                                                <span className="text-[10px] font-bold text-gray-400">{session.tabSwitches} Tabs</span>
+                                                <span className="text-[9px] font-black text-muted uppercase tracking-widest">{session.tabSwitches} Flags</span>
                                             </div>
                                         </td>
-                                        <td className="p-5 text-right font-medium text-xs text-gray-400">
+                                        <td className="p-6 text-right font-black text-[10px] text-muted uppercase tracking-widest">
                                             {new Date(session.submittedAt).toLocaleDateString()}
                                         </td>
                                     </tr>
                                 )) : (
                                     <tr>
-                                        <td colSpan="5" className="p-10 text-center text-gray-300 font-bold italic underline decoration-indigo-100 decoration-4 underline-offset-8">No historical data available.</td>
+                                        <td colSpan="5" className="p-20 text-center text-muted font-black uppercase tracking-widest opacity-20">Intelligence stream empty.</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -460,18 +458,18 @@ const StudentIntelligenceDashboard = () => {
                     
                     {/* Pagination */}
                     {pagination.pages > 1 && (
-                        <div className="p-4 flex justify-between items-center bg-gray-50/50">
+                        <div className="p-6 flex justify-between items-center bg-surface-hover/50 border-t border-main">
                             <button 
                                 disabled={page === 1} 
                                 onClick={() => setPage(page - 1)}
-                                className="px-4 py-2 bg-white border border-gray-200 rounded-xl disabled:opacity-30 hover:bg-gray-100 transition text-xs font-bold shadow-sm"
+                                className="px-6 py-2.5 bg-surface border border-main rounded-xl disabled:opacity-30 hover:bg-surface-hover transition text-[10px] font-black uppercase tracking-widest shadow-sm text-primary"
                             >
                                 Previous
                             </button>
                             <button 
                                 disabled={page === pagination.pages} 
                                 onClick={() => setPage(page + 1)}
-                                className="px-4 py-2 bg-white border border-gray-200 rounded-xl disabled:opacity-30 hover:bg-gray-100 transition text-xs font-bold shadow-sm"
+                                className="px-6 py-2.5 bg-surface border border-main rounded-xl disabled:opacity-30 hover:bg-surface-hover transition text-[10px] font-black uppercase tracking-widest shadow-sm text-primary"
                             >
                                 Next
                             </button>
@@ -480,8 +478,8 @@ const StudentIntelligenceDashboard = () => {
                 </div>
 
                 {/* Violation Breakdown Pie Chart (Simulated with progress bars for simplicity/aesthetics) */}
-                <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-                    <h2 className="text-lg font-extrabold text-gray-800 mb-6 flex items-center gap-2">
+                <div className="bg-surface p-6 rounded-3xl shadow-sm border border-main">
+                    <h2 className="text-lg font-extrabold text-primary mb-6 flex items-center gap-2">
                         <AlertTriangle size={20} className="text-rose-500" /> Behavioral Faults
                     </h2>
                     
@@ -489,36 +487,38 @@ const StudentIntelligenceDashboard = () => {
                         {Object.entries(intelligence.violationsBreakdown).length > 0 ? (
                             Object.entries(intelligence.violationsBreakdown).map(([type, count]) => (
                                 <div key={type}>
-                                    <div className="flex justify-between text-xs mb-2">
-                                        <span className="font-bold text-gray-600">{type}</span>
-                                        <span className="font-black text-rose-500">{count}</span>
+                                    <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-2">
+                                        <span className="text-muted opacity-50">{type}</span>
+                                        <span className="text-rose-500">{count}</span>
                                     </div>
-                                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                    <div className="h-2 bg-surface-hover rounded-full overflow-hidden border border-main">
                                         <div 
-                                            className="h-full bg-rose-500 rounded-full transition-all duration-1000" 
+                                            className="h-full bg-rose-500 rounded-full transition-all duration-1000 shadow-[0_0_8px_rgba(244,63,94,0.4)]" 
                                             style={{ width: `${Math.min((count / student.overview.totalExams) * 100, 100)}%` }}
                                         ></div>
                                     </div>
                                 </div>
                             ))
                         ) : (
-                            <div className="flex flex-col items-center justify-center h-[200px] text-center">
-                                <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500 mb-4 border-2 border-emerald-100">
-                                    <ShieldAlert size={24} />
+                            <div className="flex flex-col items-center justify-center h-[240px] text-center bg-surface-hover/30 rounded-3xl border border-dashed border-main">
+                                <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500 mb-6 border border-emerald-500/20 shadow-xl">
+                                    <ShieldAlert size={28} strokeWidth={2.5} />
                                 </div>
-                                <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest">Pristine Record</p>
-                                <p className="text-[10px] text-gray-400 mt-1 italic">Zero behavioral violations detected across all sessions.</p>
+                                <p className="text-[11px] font-black text-emerald-500 uppercase tracking-[0.3em]">Pristine Record</p>
+                                <p className="text-[9px] text-muted font-black uppercase tracking-widest mt-2 opacity-30">Zero behavioral violations detected in registry.</p>
                             </div>
                         )}
                     </div>
                     
                     {student.overview.totalTabSwitches > 0 && (
-                        <div className="mt-8 pt-6 border-t border-gray-50">
-                             <div className="flex justify-between text-xs mb-2">
-                                <span className="font-bold text-gray-400">Total Tab Switches</span>
-                                <span className="font-black text-indigo-600">{student.overview.totalTabSwitches}</span>
+                        <div className="mt-8 pt-6 border-t border-main">
+                     <div className="flex justify-between text-xs mb-2">
+                                <span className="font-bold text-muted uppercase tracking-widest text-[9px]">Total Tab Switches</span>
+                                <span className="font-black text-primary-500">{student.overview.totalTabSwitches}</span>
                             </div>
-                            <div className="h-1 bg-indigo-50 rounded-full"></div>
+                            <div className="h-1 bg-primary-500/10 rounded-full overflow-hidden">
+                                <div className="h-full bg-primary-500 rounded-full" style={{ width: '100%' }}></div>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -527,38 +527,26 @@ const StudentIntelligenceDashboard = () => {
     );
 };
 
-const StatCard = ({ title, value, icon, sub, color }) => {
-    const colorClasses = {
-        blue: 'text-blue-600 bg-blue-50',
-        purple: 'text-purple-600 bg-purple-50',
-        emerald: 'text-emerald-600 bg-emerald-50',
-        rose: 'text-rose-600 bg-rose-50'
-    };
-    
-    return (
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 group hover:shadow-xl hover:shadow-gray-200/40 transition-all duration-300">
-            <div className="flex justify-between items-start mb-4">
-                <div className={`p-3 rounded-2xl ${colorClasses[color]}`}>
-                    {icon}
-                </div>
-                <div className="w-1.5 h-1.5 rounded-full bg-gray-100 group-hover:bg-indigo-400 transition-colors"></div>
-            </div>
-            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">{title}</h3>
-            <div className="text-3xl font-black text-gray-900 mt-1 tabular-nums">{value}</div>
-            <p className="text-[10px] font-medium text-gray-400 mt-1">{sub}</p>
+const StatCard = ({ title, value, icon, sub }) => (
+    <div className="bg-surface p-5 rounded-2xl border border-main hover:border-primary-500/20 hover:shadow-sm transition-all">
+        <div className="flex items-center gap-2 text-muted mb-3">
+            <span className="p-1.5 bg-surface-hover border border-main rounded-lg">{icon}</span>
+            <span className="text-[10px] font-semibold uppercase tracking-widest">{title}</span>
         </div>
-    );
-};
+        <div className="text-2xl font-bold text-primary tabular-nums">{value}</div>
+        <p className="text-[11px] text-muted mt-1">{sub}</p>
+    </div>
+);
 
 const InsightItem = ({ icon, label, value, sub }) => (
     <div className="flex gap-4 items-start group">
-        <div className="mt-1 p-2 bg-gray-50 rounded-lg group-hover:bg-white group-hover:shadow-md transition-all">
+        <div className="mt-1 p-2 bg-surface-hover rounded-lg group-hover:bg-surface group-hover:shadow-md transition-all border border-transparent group-hover:border-main">
             {icon}
         </div>
         <div>
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">{label}</p>
-            <p className="text-sm font-black text-gray-800 mt-1">{value}</p>
-            <p className="text-[10px] text-gray-400 italic font-medium">{sub}</p>
+            <p className="text-[10px] font-bold text-muted uppercase tracking-widest leading-none">{label}</p>
+            <p className="text-sm font-black text-primary mt-1">{value}</p>
+            <p className="text-[10px] text-muted font-medium">{sub}</p>
         </div>
     </div>
 );

@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { motion, useSpring, useTransform, useMotionValue } from 'framer-motion';
 
-export default function VisionLogo({ className = "w-12 h-12 text-[#0d9488]" }) {
+export default function VisionLogo({ className = "w-12 h-12 text-[#ff3b00]" }) {
   const springConfig = { damping: 30, stiffness: 180 };
   const rawMouseX = useMotionValue(0);
   const rawMouseY = useMotionValue(0);

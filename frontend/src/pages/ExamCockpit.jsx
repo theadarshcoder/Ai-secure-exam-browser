@@ -114,14 +114,14 @@ const QuestionPalette = React.memo(
 
     const stateStyles = {
       current:
-        "bg-slate-900 text-white border-slate-900 shadow-md ring-2 ring-slate-300 ring-offset-2 scale-110 z-10 font-bold",
-      answered: "bg-emerald-50 text-emerald-700 border-emerald-200 font-medium",
-      marked: "bg-amber-50 text-amber-700 border-amber-200 font-medium",
+        "bg-primary-500 text-white border-primary-600 shadow-lg shadow-primary-500/20 scale-110 z-10 font-bold",
+      answered: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 font-medium",
+      marked: "bg-primary-500/10 text-primary-500 border-primary-500/20 font-medium",
       "marked-answered":
-        "bg-amber-50 text-amber-700 border-amber-200 font-medium ring-2 ring-slate-800 ring-offset-1",
-      visited: "bg-slate-50 text-slate-600 border-slate-200 font-medium",
+        "bg-primary-500/20 text-primary-500 border-primary-500/30 font-medium ring-2 ring-primary-500 ring-offset-1 ring-offset-black",
+      visited: "bg-surface-hover text-muted border-main font-medium",
       unseen:
-        "bg-white text-slate-500 border-slate-100 hover:border-slate-300 font-medium",
+        "bg-surface text-muted border-main hover:border-primary-500/50 font-medium",
     };
 
     return (
@@ -129,21 +129,21 @@ const QuestionPalette = React.memo(
         <div className="px-5 pt-6 pb-4">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
+              <div className="w-1.5 h-1.5 rounded-full bg-primary-500" />
+              <span className="text-[11px] font-bold text-muted uppercase tracking-widest">
                 Questions
               </span>
             </div>
-            <span className="text-[10px] font-bold text-slate-400 tabular-nums uppercase">
+            <span className="text-[10px] font-bold text-muted tabular-nums uppercase">
               {answered}/{questions.length} Solved
             </span>
           </div>
-          <div className="p-1 bg-slate-100 rounded-xl flex items-center gap-1">
+          <div className="p-1 bg-surface-hover rounded-xl flex items-center gap-1 border border-main">
             {sections.map((sec) => (
               <button
                 key={sec.id}
                 onClick={() => handleSectionClick(sec)}
-                className={`flex-1 py-2 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all ${activeSection === sec.id ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                className={`flex-1 py-2 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all ${activeSection === sec.id ? "bg-primary-500 text-white shadow-lg shadow-primary-500/20" : "text-muted hover:text-primary"}`}
               >
                 {sec.label}
               </button>
@@ -165,41 +165,41 @@ const QuestionPalette = React.memo(
                     questions[i]?._id
                 ] &&
                   getQState(i) !== "current" && (
-                    <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 border-2 border-white rounded-full" />
+                    <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-primary-500 border-2 border-black rounded-full" />
                   )}
               </button>
             ))}
           </div>
         </div>
-        <div className="px-4 pb-5 pt-4 border-t border-slate-100 mt-auto">
+        <div className="px-4 pb-5 pt-4 border-t border-main mt-auto">
           <div className="grid grid-cols-2 gap-2">
             {[
               {
-                color: "bg-slate-900",
-                text: "text-slate-700",
-                bg: "bg-slate-100",
-                border: "border-slate-200",
+                color: "bg-primary-500",
+                text: "text-primary",
+                bg: "bg-surface-hover",
+                border: "border-main",
                 label: "Current",
               },
               {
                 color: "bg-emerald-500",
-                text: "text-emerald-700",
-                bg: "bg-emerald-50",
-                border: "border-emerald-100",
+                text: "text-emerald-400",
+                bg: "bg-emerald-500/5",
+                border: "border-emerald-500/10",
                 label: "Solved",
               },
               {
-                color: "bg-amber-400",
-                text: "text-amber-700",
-                bg: "bg-amber-50",
-                border: "border-amber-100",
+                color: "bg-primary-500",
+                text: "text-primary-500",
+                bg: "bg-primary-500/5",
+                border: "border-primary-500/10",
                 label: "Marked",
               },
               {
-                color: "bg-slate-300",
-                text: "text-slate-500",
-                bg: "bg-slate-50",
-                border: "border-slate-100",
+                color: "bg-muted",
+                text: "text-muted",
+                bg: "bg-surface",
+                border: "border-main",
                 label: "Unseen",
               },
             ].map((item, i) => (
@@ -233,7 +233,7 @@ const ProctoringSidebar = React.memo(
   }) => (
     <div className="flex flex-col items-center w-full gap-2">
       <div className="relative group w-[140px]">
-        <div className="relative aspect-video w-full rounded-xl bg-slate-900 border border-slate-200 overflow-hidden shadow-xl">
+        <div className="relative aspect-video w-full rounded-xl bg-surface border border-main overflow-hidden shadow-xl">
           {cameraActive ? (
             <video
               ref={videoRef}
@@ -243,9 +243,9 @@ const ProctoringSidebar = React.memo(
               className="w-full h-full object-cover scale-x-[-1]"
             />
           ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-slate-50">
-              <CameraOff size={24} className="text-slate-200" />
-              <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">
+            <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-surface-hover">
+              <CameraOff size={24} className="text-muted opacity-20" />
+              <span className="text-[9px] font-bold text-muted uppercase tracking-widest">
                 Feed Disabled
               </span>
             </div>
@@ -278,44 +278,44 @@ const ProctoringSidebar = React.memo(
 const SubmitModal = React.memo(({ isOpen, onClose, onConfirm, stats, password, setPassword, error }) => (
   <AnimatePresence>
     {isOpen && (
-      <div className="fixed inset-0 z-[110] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6">
+      <div className="fixed inset-0 z-[110] bg-black/70 backdrop-blur-md flex items-center justify-center p-6">
         <motion.div
           initial={{ scale: 0.95, y: 10, opacity: 0 }}
           animate={{ scale: 1, y: 0, opacity: 1 }}
-          className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-white/20"
+          className="bg-surface rounded-3xl p-8 max-w-md w-full shadow-2xl border border-main"
         >
-          <div className="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200 text-slate-900 mb-6 flex items-center justify-center shadow-sm">
+          <div className="w-16 h-16 rounded-2xl bg-primary-500/10 border border-primary-500/20 text-primary-500 mb-6 flex items-center justify-center shadow-lg shadow-primary-500/10">
             <Send size={28} />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900 mb-2 tracking-tight">
+          <h2 className="text-2xl font-bold text-primary mb-2 tracking-tight">
             Confirm Exam Submission?
           </h2>
-          <p className="text-[13px] font-medium text-slate-500 mb-6 leading-relaxed">
+          <p className="text-[13px] font-medium text-muted mb-6 leading-relaxed">
             You are about to submit your response. This action is final and your
             work will be graded as currently saved.
           </p>
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 mb-6 grid grid-cols-3 gap-4 text-center">
+          <div className="bg-surface-hover border border-main rounded-2xl p-6 mb-6 grid grid-cols-3 gap-4 text-center">
             <div>
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+              <p className="text-[9px] font-bold text-muted uppercase tracking-widest">
                 Answered
               </p>
-              <p className="text-xl font-bold text-slate-900 tabular-nums">
+              <p className="text-xl font-bold text-primary tabular-nums">
                 {stats.answered}
               </p>
             </div>
-            <div className="border-l border-slate-200">
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+            <div className="border-l border-main">
+              <p className="text-[9px] font-bold text-muted uppercase tracking-widest">
                 Marked
               </p>
-              <p className="text-xl font-bold text-slate-900 tabular-nums">
+              <p className="text-xl font-bold text-primary tabular-nums">
                 {stats.marked}
               </p>
             </div>
-            <div className="border-l border-slate-200">
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+            <div className="border-l border-main">
+              <p className="text-[9px] font-bold text-muted uppercase tracking-widest">
                 Total
               </p>
-              <p className="text-xl font-bold text-slate-900 tabular-nums">
+              <p className="text-xl font-bold text-primary tabular-nums">
                 {stats.total}
               </p>
             </div>
@@ -326,7 +326,7 @@ const SubmitModal = React.memo(({ isOpen, onClose, onConfirm, stats, password, s
                value={password}
                onChange={(e) => setPassword(e.target.value)}
                placeholder="Supervisor Password"
-               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-center text-slate-900 font-mono text-[14px] tracking-[0.4em] focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10 transition-all"
+               className="w-full bg-surface-hover border border-main rounded-xl px-4 py-3.5 text-center text-primary font-mono text-[14px] tracking-[0.4em] focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all"
              />
              {error && (
                <div className="absolute top-full left-0 right-0 mt-2 text-center">
@@ -339,13 +339,13 @@ const SubmitModal = React.memo(({ isOpen, onClose, onConfirm, stats, password, s
           <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="flex-1 py-3.5 px-4 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all text-[12px] font-bold uppercase tracking-widest"
+              className="flex-1 py-3.5 px-4 rounded-xl border border-main text-muted hover:text-primary hover:bg-surface-hover transition-all text-[12px] font-bold uppercase tracking-widest"
             >
               Wait, I'll Review
             </button>
             <button
               onClick={onConfirm}
-              className="flex-1 py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition-all text-[12px] font-bold uppercase tracking-widest shadow-lg shadow-emerald-900/10"
+              className="flex-1 py-3.5 px-4 rounded-xl bg-primary-500 hover:bg-primary-600 text-white transition-all text-[12px] font-bold uppercase tracking-widest shadow-lg shadow-primary-500/20"
             >
               Confirm & Submit
             </button>
@@ -359,31 +359,31 @@ const SubmitModal = React.memo(({ isOpen, onClose, onConfirm, stats, password, s
 const TabViolationOverlay = React.memo(({ isOpen, onResume }) => (
   <AnimatePresence>
     {isOpen && (
-      <div className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6">
+      <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-md flex items-center justify-center p-6">
         <motion.div
           initial={{ scale: 0.95, y: 10, opacity: 0 }}
           animate={{ scale: 1, y: 0, opacity: 1 }}
-          className="bg-white rounded-[2rem] p-8 max-w-sm w-full shadow-2xl border border-white/20 text-center"
+          className="bg-surface rounded-[2rem] p-8 max-w-sm w-full shadow-2xl border border-main text-center"
         >
           <div className="w-16 h-16 rounded-2xl bg-red-50 text-red-500 mb-6 mx-auto flex items-center justify-center border border-red-100 shadow-sm relative">
             <ShieldAlert size={28} strokeWidth={2.5} />
-            <div className="absolute top-0 right-0 -mt-1 -mr-1 w-3 h-3 bg-red-500 rounded-full animate-ping" />
-            <div className="absolute top-0 right-0 -mt-1 -mr-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
+            <div className="absolute top-0 right-0 -mt-1 -mr-1 w-3 h-3 bg-primary-500 rounded-full animate-ping" />
+            <div className="absolute top-0 right-0 -mt-1 -mr-1 w-3 h-3 bg-primary-500 rounded-full border-2 border-black" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900 mb-3 tracking-tight">
+          <h2 className="text-2xl font-bold text-primary mb-3 tracking-tight">
             Navigation Alert
           </h2>
-          <p className="text-[14px] font-medium text-slate-500 mb-8 leading-relaxed px-2">
+          <p className="text-[14px] font-medium text-muted mb-8 leading-relaxed px-2">
             Leaving the exam environment is prohibited. This incident has been
             recorded and securely flagged for the examiner.
           </p>
           <button
             onClick={onResume}
-            className="w-full h-12 rounded-xl bg-slate-900 hover:bg-slate-800 text-white transition-all text-[13px] font-bold shadow-xl shadow-slate-900/20 active:scale-95 flex items-center justify-center gap-2"
+            className="w-full h-12 rounded-xl bg-primary-500 hover:bg-primary-600 text-white transition-all text-[13px] font-bold shadow-xl shadow-primary-500/20 active:scale-95 flex items-center justify-center gap-2"
           >
             Acknowledge & Resume
           </button>
-          <div className="mt-6 flex items-center justify-center gap-2 text-[11px] font-semibold text-slate-400">
+          <div className="mt-6 flex items-center justify-center gap-2 text-[11px] font-semibold text-muted">
             <LockIcon size={12} />
             <span>Secure Environment Enforced</span>
           </div>
@@ -397,16 +397,16 @@ const ExitModal = React.memo(
   ({ isOpen, onClose, onExit, password, setPassword, error }) => (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[120] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-6">
+        <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-md flex items-center justify-center p-6">
           <motion.div
             initial={{ scale: 0.95, y: 10, opacity: 0 }}
             animate={{ scale: 1, y: 0, opacity: 1 }}
-            className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl border border-white/20 text-center"
+            className="bg-surface rounded-3xl p-8 max-w-sm w-full shadow-2xl border border-main text-center"
           >
-            <div className="w-16 h-16 rounded-2xl bg-red-50 border border-red-100 text-red-600 mb-6 mx-auto flex items-center justify-center shadow-sm">
+            <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 mb-6 mx-auto flex items-center justify-center shadow-sm">
               <ShieldAlert size={28} />
             </div>
-            <h2 className="text-xl font-bold text-slate-900 mb-2 tracking-tight">
+            <h2 className="text-xl font-bold text-primary mb-2 tracking-tight">
               Security Override
             </h2>
             <p className="text-[12px] font-medium text-zinc-500 mb-8 mx-auto max-w-[240px]">
@@ -418,7 +418,7 @@ const ExitModal = React.memo(
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Supervisor Password"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-center text-slate-900 font-mono text-[14px] tracking-[0.4em] focus:outline-none focus:border-red-400 focus:ring-4 focus:ring-red-500/10 transition-all"
+                className="w-full bg-surface-hover border border-main rounded-xl px-4 py-3.5 text-center text-primary font-mono text-[14px] tracking-[0.4em] focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all"
               />
               {error && (
                 <div className="absolute top-full left-0 right-0 mt-2">
@@ -431,13 +431,13 @@ const ExitModal = React.memo(
             <div className="flex gap-3">
               <button
                 onClick={onClose}
-                className="flex-1 py-3.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all text-[12px] font-bold uppercase tracking-widest"
+                className="flex-1 py-3.5 rounded-xl border border-main text-muted hover:text-primary hover:bg-surface-hover transition-all text-[12px] font-bold uppercase tracking-widest"
               >
                 Cancel
               </button>
               <button
                 onClick={onExit}
-                className="flex-1 py-3.5 rounded-xl bg-red-600 hover:bg-red-700 text-white transition-all text-[12px] font-bold uppercase tracking-widest shadow-lg shadow-red-100"
+                className="flex-1 py-3.5 rounded-xl bg-red-600 hover:bg-red-500 text-white transition-all text-[12px] font-bold uppercase tracking-widest shadow-lg shadow-red-900/20"
               >
                 Terminate
               </button>
@@ -456,21 +456,21 @@ const FullBlockOverlay = React.memo(({ isOpen, reason }) => (
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[1000] bg-slate-50 flex items-center justify-center p-6 select-none"
+        className="fixed inset-0 z-[1000] bg-black flex items-center justify-center p-6 select-none"
       >
-        <div className="text-center max-w-md bg-white p-10 rounded-3xl shadow-xl border border-slate-200">
-          <div className="w-20 h-20 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto mb-6">
+        <div className="text-center max-w-md bg-surface p-10 rounded-3xl shadow-xl border border-main">
+          <div className="w-20 h-20 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center mx-auto mb-6 border border-red-500/20">
             <LockIcon size={32} strokeWidth={2.5} />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-3 tracking-tight">
+          <h1 className="text-2xl font-bold text-primary mb-3 tracking-tight">
             Access Restricted
           </h1>
-          <p className="text-slate-600 text-[15px] mb-8 leading-relaxed font-medium">
+          <p className="text-muted text-[15px] mb-8 leading-relaxed font-medium">
             {reason ||
               "Your exam session has been suspended by the supervisor due to suspicious activity."}
           </p>
-          <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
-            <p className="text-[12.5px] font-semibold text-slate-500">
+          <div className="p-4 bg-surface-hover border border-main rounded-2xl">
+            <p className="text-[12.5px] font-semibold text-muted">
               Please contact your instructor immediately to regain access.
             </p>
           </div>
@@ -484,17 +484,17 @@ const ObjectivePanel = React.memo(
   ({ question, index, markedForReview, panelWidth }) => (
     <div
       style={{ width: `${panelWidth}%` }}
-      className="shrink-0 flex flex-col min-h-0 bg-white"
+      className="shrink-0 flex flex-col min-h-0 bg-surface"
     >
-      <div className="bg-slate-50 border-b border-slate-100 px-6 py-3.5 flex items-center justify-between shrink-0">
-        <span className="text-[11px] font-bold text-slate-900 uppercase tracking-widest">
+      <div className="bg-surface-hover border-b border-main px-6 py-3.5 flex items-center justify-between shrink-0">
+        <span className="text-[11px] font-bold text-primary uppercase tracking-widest">
           Objective
         </span>
         {markedForReview[
           question?.originalId || question?.id || question?._id
         ] && (
-          <div className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-2 py-0.5 rounded-md border border-amber-100">
-            <Bookmark size={10} className="fill-amber-600" />
+          <div className="flex items-center gap-1.5 bg-primary-500/10 text-primary-500 px-2 py-0.5 rounded-md border border-primary-500/20">
+            <Bookmark size={10} className="fill-primary-500" />
             <span className="text-[9px] font-bold uppercase tracking-wider">
               Flagged
             </span>
@@ -503,17 +503,17 @@ const ObjectivePanel = React.memo(
       </div>
       <div className="flex-1 overflow-y-auto p-8 scroll-thin font-medium">
         <div className="flex items-center gap-3 mb-6">
-          <div className="px-2.5 py-1 bg-slate-100 text-slate-900 border border-slate-200 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-sm">
+          <div className="px-2.5 py-1 bg-surface-hover text-primary border border-main rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-sm">
             Q{index + 1}
           </div>
-          <div className="px-2.5 py-1 bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-[10px] font-bold uppercase tracking-widest">
+          <div className="px-2.5 py-1 bg-surface text-muted border border-main rounded-lg text-[10px] font-bold uppercase tracking-widest">
             {question?.marks || 10} Marks
           </div>
         </div>
-        <h2 className="text-xl font-medium text-slate-900 leading-snug tracking-tight mb-6">
+        <h2 className="text-xl font-medium text-primary leading-snug tracking-tight mb-6">
           {question?.questionText}
         </h2>
-        <div className="prose prose-slate prose-sm text-slate-500 leading-relaxed space-y-4">
+        <div className="prose prose-invert prose-sm text-muted leading-relaxed space-y-4">
           <p>
             Implement the solution according to constraints. Standard
             input/output is supported.
@@ -550,15 +550,15 @@ const CodingEnvironment = React.memo(
     return (
       <div
         id="coding-right-panel"
-        className="flex-1 flex flex-col min-h-0 relative bg-slate-50 overflow-hidden"
+        className="flex-1 flex flex-col min-h-0 relative bg-page overflow-hidden"
       >
         <div className="absolute inset-0 flex flex-col overflow-hidden">
           <div
             style={{ height: `${editorHeight}%` }}
-            className="flex flex-col shrink-0 min-h-0 bg-white overflow-hidden relative z-0 border-b border-slate-100"
+            className="flex flex-col shrink-0 min-h-0 bg-surface overflow-hidden relative z-0 border-b border-main"
           >
-            <div className="flex items-center justify-between px-4 h-10 bg-slate-50 border-b border-slate-200 shrink-0 z-10">
-              <div className="flex items-center gap-2 text-slate-400">
+            <div className="flex items-center justify-between px-4 h-10 bg-surface-hover border-b border-main shrink-0 z-10">
+              <div className="flex items-center gap-2 text-muted">
                 <Terminal size={14} />
                 <span className="text-[11px] font-bold uppercase tracking-widest">
                   Environment
@@ -567,24 +567,24 @@ const CodingEnvironment = React.memo(
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowResetConfirm(true)}
-                  className="flex items-center justify-center w-[26px] h-[26px] bg-white border border-slate-200 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-all shadow-sm group relative"
+                  className="flex items-center justify-center w-[26px] h-[26px] bg-surface border border-main rounded-lg text-muted hover:text-primary hover:bg-surface-hover transition-all shadow-sm group relative"
                 >
                   <RotateCcw size={13} />
-                  <div className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block whitespace-nowrap bg-slate-700 text-slate-100 text-[10px] font-medium tracking-wide px-2.5 py-1 rounded-md shadow-lg z-50">
-                    <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-700 rotate-45" />
+                  <div className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 hidden group-hover:block whitespace-nowrap bg-surface-hover text-primary text-[10px] font-medium tracking-wide px-2.5 py-1 rounded-md shadow-lg z-50 border border-main">
+                    <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-surface-hover rotate-45 border-t border-l border-main" />
                     <span className="relative z-10">Reset code</span>
                   </div>
                 </button>
                 <div className="relative">
                   <button
                     onClick={() => setIsLangDropdownOpen((p) => !p)}
-                    className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-2.5 h-[26px] hover:bg-slate-50 transition-all text-[11px] font-bold uppercase tracking-widest text-slate-600 shadow-sm"
+                    className="flex items-center gap-2 bg-surface border border-main rounded-lg px-2.5 h-[26px] hover:bg-surface-hover transition-all text-[11px] font-bold uppercase tracking-widest text-muted shadow-sm"
                   >
                     {selectedLanguage}
                     <ChevronDown size={12} />
                   </button>
                   {isLangDropdownOpen && (
-                    <div className="absolute top-full right-0 mt-1 w-32 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1 overflow-hidden">
+                    <div className="absolute top-full right-0 mt-1 w-32 bg-surface border border-main rounded-xl shadow-xl z-50 py-1 overflow-hidden">
                       {["javascript", "python", "cpp", "java"].map((l) => (
                         <button
                           key={l}
@@ -592,7 +592,7 @@ const CodingEnvironment = React.memo(
                             setSelectedLanguage(l);
                             setIsLangDropdownOpen(false);
                           }}
-                          className={`w-full text-left px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${selectedLanguage === l ? "bg-slate-100 text-slate-900" : "text-slate-600 hover:bg-slate-50"}`}
+                          className={`w-full text-left px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${selectedLanguage === l ? "bg-primary-500 text-white" : "text-muted hover:bg-surface-hover"}`}
                         >
                           {l}
                         </button>
@@ -602,12 +602,12 @@ const CodingEnvironment = React.memo(
                 </div>
               </div>
             </div>
-            <div className="flex-1 relative overflow-hidden bg-white shadow-inner">
+            <div className="flex-1 relative overflow-hidden bg-surface shadow-inner">
               <Editor
                 key={`editor-${question?.originalId || question?.id || question?._id}`}
                 height="100%"
                 language={selectedLanguage === "cpp" ? "cpp" : selectedLanguage}
-                theme="light"
+                theme="vs-dark"
                 value={
                   typeof answer === "object"
                     ? answer.code
@@ -640,29 +640,29 @@ const CodingEnvironment = React.memo(
             className="relative h-2 -my-1 cursor-row-resize z-20 flex items-center justify-center group/resizer shrink-0"
             onMouseDown={onMouseDown}
           >
-            <div className="absolute inset-x-0 top-1/2 w-full h-[1px] bg-slate-200 group-hover/resizer:bg-indigo-300 transition-colors" />
-            <div className="absolute z-30 flex gap-[3px] opacity-0 group-hover/resizer:opacity-100 transition-opacity bg-white border border-slate-200 shadow-sm px-2 py-0.5 rounded-full">
-              <div className="w-1 h-1 rounded-full bg-slate-400" />
-              <div className="w-1 h-1 rounded-full bg-slate-400" />
-              <div className="w-1 h-1 rounded-full bg-slate-400" />
+            <div className="absolute inset-x-0 top-1/2 w-full h-[1px] bg-main group-hover/resizer:bg-primary-500/50 transition-colors" />
+            <div className="absolute z-30 flex gap-[3px] opacity-0 group-hover/resizer:opacity-100 transition-opacity bg-surface border border-main shadow-sm px-2 py-0.5 rounded-full">
+              <div className="w-1 h-1 rounded-full bg-muted" />
+              <div className="w-1 h-1 rounded-full bg-muted" />
+              <div className="w-1 h-1 rounded-full bg-muted" />
             </div>
           </div>
-          <div className="flex-1 flex flex-col min-h-0 bg-white relative z-10 overflow-hidden">
-            <div className="flex items-center px-4 border-b border-slate-200 shrink-0 h-10 bg-white z-10">
+          <div className="flex-1 flex flex-col min-h-0 bg-surface relative z-10 overflow-hidden">
+            <div className="flex items-center px-4 border-b border-main shrink-0 h-10 bg-surface z-10">
               <button
                 onClick={() => setActiveTab("Test Cases")}
-                className={`h-full px-4 text-[11px] font-bold uppercase tracking-widest border-b-2 transition-all ${activeTab === "Test Cases" ? "text-slate-900 border-slate-900" : "text-slate-400 border-transparent hover:text-slate-600"}`}
+                className={`h-full px-4 text-[11px] font-bold uppercase tracking-widest border-b-2 transition-all ${activeTab === "Test Cases" ? "text-primary border-primary-500" : "text-muted border-transparent hover:text-primary"}`}
               >
                 Test Cases
               </button>
               <button
                 onClick={() => setActiveTab("Execution Details")}
-                className={`h-full px-4 text-[11px] font-bold uppercase tracking-widest border-b-2 transition-all ${activeTab === "Execution Details" ? "text-slate-900 border-slate-900" : "text-slate-400 border-transparent hover:text-slate-600"}`}
+                className={`h-full px-4 text-[11px] font-bold uppercase tracking-widest border-b-2 transition-all ${activeTab === "Execution Details" ? "text-primary border-primary-500" : "text-muted border-transparent hover:text-primary"}`}
               >
                 Output Log
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-6 scroll-thin bg-slate-50/40">
+            <div className="flex-1 overflow-y-auto p-6 scroll-thin bg-page/50">
               {isExecuting ? (
                 <div className="h-full flex flex-col items-center justify-center gap-3 text-slate-800">
                   <RotateCcw size={24} className="animate-spin" />
@@ -678,10 +678,10 @@ const CodingEnvironment = React.memo(
                         executionResult.results.map((res, i) => (
                           <div
                             key={i}
-                            className={`bg-white border rounded-2xl border-slate-200 overflow-hidden`}
+                            className={`bg-surface border rounded-2xl border-main overflow-hidden shadow-sm`}
                           >
                             <div
-                              className={`px-4 py-2.5 border-b flex items-center justify-between ${res.passed ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-red-50 text-red-700 border-red-100"}`}
+                              className={`px-4 py-2.5 border-b flex items-center justify-between ${res.passed ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-red-500/10 text-red-400 border-red-500/20"}`}
                             >
                               <span className="text-[10px] font-bold uppercase tracking-widest">
                                 Case {i + 1}
@@ -692,15 +692,15 @@ const CodingEnvironment = React.memo(
                             </div>
                             <div className="p-4 grid grid-cols-3 gap-4">
                               <div>
-                                <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">
+                                <p className="text-[9px] font-bold text-muted uppercase mb-1">
                                   Actual
                                 </p>
-                                <pre className="text-[10px] font-mono bg-slate-50 p-2 rounded border border-slate-100 overflow-x-auto">
+                                <pre className="text-[10px] font-mono bg-page p-2 rounded border border-main overflow-x-auto text-primary">
                                   {res.actualOutput || "N/A"}
                                 </pre>
                               </div>
                               <div className="col-span-2">
-                                <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">
+                                <p className="text-[9px] font-bold text-muted uppercase mb-1">
                                   Error/Detail
                                 </p>
                                 <pre className="text-[10px] font-mono text-red-500">
@@ -717,8 +717,8 @@ const CodingEnvironment = React.memo(
                       )}
                     </div>
                   ) : (
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-                      <pre className="text-[13px] font-mono leading-relaxed text-emerald-400/90 whitespace-pre-wrap">
+                    <div className="bg-surface border border-main rounded-2xl p-6">
+                      <pre className="text-[13px] font-mono leading-relaxed text-primary-500 whitespace-pre-wrap">
                         {executionResult.rawOutput ||
                           executionResult.stdout ||
                           executionResult.details ||
@@ -729,9 +729,9 @@ const CodingEnvironment = React.memo(
                   )}
                 </div>
               ) : (
-                <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-4">
-                  <Play size={48} className="opacity-20 translate-x-1" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest">
+                <div className="h-full flex flex-col items-center justify-center text-muted/30 gap-4">
+                  <Play size={48} className="translate-x-1" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted/50">
                     Awaiting Code Execution
                   </span>
                 </div>
@@ -742,23 +742,23 @@ const CodingEnvironment = React.memo(
 
         {/* Reset Confirm Modal */}
         {showResetConfirm && (
-          <div className="absolute inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-sm w-full p-6 animate-in fade-in zoom-in duration-200">
+          <div className="absolute inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-surface rounded-3xl shadow-2xl border border-main max-w-sm w-full p-6 animate-in fade-in zoom-in duration-200">
               <div className="flex flex-col items-center text-center">
-                <div className="w-12 h-12 bg-red-50 text-red-600 rounded-full flex items-center justify-center mb-4 border border-red-100 shadow-sm">
+                <div className="w-12 h-12 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mb-4 border border-red-500/20 shadow-sm">
                   <RotateCcw size={20} />
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 mb-2">
+                <h3 className="text-lg font-bold text-primary mb-2">
                   Reset Code Editor?
                 </h3>
-                <p className="text-sm text-slate-500 font-medium mb-6 leading-relaxed">
+                <p className="text-sm text-muted font-medium mb-6 leading-relaxed">
                   This will erase all your current code and restore the default
                   starting template. This action cannot be undone.
                 </p>
                 <div className="flex gap-3 w-full">
                   <button
                     onClick={() => setShowResetConfirm(false)}
-                    className="flex-1 h-10 rounded-xl bg-slate-50 text-slate-600 font-bold text-sm border border-slate-200 hover:bg-slate-100 transition-colors"
+                    className="flex-1 h-10 rounded-xl bg-surface-hover text-muted font-bold text-sm border border-main hover:text-primary transition-colors"
                   >
                     Cancel
                   </button>
@@ -800,12 +800,12 @@ const FrontendReactEnvironment = React.memo(
           };
 
     return (
-      <div className="flex-1 flex flex-col min-h-0 relative bg-slate-50">
+      <div className="flex-1 flex flex-col min-h-0 relative bg-page">
         <div className="absolute inset-0 flex flex-col">
-          <div className="flex-1 flex min-h-0 bg-white">
+          <div className="flex-1 flex min-h-0 bg-surface">
             <SandpackProvider
               template="react"
-              theme="light"
+              theme="dark"
               files={files}
               options={{
                 activeFile: question?.frontendTemplate?.mainFile || "/App.jsx",
@@ -823,7 +823,7 @@ const FrontendReactEnvironment = React.memo(
               <SandpackLayout
                 style={{ height: "100%", border: "none", borderRadius: 0 }}
               >
-                <div className="flex-1 border-r border-slate-200">
+                <div className="flex-1 border-r border-main">
                   <SandpackCodeEditor
                     showTabs={true}
                     showLineNumbers={true}
@@ -831,7 +831,7 @@ const FrontendReactEnvironment = React.memo(
                     style={{ height: "100%" }}
                   />
                 </div>
-                <div className="flex-1 bg-white">
+                <div className="flex-1 bg-page">
                   <SandpackPreview
                     showOpenInCodeSandbox={false}
                     showRefreshButton={false}
@@ -847,18 +847,18 @@ const FrontendReactEnvironment = React.memo(
           </div>
 
           {/* Results Panel */}
-          <div className="h-48 border-t border-slate-200 flex flex-col bg-white">
-            <div className="flex items-center px-4 border-b border-slate-200 shrink-0 h-10 bg-slate-50">
+          <div className="h-48 border-t border-main flex flex-col bg-surface">
+            <div className="flex items-center px-4 border-b border-main shrink-0 h-10 bg-surface-hover">
               <button
                 onClick={() => setActiveTab("Test Cases")}
-                className={`h-full px-4 text-[11px] font-bold uppercase tracking-widest border-b-2 transition-all ${activeTab === "Test Cases" ? "text-slate-900 border-slate-900" : "text-slate-400 border-transparent hover:text-slate-600"}`}
+                className={`h-full px-4 text-[11px] font-bold uppercase tracking-widest border-b-2 transition-all ${activeTab === "Test Cases" ? "text-primary border-primary-500" : "text-muted border-transparent hover:text-primary"}`}
               >
                 UI Validation Results
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 scroll-thin bg-slate-50/40">
+            <div className="flex-1 overflow-y-auto p-4 scroll-thin bg-page/50">
               {isExecuting ? (
-                <div className="h-full flex flex-col items-center justify-center gap-2 text-slate-800">
+                <div className="h-full flex flex-col items-center justify-center gap-2 text-primary">
                   <RotateCcw size={20} className="animate-spin" />
                   <span className="text-[9px] font-bold uppercase tracking-widest animate-pulse">
                     Running UI Verification...
@@ -869,10 +869,10 @@ const FrontendReactEnvironment = React.memo(
                   {executionResult.testCaseResults?.map((res, i) => (
                     <div
                       key={i}
-                      className={`bg-white border rounded-xl p-3 flex items-center justify-between border-slate-200 shadow-sm ${res.passed ? "border-l-4 border-l-emerald-500" : "border-l-4 border-l-red-500"}`}
+                      className={`bg-surface border rounded-xl p-3 flex items-center justify-between border-main shadow-sm ${res.passed ? "border-l-4 border-l-emerald-500" : "border-l-4 border-l-red-500"}`}
                     >
                       <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-bold text-slate-900">
+                        <span className="text-[10px] font-bold text-primary">
                           {res.description}
                         </span>
                         {res.errorMsg && (
@@ -888,9 +888,9 @@ const FrontendReactEnvironment = React.memo(
                   ))}
                 </div>
               ) : (
-                <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-2">
-                  <Play size={32} className="opacity-20" />
-                  <span className="text-[9px] font-bold uppercase tracking-widest">
+                <div className="h-full flex flex-col items-center justify-center text-muted/30 gap-2">
+                  <Play size={32} />
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-muted/50">
                     Submit to Validate UI
                   </span>
                 </div>
@@ -2078,19 +2078,19 @@ export default function ExamCockpit() {
 
   if (terminated)
     return (
-      <div className="h-screen bg-white flex items-center justify-center font-sans overflow-hidden">
+      <div className="h-screen bg-black flex items-center justify-center font-sans overflow-hidden">
         <div className="text-center relative z-10 max-w-lg mx-auto px-6">
-          <div className="w-20 h-20 rounded-3xl bg-red-50 border border-red-200 flex items-center justify-center mx-auto mb-8">
+          <div className="w-20 h-20 rounded-3xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-8 shadow-lg shadow-red-500/10">
             <XCircle size={40} className="text-red-500" />
           </div>
-          <h2 className="text-4xl font-black text-slate-900 mb-3 tracking-tight">
+          <h2 className="text-4xl font-black text-primary mb-3 tracking-tight">
             Exam Terminated
           </h2>
-          <p className="text-slate-500 text-sm mb-8 leading-relaxed font-medium">
+          <p className="text-muted text-sm mb-8 leading-relaxed font-medium">
             {terminated.reason || "Session terminated by supervisor."}
           </p>
-          <div className="flex items-center justify-center gap-3 text-sm text-red-600 font-bold border border-red-200 bg-red-50 px-6 py-3 rounded-2xl">
-            <span className="w-10 h-10 rounded-full border-2 border-red-300 bg-white flex items-center justify-center tabular-nums text-red-600 font-black">
+          <div className="flex items-center justify-center gap-3 text-sm text-red-500 font-bold border border-red-500/20 bg-red-500/5 px-6 py-3 rounded-2xl">
+            <span className="w-10 h-10 rounded-full border-2 border-red-500/30 bg-black flex items-center justify-center tabular-nums text-red-500 font-black">
               {terminateCountdown}
             </span>
             <p className="uppercase tracking-widest text-[10px]">
@@ -2103,29 +2103,29 @@ export default function ExamCockpit() {
 
   if (submitted)
     return (
-      <div className="h-screen flex items-center justify-center bg-[#f8fafc] font-sans relative overflow-hidden">
+      <div className="h-screen flex items-center justify-center bg-black font-sans relative overflow-hidden">
         {/* Premium Backdrop Effects */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-slate-200/50 rounded-full blur-3xl opacity-50 mix-blend-multiply pointer-events-none" />
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-emerald-50 rounded-full blur-3xl opacity-50 pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary-500/5 rounded-full blur-3xl opacity-50 mix-blend-plus-lighter pointer-events-none" />
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl opacity-50 pointer-events-none" />
 
         <div className="text-center relative z-10 max-w-md w-full mx-4 animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out">
           {/* Success Icon */}
           <div className="relative mb-8 inline-block animate-in zoom-in duration-500 delay-150 fill-mode-both">
-            <div className="absolute inset-0 bg-emerald-400 blur-xl opacity-30 rounded-full"></div>
-            <div className="w-20 h-20 bg-emerald-50 border-2 border-emerald-100 rounded-3xl flex items-center justify-center shadow-lg shadow-emerald-500/10">
+            <div className="absolute inset-0 bg-primary-500 blur-xl opacity-30 rounded-full"></div>
+            <div className="w-20 h-20 bg-surface border-2 border-primary-500/20 rounded-3xl flex items-center justify-center shadow-lg shadow-primary-500/10">
               <CheckCircle
                 size={36}
-                className="text-emerald-500"
+                className="text-primary-500"
                 strokeWidth={2.5}
               />
             </div>
           </div>
 
           {/* Titles */}
-          <h2 className="text-3xl font-black text-slate-800 tracking-tight mb-2">
+          <h2 className="text-3xl font-black text-primary tracking-tight mb-2">
             Submission Successful
           </h2>
-          <p className="text-slate-500 text-[13px] font-medium leading-relaxed mb-10 px-4">
+          <p className="text-muted text-[13px] font-medium leading-relaxed mb-10 px-4">
             Your responses have been securely stored and evaluated. How would
             you rate your assessment experience?
           </p>
@@ -2145,8 +2145,8 @@ export default function ExamCockpit() {
                   onMouseEnter={() => setHoverRating(star)}
                   className={`p-2 transition-all duration-300 transform outline-none hover:scale-110 active:scale-95 ${
                     isFilled
-                      ? "text-amber-400 drop-shadow-md"
-                      : "text-slate-200 group-hover:text-slate-200"
+                      ? "text-primary-500 drop-shadow-md"
+                      : "text-muted/20 group-hover:text-muted/30"
                   }`}
                 >
                   <svg
@@ -2171,7 +2171,7 @@ export default function ExamCockpit() {
           {/* Action Button */}
           <button
             onClick={() => navigate("/candidate")}
-            className="w-full flex items-center justify-center gap-2 h-12 bg-slate-900 text-white rounded-xl font-bold uppercase tracking-widest text-[12px] shadow-xl shadow-slate-900/20 hover:bg-slate-800 transition-all hover:-translate-y-0.5 active:scale-95 group/btn"
+            className="w-full flex items-center justify-center gap-2 h-12 bg-primary-500 text-white rounded-xl font-bold uppercase tracking-widest text-[12px] shadow-xl shadow-primary-500/20 hover:bg-primary-600 transition-all hover:-translate-y-0.5 active:scale-95 group/btn"
           >
             Exit to Dashboard
             <span className="group-hover/btn:translate-x-1 transition-transform">
@@ -2183,23 +2183,23 @@ export default function ExamCockpit() {
     );
 
   return (
-    <div className="h-screen w-full bg-slate-50 relative font-sans text-slate-900 overflow-hidden">
+    <div className="h-screen w-full bg-page relative font-sans text-primary overflow-hidden">
       {/* 1. LAYER BASE: Content with Blur Wrapper */}
       <div
-        className={`flex flex-col h-full w-full bg-white transition-all duration-700 ${isTabViolation || !isFullscreen ? "blur-xl grayscale pointer-events-none" : ""}`}
+        className={`flex flex-col h-full w-full bg-page transition-all duration-700 ${isTabViolation || !isFullscreen ? "blur-xl grayscale pointer-events-none" : ""}`}
       >
-        <style>{`.scroll-thin::-webkit-scrollbar { width: 4px; } .scroll-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }`}</style>
+        <style>{`.scroll-thin::-webkit-scrollbar { width: 4px; } .scroll-thin::-webkit-scrollbar-thumb { background: #1f1f1f; border-radius: 10px; }`}</style>
 
-        <header className="shrink-0 bg-white border-b border-slate-200 shadow-sm px-5 h-[48px] flex items-center justify-between z-30 relative">
+        <header className="shrink-0 bg-surface border-b border-main shadow-sm px-5 h-[48px] flex items-center justify-between z-30 relative">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center shadow-lg shadow-slate-200">
+            <div className="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center shadow-lg shadow-primary-500/20">
               <VisionLogo className="w-5 h-5 text-white" />
             </div>
-            <span className="text-[13px] font-black tracking-widest">
+            <span className="text-[13px] font-black tracking-widest text-primary">
               VISION
             </span>
-            <div className="h-4 w-px bg-slate-200" />
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest max-w-[200px] truncate">
+            <div className="h-4 w-px bg-main" />
+            <span className="text-[11px] font-bold text-muted uppercase tracking-widest max-w-[200px] truncate">
               {exam?.title || "Exam"}
             </span>
           </div>
@@ -2210,7 +2210,7 @@ export default function ExamCockpit() {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="absolute left-1/2 -translate-x-1/2 bg-slate-900 text-white px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg z-50"
+                className="absolute left-1/2 -translate-x-1/2 bg-primary-500 text-white px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg z-50 shadow-primary-500/20"
               >
                 {headerAlert}
               </motion.div>
@@ -2220,23 +2220,23 @@ export default function ExamCockpit() {
 
           <div className="flex items-center gap-6">
             <ExamTimer seconds={secondsLeft} isCritical={isTimeCritical} />
-            <div className="flex items-center gap-3 pl-4 border-l border-slate-100 text-right">
+            <div className="flex items-center gap-3 pl-4 border-l border-main text-right">
               <div>
-                <p className="text-[11px] font-bold leading-none">
+                <p className="text-[11px] font-bold leading-none text-primary">
                   {sessionStorage.getItem("vision_name") || "Candidate"}
                 </p>
-                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">
+                <p className="text-[9px] text-muted font-bold uppercase tracking-tighter">
                   {sessionStorage.getItem("vision_email") || "VSN-USER"}
                 </p>
               </div>
-              <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-black text-slate-900 shadow-sm">
+              <div className="w-8 h-8 rounded-full bg-surface border border-main flex items-center justify-center text-[10px] font-black text-primary shadow-sm">
                 {(sessionStorage.getItem("vision_name") || "C").charAt(0)}
               </div>
             </div>
           </div>
-          <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-slate-50">
+          <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-surface">
             <div
-              className="h-full bg-slate-900 transition-all duration-700"
+              className="h-full bg-primary-500 transition-all duration-700 shadow-[0_0_8px_rgba(255,59,0,0.5)]"
               style={{
                 width: `${(answeredCount / Math.max(questions.length, 1)) * 100}%`,
               }}
@@ -2245,7 +2245,7 @@ export default function ExamCockpit() {
         </header>
 
         <div className="flex flex-1 overflow-hidden">
-          <aside className="w-[240px] shrink-0 bg-white border-r border-slate-200 flex flex-col shadow-sm">
+          <aside className="w-[240px] shrink-0 bg-surface border-r border-main flex flex-col shadow-sm">
             <QuestionPalette
               questions={questions}
               currentQ={currentQ}
@@ -2254,7 +2254,7 @@ export default function ExamCockpit() {
               markedForReview={markedForReview}
               navigateTo={navigateTo}
             />
-            <div className="px-5 py-2 border-t border-slate-100 flex-shrink-0">
+            <div className="px-5 py-2 border-t border-main flex-shrink-0">
               <ProctoringSidebar
                 cameraActive={cameraActive}
                 videoRef={videoRef}
@@ -2264,11 +2264,11 @@ export default function ExamCockpit() {
                 onRetryCamera={initCamera}
               />
             </div>
-            <div className="p-4 border-t border-slate-100 mt-auto flex flex-col gap-2">
+            <div className="p-4 border-t border-main mt-auto flex flex-col gap-2">
               <button
                 onClick={handleRequestHelp}
                 disabled={helpStatus !== "idle"}
-                className={`w-full h-10 rounded-xl flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-80 ${helpStatus === "success" ? "bg-emerald-50 text-emerald-600 border-emerald-200" : helpStatus === "error" ? "bg-red-50 text-red-600 border-red-200" : "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100"}`}
+                className={`w-full h-10 rounded-xl flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-80 ${helpStatus === "success" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : helpStatus === "error" ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-primary-500/10 text-primary-500 border-primary-500/20 hover:bg-primary-500/20"}`}
               >
                 <AnimatedStatusIcon
                   status={helpStatus}
@@ -2285,13 +2285,13 @@ export default function ExamCockpit() {
               <div className="flex gap-2">
                 <button
                   onClick={() => setIsFAQOpen(!isFAQOpen)}
-                  className={`flex-1 h-9 rounded-xl flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest transition-all active:scale-95 ${isFAQOpen ? "bg-slate-900 text-white shadow-lg shadow-slate-200" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"}`}
+                  className={`flex-1 h-9 rounded-xl flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest transition-all active:scale-95 ${isFAQOpen ? "bg-primary-500 text-white shadow-lg shadow-primary-500/20" : "bg-surface border border-main text-muted hover:text-primary hover:bg-surface-hover"}`}
                 >
                   <Bot size={14} /> AI Chat
                 </button>
                 <button
                   onClick={() => setShowExitPrompt(true)}
-                  className="w-9 h-9 shrink-0 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-all flex items-center justify-center active:scale-95 shadow-sm"
+                  className="w-9 h-9 shrink-0 rounded-xl bg-surface border border-main text-muted hover:text-red-500 hover:border-red-500/20 hover:bg-red-500/10 transition-all flex items-center justify-center active:scale-95 shadow-sm"
                   title="Exit Session"
                 >
                   <Power size={14} className="stroke-[2.5px]" />
@@ -2301,7 +2301,7 @@ export default function ExamCockpit() {
             {/* Encrypted Session moved to global bottom bar */}
           </aside>
 
-          <main className="flex-1 flex overflow-hidden bg-slate-50">
+          <main className="flex-1 flex overflow-hidden bg-page">
             <div className="flex-1 flex flex-col min-w-0">
               {q?.type?.toLowerCase() === "coding" ? (
                 <div className="flex-1 flex min-h-0 overflow-hidden">
@@ -2315,11 +2315,11 @@ export default function ExamCockpit() {
                     className="relative w-2 -mx-1 cursor-col-resize z-20 flex items-center justify-center group/resizer shrink-0"
                     onMouseDown={onPanelMouseDown}
                   >
-                    <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-[1px] bg-slate-200 group-hover/resizer:bg-indigo-300 transition-colors" />
-                    <div className="absolute z-30 flex flex-col gap-[3px] opacity-0 group-hover/resizer:opacity-100 transition-opacity bg-white border border-slate-200 shadow-sm py-2 px-0.5 rounded-full">
-                      <div className="w-1 h-1 rounded-full bg-slate-400" />
-                      <div className="w-1 h-1 rounded-full bg-slate-400" />
-                      <div className="w-1 h-1 rounded-full bg-slate-400" />
+                    <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-[1px] bg-main group-hover/resizer:bg-primary-500/50 transition-colors" />
+                    <div className="absolute z-30 flex flex-col gap-[3px] opacity-0 group-hover/resizer:opacity-100 transition-opacity bg-surface border border-main shadow-sm py-2 px-0.5 rounded-full">
+                      <div className="w-1 h-1 rounded-full bg-muted" />
+                      <div className="w-1 h-1 rounded-full bg-muted" />
+                      <div className="w-1 h-1 rounded-full bg-muted" />
                     </div>
                   </div>
                   <CodingEnvironment
@@ -2357,14 +2357,14 @@ export default function ExamCockpit() {
                   />
                 </div>
               ) : (
-                <div className="flex-1 flex flex-col bg-slate-50 px-8 py-8 min-h-0 overflow-hidden">
-                  <div className="max-w-4xl mx-auto w-full flex flex-col flex-1 bg-white rounded-[2rem] border border-slate-200 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] overflow-hidden min-h-0">
-                    <div className="px-10 py-10 border-b border-slate-100 shrink-0 bg-white">
+                <div className="flex-1 flex flex-col bg-page px-8 py-8 min-h-0 overflow-hidden">
+                  <div className="max-w-4xl mx-auto w-full flex flex-col flex-1 bg-surface rounded-[2rem] border border-main shadow-2xl overflow-hidden min-h-0">
+                    <div className="px-10 py-10 border-b border-main shrink-0 bg-surface">
                       <div className="flex items-center gap-3 mb-6">
-                        <div className="px-3 py-1 bg-slate-100 text-slate-900 rounded-xl text-[11px] font-black uppercase tracking-widest border border-slate-200 shadow-sm">
+                        <div className="px-3 py-1 bg-surface-hover text-primary rounded-xl text-[11px] font-black uppercase tracking-widest border border-main shadow-sm">
                           Q{currentQ + 1}
                         </div>
-                        <div className="px-3 py-1 bg-slate-100 text-slate-500 rounded-xl text-[11px] font-bold uppercase tracking-widest border border-slate-100">
+                        <div className="px-3 py-1 bg-surface text-muted rounded-xl text-[11px] font-bold uppercase tracking-widest border border-main">
                           {q?.type?.toLowerCase() === "mcq"
                             ? "Choice Selection"
                             : q?.type?.toLowerCase() === "coding"
@@ -2372,16 +2372,16 @@ export default function ExamCockpit() {
                               : "Written Case"}
                         </div>
                         {markedForReview[currentQuestionId] && (
-                          <div className="ml-auto text-amber-600 bg-amber-50 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border border-amber-200 shadow-sm flex items-center gap-2">
+                          <div className="ml-auto text-primary-500 bg-primary-500/10 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border border-primary-500/20 shadow-sm flex items-center gap-2">
                             <Bookmark size={14} fill="currentColor" /> Flagged
                           </div>
                         )}
                       </div>
-                      <h2 className="text-[26px] font-medium text-slate-900 leading-snug tracking-tight">
+                      <h2 className="text-[26px] font-medium text-primary leading-snug tracking-tight">
                         {q?.questionText}
                       </h2>
                     </div>
-                    <div className="flex-1 p-10 flex flex-col min-h-0 bg-white">
+                    <div className="flex-1 p-10 flex flex-col min-h-0 bg-surface">
                       {q?.type?.toLowerCase() === "mcq" ? (
                         <div className="grid gap-3 max-w-3xl overflow-y-auto scroll-thin pr-4 pb-4">
                           {q?.displayOptions?.map((opt, i) => {
@@ -2396,20 +2396,20 @@ export default function ExamCockpit() {
                                     [currentQuestionId]: opt.originalIndex,
                                   }))
                                 }
-                                className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all duration-200 text-left relative group outline-none ${isS ? "bg-slate-50 border-slate-900 shadow-md" : "bg-white border-slate-100 hover:border-slate-50 hover:border-slate-300 hover:shadow-sm"}`}
+                                className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all duration-200 text-left relative group outline-none ${isS ? "bg-primary-500/5 border-primary-500 shadow-lg shadow-primary-500/10" : "bg-surface border-main hover:border-primary-500/50 hover:shadow-sm"}`}
                               >
                                 <div
-                                  className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-[14px] font-bold transition-all shadow-sm ${isS ? "bg-slate-900 text-white shadow-slate-900/20" : "bg-slate-100 text-slate-500 group-hover:bg-slate-200"}`}
+                                  className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-[14px] font-bold transition-all shadow-sm ${isS ? "bg-primary-500 text-white shadow-primary-500/20" : "bg-surface-hover text-muted group-hover:bg-primary-500/10 group-hover:text-primary-500"}`}
                                 >
                                   {String.fromCharCode(65 + i)}
                                 </div>
                                 <span
-                                  className={`text-[15px] leading-relaxed flex-1 ${isS ? "font-semibold text-slate-900" : "font-medium text-slate-600"}`}
+                                  className={`text-[15px] leading-relaxed flex-1 ${isS ? "font-semibold text-primary" : "font-medium text-muted"}`}
                                 >
                                   {opt.text}
                                 </span>
                                 {isS && (
-                                  <div className="shrink-0 w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center shadow-lg animate-in zoom-in duration-300">
+                                  <div className="shrink-0 w-8 h-8 rounded-full bg-primary-500 flex items-center justify-center shadow-lg animate-in zoom-in duration-300">
                                     <Check
                                       size={16}
                                       className="text-white"
@@ -2432,7 +2432,7 @@ export default function ExamCockpit() {
                               }))
                             }
                             placeholder="Type your structured response here..."
-                            className="flex-1 w-full bg-slate-50 border-2 border-slate-100 rounded-3xl p-8 focus:bg-white focus:border-slate-300 focus:ring-4 focus:ring-slate-100 transition-all outline-none resize-none font-medium text-slate-700 leading-relaxed text-[16px] scroll-thin placeholder:text-slate-300"
+                            className="flex-1 w-full bg-surface-hover border-2 border-main rounded-3xl p-8 focus:bg-surface focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all outline-none resize-none font-medium text-primary leading-relaxed text-[16px] scroll-thin placeholder:text-muted/30"
                           />
                           {(() => {
                             const words = (
@@ -2444,7 +2444,7 @@ export default function ExamCockpit() {
                             const isOver = words > limit;
                             return (
                               <div
-                                className={`absolute bottom-6 right-6 text-[10px] font-bold uppercase tracking-widest bg-white/95 backdrop-blur-md px-4 py-2 rounded-xl border shadow-lg select-none pointer-events-none flex items-center gap-2 transition-colors duration-300 ${isOver ? "text-red-500 border-red-200" : "text-slate-500 border-slate-200"}`}
+                                className={`absolute bottom-6 right-6 text-[10px] font-bold uppercase tracking-widest bg-surface/95 backdrop-blur-md px-4 py-2 rounded-xl border shadow-lg select-none pointer-events-none flex items-center gap-2 transition-colors duration-300 ${isOver ? "text-red-500 border-red-500/20" : "text-muted border-main"}`}
                               >
                                 <div
                                   className={`w-1.5 h-1.5 rounded-full animate-pulse ${isOver ? "bg-red-500" : "bg-emerald-500"}`}
@@ -2460,7 +2460,7 @@ export default function ExamCockpit() {
                 </div>
               )}
 
-              <footer className="bg-white border-t border-slate-200 shrink-0 shadow-[0_-8px_20px_-8px_rgba(0,0,0,0.05)] z-20 flex flex-col">
+              <footer className="bg-surface border-t border-main shrink-0 shadow-2xl z-20 flex flex-col">
                 <div className="h-[56px] px-8 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <button
@@ -2472,7 +2472,7 @@ export default function ExamCockpit() {
                         if (qId) setVisited((v) => ({ ...v, [qId]: true }));
                       }}
                       disabled={currentQ === 0}
-                      className={`h-9 px-4 flex items-center gap-2 rounded-lg text-[11px] font-bold uppercase tracking-widest border transition-all ${currentQ === 0 ? "text-slate-300 border-slate-100 opacity-50" : "text-slate-600 border-slate-200 hover:bg-slate-50 shadow-sm active:scale-95"}`}
+                      className={`h-9 px-4 flex items-center gap-2 rounded-lg text-[11px] font-bold uppercase tracking-widest border transition-all ${currentQ === 0 ? "text-muted/30 border-main opacity-50" : "text-primary border-main hover:bg-surface-hover shadow-sm active:scale-95"}`}
                     >
                       <ChevronLeft size={16} /> Back
                     </button>
@@ -2501,7 +2501,7 @@ export default function ExamCockpit() {
                           }, 200); // 200ms delay so they can visually see the button turn orange first
                         }
                       }}
-                      className={`h-9 px-4 rounded-lg text-[11px] font-bold uppercase tracking-widest border transition-all ${markedForReview[currentQuestionId] ? "bg-amber-500 text-white border-amber-500 shadow-lg shadow-amber-500/20" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+                      className={`h-9 px-4 rounded-lg text-[11px] font-bold uppercase tracking-widest border transition-all ${markedForReview[currentQuestionId] ? "bg-primary-500 text-white border-primary-500 shadow-lg shadow-primary-500/20" : "bg-surface text-muted border-main hover:text-primary hover:bg-surface-hover"}`}
                     >
                       {markedForReview[currentQuestionId]
                         ? "Flagged"
@@ -2517,7 +2517,7 @@ export default function ExamCockpit() {
                           disabled={
                             isExecuting || cooldownSeconds > 0 || isOffline
                           }
-                          className={`h-9 px-4 flex items-center gap-2 rounded-lg text-[11px] font-bold uppercase tracking-widest border transition-all active:scale-95 ${isOffline ? "bg-slate-100 text-slate-300 border-slate-100 cursor-not-allowed" : cooldownSeconds > 0 ? "bg-slate-50 text-slate-400 border-slate-200" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:shadow-sm"}`}
+                          className={`h-9 px-4 flex items-center gap-2 rounded-lg text-[11px] font-bold uppercase tracking-widest border transition-all active:scale-95 ${isOffline ? "bg-surface text-muted/30 border-main cursor-not-allowed" : cooldownSeconds > 0 ? "bg-surface text-muted/50 border-main" : "bg-surface border-main text-muted hover:text-primary hover:bg-surface-hover hover:shadow-sm"}`}
                         >
                           {isExecuting ? (
                             <RotateCcw size={14} className="animate-spin" />
@@ -2537,7 +2537,7 @@ export default function ExamCockpit() {
                           disabled={
                             isExecuting || cooldownSeconds > 0 || isOffline
                           }
-                          className={`h-9 px-5 flex items-center gap-2 rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all active:scale-95 ${isOffline ? "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none" : cooldownSeconds > 0 ? "bg-slate-700 text-white cursor-not-allowed opacity-80" : "bg-slate-900 text-white hover:bg-slate-900 shadow-lg shadow-slate-200"}`}
+                          className={`h-9 px-5 flex items-center gap-2 rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all active:scale-95 ${isOffline ? "bg-surface-hover text-muted/30 cursor-not-allowed shadow-none" : cooldownSeconds > 0 ? "bg-primary-600 text-white cursor-not-allowed opacity-80" : "bg-primary-500 text-white hover:bg-primary-600 shadow-lg shadow-primary-500/20"}`}
                         >
                           {isOffline
                             ? "Internet Required"
@@ -2549,7 +2549,7 @@ export default function ExamCockpit() {
                         </button>
                       </div>
                     )}
-                    <div className="h-6 w-px bg-slate-100 mx-2" />
+                    <div className="h-6 w-px bg-main mx-2" />
                     <button
                       onClick={() => {
                         if (currentQ < questions.length - 1) {
@@ -2563,7 +2563,7 @@ export default function ExamCockpit() {
                         }
                       }}
                       disabled={isOffline}
-                      className={`h-9 px-6 rounded-lg text-[12px] font-bold uppercase tracking-widest transition-all ${isOffline ? "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none" : currentQ === questions.length - 1 ? "bg-emerald-600 text-white shadow-lg hover:bg-emerald-700 active:scale-95" : "bg-slate-900 text-white shadow-lg hover:bg-black active:scale-95"}`}
+                      className={`h-9 px-6 rounded-lg text-[12px] font-bold uppercase tracking-widest transition-all ${isOffline ? "bg-surface-hover text-muted/30 cursor-not-allowed shadow-none" : currentQ === questions.length - 1 ? "bg-emerald-600 text-white shadow-lg hover:bg-emerald-700 active:scale-95" : "bg-primary-500 text-white shadow-lg hover:bg-primary-600 active:scale-95"}`}
                     >
                       {isOffline
                         ? "Offline"
@@ -2580,9 +2580,9 @@ export default function ExamCockpit() {
                   </div>
                 </div>
 
-                <div className="h-10 bg-slate-50 border-t border-slate-100 flex items-center justify-between px-8">
-                  <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />{" "}
+                <div className="h-10 bg-surface border-t border-main flex items-center justify-between px-8">
+                  <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />{" "}
                     Encrypted Session
                   </span>
                 </div>
@@ -2637,27 +2637,27 @@ export default function ExamCockpit() {
 
       {/* Fullscreen Guard */}
       {!isFullscreen && !submitted && !terminated && (
-        <div className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6">
-          <div className="bg-white rounded-[2rem] p-8 max-w-sm w-full shadow-2xl border border-white/20 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-red-50 text-red-500 mb-6 mx-auto flex items-center justify-center border border-red-100 shadow-sm relative">
+        <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-md flex items-center justify-center p-6">
+          <div className="bg-surface rounded-[2rem] p-8 max-w-sm w-full shadow-2xl border border-main text-center">
+            <div className="w-16 h-16 rounded-2xl bg-primary-500/10 text-primary-500 mb-6 mx-auto flex items-center justify-center border border-primary-500/20 shadow-sm relative">
               <ShieldAlert size={28} strokeWidth={2.5} />
-              <div className="absolute top-0 right-0 -mt-1 -mr-1 w-3 h-3 bg-red-500 rounded-full animate-ping" />
-              <div className="absolute top-0 right-0 -mt-1 -mr-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
+              <div className="absolute top-0 right-0 -mt-1 -mr-1 w-3 h-3 bg-primary-500 rounded-full animate-ping" />
+              <div className="absolute top-0 right-0 -mt-1 -mr-1 w-3 h-3 bg-primary-500 rounded-full border-2 border-black" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-3 tracking-tight">
+            <h2 className="text-2xl font-bold text-primary mb-3 tracking-tight">
               Security Violation
             </h2>
-            <p className="text-[14px] font-medium text-slate-500 mb-8 leading-relaxed px-2">
+            <p className="text-[14px] font-medium text-muted mb-8 leading-relaxed px-2">
               Fullscreen mode is mandatory for exam integrity. This incident has
               been recorded and flagged for the examiner.
             </p>
             <button
               onClick={() => document.documentElement.requestFullscreen()}
-              className="w-full h-12 rounded-xl bg-slate-900 hover:bg-slate-800 text-white transition-all text-[13px] font-bold shadow-xl shadow-slate-900/20 active:scale-95 flex items-center justify-center gap-2"
+              className="w-full h-12 rounded-xl bg-primary-500 hover:bg-primary-600 text-white transition-all text-[13px] font-bold shadow-xl shadow-primary-500/20 active:scale-95 flex items-center justify-center gap-2"
             >
               Restore Secure Session
             </button>
-            <div className="mt-6 flex items-center justify-center gap-2 text-[11px] font-semibold text-slate-400">
+            <div className="mt-6 flex items-center justify-center gap-2 text-[11px] font-semibold text-muted">
               <LockIcon size={12} />
               <span>Secure Environment Enforced</span>
             </div>
@@ -2695,12 +2695,12 @@ export default function ExamCockpit() {
             exit={{ opacity: 0, y: -50 }}
             className="fixed top-16 left-1/2 -translate-x-1/2 z-[250] pointer-events-none"
           >
-            <div className="bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-start gap-4 max-w-xl border border-white/10 ring-8 ring-slate-800/10 pointer-events-auto">
+            <div className="bg-surface text-primary px-6 py-4 rounded-2xl shadow-2xl flex items-start gap-4 max-w-xl border border-main ring-8 ring-primary-500/5 pointer-events-auto">
               <div className="bg-white/20 p-2 rounded-xl shrink-0 mt-0.5">
                 <Radio size={20} className="animate-pulse" />
               </div>
               <div>
-                <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-200 mb-1">
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-muted mb-1">
                   Live Announcement
                 </h3>
                 <p className="text-sm font-semibold leading-relaxed text-white">
@@ -2709,7 +2709,7 @@ export default function ExamCockpit() {
               </div>
               <button
                 onClick={() => setBroadcastMessage(null)}
-                className="ml-2 p-1 hover:bg-white/10 rounded-lg transition-colors"
+                className="ml-2 p-1 hover:bg-surface-hover rounded-lg transition-colors text-muted hover:text-primary"
               >
                 <XCircle size={18} />
               </button>
@@ -2725,27 +2725,27 @@ export default function ExamCockpit() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] bg-slate-900 flex flex-col items-center justify-center p-6 text-center"
+            className="fixed inset-0 z-[200] bg-black flex flex-col items-center justify-center p-6 text-center"
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-slate-900/10 via-transparent to-emerald-500/10" />
+            <div className="absolute inset-0 bg-gradient-to-br from-primary-500/5 via-transparent to-primary-500/10" />
             <div className="relative z-10 max-w-md">
-              <div className="w-20 h-20 rounded-3xl bg-slate-900 flex items-center justify-center shadow-2xl mb-10 mx-auto animate-bounce">
+              <div className="w-20 h-20 rounded-3xl bg-primary-500 flex items-center justify-center shadow-2xl mb-10 mx-auto animate-bounce shadow-primary-500/20">
                 <Shield size={40} className="text-white" />
               </div>
-              <h1 className="text-4xl font-black text-white tracking-tighter mb-4 uppercase italic">
+              <h1 className="text-4xl font-black text-primary tracking-tighter mb-4 uppercase italic">
                 Secure Environment
               </h1>
-              <p className="text-slate-400 text-sm mb-12 leading-relaxed">
+              <p className="text-muted text-sm mb-12 leading-relaxed">
                 To maintain integrity, this assessment requires a locked
                 environment. Please re-enter the secure perimeter to continue.
               </p>
               <button
                 onClick={handleSecureEntry}
-                className="w-full h-14 bg-white text-slate-900 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-2xl hover:bg-slate-100 transition-all flex items-center justify-center gap-3 active:scale-95"
+                className="w-full h-14 bg-primary-500 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-2xl hover:bg-primary-600 transition-all flex items-center justify-center gap-3 active:scale-95 shadow-primary-500/20"
               >
                 <LockIcon size={18} /> Initialize Secure Entry
               </button>
-              <p className="mt-8 text-[9px] font-black text-slate-600 uppercase tracking-widest flex items-center justify-center gap-2">
+              <p className="mt-8 text-[9px] font-black text-muted uppercase tracking-widest flex items-center justify-center gap-2">
                 <Monitor size={12} /> Encrypted Session • Biometric Link Enabled
               </p>
             </div>

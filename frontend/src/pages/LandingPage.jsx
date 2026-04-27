@@ -6,7 +6,7 @@ import {
   Server, ChevronRight, Cpu, Eye, QrCode, Check 
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
-import { ThemeToggle } from '../contexts/ThemeContext';
+
 
 // --- Static Metadata & Configuration ---
 

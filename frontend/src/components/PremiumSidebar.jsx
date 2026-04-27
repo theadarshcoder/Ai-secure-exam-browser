@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
 import VisionLogo from './VisionLogo';
+import { useTheme } from '../contexts/ThemeContext';
 
 /* ─────────────────────────────────────────────────────────
    PremiumSidebar — Veelov-style collapsible sidebar
@@ -11,7 +12,7 @@ import VisionLogo from './VisionLogo';
    ───────────────────────────────────────────────────────── */
 
 const COLLAPSED_W = 76;
-const EXPANDED_W = 260;
+const EXPANDED_W = 220;
 
 export default function PremiumSidebar({
   navItems = [],
@@ -27,11 +28,28 @@ export default function PremiumSidebar({
   const [internalExpanded, setInternalExpanded] = useState(true);
   const expanded = controlledExpanded !== undefined ? controlledExpanded : internalExpanded;
 
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+
   const toggleSidebar = () => {
     if (onToggle) onToggle(!expanded);
     else setInternalExpanded(!internalExpanded);
   };
   const [hoveredId, setHoveredId] = useState(null);
+
+  // Dynamic Colors based on Slash.com / Modern SaaS aesthetics
+  const colors = {
+    bg: 'var(--bg-surface)',
+    border: 'var(--border-main)',
+    itemActive: 'var(--text-primary)',
+    itemHover: 'var(--text-primary)',
+    itemDefault: 'var(--text-secondary)',
+    textActive: 'var(--text-primary)',
+    textDefault: 'var(--text-secondary)',
+    brandText: 'var(--text-primary)',
+    toggleBg: 'var(--bg-surface)',
+    toggleBorder: 'var(--border-main)',
+  };
 
   const sidebarVariants = {
     expanded: {
@@ -61,8 +79,8 @@ export default function PremiumSidebar({
       initial={false}
       className="relative shrink-0 flex flex-col z-30 overflow-visible"
       style={{
-        background: '#FAFAFA',
-        borderRight: '1px solid #F0F0F0',
+        background: colors.bg,
+        borderRight: `1px solid ${colors.border}`,
         height: '100vh',
         fontFamily: "'Inter', sans-serif",
       }}
@@ -74,15 +92,15 @@ export default function PremiumSidebar({
         whileTap={{ scale: 0.92 }}
         style={{
           position: 'absolute',
-          top: 68,
+          top: 42,
           right: -14,
           zIndex: 50,
           width: 28,
           height: 28,
           borderRadius: '50%',
-          background: '#FFFFFF',
-          border: '1.5px solid #E8E8E8',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+          background: colors.toggleBg,
+          border: `1.5px solid ${colors.toggleBorder}`,
+          boxShadow: isDark ? '0 4px 12px rgba(0,0,0,0.4)' : '0 2px 8px rgba(0,0,0,0.10)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -102,14 +120,14 @@ export default function PremiumSidebar({
       {/* ── Brand ── */}
       <div
         style={{
-          height: 72,
+          height: 56,
           display: 'flex',
           alignItems: 'center',
           padding: expanded ? '0 20px' : '0 0',
           justifyContent: expanded ? 'flex-start' : 'center',
           flexShrink: 0,
           overflow: 'hidden',
-          borderBottom: '1px solid #F5F5F5',
+          borderBottom: '1px solid var(--border-main)',
         }}
       >
         {/* Logo icon box */}
@@ -118,7 +136,7 @@ export default function PremiumSidebar({
             width: 36,
             height: 36,
             borderRadius: 10,
-            background: '#111111',
+            background: 'var(--accent-primary)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -140,7 +158,7 @@ export default function PremiumSidebar({
                 fontSize: 17,
                 fontWeight: 700,
                 letterSpacing: '-0.02em',
-                color: '#111',
+                color: colors.brandText,
                 marginLeft: 10,
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
@@ -174,7 +192,7 @@ export default function PremiumSidebar({
             top: 4,
             bottom: 4,
             width: 1,
-            background: '#E5E7EB',
+            background: 'var(--border-main)',
             zIndex: 0,
           }} />
           
@@ -184,26 +202,10 @@ export default function PremiumSidebar({
           const IconComp = item.icon;
 
           // Render section header if present and different from previous or first
-          const showSection = item.section && (idx === 0 || navItems[idx - 1].section !== item.section);
 
           return (
             <React.Fragment key={item.id}>
-              {showSection && expanded && (
-                <div style={{
-                  padding: '16px 14px 6px',
-                  fontSize: '9px',
-                  fontWeight: 800,
-                  color: '#94A3B8',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.12em',
-                  zIndex: 1,
-                }}>
-                  {item.section}
-                </div>
-              )}
-              {showSection && !expanded && (
-                <div style={{ height: 1, background: '#F1F5F9', margin: '8px 4px' }} />
-              )}
+
 
               <div
                 style={{ position: 'relative' }}
@@ -216,13 +218,13 @@ export default function PremiumSidebar({
                     style={{
                       position: 'absolute',
                       left: expanded ? 8 : 4,
-                      top: '15%',
-                      bottom: '15%',
-                      width: 3,
-                      borderRadius: 3,
-                      background: '#CBD5E1',
-                      zIndex: 8,
-                    }}
+                       top: '15%',
+                       bottom: '15%',
+                       width: 3,
+                       borderRadius: 3,
+                       background: 'var(--border-main)',
+                       zIndex: 8,
+                     }}
                     transition={{ type: 'spring', stiffness: 280, damping: 24, mass: 0.8 }}
                   />
                 )}
@@ -234,13 +236,13 @@ export default function PremiumSidebar({
                     style={{
                       position: 'absolute',
                       left: expanded ? 8 : 4,
-                      top: '15%',
-                      bottom: '15%',
-                      width: 3,
-                      borderRadius: 3,
-                      background: '#111111',
-                      zIndex: 10,
-                    }}
+                       top: '15%',
+                       bottom: '15%',
+                       width: 3,
+                       borderRadius: 3,
+                       background: 'var(--accent-primary)',
+                       zIndex: 10,
+                     }}
                     transition={{ type: 'spring', stiffness: 280, damping: 24, mass: 0.8 }}
                   />
                 )}
@@ -284,7 +286,7 @@ export default function PremiumSidebar({
                     }}
                   >
                     <motion.span
-                      animate={{ color: isActive ? '#111111' : isHovered ? '#374151' : '#6B7280' }}
+                      animate={{ color: isActive ? colors.itemActive : isHovered ? colors.itemHover : colors.itemDefault }}
                       transition={{ duration: 0.15 }}
                     >
                       <IconComp size={17} strokeWidth={isActive ? 2.2 : 1.8} />
@@ -302,7 +304,7 @@ export default function PremiumSidebar({
                         style={{
                           fontSize: 14,
                           fontWeight: isActive ? 600 : 450,
-                          color: isActive ? '#1E1E2E' : '#6B7280',
+                          color: isActive ? colors.textActive : colors.textDefault,
                           letterSpacing: '-0.01em',
                           whiteSpace: 'nowrap',
                           flex: 1,
@@ -353,44 +355,44 @@ export default function PremiumSidebar({
       <div
         style={{
           padding: expanded ? '12px 12px 16px' : '12px 8px 16px',
-          borderTop: '1px solid #F1F5F9',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 6,
-        }}
-      >
-        {/* User info */}
-        <div 
-          className="flex items-center gap-3 cursor-pointer group rounded-xl hover:bg-slate-50 transition-all" 
-          style={{ padding: expanded ? '8px' : '8px 0', justifyContent: expanded ? 'flex-start' : 'center' }}
-        >
-          <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center font-black text-slate-700 uppercase text-[11px] shadow-sm group-hover:border-[#4ade80] transition-all shrink-0">
-            {userName.charAt(0)}
-          </div>
-          <AnimatePresence>
-            {expanded && (
-              <motion.div
-                variants={labelVariants}
-                initial="hide"
-                animate="show"
-                exit="hide"
-                className="overflow-hidden"
-              >
-                <p className="text-[10px] font-black text-slate-900 group-hover:text-[#22c55e] transition-colors uppercase tracking-tight leading-none">
-                  {userName}
-                </p>
-                <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-slate-400 mt-1">
-                  {userRole.replace('_', ' ')}
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+           borderTop: '1px solid var(--border-main)',
+           display: 'flex',
+           flexDirection: 'column',
+           gap: 6,
+         }}
+       >
+         {/* User info */}
+         <div 
+           className="flex items-center gap-3 cursor-pointer group rounded-xl transition-all hover:bg-white/5" 
+           style={{ padding: expanded ? '8px' : '8px 0', justifyContent: expanded ? 'flex-start' : 'center' }}
+         >
+           <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black uppercase text-[11px] shadow-sm transition-all shrink-0 bg-surface border border-main text-primary">
+             {userName.charAt(0)}
+           </div>
+           <AnimatePresence>
+             {expanded && (
+               <motion.div
+                 variants={labelVariants}
+                 initial="hide"
+                 animate="show"
+                 exit="hide"
+                 className="overflow-hidden"
+               >
+                 <p className="text-[10px] font-black transition-colors uppercase tracking-tight leading-none text-primary">
+                   {userName}
+                 </p>
+                 <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-muted mt-1">
+                   {userRole.replace('_', ' ')}
+                 </p>
+               </motion.div>
+             )}
+           </AnimatePresence>
+         </div>
 
         {/* Logout */}
         <motion.button
           onClick={onLogout}
-          whileHover={{ background: '#FFF1F2' }}
+          whileHover={{ background: isDark ? 'rgba(239, 68, 68, 0.1)' : 'var(--bg-surface-hover)' }}
           whileTap={{ scale: 0.96 }}
           className="group/logout"
           style={{
@@ -403,7 +405,7 @@ export default function PremiumSidebar({
             background: 'transparent',
             border: 'none',
             cursor: 'pointer',
-            color: '#64748B',
+            color: colors.itemDefault,
             width: '100%',
             overflow: 'hidden',
           }}
@@ -418,7 +420,7 @@ export default function PremiumSidebar({
                 initial="hide"
                 animate="show"
                 exit="hide"
-                className="text-[10px] font-black uppercase tracking-widest text-slate-500 group-hover/logout:text-red-600 transition-colors whitespace-nowrap"
+                className="text-[10px] font-black uppercase tracking-widest text-muted group-hover/logout:text-red-600 transition-colors whitespace-nowrap"
               >
                 Log Out
               </motion.span>

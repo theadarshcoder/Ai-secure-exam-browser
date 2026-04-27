@@ -3,33 +3,89 @@
 @import "tailwindcss";
 
 @theme {
-  /* Premium Vision Indigo Palette (Replaced generic blue) */
-  --color-primary-50: #eef2ff;
-  --color-primary-100: #e0e7ff;
-  --color-primary-200: #c7d2fe;
-  --color-primary-300: #a5b4fc;
-  --color-primary-400: #818cf8;
-  --color-primary-500: #6366f1;
-  --color-primary-600: #4f46e5;
-  --color-primary-700: #4338ca;
-  --color-primary-800: #3730a3;
-  --color-primary-900: #312e81;
+  /* Premium Vision Red-Orange Palette (Replacing indigo) */
+  --color-primary-50: #fff1f0;
+  --color-primary-100: #ffe1df;
+  --color-primary-200: #ffc7c2;
+  --color-primary-300: #ffa199;
+  --color-primary-400: #ff6d60;
+  --color-primary-500: #ff3b00; /* Main Accent */
+  --color-primary-600: #e63500;
+  --color-primary-700: #bf2c00;
+  --color-primary-800: #992300;
+  --color-primary-900: #7d1d00;
 
   --font-sans: "Outfit", system-ui, sans-serif;
 }
 
 @layer base {
+  :root {
+    --bg-page: #ffffff;
+    --bg-surface: #ffffff;
+    --bg-surface-hover: #f9fafb;
+    --border-main: #e5e7eb;
+    --text-primary: #000000;
+    --text-secondary: #52525b;
+    --text-muted: #71717a;
+    --accent-primary: #ff3b00;
+    --header-bg: rgba(255, 255, 255, 0.8);
+  }
+
+  [data-theme="dark"] {
+    --bg-page: #000000;
+    --bg-surface: #09090b;
+    --bg-surface-hover: #121214;
+    --border-main: #1f1f1f;
+    --text-primary: #ffffff;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --accent-primary: #ff3b00;
+    --header-bg: rgba(0, 0, 0, 0.8);
+
+    /* Override Tailwind v4 preflight's default border color.
+       Without this, plain `border` classes fall back to #e5e7eb (white-ish) */
+    --default-border-color: #1f1f1f;
+    --tw-ring-color: #1f1f1f;
+
+    /* Tell the browser this is a dark context */
+    color-scheme: dark;
+  }
+
+  /* ── Light theme: premium emerald accent (only for admin/mentor in light mode) ── */
+  [data-theme="light"] {
+    --bg-page: #f8fafc;
+    --bg-surface: #ffffff;
+    --bg-surface-hover: #f1f5f9;
+    --border-main: #e2e8f0;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+    --accent-primary: #10b981;
+    --header-bg: rgba(248, 250, 252, 0.85);
+
+    /* Override primary palette → premium emerald green */
+    --color-primary-50:  #ecfdf5;
+    --color-primary-100: #d1fae5;
+    --color-primary-200: #a7f3d0;
+    --color-primary-300: #6ee7b7;
+    --color-primary-400: #34d399;
+    --color-primary-500: #10b981;  /* Main accent — emerald-500 */
+    --color-primary-600: #059669;
+    --color-primary-700: #047857;
+    --color-primary-800: #065f46;
+    --color-primary-900: #064e3b;
+  }
+
 
   html,
   body {
-    @apply bg-[#080808] text-slate-300 antialiased;
+    background-color: var(--bg-page) !important;
+    color: var(--text-secondary) !important;
+    @apply antialiased;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
     user-select: none;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
   }
 
   #root {
@@ -37,22 +93,194 @@
     width: 100%;
   }
 
-  ::selection {
-    @apply bg-primary-200 text-primary-900;
+  h1, h2, h3, h4, h5, h6 {
+    @apply tracking-tight font-bold;
   }
+}
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    @apply tracking-tight text-slate-900;
-  }
+/* ============================================================
+   border-main Utility — properly resolves to var(--border-main)
+   so ALL elements using `border border-main` or `border-b border-main`
+   get the correct theme color on the VERY FIRST PAINT.
+   
+   Root cause of the white-border flash:
+   `border-main` was not defined as a Tailwind/CSS utility, so the
+   browser had no border-color and fell back to `currentColor` (white
+   in dark mode). This defines it properly once, fixing all instances.
+   ============================================================ */
 
-  p {
-    @apply leading-relaxed;
+@layer utilities {
+  .border-main {
+    border-color: var(--border-main);
   }
+}
+
+/* ── Disable border/background color transitions in dark mode ──
+   Prevents new elements from visibly animating FROM the wrong
+   (white/light) border color TO the correct dark value on mount. */
+[data-theme="dark"] * {
+  transition-property: color, opacity, transform, box-shadow, filter !important;
+}
+
+/* Headings default to white only in dark mode (admin/mentor) */
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3,
+[data-theme="dark"] h4,
+[data-theme="dark"] h5,
+[data-theme="dark"] h6 {
+  color: var(--text-primary) !important;
+}
+
+
+[data-theme="dark"] .bg-white,
+[data-theme="dark"] [class*="bg-slate-50"],
+[data-theme="dark"] [class*="bg-gray-50"],
+[data-theme="dark"] [class*="bg-zinc-50"],
+[data-theme="dark"] [class*="bg-white/60"],
+[data-theme="dark"] [class*="bg-slate-100"] {
+  background-color: var(--bg-surface) !important;
+}
+
+[data-theme="dark"] .text-slate-900,
+[data-theme="dark"] .text-slate-800,
+[data-theme="dark"] .text-gray-900,
+[data-theme="dark"] .text-zinc-900,
+[data-theme="dark"] .text-black,
+[data-theme="dark"] .text-\[\#0F0F0F\],
+[data-theme="dark"] .text-\[\#0a0c10\],
+[data-theme="dark"] .text-\[\#111\],
+[data-theme="dark"] .text-\[\#111111\] {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .text-slate-700,
+[data-theme="dark"] .text-slate-600,
+[data-theme="dark"] .text-slate-500,
+[data-theme="dark"] .text-gray-500,
+[data-theme="dark"] .text-slate-400,
+[data-theme="dark"] .text-zinc-700,
+[data-theme="dark"] .text-zinc-600,
+[data-theme="dark"] .text-zinc-500,
+[data-theme="dark"] .text-\[\#7A7A7A\],
+[data-theme="dark"] .text-\[\#64748B\] {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .border-slate-100,
+[data-theme="dark"] .border-slate-200,
+[data-theme="dark"] .border-gray-100,
+[data-theme="dark"] .border-gray-200,
+[data-theme="dark"] .border-zinc-800 {
+  border-color: var(--border-main) !important;
+}
+
+[data-theme="dark"] .bg-slate-50\/80,
+[data-theme="dark"] .bg-white\/80 {
+  background-color: var(--header-bg) !important;
+}
+
+[data-theme="dark"] .hover:bg-slate-50:hover,
+[data-theme="dark"] .hover:bg-gray-50:hover,
+[data-theme="dark"] .hover:bg-zinc-50:hover,
+[data-theme="dark"] .hover:bg-white\/5:hover {
+  background-color: var(--bg-surface-hover) !important;
+}
+
+/* ─── React Datepicker Dark Theme Overrides ─── */
+.react-datepicker {
+  background-color: var(--bg-surface) !important;
+  border: 1px solid var(--border-main) !important;
+  border-radius: 1.5rem !important;
+  font-family: var(--font-sans) !important;
+  overflow: hidden !important;
+}
+
+.react-datepicker__header {
+  background-color: var(--bg-surface-hover) !important;
+  border-bottom: 1px solid var(--border-main) !important;
+  padding-top: 1.5rem !important;
+}
+
+.react-datepicker__current-month,
+.react-datepicker__day-name,
+.react-datepicker-time__header {
+  color: var(--text-primary) !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.1em !important;
+  font-size: 0.7rem !important;
+}
+
+.react-datepicker__day {
+  color: var(--text-secondary) !important;
+  border-radius: 0.75rem !important;
+  transition: all 0.2s !important;
+}
+
+.react-datepicker__day:hover {
+  background-color: var(--bg-surface-hover) !important;
+  color: var(--accent-primary) !important;
+}
+
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+  background-color: var(--accent-primary) !important;
+  color: white !important;
+  font-weight: 900 !important;
+  box-shadow: 0 10px 15px -3px rgba(255, 59, 0, 0.3) !important;
+}
+
+.react-datepicker__day--today {
+  color: var(--accent-primary) !important;
+  font-weight: 900 !important;
+}
+
+.react-datepicker__day--disabled {
+  color: var(--text-muted) !important;
+  opacity: 0.3 !important;
+}
+
+.react-datepicker__time-container {
+  border-left: 1px solid var(--border-main) !important;
+  background-color: var(--bg-surface) !important;
+}
+
+.react-datepicker__time-box {
+  background-color: var(--bg-surface) !important;
+}
+
+.react-datepicker__time-list-item {
+  color: var(--text-secondary) !important;
+  transition: all 0.2s !important;
+  font-size: 0.75rem !important;
+  padding: 0.75rem !important;
+}
+
+.react-datepicker__time-list-item:hover {
+  background-color: var(--bg-surface-hover) !important;
+  color: var(--accent-primary) !important;
+}
+
+.react-datepicker__time-list-item--selected {
+  background-color: var(--accent-primary) !important;
+  color: white !important;
+  font-weight: 900 !important;
+}
+
+.react-datepicker__navigation-icon::before {
+  border-color: var(--text-muted) !important;
+}
+
+.react-datepicker__today-button {
+  background-color: var(--bg-surface-hover) !important;
+  border-top: 1px solid var(--border-main) !important;
+  color: var(--accent-primary) !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.1em !important;
+  font-size: 0.6rem !important;
+  padding: 1rem !important;
 }
 
 /* ─── Scrollbar ─── */
@@ -79,6 +307,7 @@
   height: 0 !important;
 }
 
+
 /* ============================================================
    LIGHT THEME — applied when [data-theme="light"] is on <html>
    ============================================================ */
@@ -98,6 +327,14 @@
 [data-theme="light"] {
   color-scheme: light;
 }
+
+/* Semantic Utilities */
+.bg-page { background-color: var(--bg-page) !important; }
+.bg-surface { background-color: var(--bg-surface) !important; }
+.border-main { border-color: var(--border-main) !important; }
+.text-primary { color: var(--text-primary) !important; }
+.text-secondary { color: var(--text-secondary) !important; }
+.text-muted { color: var(--text-muted) !important; }
 
 /* ── Page & Card Backgrounds (Wildcard Catch-all) ── */
 [data-theme="light"] [class*="bg-black"],
@@ -190,13 +427,13 @@
 
 [data-theme="light"] [class*="bg-indigo-900"],
 [data-theme="light"] [class*="bg-blue-900"] {
-  background-color: #c7d2fe !important;
+  background-color: #ffc7c2 !important;
 }
 
 /* indigo-200 */
 [data-theme="light"] [class*="bg-indigo-950"],
 [data-theme="light"] [class*="bg-blue-950"] {
-  background-color: #e0e7ff !important;
+  background-color: #ffe1df !important;
 }
 
 /* indigo-100 */
@@ -312,11 +549,34 @@
 
 /* red-700 */
 
+[data-theme="light"] [class*="text-red-700"],
+[data-theme="light"] [class*="text-red-800"],
+[data-theme="light"] [class*="text-rose-700"],
+[data-theme="light"] [class*="text-rose-800"] {
+  color: #b91c1c !important;
+}
+
+[data-theme="light"] [class*="text-emerald-700"],
+[data-theme="light"] [class*="text-emerald-800"] {
+  color: #047857 !important;
+}
+
+[data-theme="light"] [class*="text-amber-700"],
+[data-theme="light"] [class*="text-amber-800"] {
+  color: #b45309 !important;
+}
+
+[data-theme="light"] [class*="bg-white\\/60"],
+[data-theme="light"] [class*="bg-white\\/40"],
+[data-theme="light"] [class*="bg-white\\/50"] {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
 [data-theme="light"] [class*="text-indigo-200"],
 [data-theme="light"] [class*="text-indigo-300"],
 [data-theme="light"] [class*="text-indigo-400"],
 [data-theme="light"] [class*="text-indigo-500"] {
-  color: #4338ca !important;
+  color: #bf2c00 !important;
 }
 
 /* indigo-700 */
@@ -325,7 +585,7 @@
 [data-theme="light"] [class*="text-violet-300"],
 [data-theme="light"] [class*="text-violet-400"],
 [data-theme="light"] [class*="text-violet-500"] {
-  color: #6d28d9 !important;
+  color: #992300 !important;
 }
 
 /* violet-700 */
@@ -334,7 +594,7 @@
 [data-theme="light"] [class*="text-blue-300"],
 [data-theme="light"] [class*="text-blue-400"],
 [data-theme="light"] [class*="text-blue-500"] {
-  color: #1d4ed8 !important;
+  color: #e63500 !important;
 }
 
 /* blue-700 */
