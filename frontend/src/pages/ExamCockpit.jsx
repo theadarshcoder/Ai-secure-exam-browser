@@ -924,12 +924,34 @@ const ExamTimer = React.memo(({ seconds, isCritical }) => {
 
 export default function ExamCockpit() {
   const navigate = useNavigate();
-  const { examId } = useParams();
+const { examId } = useParams();
   const videoRef = useRef(null);
   const tabToast = useTabVisibility();
 
   const [exam, setExam] = useState(null);
   const [sessionId, setSessionId] = useState(null);
+
+  // 💓 HEARTBEAT SYSTEM (V4 Hardened)
+  useEffect(() => {
+    if (!examId) return;
+
+    const heartbeatInterval = setInterval(async () => {
+      try {
+        await api.post('/exams/heartbeat', { examId: examId });
+        console.log('💓 Heartbeat sent & verified');
+      } catch (err) {
+        console.error('❌ Heartbeat failure:', err);
+        if (err.response?.status === 403) {
+          toast.error('Security Breach: Secure environment lost.', { duration: 5000 });
+          // Force logout or block UI
+          setTerminated({ reason: "Environment verification failed." });
+        }
+      }
+    }, 30000); // 30 Seconds
+
+    return () => clearInterval(heartbeatInterval);
+  }, [examId]);
+
   const [questions, setQuestions] = useState([]); // Will store shuffled list
   const [secondsLeft, setSecondsLeft] = useState(TOTAL_SECONDS);
   const [endTime, setEndTime] = useState(null);
@@ -977,6 +999,8 @@ export default function ExamCockpit() {
   const [camError, setCamError] = useState(false);
   const [settings, setSettings] = useState(null);
   const [headerAlert, setHeaderAlert] = useState(null);
+  const [helpCooldown, setHelpCooldown] = useState(0); 
+  const [aiModel, setAiModel] = useState(null); // 🧠 AI Proctoring Model
 
   // Layout state
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
@@ -1302,10 +1326,13 @@ export default function ExamCockpit() {
   );
 
   const handleRequestHelp = async () => {
+    if (helpCooldown > 0) return; // Guard
+
     try {
       setHelpStatus("loading");
       await requestHelp(examId, "Student needs manual intervention or has a query.");
       setHelpStatus("success");
+      setHelpCooldown(10); // 🛡️ Start 10s cooldown
       toast.success("Help request sent to supervisor.");
       setTimeout(() => setHelpStatus("idle"), 5000);
     } catch (_err) {
@@ -1342,6 +1369,73 @@ export default function ExamCockpit() {
     cameraActive,
     captureAndUploadSnapshot,
   ]);
+
+  // 🧠 AI Proctoring: Load Model & Detection Loop
+  useEffect(() => {
+    let isMounted = true;
+    
+    const loadModel = async () => {
+      try {
+        if (!window.cocoSsd) {
+          console.warn("AI: COCO-SSD script not loaded yet...");
+          return;
+        }
+        console.log("🧠 AI: Initializing Object Detection Model...");
+        const model = await window.cocoSsd.load();
+        if (isMounted) {
+          setAiModel(model);
+          setModelsLoaded(true);
+          console.log("🚀 AI: Proctoring Engine Active (COCO-SSD)");
+        }
+      } catch (err) {
+        console.error("❌ AI: Failed to load detection model:", err.message);
+      }
+    };
+
+    loadModel();
+    return () => { isMounted = false; };
+  }, []);
+
+  const runAIDetection = useCallback(async () => {
+    if (!aiModel || !videoRef.current || submitted || terminated || isBlocked) return;
+    
+    try {
+      const predictions = await aiModel.detect(videoRef.current);
+      
+      const prohibited = ["cell phone", "book", "laptop", "remote"];
+      const detectedProhibited = predictions.filter(p => prohibited.includes(p.class) && p.score > 0.65);
+      const people = predictions.filter(p => p.class === "person" && p.score > 0.6);
+
+      // 1. Multiple People Detection
+      if (people.length > 1) {
+        logIncident("Multiple People Detected", "critical", `AI detected ${people.length} persons in frame.`);
+        toast.error("SECURITY ALERT: Multiple people detected in frame!", { icon: "🚨" });
+      }
+
+      // 2. Prohibited Objects Detection
+      if (detectedProhibited.length > 0) {
+        const item = detectedProhibited[0].class;
+        logIncident("Prohibited Object", "critical", `AI detected a ${item} during exam.`);
+        toast.error(`SECURITY ALERT: ${item.toUpperCase()} detected! This incident has been reported.`, { 
+            icon: "🚨",
+            duration: 6000 
+        });
+        
+        // Take a snapshot for evidence
+        captureAndUploadSnapshot("ai_violation");
+      }
+    } catch (err) {
+      console.warn("AI: Detection cycle skipped:", err.message);
+    }
+  }, [aiModel, submitted, terminated, isBlocked, logIncident, captureAndUploadSnapshot]);
+
+  useEffect(() => {
+    if (!aiModel || !cameraActive || submitted || terminated) return;
+
+    // Run AI scan every 15 seconds
+    const interval = setInterval(runAIDetection, 15000);
+    return () => clearInterval(interval);
+  }, [aiModel, cameraActive, submitted, terminated, runAIDetection]);
 
   // 🔒 Security: Fullscreen & Shortcuts
   useEffect(() => {
@@ -1542,6 +1636,15 @@ export default function ExamCockpit() {
     }, 1000);
     return () => clearInterval(timer);
   }, [cooldownSeconds]);
+
+  // ⏲️ Help Request Cooldown Timer
+  useEffect(() => {
+    if (helpCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setHelpCooldown((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [helpCooldown]);
 
    const handleFinalSubmit = useCallback(async () => {
     if (isSubmittingRef.current || submitted) {
@@ -2292,19 +2395,21 @@ export default function ExamCockpit() {
             <div className="p-4 border-t border-main mt-auto flex flex-col gap-2">
               <button
                 onClick={handleRequestHelp}
-                disabled={helpStatus !== "idle"}
+                disabled={helpStatus !== "idle" || helpCooldown > 0}
                 className={`w-full h-10 rounded-xl flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-80 ${helpStatus === "success" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : helpStatus === "error" ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-primary-500/10 text-primary-500 border-primary-500/20 hover:bg-primary-500/20"}`}
               >
                 <AnimatedStatusIcon
                   status={helpStatus}
-                  icon={<MessageSquare size={14} />}
+                  icon={helpCooldown > 0 ? <span className="text-[10px] tabular-nums">{helpCooldown}s</span> : <MessageSquare size={14} />}
                   size={14}
                 />
                 {helpStatus === "success"
                   ? "Request Sent"
                   : helpStatus === "error"
                     ? "Request Failed"
-                    : "Need Help?"}
+                    : helpCooldown > 0
+                      ? `Wait ${helpCooldown}s`
+                      : "Need Help?"}
               </button>
 
               <div className="flex gap-2">

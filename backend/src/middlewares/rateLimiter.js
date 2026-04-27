@@ -1,74 +1,118 @@
 const rateLimit = require('express-rate-limit');
+const { RedisStore } = require('rate-limit-redis');
+const { getRedisClient } = require('../config/redis');
+
+// ⚡ SHARED STORE HELPER: Cluster-Safe Rate Limiting
+const createRedisStore = (label) => {
+    const client = getRedisClient();
+    if (!client) {
+        console.warn(`⚠️  [SCALING] Redis not ready. Using In-Memory fallback for ${label} rate limiter.`);
+        return undefined; 
+    }
+    return new RedisStore({
+        sendCommand: (...args) => client.call(...args),
+        prefix: `vision_rl:${label}:`,
+    });
+};
 
 /**
  * 🛡️ Code Execution Rate Limiter
  * Specifically designed to protect Judge0 API from exhaustion.
- * Limits students to 1 execution every 10 seconds.
+ * Students: 1 per 10s | Mentors/Admins: 10 per 10s
  */
 const codeExecutionLimiter = rateLimit({
-    windowMs: 10 * 1000, // 10 seconds
-    max: 1, // Limit each user to 1 request per window
-    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-    validate: false,
-    keyGenerator: (req) => {
-        // Limit by user ID since students are authenticated
-        return req.user?.id || req.ip;
+    windowMs: 10 * 1000, 
+    max: (req) => {
+        if (req.user?.role === 'admin' || req.user?.role === 'super_mentor') return 100;
+        if (req.user?.role === 'mentor') return 20;
+        return 1; // Default for students
     },
+    store: createRedisStore('code_exec'),
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => req.user?.id || req.ip,
     message: {
         allPassed: false,
         error: 'Cooldown Active',
-        details: 'Please wait 10 seconds between code executions to maintain system stability.',
+        details: 'Please wait between code executions to maintain system stability.',
         isRawExecution: true
-    },
-    skip: (req) => {
-        // Admins and Mentors are not rate-limited for testing
-        return req.user?.role === 'admin' || req.user?.role === 'mentor';
     }
 });
 
+/**
+ * 🛡️ Telemetry Limiter
+ * Students: 20 per min | Mentors: 100 per min
+ */
 const telemetryLimiter = rateLimit({
-    windowMs: 60 * 1000, // 1 minute
-    max: 10, // Max 10 telemetry logs per minute
+    windowMs: 60 * 1000,
+    max: (req) => {
+        if (req.user?.role === 'admin' || req.user?.role === 'super_mentor') return 500;
+        return 20;
+    },
+    store: createRedisStore('telemetry'),
     standardHeaders: true,
     legacyHeaders: false,
-    validate: false,
     keyGenerator: (req) => req.user?.id || req.ip,
     message: {
         success: false,
-        message: 'Rate limit exceeded. Please try again later.'
+        message: 'Telemetry rate limit exceeded.'
     }
 });
 
 /**
  * 🔗 External Import Rate Limiter
- * Limits scraping requests to prevent spamming external APIs.
  */
 const importLimiter = rateLimit({
-    windowMs: 60 * 1000, // 1 minute
-    max: 5, // Limit each user to 5 import requests per minute
+    windowMs: 60 * 1000,
+    max: (req) => (req.user?.role === 'admin' ? 50 : 5),
+    store: createRedisStore('import'),
     standardHeaders: true,
     legacyHeaders: false,
-    validate: false,
     keyGenerator: (req) => req.user?.id || req.ip,
     message: {
         success: false,
-        error: "Too many import requests. Please try again after a minute."
+        error: "Too many import requests."
     }
 });
 
 /**
  * 💾 Autosave Rate Limiter
- * Limits silent progress saves during exam.
  */
 const autosaveLimiter = rateLimit({
-    windowMs: 30 * 1000, // 30 seconds
-    max: 20, // 20 requests allowed per 30 sec
+    windowMs: 30 * 1000,
+    max: (req) => (req.user?.role === 'admin' ? 100 : 20),
+    store: createRedisStore('autosave'),
     standardHeaders: true,
     legacyHeaders: false,
-    validate: false,
     keyGenerator: (req) => req.user?.id || req.ip,
-    message: 'Too many autosave requests, please wait'
+    message: 'Too many autosave requests.'
 });
 
-module.exports = { codeExecutionLimiter, telemetryLimiter, importLimiter, autosaveLimiter };
+/**
+ * 🛡️ Secure Action Rate Limiter
+ * Specifically for security-sensitive operations like starting/submitting exams
+ * and heartbeats.
+ */
+const secureActionLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: (req) => {
+        if (req.path.includes('heartbeat')) return 5; // 30s interval = 2/min, 5 is safe
+        return 10; // Start/Submit should be rare
+    },
+    store: createRedisStore('secure_action'),
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => req.user?.id || req.ip,
+    message: {
+        success: false,
+        error: "Too many security-sensitive requests. Please slow down."
+    }
+});
+
+module.exports = { 
+    codeExecutionLimiter, 
+    telemetryLimiter, 
+    importLimiter, 
+    autosaveLimiter,
+    secureActionLimiter
+};

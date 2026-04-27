@@ -47,10 +47,12 @@ router.get('/health', verifyToken, checkRole(['admin', 'super_mentor']), adminCo
 // Audit Logs retrieval (Restricted to Admins)
 router.get('/audit-logs', verifyToken, checkRole(['admin']), adminController.getAuditLogs);
 router.delete('/audit-logs/:id', verifyToken, checkRole(['admin']), adminController.deleteAuditLog);
-
-// 💣 CRITICAL: Bulk clearing audit logs requires HIGHEST authority
-// In a production app, this would be locked behind a second password or MFA.
 router.delete('/audit-logs', verifyToken, checkRole(['admin']), adminController.clearAuditLogs);
+
+// Intelligence Logs (Platform Trails & Critical Errors)
+router.get('/intelligence-logs', verifyToken, checkRole(['admin', 'super_mentor']), adminController.getIntelligenceLogs);
+router.delete('/intelligence-logs/:id', verifyToken, checkRole(['admin']), adminController.deleteIntelligenceLog);
+router.delete('/intelligence-logs', verifyToken, checkRole(['admin']), adminController.clearIntelligenceLogs);
 
 // ─────────────────────────────────────────────────────────
 // Global Settings

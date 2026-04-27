@@ -2,6 +2,7 @@ const ExamSession = require('../models/ExamSession');
 const Exam = require('../models/Exam');
 const User = require('../models/User');
 const AuditLog = require('../models/AuditLog');
+const IntelligenceLog = require('../models/IntelligenceLog');
 const Setting = require('../models/Setting');
 const { asyncHandler } = require('../middlewares/errorMiddleware');
 const axios = require('axios');
@@ -248,6 +249,43 @@ exports.deleteAuditLog = asyncHandler(async (req, res) => {
 exports.clearAuditLogs = asyncHandler(async (req, res) => {
     await AuditLog.deleteMany({});
     res.json({ message: 'All audit logs cleared' });
+});
+
+// ─── Intelligence Logs ───
+exports.getIntelligenceLogs = asyncHandler(async (req, res) => {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const skip = (page - 1) * limit;
+
+    const logs = await IntelligenceLog.find()
+        .populate('user', 'name email role')
+        .sort({ timestamp: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+    const total = await IntelligenceLog.countDocuments();
+
+    res.json({
+        logs,
+        total,
+        page,
+        pages: Math.ceil(total / limit)
+    });
+});
+
+exports.deleteIntelligenceLog = asyncHandler(async (req, res) => {
+    const log = await IntelligenceLog.findByIdAndDelete(req.params.id);
+    if (!log) {
+        res.status(404);
+        throw new Error('Intelligence log not found');
+    }
+    res.json({ message: 'Intelligence log deleted' });
+});
+
+exports.clearIntelligenceLogs = asyncHandler(async (req, res) => {
+    await IntelligenceLog.deleteMany({});
+    res.json({ message: 'All intelligence logs cleared' });
 });
 
 // ═══════════════════════════════════════════════════════════

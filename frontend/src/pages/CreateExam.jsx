@@ -480,7 +480,8 @@ const getColumnMap = (headerRow) => {
         type: cols.indexOf('type'),
         questionText: cols.findIndex(c => c.includes('question') || c.includes('text')),
         options: cols.indexOf('options'),
-        answer: cols.findIndex(c => c.includes('answer') || c.includes('correct')),
+        option1: cols.findIndex(c => c.includes('option1') || c.includes('opt1')),
+        answer: cols.findIndex(c => c.includes('answer') || c.includes('correct') || c.includes('expected')),
         input: cols.indexOf('input'),
         output: cols.indexOf('output'),
         language: cols.indexOf('language'),
@@ -491,6 +492,7 @@ const getColumnMap = (headerRow) => {
 
 const csvRowToQuestion = (cols, map) => {
   // If no map, use legacy/default index-based mapping
+  // Standard format: type(0), question(1), marks(2), opt1(3), opt2(4), opt3(5), opt4(6), answer(7)
   const get = (key, defIdx) => (map && map[key] !== -1) ? cols[map[key]] : cols[defIdx];
   
   const type = (get('type', 0) || '').toLowerCase().trim();
@@ -506,36 +508,49 @@ const csvRowToQuestion = (cols, map) => {
   
   if (normType === 'mcq') {
     let options = [];
-    const optCell = get('options', 2);
-    if (optCell) {
-        // Smart separator detection
-        const seps = [';', '|', '\n', '::']; // Commas are risky as separators inside a CSV cell but we can add as fallback
+    const optCell = get('options', 3); // Default to index 3 (Option1)
+    
+    if (map && map.options !== -1) {
+        // Single cell options column exists
+        const seps = [';', '|', '\n', '::'];
         const foundSep = seps.find(s => optCell.includes(s));
         if (foundSep) {
             options = optCell.split(foundSep).map(o => o.trim()).filter(Boolean);
         } else if (optCell.includes(',')) {
             options = optCell.split(',').map(o => o.trim()).filter(Boolean);
         } else {
-            // Fallback to separate columns (cols 2, 3, 4, 5)
-            options = [cols[2], cols[3], cols[4], cols[5]].filter(Boolean);
+            options = [optCell];
         }
+    } else {
+        // Fallback: look for multiple columns starting at index 3 or map.option1
+        const startIdx = (map && map.option1 !== -1) ? map.option1 : 3;
+        options = [cols[startIdx], cols[startIdx+1], cols[startIdx+2], cols[startIdx+3]].filter(Boolean);
     }
 
-    const answerCell = get('answer', 6);
+    const answerCell = get('answer', 7); // Default to index 7
     let correctOption = 0;
+    
     if (answerCell && answerCell.length === 1 && /^[A-D]$/i.test(answerCell)) {
         correctOption = Math.max(0, ['A','B','C','D'].indexOf(answerCell.toUpperCase()));
+    } else if (answerCell && !isNaN(parseInt(answerCell)) && parseInt(answerCell) >= 0) {
+        // Numeric support (handle both 0-based and 1-based)
+        const val = parseInt(answerCell);
+        if (val >= 1 && val <= options.length) {
+            correctOption = val - 1; // 1-based
+        } else if (val >= 0 && val < options.length) {
+            correctOption = val; // 0-based
+        }
     } else if (answerCell) {
         // Try to match by text
-        const idx = options.findIndex(o => o.toLowerCase() === answerCell.toLowerCase());
+        const idx = options.findIndex(o => o && o.toLowerCase() === answerCell.toLowerCase());
         if (idx !== -1) correctOption = idx;
     }
 
-    return { ...base, type: 'mcq', questionText, options, correctOption, marks: parseInt(get('marks', 7)) || 2 };
+    return { ...base, type: 'mcq', questionText, options, correctOption, marks: parseInt(get('marks', 2)) || 2 };
   }
 
   if (normType === 'short') {
-    return { ...base, type: 'short', questionText, expectedAnswer: get('answer', 2) || '', maxWords: parseInt(cols[3]) || 150, marks: parseInt(get('marks', 4)) || 5 };
+    return { ...base, type: 'short', questionText, expectedAnswer: get('answer', 7) || '', maxWords: parseInt(cols[3]) || 150, marks: parseInt(get('marks', 2)) || 5 };
   }
 
   if (normType === 'coding') {
@@ -561,7 +576,7 @@ const csvRowToQuestion = (cols, map) => {
         language: get('language', 6) || 'javascript', 
         initialCode: get('initialCode', 3) || '', 
         testCases, 
-        marks: parseInt(get('marks', 5)) || 10 
+        marks: parseInt(get('marks', 2)) || 10 
     };
   }
   return null;
@@ -1577,21 +1592,13 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-all duration-500 ${expandedQ === q.id ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/20' : 'bg-surface-hover text-muted group-hover/q:text-primary-500 border border-main'}`}>
                                       <span className="text-xs font-black uppercase">{i + 1}</span>
                                    </div>
-                                   <textarea 
-                                     value={q.questionText} 
-                                     onChange={e => {
-                                       updateQ(q.id, { questionText: e.target.value });
-                                       e.target.style.height = 'auto';
-                                       e.target.style.height = e.target.scrollHeight + 'px';
-                                     }} 
-                                     onFocus={(e) => {
-                                       e.target.style.height = 'auto';
-                                       e.target.style.height = e.target.scrollHeight + 'px';
-                                     }}
-                                     placeholder="Describe your question here..." 
-                                     rows={1}
-                                     className="bg-transparent border-none text-[15px] font-bold text-primary placeholder:text-muted/20 focus:ring-0 w-full p-0 outline-none resize-none overflow-hidden min-h-[24px] leading-relaxed py-1" 
-                                   />
+                                    <textarea 
+                                      value={q.questionText} 
+                                      onChange={e => updateQ(q.id, { questionText: e.target.value })} 
+                                      placeholder="Question summary..." 
+                                      rows={1}
+                                      className="bg-transparent border-none text-[15px] font-bold text-primary placeholder:text-muted/20 focus:ring-0 w-full p-0 outline-none resize-none overflow-hidden min-h-[24px] leading-tight py-1" 
+                                    />
                                    <div className="bg-surface-hover/50 px-4 py-2 rounded-xl shrink-0 border border-main group-hover/q:border-primary-500/20 transition-all">
                                       <span className="text-[10px] font-black text-muted tabular-nums uppercase tracking-widest group-hover/q:text-primary-500 transition-colors">{q.marks} pts</span>
                                    </div>
@@ -1654,7 +1661,34 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                                     )}
                                  </div>
 
-                                 {/* Section 2: Dynamic Type-Specific Area */}
+                                 {/* Section 2: Problem Statement Editor (LeetCode Style) */}
+                                 <div className="px-8 py-8 border-b border-main bg-surface-hover/20">
+                                    <div className="flex items-center justify-between mb-4">
+                                       <label className="text-[10px] font-black text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                                          <div className="w-1.5 h-1.5 rounded-full bg-primary-500 shadow-[0_0_8px_rgba(255,59,0,0.5)]" />
+                                          Problem Statement
+                                       </label>
+                                       <div className="flex items-center gap-3">
+                                          <span className="text-[9px] font-bold text-muted uppercase tracking-widest bg-main px-2 py-1 rounded-lg border border-main">Markdown Enabled</span>
+                                       </div>
+                                    </div>
+                                    <textarea 
+                                       value={q.questionText}
+                                       onChange={e => {
+                                          updateQ(q.id, { questionText: e.target.value });
+                                          e.target.style.height = 'auto';
+                                          e.target.style.height = e.target.scrollHeight + 'px';
+                                       }}
+                                       onFocus={(e) => {
+                                          e.target.style.height = 'auto';
+                                          e.target.style.height = e.target.scrollHeight + 'px';
+                                       }}
+                                       placeholder="### Problem Description\nEnter detailed problem statement here...\n\n### Examples\nInput: ...\nOutput: ...\n\n### Constraints\n- Complexity: O(n)\n- Memory: 256MB"
+                                       className="w-full bg-surface border border-main rounded-[2rem] p-8 text-[15px] leading-relaxed text-primary placeholder:text-muted/20 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/5 transition-all outline-none min-h-[180px] resize-none overflow-hidden shadow-inner"
+                                    />
+                                 </div>
+
+                                 {/* Section 3: Dynamic Type-Specific Area */}
                                  <div className="px-6 py-4">
                                     {q.type === 'mcq' && <McqEditor question={q} updateQ={updateQ} />}
                                     {q.type === 'short' && <ShortEditor question={q} updateQ={updateQ} />}

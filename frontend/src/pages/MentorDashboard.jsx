@@ -1204,6 +1204,13 @@ export default function MentorDashboard() {
             <td className="px-6 py-4">
                <div className="flex items-center gap-4">
                   <button 
+                    onClick={() => navigate(`/mentor/exam/${exam.id || exam._id}/monitoring`)}
+                    className="w-8 h-8 flex items-center justify-center text-muted/50 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-all active:scale-95"
+                    title="Live Monitoring"
+                  >
+                    <Radio size={16} strokeWidth={2} className={exam.status === 'published' || exam.status === 'active' ? 'animate-pulse text-emerald-500' : ''} /> 
+                  </button>
+                  <button 
                     onClick={() => handleTogglePublishResults(exam.id || exam._id, exam.resultsPublished)} 
                     className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all active:scale-95 ${exam.resultsPublished ? 'text-emerald-500 bg-emerald-500/10' : 'text-muted/50 hover:text-emerald-500 hover:bg-emerald-500/10'}`}
                     title={exam.resultsPublished ? "Results visible to students" : "Results hidden from students"}

@@ -29,7 +29,7 @@ const addBulkInviteJobs = async (jobs) => {
         name: 'sendInviteEmail',
         data: job,
         opts: {
-            attempts: 3,
+            attempts: 5,
             backoff: { type: 'exponential', delay: 2000 },
             removeOnComplete: true,  // Auto cleanup from Redis memory
             removeOnFail: false      // Keep failed jobs for debugging
@@ -65,7 +65,7 @@ const setupInviteEmailWorker = () => {
             console.log(`✅ [Worker] Email sent to ${email}`);
         } else {
             // Mark as failed only on final attempt
-            if (job.attemptsMade >= 2) { // 0-indexed, so 2 = 3rd attempt
+            if (job.attemptsMade + 1 >= job.opts.attempts) { 
                 await ExamInvite.findByIdAndUpdate(inviteId, {
                     status: 'failed'
                 });

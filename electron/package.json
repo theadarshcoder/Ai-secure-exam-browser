@@ -1,0 +1,17 @@
+{
+  "name": "vision-secure-browser",
+  "version": "1.0.0",
+  "description": "Secure Browser for VISION Exam Platform",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "dependencies": {
+    "electron-updater": "^6.1.7"
+  },
+  "devDependencies": {
+    "electron": "^28.2.0",
+    "electron-builder": "^24.9.1"
+  }
+}

@@ -297,10 +297,11 @@ exports.verifyInvite = asyncHandler(async (req, res) => {
         throw new Error(GENERIC_ERROR);
     }
 
-    // ─── Device Fingerprinting (Fix #1: No IP) ──────────
+    // ─── Device Fingerprinting (Fix #1: Improved with IP) ──────
     const userAgent = req.headers['user-agent'] || 'unknown';
+    const userIP = req.ip || req.headers['x-forwarded-for'] || 'unknown';
     const secureFingerprint = crypto.createHash('sha256')
-        .update(`${userAgent}-${deviceId || 'no-device'}`)
+        .update(`${userAgent}-${userIP}-${deviceId || 'no-device'}`)
         .digest('hex');
 
     // ─── Tab Reuse / Session Lock (Fix #5) ───────────────

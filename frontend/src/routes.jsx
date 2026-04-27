@@ -15,6 +15,7 @@ import SessionMonitor from './pages/SessionMonitor';
 import StudentResult from './pages/StudentResult';
 import VerifyInvite from './pages/VerifyInvite';
 import StudentIntelligenceDashboard from './pages/StudentIntelligenceDashboard';
+import MentorLiveMonitoring from './pages/MentorLiveMonitoring';
 
 const ThemeEnforcer = () => {
   const { pathname } = useLocation();
@@ -137,6 +138,12 @@ export default function AppRouter() {
           <Route path="/mentor/create-exam" element={
             <ProtectedRoute allowedRoles={['mentor', 'admin', 'super_mentor']}>
               <CreateExam />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/mentor/exam/:examId/monitoring" element={
+            <ProtectedRoute allowedRoles={['mentor', 'admin', 'super_mentor']}>
+              <MentorLiveMonitoring />
             </ProtectedRoute>
           } />
           

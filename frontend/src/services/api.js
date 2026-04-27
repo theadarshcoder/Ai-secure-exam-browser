@@ -16,6 +16,23 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // ─── 🛡️ SECURE CLIENT HEADERS (V4 Hardened) ───
+    if (window.electronAPI) {
+      const fingerprint = window.electronAPI.getFingerprint();
+      const secretKey = await window.electronAPI.getSecretKey();
+      const nonce = `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+      const timestamp = Date.now().toString();
+
+      config.headers['X-App-Mode'] = 'electron';
+      config.headers['X-Electron-Key'] = secretKey;
+      config.headers['X-Nonce'] = nonce;
+      config.headers['X-Timestamp'] = timestamp;
+      config.headers['X-Fingerprint-Platform'] = fingerprint.platform;
+      config.headers['X-Fingerprint-Width'] = fingerprint.width;
+      config.headers['X-Fingerprint-Height'] = fingerprint.height;
+    }
+
     return config;
   },
   (error) => Promise.reject(error)
@@ -46,28 +63,49 @@ export const getCurrentUserId = () => {
 
 let isRedirecting = false; // 🛡️ Fix Bug 4: Prevent infinite redirect flicker
 
-// Response interceptor for handling 401s
+// Response interceptor for handling 401s and Silent Refresh
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response) {
-      if (error.response.status === 401 && !error.config?.url?.includes('/login')) {
-        if (!isRedirecting) {
-          isRedirecting = true;
-          // 🛡️ Selective clear (Keep device ID for fingerprinting consistency)
-          sessionStorage.clear(); 
-          localStorage.removeItem('vision_token');
-          localStorage.removeItem('vision_role');
-          localStorage.removeItem('vision_id');
-          
-          window.location.href = '/login';
-        }
-      } else {
-        const errorId = error.response.data?.errorId;
-        const message = getErrorMessage(error);
-        if (errorId) console.error(`[Reference ID: ${errorId}] ${message}`);
+  async (error) => {
+    const originalRequest = error.config;
+
+    // 🛡️ Handle Token Expiry (Silent Refresh)
+    if (error.response?.status === 403 && error.response.data?.code === 'TOKEN_EXPIRED' && !originalRequest._retry) {
+      originalRequest._retry = true;
+      try {
+        const refreshToken = localStorage.getItem('vision_refresh_token');
+        if (!refreshToken) throw new Error('No refresh token');
+
+        const { data } = await axios.post(`${API_BASE_URL}/api/auth/refresh`, { refreshToken });
+        
+        // Update storage
+        sessionStorage.setItem('vision_token', data.accessToken);
+        
+        // Retry original request with new token
+        originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+        return api(originalRequest);
+      } catch (refreshError) {
+        console.error('🛡️ Silent Refresh Failed:', refreshError);
+        sessionStorage.clear();
+        localStorage.removeItem('vision_refresh_token');
+        window.location.href = '/login';
       }
     }
+
+    // 🛡️ Handle Unauthorized (401)
+    if (error.response?.status === 401 && !error.config?.url?.includes('/login')) {
+      if (!isRedirecting) {
+        isRedirecting = true;
+        sessionStorage.clear(); 
+        localStorage.removeItem('vision_refresh_token');
+        window.location.href = '/login';
+      }
+    } else {
+      const errorId = error.response?.data?.errorId;
+      const message = getErrorMessage(error);
+      if (errorId) console.error(`[Reference ID: ${errorId}] ${message}`);
+    }
+    
     return Promise.reject(error);
   }
 );

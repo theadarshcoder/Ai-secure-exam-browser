@@ -267,10 +267,11 @@ const LoginPage = () => {
         deviceId
       });
 
-      const { token, user: userData } = response.data;
+      const { accessToken, refreshToken, user: userData } = response.data;
 
       // Store real session data
-      sessionStorage.setItem('vision_token', token);
+      sessionStorage.setItem('vision_token', accessToken);
+      localStorage.setItem('vision_refresh_token', refreshToken);
       sessionStorage.setItem('vision_id', userData.id || userData._id);
       sessionStorage.setItem('vision_role', userData.role);
       sessionStorage.setItem('vision_email', userData.email);

@@ -149,23 +149,33 @@ const globalLimiter = rateLimit({
 
 // Auth Rate Limiter — Strict limits for Login/Register endpoints
 const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
+    windowMs: 5 * 60 * 1000, // 🛡️ Reduced window to 5 minutes
+    max: 10, // 🛡️ Reduced attempts to 10
     store: createRedisStore('auth'),
     message: {
-        error: 'Too many login attempts! Please try again in 15 minutes.',
-        retryAfter: '15 minutes'
+        error: 'Too many login attempts! Please try again in 5 minutes.',
+        retryAfter: '5 minutes'
     },
     standardHeaders: true,
     legacyHeaders: false
 });
 
-// Relaxed Rate Limiter for Auto-Save (protects against self-DDOS without blocking legitimate progress saves)
+// Relaxed Rate Limiter for Auto-Save
 const autoSaveLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 1000, // Shared with global, but isolated for this endpoint
+    max: 1000, 
     store: createRedisStore('autosave'),
     message: { error: 'Too many save attempts. Slow down!' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+// 🛡️ Telemetry Limiter — Prevent log spamming
+const telemetryLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000,
+    max: 20, // 🛡️ Max 20 logs per minute per user
+    store: createRedisStore('telemetry'),
+    message: { error: 'Stop spamming logs!' },
     standardHeaders: true,
     legacyHeaders: false
 });
@@ -271,6 +281,7 @@ io.use(async (socket, next) => {
 app.get('/', (req, res) => res.send('<h1>Server & Sockets working perfectly 🔒</h1>'));
 
 // Auth routes — Rate limiter EXTRA tight
+app.use('/api/auth/verify-invite', inviteVerifyLimiter);
 app.use('/api/auth', authLimiter, authRoutes);
 
 // 🛡️ CRITICAL: Apply relaxed limiter to save-progress route specifically 
@@ -280,7 +291,7 @@ app.use('/api/exams/save-progress', autoSaveLimiter);
 // Protected routes — Global limiter active
 app.use('/api/exams', globalLimiter, examRoutes);
 app.use('/api/admin', globalLimiter, adminRoutes);
-app.use('/api/session', globalLimiter, sessionRoutes);
+app.use('/api/session', verifyToken, telemetryLimiter, sessionRoutes);
 app.use('/api/ai', globalLimiter, aiRoutes);
 app.use('/api/upload', verifyToken, globalLimiter, uploadRoutes);
 

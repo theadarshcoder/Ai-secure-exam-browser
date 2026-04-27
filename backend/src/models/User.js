@@ -10,7 +10,7 @@ const userSchema = new mongoose.Schema({
         enum: ['student', 'mentor', 'super_mentor', 'admin'],
         default: 'student' 
     },
-    currentSessionToken: { type: String },
+    refreshToken: { type: String },
     currentDeviceId: { type: String },
     permissions: [{ type: String }],
     // Identity Verification (eKYC)

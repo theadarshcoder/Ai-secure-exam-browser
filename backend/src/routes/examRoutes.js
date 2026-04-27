@@ -8,7 +8,7 @@ const { verifyToken, checkRole } = require('../middlewares/authMiddleware');
 const examController = require('../controllers/examController');
 const telemetryController = require('../controllers/telemetryController');
 const inviteController = require('../controllers/inviteController');
-const { codeExecutionLimiter, telemetryLimiter, importLimiter, autosaveLimiter } = require('../middlewares/rateLimiter');
+const { codeExecutionLimiter, telemetryLimiter, importLimiter, autosaveLimiter, secureActionLimiter } = require('../middlewares/rateLimiter');
 
 // ═══════════════════════════════════════════════════════════
 //  📊 Telemetry & Diagnostics
@@ -54,7 +54,7 @@ router.get('/admin-stats', verifyToken, checkRole(['admin']), examController.get
 router.get('/active', verifyToken, examController.getActiveExams);
 
 // Exam start karo — naya session banega ya purana resume hoga
-router.post('/start', verifyToken, examController.startExam);
+router.post('/start', verifyToken, secureActionLimiter, examController.startExam);
 
 // ⭐ Live Progress Save — har 30 sec mein auto-call hoga
 // Isse answers, current question, remaining time sab silently save hota hai
@@ -64,7 +64,7 @@ router.post('/save-progress', verifyToken, autosaveLimiter, examController.saveP
 router.get('/resume/:examId', verifyToken, examController.resumeExam);
 
 // Exam submit karo — auto-scoring hogi, results milenge
-router.post('/submit', verifyToken, examController.submitExam);
+router.post('/submit', verifyToken, secureActionLimiter, examController.submitExam);
 
 // 🆕 Student Result — Student view of their own performance breakdown
 router.get('/student-result/:examId', verifyToken, examController.getStudentResult);
@@ -81,8 +81,14 @@ router.put('/terminate/:sessionId', verifyToken, checkRole(['admin', 'super_ment
 // Proctoring violation log karo (Tab Switch, Face Not Detected, etc.)
 router.post('/incident', verifyToken, examController.logIncident);
 
+// 💓 Heartbeat — Continuous secure client verification
+router.post('/heartbeat', verifyToken, secureActionLimiter, examController.heartbeat);
+
 // Student requests help
 router.post('/help', verifyToken, examController.requestHelp);
+
+// 🔍 Live Monitoring — Admin view of all active sessions
+router.get('/live-monitoring/:id', verifyToken, checkRole(['admin', 'super_mentor', 'mentor']), examController.getLiveMonitoringData);
 
 // Exam details (questions without correct answers — security)
 router.get('/mentor/:id', verifyToken, checkRole(['admin', 'super_mentor', 'mentor']), examController.getMentorExamById);

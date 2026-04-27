@@ -14,24 +14,24 @@ const TTL_ACTIVE_SESSION = 21600; // 6 hours for ongoing exams
 const TTL_API_CACHE = 60; // 60 seconds for dashboard data
 
 /**
- * 🔑 Save user session token to Redis
+ * 🔑 Save user session token and permissions to Redis
  */
-const saveUserSession = async (userId, token) => {
+const saveUserSession = async (userId, token, permissions = []) => {
     const redis = getRedisClient();
     if (!redis) return;
 
     try {
         const key = `${SESSION_PREFIX}${userId}`;
-        // ioredis syntax: .set(key, value, 'EX', ttl)
-        await redis.set(key, token, 'EX', DEFAULT_TTL);
-        console.log(`📡 Redis: Cached session for user ${userId}`);
+        const sessionData = JSON.stringify({ token, permissions });
+        await redis.set(key, sessionData, 'EX', DEFAULT_TTL);
+        console.log(`📡 Redis: Cached session & permissions for user ${userId}`);
     } catch (err) {
         console.warn('⚠️  Redis: Failed to save user session:', err.message);
     }
 };
 
 /**
- * 🔍 Retrieve user session token from Redis
+ * 🔍 Retrieve user session data from Redis
  */
 const getUserSession = async (userId) => {
     const redis = getRedisClient();
@@ -39,7 +39,15 @@ const getUserSession = async (userId) => {
 
     try {
         const key = `${SESSION_PREFIX}${userId}`;
-        return await redis.get(key);
+        const data = await redis.get(key);
+        if (!data) return null;
+        
+        // Handle legacy string-only sessions or new JSON sessions
+        try {
+            return JSON.parse(data);
+        } catch (e) {
+            return { token: data, permissions: [] };
+        }
     } catch (err) {
         console.warn('⚠️  Redis: Failed to retrieve session:', err.message);
         return null;

@@ -83,7 +83,6 @@ exports.login = asyncHandler(async (req, res) => {
     }
 
     let searchEmail = email.trim();
-    // 🛡️ Remove hardcoded backdoor logic (Bug 7)
 
     const user = await User.findOne({ email: searchEmail });
     if (!user) {
@@ -103,7 +102,6 @@ exports.login = asyncHandler(async (req, res) => {
             const io = req.app.get('io');
             if (io) {
                 console.log(`🔒 Anti-Cheating: Disconnecting previous session for ${user.email} (New device detected)`);
-                // 🛡️ Security Fix: Use room for previous device and ensure it clears before new token is valid
                 io.to(`user_${user._id.toString()}`).emit('force_logout', {
                     message: 'Security Alert: Account accessed from another device. Your session has been terminated.',
                     code: 'SESSION_REPLACED'
@@ -114,7 +112,6 @@ exports.login = asyncHandler(async (req, res) => {
     }
 
     // ✨ MASTER FEATURE: Role resolution logic
-    // Admin can impersonate any role. Super Mentor logs in via the "Mentor" tab.
     let finalRole = user.role;
     const ROLE_FAMILY = {
         'super_mentor': 'mentor'
@@ -123,41 +120,46 @@ exports.login = asyncHandler(async (req, res) => {
     if (user.role === 'admin' && requestedRole) {
         finalRole = requestedRole;
     } else if (requestedRole && user.role !== requestedRole) {
-        // Allow login if the user's role belongs to the same family as the requested role
         const family = ROLE_FAMILY[user.role];
         if (!family || family !== requestedRole) {
             res.status(403);
             throw new Error(`Your account is registered as '${user.role}', but you selected '${requestedRole}'!`);
         }
-        // Keep the real role (e.g., super_mentor) for permission checks
         finalRole = user.role;
     }
 
-    const token = jwt.sign(
+    // 🛡️ Optimized JWT Payload: Permissions removed to save header space
+    const accessToken = jwt.sign(
         { 
             id: user._id, 
             email: user.email, 
-            role: user.role,         // 🛡️ Fix Bug 4: Always use the REAL role for API access
-            displayRole: finalRole,  // Keep finalRole for frontend UI if needed
-            permissions: user.permissions || [] 
+            role: user.role,         
+            displayRole: finalRole 
         },
         process.env.JWT_SECRET,
-        { expiresIn: '24h' }
+        { expiresIn: '15m' } 
     );
 
-    user.currentSessionToken = token;
+    const refreshToken = jwt.sign(
+        { id: user._id },
+        process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
+        { expiresIn: '7d' } 
+    );
+
+    user.refreshToken = refreshToken;
     await user.save();
 
-    // ⚡ SYNC TO CACHE: Scalability guard (Bug 1: Fail-safe fallback)
+    // ⚡ SYNC TO CACHE: Redis handles active session tracking & permissions
     try {
-        await cacheService.saveUserSession(user._id, token);
+        await cacheService.saveUserSession(user._id, accessToken, user.permissions);
     } catch (cacheErr) {
         console.warn('🛡️ Cache sync failed during login (Redis down):', cacheErr.message);
     }
 
     res.json({
         message: 'Login Successful!',
-        token,
+        accessToken,
+        refreshToken,
         user: {
             id: user._id,
             name: user.name,
@@ -169,29 +171,60 @@ exports.login = asyncHandler(async (req, res) => {
 });
 
 // ─── POST /api/auth/logout ────────────────────────────────
-// User logout - clears currentSessionToken
 exports.logout = asyncHandler(async (req, res) => {
     const userId = req.user.id;
     
     const user = await User.findById(userId);
-    if (!user) {
-        res.status(404);
-        throw new Error('User not found');
+    if (user) {
+        user.refreshToken = null;
+        await user.save();
     }
-    
-    // Clear the session token
-    user.currentSessionToken = null;
-    await user.save();
 
-    // ⚡ SYNC TO CACHE: Scalability guard (Bug 1: Fail-safe fallback)
     try {
         await cacheService.removeUserSession(userId);
     } catch (cacheErr) {
         console.warn('🛡️ Cache sync failed during logout (Redis down):', cacheErr.message);
     }
     
-    res.json({
-        message: 'Logout successful',
-        timestamp: new Date()
-    });
+    res.json({ message: 'Logout successful' });
+});
+
+// ─── POST /api/auth/refresh ───────────────────────────────
+exports.refresh = asyncHandler(async (req, res) => {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+        res.status(401);
+        throw new Error('Refresh Token is required!');
+    }
+
+    try {
+        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
+        const user = await User.findById(decoded.id);
+
+        if (!user || user.refreshToken !== refreshToken) {
+            res.status(403);
+            throw new Error('Invalid or expired Refresh Token');
+        }
+
+        // Generate new Access Token (Optimized payload)
+        const accessToken = jwt.sign(
+            { 
+                id: user._id, 
+                email: user.email, 
+                role: user.role,
+                displayRole: user.role
+            },
+            process.env.JWT_SECRET,
+            { expiresIn: '15m' }
+        );
+
+        // Sync new token to Redis with permissions
+        await cacheService.saveUserSession(user._id, accessToken, user.permissions);
+
+        res.json({ accessToken });
+    } catch (error) {
+        res.status(403);
+        throw new Error('Refresh Token validation failed');
+    }
 });

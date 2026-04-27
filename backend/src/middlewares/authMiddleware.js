@@ -18,29 +18,21 @@ const verifyToken = async (req, res, next) => {
         }
 
         if (cachedToken) {
-            if (cachedToken !== token) {
+            if (cachedToken.token !== token) {
                 return res.status(401).json({ 
                     message: "Security Alert: This session has been terminated because you logged in from another device.",
                     code: "SESSION_COLLISION" 
                 });
             }
+            // 🛡️ Attach cached permissions to req.user
+            decoded.permissions = cachedToken.permissions || [];
         } else {
-            // 🔄 CACHE MISS / REDIS DOWN: Fetch from DB & Backfill
-            const user = await User.findById(decoded.id);
+            // ⚡ REDIS DOWN / MISS: Fallback to MongoDB
+            const user = await User.findById(decoded.id).select('permissions');
             if (!user) {
                 return res.status(403).json({ message: "User account not found" });
             }
-            // Security Fix: Strict session check (reject if token in DB is null/empty or mismatch)
-            if (!user.currentSessionToken || user.currentSessionToken !== token) {
-                return res.status(401).json({ 
-                    message: "Session expired or terminated. Please login again.",
-                    code: "SESSION_TERMINATED" 
-                });
-            }
-            // Backfill cache (Non-blocking)
-            cacheService.saveUserSession(decoded.id, token).catch(e => 
-                console.error('🛡️ Cache Backfill Failed:', e.message)
-            );
+            decoded.permissions = user.permissions || [];
         }
         
         req.user = decoded;
@@ -76,8 +68,8 @@ const checkRole = (requiredRoles) => {
 
 const checkPermission = (requiredPermission) => {
     return (req, res, next) => {
-        // ⚡ SCALING: Use permissions directly from the JWT-decoded user object
-        // This avoids a database hit (User.findById) on every request.
+        // ⚡ SCALING: Permissions are attached to req.user by verifyToken (via Redis or DB)
+        // This keeps the JWT payload small and allows real-time permission updates.
         const { role, permissions } = req.user;
 
         if (role === 'admin') return next();

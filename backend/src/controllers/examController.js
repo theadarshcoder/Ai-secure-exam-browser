@@ -12,6 +12,7 @@ const { addCodeEvaluationJob } = require('../queues/codeGradingQueue');
 const { addFrontendEvaluationJob } = require('../queues/frontendGradingQueue');
 const { getCache, setCache, clearCache, clearPattern, TTL_API_CACHE } = require('../services/cacheService');
 const Setting = require('../models/Setting');
+const { verifySecureRequest } = require('../utils/securityUtils');
 
 // ─────────────── POST /api/exams/create ───────────────
 // Mentor/Admin creates a new exam and saves it to MongoDB
@@ -513,6 +514,40 @@ exports.startExam = asyncHandler(async (req, res) => {
         requireIDVerification: true
     };
 
+    // ─── 🛡️ ENTERPRISE SECURE CLIENT VERIFICATION (V4) ───
+    const fingerprint = {
+        userAgent: req.headers['user-agent'],
+        platform: req.headers['x-fingerprint-platform'],
+        width: req.headers['x-fingerprint-width'],
+        height: req.headers['x-fingerprint-height']
+    };
+    const electronKey = req.headers['x-electron-key'];
+    const nonce = req.headers['x-nonce'];
+    const timestamp = req.headers['x-timestamp'];
+    const isElectron = req.headers['x-app-mode'] === 'electron';
+
+    const verification = await verifySecureRequest(electronKey, fingerprint, nonce, timestamp, process.env.ELECTRON_SECRET);
+
+    if (isElectron && !verification.valid) {
+        res.status(403);
+        throw new Error(`Secure Client Verification Failed: ${verification.reason}`);
+    }
+
+    if (!isElectron) {
+        res.status(403);
+        throw new Error('This exam requires the Vision Secure Browser.');
+    }
+
+    const secureMeta = {
+        isSecureClient: true,
+        verifiedAt: new Date(),
+        client: 'electron',
+        userAgent: fingerprint.userAgent,
+        platform: fingerprint.platform,
+        resolution: `${fingerprint.width}x${fingerprint.height}`,
+        baselineFingerprint: `${fingerprint.userAgent}|${fingerprint.platform}|${fingerprint.width}|${fingerprint.height}`
+    };
+
     // Step 1: Check if a session already exists
     let session = await ExamSession.findOne({ exam: examId, student: studentId });
     
@@ -626,7 +661,8 @@ exports.startExam = asyncHandler(async (req, res) => {
         questionStates: initialStates,
         remainingTimeSeconds: exam.duration * 60,   // Convert minutes to seconds
         answers: {},
-        resumeCount: 0
+        resumeCount: 0,
+        secureMeta: secureMeta
     });
     await session.save();
 
@@ -723,6 +759,57 @@ exports.saveProgress = asyncHandler(async (req, res) => {
     if (!session) {
         res.status(404);
         throw new Error('Session not found. Please start the exam first.');
+    }
+
+    // 🛡️ RUNTIME SECURITY: Continuous Verification (V4)
+    const fingerprint = {
+        userAgent: req.headers['user-agent'],
+        platform: req.headers['x-fingerprint-platform'],
+        width: req.headers['x-fingerprint-width'],
+        height: req.headers['x-fingerprint-height']
+    };
+    const verification = await verifySecureRequest(
+        req.headers['x-electron-key'], 
+        fingerprint, 
+        req.headers['x-nonce'], 
+        req.headers['x-timestamp'],
+        process.env.ELECTRON_SECRET
+    );
+
+    // 🛡️ LIVENESS BINDING: Check if heartbeat was received in last 90 seconds
+    const lastHeartbeat = session.secureMeta?.verifiedAt;
+    const isAlive = lastHeartbeat && (Date.now() - new Date(lastHeartbeat).getTime() < 90000);
+
+    if (!session.secureMeta?.isSecureClient || !verification.valid || !isAlive) {
+        const reason = !isAlive ? 'Secure session expired (Heartbeat lost)' : verification.reason;
+        res.status(403);
+        throw new Error(`Security Violation: ${reason || 'Untrusted environment'}`);
+    }
+
+    // Baseline Fingerprint Check with Tolerance (+/- 50px)
+    const [baseUA, basePlatform, baseWidth, baseHeight] = (session.secureMeta.baselineFingerprint || "").split('|');
+    const widthDiff = Math.abs(parseInt(baseWidth) - parseInt(fingerprint.width));
+    const heightDiff = Math.abs(parseInt(baseHeight) - parseInt(fingerprint.height));
+    const isUAMatch = baseUA === fingerprint.userAgent;
+    const isPlatformMatch = basePlatform === fingerprint.platform;
+
+    if (!isUAMatch || !isPlatformMatch || widthDiff > 50 || heightDiff > 50) {
+        // Soft Escalation: Flag instead of Block for resolution/minor setup changes
+        session.status = 'flagged';
+        session.violations.push({
+            type: 'Environment Change',
+            severity: 'medium',
+            details: `Fingerprint mismatch: ${widthDiff}px width diff, ${heightDiff}px height diff`,
+            timestamp: new Date()
+        });
+        await session.save();
+        
+        // We still allow progress save but with a warning in response
+        return res.json({ 
+            success: true, 
+            warning: 'Security environment setup changed. Incident flagged.',
+            status: 'flagged' 
+        });
     }
 
     // 🏎️ Fix 5: Auto-Save Race Condition
@@ -916,6 +1003,25 @@ exports.submitExam = asyncHandler(async (req, res) => {
     if (!session) {
         res.status(404);
         throw new Error('Active session not found');
+    }
+
+    // 🛡️ RUNTIME SECURITY: Continuous Verification (V4)
+    const fingerprint = {
+        userAgent: req.headers['user-agent'],
+        platform: req.headers['x-fingerprint-platform'],
+        width: req.headers['x-fingerprint-width'],
+        height: req.headers['x-fingerprint-height']
+    };
+    const verification = await verifySecureRequest(
+        req.headers['x-electron-key'], 
+        fingerprint, 
+        req.headers['x-nonce'], 
+        process.env.ELECTRON_SECRET
+    );
+
+    if (!session.secureMeta?.isSecureClient || !verification.valid) {
+        res.status(403);
+        throw new Error(`Submission Blocked: ${verification.reason || 'Untrusted environment'}`);
     }
 
     // Bug Fix: Submission Lock (Guardrail 3)
@@ -1631,6 +1737,25 @@ exports.runCode = asyncHandler(async (req, res) => {
             res.status(403);
             throw new Error('Unauthorized execution. Start the exam session first.');
         }
+
+        // 🛡️ RUNTIME SECURITY: Continuous Verification (V4)
+        const fingerprint = {
+            userAgent: req.headers['user-agent'],
+            platform: req.headers['x-fingerprint-platform'],
+            width: req.headers['x-fingerprint-width'],
+            height: req.headers['x-fingerprint-height']
+        };
+        const verification = await verifySecureRequest(
+            req.headers['x-electron-key'], 
+            fingerprint, 
+            req.headers['x-nonce'], 
+            process.env.ELECTRON_SECRET
+        );
+
+        if (!session.secureMeta?.isSecureClient || !verification.valid) {
+            res.status(403);
+            throw new Error(`Execution Blocked: ${verification.reason || 'Untrusted environment'}`);
+        }
         if (session.status === 'submitted' || session.status === 'auto_submitted') {
             res.status(403);
             throw new Error('Unauthorized execution. Exam has already been submitted.');
@@ -1975,4 +2100,122 @@ exports.terminateSession = asyncHandler(async (req, res) => {
     console.log(`🚫 Admin Terminated session: ${sessionId} for student ${session.student}`);
 
     res.json({ success: true, message: 'Session terminated successfully.' });
+});
+
+// 💓 Heartbeat — Re-verifies secure client status periodically
+exports.heartbeat = asyncHandler(async (req, res) => {
+    const { examId } = req.body;
+    const studentId = req.user.id;
+
+    // 1. Fetch Session
+    const session = await ExamSession.findOne({ exam: examId, student: studentId });
+    if (!session) {
+        res.status(404);
+        throw new Error('Active session not found');
+    }
+
+    // 2. Verify Secure Client Headers (V4 Hardened)
+    const fingerprint = {
+        userAgent: req.headers['user-agent'],
+        platform: req.headers['x-fingerprint-platform'],
+        width: req.headers['x-fingerprint-width'],
+        height: req.headers['x-fingerprint-height']
+    };
+    const electronKey = req.headers['x-electron-key'];
+    const nonce = req.headers['x-nonce'];
+    const timestamp = req.headers['x-timestamp'];
+    const isElectron = req.headers['x-app-mode'] === 'electron';
+
+    const verification = await verifySecureRequest(electronKey, fingerprint, nonce, timestamp, process.env.ELECTRON_SECRET);
+
+    if (!isElectron || !verification.valid) {
+        // 🚨 CRITICAL SEVERITY: Immediate Block
+        session.violations.push({
+            type: 'Security Breach',
+            severity: 'critical',
+            details: `Heartbeat failed: ${verification.reason || 'Non-secure client'}`,
+            timestamp: new Date()
+        });
+        session.status = 'blocked'; // Immediate block
+        session.blockReason = `Critical Security Violation: ${verification.reason || 'Environment Tampering'}`;
+        await session.save();
+
+        res.status(403);
+        throw new Error(`Heartbeat Verification Failed: ${verification.reason}`);
+    }
+
+    // Baseline Check in Heartbeat with Tolerance
+    const [baseUA, basePlatform, baseWidth, baseHeight] = (session.secureMeta.baselineFingerprint || "").split('|');
+    const widthDiff = Math.abs(parseInt(baseWidth) - parseInt(fingerprint.width));
+    const heightDiff = Math.abs(parseInt(baseHeight) - parseInt(fingerprint.height));
+
+    if (baseUA && (baseUA !== fingerprint.userAgent || basePlatform !== fingerprint.platform || widthDiff > 50 || heightDiff > 50)) {
+         session.status = 'flagged';
+         session.violations.push({
+            type: 'Environment Tampering',
+            severity: 'high',
+            details: `Fingerprint deviation detected during heartbeat: ${widthDiff}px / ${heightDiff}px`,
+            timestamp: new Date()
+         });
+         await session.save();
+    }
+
+    // 3. Update Session Vitality
+    session.secureMeta.verifiedAt = new Date();
+    session.lastSavedAt = new Date();
+    await session.save();
+
+    res.json({ 
+        success: true, 
+        status: session.status,
+        serverTime: new Date()
+    });
+});
+
+// 🔍 Live Monitoring Data — Admin view of all active sessions with Risk Scores
+exports.getLiveMonitoringData = asyncHandler(async (req, res) => {
+    const { id: examId } = req.params;
+
+    const sessions = await ExamSession.find({ exam: examId })
+        .populate('student', 'name email profileImage')
+        .select('student status startedAt lastSavedAt violations secureMeta remainingTimeSeconds');
+
+    const liveData = sessions.map(session => {
+        // 🧠 RISK SCORE ENGINE (V1)
+        // risk = tabSwitch * 2 + violations * 3 + heartbeat_miss * 5 + fingerprint_change * 10
+        const tabSwitches = session.violations.filter(v => v.type === 'Tab Switched').length;
+        const securityBreaches = session.violations.filter(v => v.type === 'Security Breach').length;
+        const environmentChanges = session.violations.filter(v => v.type === 'Environment Change' || v.type === 'Environment Tampering').length;
+        
+        const heartbeatMissed = (Date.now() - new Date(session.secureMeta?.verifiedAt || 0)) > 60000 ? 1 : 0;
+
+        let riskScore = (tabSwitches * 2) + (session.violations.length * 3) + (heartbeatMissed * 5) + (environmentChanges * 10) + (securityBreaches * 15);
+        
+        // Cap risk score at 100
+        riskScore = Math.min(riskScore, 100);
+
+        return {
+            id: session._id,
+            student: {
+                id: session.student?._id,
+                name: session.student?.name || 'Unknown',
+                email: session.student?.email,
+                image: session.student?.profileImage
+            },
+            status: session.status,
+            riskScore,
+            isOnline: (Date.now() - new Date(session.lastSavedAt || 0)) < 45000, // Active in last 45s
+            violationsCount: session.violations.length,
+            startedAt: session.startedAt,
+            remainingTime: session.remainingTimeSeconds,
+            secureClient: session.secureMeta?.isSecureClient || false,
+            resolution: session.secureMeta?.resolution
+        };
+    });
+
+    res.json({
+        success: true,
+        count: liveData.length,
+        data: liveData
+    });
 });
