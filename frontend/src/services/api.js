@@ -11,7 +11,7 @@ const api = axios.create({
 
 // Request interceptor for attaching JWT
 api.interceptors.request.use(
-  (config) => {
+  async (config) => {
     const token = sessionStorage.getItem('vision_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
