@@ -657,7 +657,7 @@ export default function MentorDashboard() {
       fetchDataForTab('Results & Reports');
     } catch (err) {
       console.error('Failed to submit grades:', err);
-      toast.error('Failed to submit grades: ' + (err.message || 'Unknown error'));
+      toast.error('Failed to submit grades: ' + (err.message || err || 'Unknown error'));
     } finally {
       setTimeout(() => setSubmitStatus('idle'), 500);
     }
@@ -727,7 +727,7 @@ export default function MentorDashboard() {
         toast.success(`Successfully verified all ${visiblePending.length} candidates!`, { id: loadingToast });
       }
     } catch (err) {
-      toast.error('Bulk operation failed: ' + (err.message || 'Unknown error'), { id: loadingToast });
+      toast.error('Bulk operation failed: ' + (err.message || err || 'Unknown error'), { id: loadingToast });
     } finally {
       setVerifyingAll(false);
     }

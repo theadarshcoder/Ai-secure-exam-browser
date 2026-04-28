@@ -167,7 +167,7 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
       if (onRefresh) onRefresh();
       onClose();
     } catch (err) {
-      toast.error('Failed to save evaluation: ' + (err.message || 'Unknown error'));
+      toast.error('Failed to save evaluation: ' + (err.message || err || 'Unknown error'));
     } finally {
       setIsSubmitting(false);
     }
@@ -813,7 +813,7 @@ export default function AdminDashboard() {
              }
              fetchDataForTab('Users');
          } catch(err) {
-             toast.error('Import failed: ' + (err.message || "Unknown Error"));
+             toast.error('Import failed: ' + (err.message || err || "Unknown Error"));
          }
      };
      reader.readAsText(file);
@@ -1866,7 +1866,7 @@ export default function AdminDashboard() {
         toast.success(`Successfully verified all ${visiblePending.length} candidates!`, { id: loadingToast });
       }
     } catch (err) {
-      toast.error('Bulk operation failed: ' + (err.message || 'Unknown error'), { id: loadingToast });
+      toast.error('Bulk operation failed: ' + (err.message || err || 'Unknown error'), { id: loadingToast });
     } finally {
       setVerifyingAll(false);
     }
