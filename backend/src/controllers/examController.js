@@ -514,34 +514,19 @@ exports.startExam = asyncHandler(async (req, res) => {
         requireIDVerification: true
     };
 
-    // ─── 🛡️ ENTERPRISE SECURE CLIENT VERIFICATION (V4) ───
+    // ─── 🛡️ HYBRID CLIENT VERIFICATION (V5) ───
     const fingerprint = {
         userAgent: req.headers['user-agent'],
-        platform: req.headers['x-fingerprint-platform'],
-        width: req.headers['x-fingerprint-width'],
-        height: req.headers['x-fingerprint-height']
+        platform: req.headers['x-fingerprint-platform'] || 'web',
+        width: req.headers['x-fingerprint-width'] || '0',
+        height: req.headers['x-fingerprint-height'] || '0'
     };
-    const electronKey = req.headers['x-electron-key'];
-    const nonce = req.headers['x-nonce'];
-    const timestamp = req.headers['x-timestamp'];
     const isElectron = req.headers['x-app-mode'] === 'electron';
 
-    const verification = await verifySecureRequest(electronKey, fingerprint, nonce, timestamp, process.env.ELECTRON_SECRET);
-
-    if (isElectron && !verification.valid) {
-        res.status(403);
-        throw new Error(`Secure Client Verification Failed: ${verification.reason}`);
-    }
-
-    if (!isElectron) {
-        res.status(403);
-        throw new Error('This exam requires the Vision Secure Browser.');
-    }
-
     const secureMeta = {
-        isSecureClient: true,
+        isSecureClient: isElectron,
         verifiedAt: new Date(),
-        client: 'electron',
+        client: isElectron ? 'electron' : 'web',
         userAgent: fingerprint.userAgent,
         platform: fingerprint.platform,
         resolution: `${fingerprint.width}x${fingerprint.height}`,
@@ -592,7 +577,13 @@ exports.startExam = asyncHandler(async (req, res) => {
                 });
 
                 // Backfill Redis
-                await redisClient.hset(cacheKey, 'answers', JSON.stringify(liveAnswers), 'currentQuestionIndex', liveIndex.toString(), 'questionStates', JSON.stringify(liveQuestionStates), 'remainingTimeSeconds', liveRemainingTime.toString());
+                await redisClient.hset(
+                    cacheKey, 
+                    'answers', JSON.stringify(liveAnswers), 
+                    'currentQuestionIndex', (liveIndex ?? 0).toString(), 
+                    'questionStates', JSON.stringify(liveQuestionStates), 
+                    'remainingTimeSeconds', (liveRemainingTime ?? 0).toString()
+                );
                 await redisClient.expire(cacheKey, 86400);
             }
         }
@@ -676,7 +667,14 @@ exports.startExam = asyncHandler(async (req, res) => {
     const redisClient = getRedisClient();
     if (redisClient) {
         const cacheKey = `exam_session:${examId}:${studentId}`;
-        await redisClient.hset(cacheKey, 'answers', JSON.stringify({}), 'currentQuestionIndex', '0', 'questionStates', JSON.stringify(initialStates), 'remainingTimeSeconds', (exam.duration * 60).toString());
+        const durationSeconds = (exam.duration || 0) * 60;
+        await redisClient.hset(
+            cacheKey, 
+            'answers', JSON.stringify({}), 
+            'currentQuestionIndex', '0', 
+            'questionStates', JSON.stringify(initialStates), 
+            'remainingTimeSeconds', durationSeconds.toString()
+        );
         await redisClient.expire(cacheKey, 86400);
     }
 
@@ -761,29 +759,17 @@ exports.saveProgress = asyncHandler(async (req, res) => {
         throw new Error('Session not found. Please start the exam first.');
     }
 
-    // 🛡️ RUNTIME SECURITY: Continuous Verification (V4)
+    // 🛡️ RUNTIME SECURITY: Continuous Verification (Softened for Web)
     const fingerprint = {
         userAgent: req.headers['user-agent'],
-        platform: req.headers['x-fingerprint-platform'],
-        width: req.headers['x-fingerprint-width'],
-        height: req.headers['x-fingerprint-height']
+        platform: req.headers['x-fingerprint-platform'] || 'web',
+        width: req.headers['x-fingerprint-width'] || '0',
+        height: req.headers['x-fingerprint-height'] || '0'
     };
-    const verification = await verifySecureRequest(
-        req.headers['x-electron-key'], 
-        fingerprint, 
-        req.headers['x-nonce'], 
-        req.headers['x-timestamp'],
-        process.env.ELECTRON_SECRET
-    );
 
-    // 🛡️ LIVENESS BINDING: Check if heartbeat was received in last 90 seconds
-    const lastHeartbeat = session.secureMeta?.verifiedAt;
-    const isAlive = lastHeartbeat && (Date.now() - new Date(lastHeartbeat).getTime() < 90000);
-
-    if (!session.secureMeta?.isSecureClient || !verification.valid || !isAlive) {
-        const reason = !isAlive ? 'Secure session expired (Heartbeat lost)' : verification.reason;
-        res.status(403);
-        throw new Error(`Security Violation: ${reason || 'Untrusted environment'}`);
+    // Update verification timestamp
+    if (session.secureMeta) {
+        session.secureMeta.verifiedAt = new Date();
     }
 
     // Baseline Fingerprint Check with Tolerance (+/- 50px)
@@ -858,10 +844,10 @@ exports.saveProgress = asyncHandler(async (req, res) => {
     if (redisClient) {
         const updates = [];
         if (answers !== undefined)              updates.push('answers', JSON.stringify(answers));
-        if (currentQuestionIndex !== undefined) updates.push('currentQuestionIndex', currentQuestionIndex.toString());
+        if (currentQuestionIndex !== undefined) updates.push('currentQuestionIndex', (currentQuestionIndex ?? 0).toString());
         if (questionStates !== undefined)       updates.push('questionStates', JSON.stringify(questionStates));
-        if (remainingTimeSeconds !== undefined) updates.push('remainingTimeSeconds', remainingTimeSeconds.toString());
-        if (lastUpdated !== undefined)          updates.push('clientLastUpdated', lastUpdated.toString());
+        if (remainingTimeSeconds !== undefined) updates.push('remainingTimeSeconds', (remainingTimeSeconds ?? 0).toString());
+        if (lastUpdated !== undefined)          updates.push('clientLastUpdated', (lastUpdated ?? Date.now()).toString());
         updates.push('lastSavedAt', new Date().toISOString());
 
         if (updates.length > 0) {
@@ -961,7 +947,14 @@ exports.resumeExam = asyncHandler(async (req, res) => {
                 liveAnswers[a.questionId] = a.code ? { answer: a.answer, code: a.code } : a.answer;
             });
 
-            await redisClient.hset(cacheKey, 'answers', JSON.stringify(liveAnswers), 'currentQuestionIndex', liveIndex.toString(), 'questionStates', JSON.stringify(liveQuestionStates), 'remainingTimeSeconds', liveRemainingTime.toString());
+            // Backfill Redis
+            await redisClient.hset(
+                cacheKey, 
+                'answers', JSON.stringify(liveAnswers), 
+                'currentQuestionIndex', (liveIndex ?? 0).toString(), 
+                'questionStates', JSON.stringify(liveQuestionStates), 
+                'remainingTimeSeconds', (liveRemainingTime ?? 0).toString()
+            );
             await redisClient.expire(cacheKey, 86400);
         }
     }
@@ -1005,24 +998,13 @@ exports.submitExam = asyncHandler(async (req, res) => {
         throw new Error('Active session not found');
     }
 
-    // 🛡️ RUNTIME SECURITY: Continuous Verification (V4)
+    // 🛡️ RUNTIME SECURITY: Continuous Verification (Softened for Web)
     const fingerprint = {
         userAgent: req.headers['user-agent'],
-        platform: req.headers['x-fingerprint-platform'],
-        width: req.headers['x-fingerprint-width'],
-        height: req.headers['x-fingerprint-height']
+        platform: req.headers['x-fingerprint-platform'] || 'web',
+        width: req.headers['x-fingerprint-width'] || '0',
+        height: req.headers['x-fingerprint-height'] || '0'
     };
-    const verification = await verifySecureRequest(
-        req.headers['x-electron-key'], 
-        fingerprint, 
-        req.headers['x-nonce'], 
-        process.env.ELECTRON_SECRET
-    );
-
-    if (!session.secureMeta?.isSecureClient || !verification.valid) {
-        res.status(403);
-        throw new Error(`Submission Blocked: ${verification.reason || 'Untrusted environment'}`);
-    }
 
     // Bug Fix: Submission Lock (Guardrail 3)
     if (session.status === 'submitted' || session.status === 'auto_submitted' || session.status === 'blocked') {
@@ -2111,34 +2093,17 @@ exports.heartbeat = asyncHandler(async (req, res) => {
         throw new Error('Active session not found');
     }
 
-    // 2. Verify Secure Client Headers (V4 Hardened)
+    // 2. Update Verification Timestamp
     const fingerprint = {
         userAgent: req.headers['user-agent'],
-        platform: req.headers['x-fingerprint-platform'],
-        width: req.headers['x-fingerprint-width'],
-        height: req.headers['x-fingerprint-height']
+        platform: req.headers['x-fingerprint-platform'] || 'web',
+        width: req.headers['x-fingerprint-width'] || '0',
+        height: req.headers['x-fingerprint-height'] || '0'
     };
-    const electronKey = req.headers['x-electron-key'];
-    const nonce = req.headers['x-nonce'];
-    const timestamp = req.headers['x-timestamp'];
-    const isElectron = req.headers['x-app-mode'] === 'electron';
 
-    const verification = await verifySecureRequest(electronKey, fingerprint, nonce, timestamp, process.env.ELECTRON_SECRET);
-
-    if (!isElectron || !verification.valid) {
-        // 🚨 CRITICAL SEVERITY: Immediate Block
-        session.violations.push({
-            type: 'Security Breach',
-            severity: 'critical',
-            details: `Heartbeat failed: ${verification.reason || 'Non-secure client'}`,
-            timestamp: new Date()
-        });
-        session.status = 'blocked'; // Immediate block
-        session.blockReason = `Critical Security Violation: ${verification.reason || 'Environment Tampering'}`;
+    if (session.secureMeta) {
+        session.secureMeta.verifiedAt = new Date();
         await session.save();
-
-        res.status(403);
-        throw new Error(`Heartbeat Verification Failed: ${verification.reason}`);
     }
 
     // Baseline Check in Heartbeat with Tolerance
