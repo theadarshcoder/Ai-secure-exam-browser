@@ -71,12 +71,15 @@ const StudentIntelligenceDashboard = () => {
             await new Promise(r => setTimeout(r, 500));
 
             const canvas = await html2canvas(element, {
-                scale: 1.5, // Reduced from 2.0 to avoid memory issues and improve compatibility
+                scale: 1.2, // Slightly reduced scale for better memory safety on mobile/low-end devices
                 useCORS: true,
-                logging: false,
-                backgroundColor: '#0a0c10', // Explicit dark background for professional look
+                allowTaint: false,
+                logging: true, // Enabled logging temporarily to help user debug if it still fails
+                backgroundColor: '#0a0c10', 
                 scrollX: 0,
                 scrollY: -window.scrollY,
+                windowWidth: element.scrollWidth,
+                windowHeight: element.scrollHeight,
                 onclone: (clonedDoc) => {
                     // Hide UI elements in the PDF
                     const noPrintElems = clonedDoc.querySelectorAll('.no-print');
@@ -86,14 +89,28 @@ const StudentIntelligenceDashboard = () => {
                     const pdfHeader = clonedDoc.querySelector('.pdf-only-header');
                     if (pdfHeader) pdfHeader.style.display = 'block';
                     
+                    // Remove backdrop-filter as it's unsupported by html2canvas and causes failures
+                    const blurryElems = clonedDoc.querySelectorAll('*');
+                    blurryElems.forEach(el => {
+                        const style = window.getComputedStyle(el);
+                        if (style.backdropFilter && style.backdropFilter !== 'none') {
+                            el.style.backdropFilter = 'none';
+                            el.style.backgroundColor = 'rgba(20, 22, 28, 0.95)'; // Fallback solid background
+                        }
+                    });
+
                     // Adjust spacing for PDF
                     const mainContainer = clonedDoc.querySelector('.p-4.md\\:p-8');
                     if (mainContainer) mainContainer.style.padding = '40px';
                 }
             });
 
-            const imgData = canvas.toDataURL('image/jpeg', 0.85); // Use JPEG for better size/quality balance
-            const pdf = new jsPDF('p', 'mm', 'a4');
+            if (!canvas || canvas.width === 0) {
+                throw new Error("Canvas generation failed or returned empty.");
+            }
+
+            const imgData = canvas.toDataURL('image/jpeg', 0.8); 
+            const pdf = new jsPDF('p', 'mm', 'a4', true); // compress: true
             const pageWidth = pdf.internal.pageSize.getWidth();
             const pageHeight = pdf.internal.pageSize.getHeight();
             
@@ -103,7 +120,6 @@ const StudentIntelligenceDashboard = () => {
             const finalWidth = pageWidth;
             const finalHeight = imgHeight * ratio;
 
-            // Handle multi-page if necessary
             let heightLeft = finalHeight;
             let position = 0;
 
@@ -120,8 +136,13 @@ const StudentIntelligenceDashboard = () => {
             pdf.save(`VISION_INTEL_${report.student.info.name.toUpperCase().replace(/\s+/g, '_')}.pdf`);
             toast.success("Intelligence Dossier Exported.", { id: loadingToast });
         } catch (error) {
-            console.error("PDF Export Failure:", error);
-            toast.error("Export Failed. Please check browser permissions.", { id: loadingToast });
+            console.error("PDF Export Failure Technical Details:", {
+                message: error.message,
+                stack: error.stack,
+                reportExists: !!report,
+                refExists: !!dashboardRef.current
+            });
+            toast.error("Export Failed. Please check browser permissions or try a different browser.", { id: loadingToast });
         }
     };
 
@@ -206,7 +227,12 @@ const StudentIntelligenceDashboard = () => {
                 <div className="relative shrink-0">
                     <div className="w-14 h-14 bg-surface-hover border border-main rounded-xl flex justify-center items-center text-xl font-bold text-muted overflow-hidden">
                         {student.info.profilePicture ? (
-                            <img src={student.info.profilePicture} alt="" className="w-full h-full object-cover" />
+                            <img 
+                                src={student.info.profilePicture} 
+                                alt="" 
+                                className="w-full h-full object-cover" 
+                                crossOrigin="anonymous"
+                            />
                         ) : (
                             student.info.name.charAt(0).toUpperCase()
                         )}

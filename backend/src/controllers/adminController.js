@@ -400,7 +400,7 @@ exports.getCandidates = asyncHandler(async (req, res) => {
             { email: { $regex: search, $options: 'i' } }
         ];
     }
-    const candidates = await User.find(query).select('name email profilePicture idCardUrl isVerified createdAt').lean();
+    const candidates = await User.find(query).select('name email profilePicture idCardUrl isVerified verificationIssue createdAt').lean();
     const studentIds = candidates.map(c => c._id);
     const LIVE_THRESHOLD = new Date(Date.now() - 3 * 60 * 1000);
     const activeSessions = await ExamSession.find({ student: { $in: studentIds }, status: 'in_progress', updatedAt: { $gte: LIVE_THRESHOLD } }).populate('exam', 'title').lean();
