@@ -60,50 +60,68 @@ const StudentIntelligenceDashboard = () => {
 
     const handleDownloadPDF = async () => {
         const element = dashboardRef.current;
-        if (!element) {
-            toast.error("Dashboard reference not found.");
-            return;
-        }
+        if (!element) return;
 
-        const loadingToast = toast.loading("Generating Secure Intelligence Report...");
+        const loadingToast = toast.loading("Synthesizing Professional Intelligence Dossier...");
         try {
-            // Optimization: Scroll to top to ensure all elements are visible for capture
+            // Scroll to top to ensure complete capture
             window.scrollTo(0, 0);
+            
+            // Allow time for any lazy-loaded elements or animations to settle
+            await new Promise(r => setTimeout(r, 500));
 
             const canvas = await html2canvas(element, {
-                scale: 2,
+                scale: 1.5, // Reduced from 2.0 to avoid memory issues and improve compatibility
                 useCORS: true,
-                allowTaint: true,
-                logging: true, // Enable logging for debugging
-                backgroundColor: null, // Transparent to preserve theme colors
-                windowWidth: element.scrollWidth,
-                windowHeight: element.scrollHeight,
+                logging: false,
+                backgroundColor: '#0a0c10', // Explicit dark background for professional look
+                scrollX: 0,
+                scrollY: -window.scrollY,
                 onclone: (clonedDoc) => {
-                    // Hide elements with 'no-print' class in the clone
+                    // Hide UI elements in the PDF
                     const noPrintElems = clonedDoc.querySelectorAll('.no-print');
                     noPrintElems.forEach(el => el.style.display = 'none');
+                    
+                    // Show PDF-only header
+                    const pdfHeader = clonedDoc.querySelector('.pdf-only-header');
+                    if (pdfHeader) pdfHeader.style.display = 'block';
+                    
+                    // Adjust spacing for PDF
+                    const mainContainer = clonedDoc.querySelector('.p-4.md\\:p-8');
+                    if (mainContainer) mainContainer.style.padding = '40px';
                 }
             });
 
-            const imgData = canvas.toDataURL('image/png', 1.0);
+            const imgData = canvas.toDataURL('image/jpeg', 0.85); // Use JPEG for better size/quality balance
             const pdf = new jsPDF('p', 'mm', 'a4');
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = pdf.internal.pageSize.getHeight();
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
             
-            // Calculate dimensions to fit the page
             const imgWidth = canvas.width;
             const imgHeight = canvas.height;
-            const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-            const finalWidth = imgWidth * ratio;
+            const ratio = pageWidth / imgWidth;
+            const finalWidth = pageWidth;
             const finalHeight = imgHeight * ratio;
 
-            pdf.addImage(imgData, 'PNG', 0, 0, finalWidth, finalHeight, undefined, 'FAST');
-            pdf.save(`Vision_Intelligence_${report.student.info.name.replace(/\s+/g, '_')}.pdf`);
-            
-            toast.success("Intelligence Report ready!", { id: loadingToast });
+            // Handle multi-page if necessary
+            let heightLeft = finalHeight;
+            let position = 0;
+
+            pdf.addImage(imgData, 'JPEG', 0, position, finalWidth, finalHeight, undefined, 'FAST');
+            heightLeft -= pageHeight;
+
+            while (heightLeft >= 0) {
+                position = heightLeft - finalHeight;
+                pdf.addPage();
+                pdf.addImage(imgData, 'JPEG', 0, position, finalWidth, finalHeight, undefined, 'FAST');
+                heightLeft -= pageHeight;
+            }
+
+            pdf.save(`VISION_INTEL_${report.student.info.name.toUpperCase().replace(/\s+/g, '_')}.pdf`);
+            toast.success("Intelligence Dossier Exported.", { id: loadingToast });
         } catch (error) {
-            console.error("PDF Generation Detailed Error:", error);
-            toast.error("Failed to generate PDF. Please try again.", { id: loadingToast });
+            console.error("PDF Export Failure:", error);
+            toast.error("Export Failed. Please check browser permissions.", { id: loadingToast });
         }
     };
 
@@ -150,6 +168,19 @@ const StudentIntelligenceDashboard = () => {
 
     return (
         <div ref={dashboardRef} className="p-4 md:p-8 bg-page min-h-screen font-sans text-primary">
+            {/* PDF ONLY HEADER (HIDDEN ON WEB) */}
+            <div className="pdf-only-header hidden border-b-2 border-primary-500 pb-6 mb-10">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h1 className="text-3xl font-black text-primary tracking-tighter uppercase">Vision Intelligence Dossier</h1>
+                        <p className="text-[10px] text-muted font-black tracking-[0.3em] uppercase mt-1">High-Security Candidate Behavioral Analysis</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-[10px] font-black text-primary-500 uppercase tracking-widest">Confidential Record</p>
+                        <p className="text-[9px] text-muted font-bold mt-1 uppercase tracking-widest">Exported: {new Date().toLocaleString()}</p>
+                    </div>
+                </div>
+            </div>
             {/* 1. TOP NAVIGATION & ACTION BAR */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 no-print">
                 <button 
@@ -211,32 +242,55 @@ const StudentIntelligenceDashboard = () => {
                 </div>
             </div>
 
-            {/* 3. PERFORMANCE GRID */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <StatCard 
-                    title="Exams Taken" 
-                    value={student.overview.totalExams} 
-                    icon={<Calendar size={15} />}
-                    sub="Lifetime attempts"
-                />
-                <StatCard 
-                    title="Avg Score" 
-                    value={`${student.overview.avgPercentage}%`} 
-                    icon={<Award size={15} />}
-                    sub="Overall accuracy"
-                />
-                <StatCard 
-                    title="Success Rate" 
-                    value={`${student.overview.passRate}%`} 
-                    icon={<TrendingUp size={15} />}
-                    sub="Pass percentage"
-                />
-                <StatCard 
-                    title="Risk Score" 
-                    value={intelligence.riskScore} 
-                    icon={<AlertTriangle size={15} />}
-                    sub="Behavioral index"
-                />
+            {/* 3. PERFORMANCE GRID & IDENTITY STATUS */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div className={`md:col-span-3 grid grid-cols-2 lg:grid-cols-4 gap-4`}>
+                    <StatCard 
+                        title="Exams Taken" 
+                        value={student.overview.totalExams} 
+                        icon={<Calendar size={15} />}
+                        sub="Lifetime attempts"
+                    />
+                    <StatCard 
+                        title="Avg Score" 
+                        value={`${student.overview.avgPercentage}%`} 
+                        icon={<Award size={15} />}
+                        sub="Overall accuracy"
+                    />
+                    <StatCard 
+                        title="Success Rate" 
+                        value={`${student.overview.passRate}%`} 
+                        icon={<TrendingUp size={15} />}
+                        sub="Pass percentage"
+                    />
+                    <StatCard 
+                        title="Risk Score" 
+                        value={intelligence.riskScore} 
+                        icon={<AlertTriangle size={15} />}
+                        sub="Behavioral index"
+                    />
+                </div>
+                
+                {/* Identity Fraud Alert Card */}
+                {!student.info.isVerified && student.info.verificationIssue ? (
+                    <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-5 flex flex-col justify-center animate-pulse">
+                        <div className="flex items-center gap-2 text-red-500 mb-2">
+                            <ShieldAlert size={18} strokeWidth={3} />
+                            <span className="text-[10px] font-black uppercase tracking-widest">Identity Alert</span>
+                        </div>
+                        <p className="text-[12px] font-black text-red-600 leading-tight">{student.info.verificationIssue}</p>
+                        <p className="text-[9px] text-red-500/70 mt-1 uppercase font-bold tracking-tighter">AI Flagged Fraud Pattern</p>
+                    </div>
+                ) : (
+                    <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-5 flex flex-col justify-center">
+                        <div className="flex items-center gap-2 text-emerald-500 mb-2">
+                            <ShieldAlert size={18} strokeWidth={2.5} />
+                            <span className="text-[10px] font-black uppercase tracking-widest">Trust Status</span>
+                        </div>
+                        <p className="text-[12px] font-black text-emerald-600 leading-tight">Identity Verified</p>
+                        <p className="text-[9px] text-emerald-500/70 mt-1 uppercase font-bold tracking-tighter">Biometric Match Confirmed</p>
+                    </div>
+                )}
             </div>
 
             {/* 4. MAIN ANALYTICS SECTION */}

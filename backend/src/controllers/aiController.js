@@ -28,7 +28,9 @@ exports.generateQuestions = async (req, res) => {
     const mcqCount = Math.min(config?.mcq || 0, 20);
     const shortCount = Math.min(config?.short || 0, 15);
     const codingCount = Math.min(config?.coding || 0, 10);
-    const totalCount = mcqCount + shortCount + codingCount;
+    const reactCount = Math.min(config?.frontendReact || 0, 5);
+    const totalCount = mcqCount + shortCount + codingCount + reactCount;
+    const totalMarks = req.body.totalMarks || 100;
 
     if (totalCount === 0) {
         return res.status(400).json({
@@ -38,7 +40,7 @@ exports.generateQuestions = async (req, res) => {
     }
 
     try {
-        const prompt = buildPrompt(category, syllabus, mcqCount, shortCount, codingCount);
+        const prompt = buildPrompt(category, syllabus, mcqCount, shortCount, codingCount, reactCount, totalMarks);
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${geminiKey}`;
 
         const response = await axios.post(url, {
@@ -82,7 +84,7 @@ exports.generateQuestions = async (req, res) => {
         // Sanitize and normalize each question
         const sanitized = questions.map((q, i) => sanitizeQuestion(q, i)).filter(Boolean);
 
-        console.log(`🤖 AI Generated ${sanitized.length} questions (MCQ: ${sanitized.filter(q => q.type === 'mcq').length}, Short: ${sanitized.filter(q => q.type === 'short').length}, Coding: ${sanitized.filter(q => q.type === 'coding').length})`);
+        console.log(`🤖 AI Generated ${sanitized.length} questions (MCQ: ${sanitized.filter(q => q.type === 'mcq').length}, Short: ${sanitized.filter(q => q.type === 'short').length}, Coding: ${sanitized.filter(q => q.type === 'coding').length}, React: ${sanitized.filter(q => q.type === 'frontend-react').length})`);
 
         res.json({
             success: true,
@@ -109,7 +111,7 @@ exports.generateQuestions = async (req, res) => {
 
 // ─── Prompt Builder ────────────────────────────────────────
 
-function buildPrompt(category, syllabus, mcqCount, shortCount, codingCount) {
+function buildPrompt(category, syllabus, mcqCount, shortCount, codingCount, reactCount, totalMarks) {
     const sections = [];
 
     if (mcqCount > 0) {
@@ -162,6 +164,27 @@ ${codingCount} Coding questions. Each MUST have this exact structure:
 - Cover edge cases in hidden test cases`);
     }
 
+    if (reactCount > 0) {
+        sections.push(`
+${reactCount} React Lab (frontend-react) questions. Each MUST have this exact structure:
+{
+  "type": "frontend-react",
+  "questionText": "Detailed UI/React problem statement",
+  "frontendTemplate": {
+    "files": {
+      "/App.jsx": "import React from 'react';\\n\\nexport default function App() {\\n  return (\\n    <div>\\n      <h1>Hello World</h1>\\n    </div>\\n  );\\n}"
+    },
+    "mainFile": "/App.jsx"
+  },
+  "frontendTestCases": [
+    { "description": "Should render Hello World", "testCode": "return document.querySelector('h1').textContent.includes('Hello World')", "isHidden": true }
+  ],
+  "marks": 10
+}
+- Focus on React hooks, component lifecycle, and state management
+- Test cases should be JSDOM compatible`);
+    }
+
     return `You are an expert exam question generator for a ${category || 'Computer Science'} assessment platform.
 
 CONTEXT / SYLLABUS:
@@ -173,12 +196,13 @@ ${sections.join('\n')}
 CRITICAL RULES:
 1. Respond ONLY with a valid JSON array of question objects. NO markdown, NO explanation, NO text outside the array.
 2. Each question must follow the EXACT structure shown above for its type.
-3. Questions must be directly relevant to the provided syllabus/topics.
-4. Questions should vary in difficulty (easy, medium, hard).
-5. Do NOT repeat similar questions.
-6. All question text must be in English.
-7. For MCQs, ensure correctOption is a valid index (0-3).
-8. For coding, ensure test case inputs and outputs are realistic and consistent.
+3. DISTRIBUTE MARKS: The total sum of "marks" across all generated questions MUST equal ${totalMarks}. Assign higher marks to Coding/React and lower to MCQs.
+4. Questions must be directly relevant to the provided syllabus/topics.
+5. Questions should vary in difficulty (easy, medium, hard).
+6. Do NOT repeat similar questions.
+7. All question text must be in English.
+8. For MCQs, ensure correctOption is a valid index (0-3).
+9. For coding, ensure test case inputs and outputs are realistic and consistent.
 
 RESPOND WITH ONLY THE JSON ARRAY:`;
 }
@@ -241,6 +265,26 @@ function sanitizeQuestion(q, index) {
             initialCode: q.initialCode || '// Write your solution here\n',
             testCases,
             marks: base.marks || 5
+        };
+    }
+
+    if (q.type === 'frontend-react') {
+        const files = (q.frontendTemplate && q.frontendTemplate.files) || { '/App.jsx': '// React code\n' };
+        const testCases = Array.isArray(q.frontendTestCases) ? q.frontendTestCases : [];
+
+        return {
+            ...base,
+            type: 'frontend-react',
+            frontendTemplate: {
+                files,
+                mainFile: q.frontendTemplate?.mainFile || '/App.jsx'
+            },
+            frontendTestCases: testCases.map(tc => ({
+                description: String(tc.description || 'UI Test'),
+                testCode: String(tc.testCode || ''),
+                isHidden: tc.isHidden !== undefined ? Boolean(tc.isHidden) : true
+            })),
+            marks: base.marks || 10
         };
     }
 

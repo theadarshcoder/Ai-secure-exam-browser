@@ -142,7 +142,7 @@ exports.login = asyncHandler(async (req, res) => {
             displayRole: finalRole 
         },
         process.env.JWT_SECRET,
-        { expiresIn: '15m' } 
+        { expiresIn: '1h' } 
     );
 
     const refreshToken = jwt.sign(
@@ -221,7 +221,7 @@ exports.refresh = asyncHandler(async (req, res) => {
                 displayRole: user.role
             },
             process.env.JWT_SECRET,
-            { expiresIn: '15m' }
+            { expiresIn: '1h' }
         );
 
         // Sync new token to Redis with permissions

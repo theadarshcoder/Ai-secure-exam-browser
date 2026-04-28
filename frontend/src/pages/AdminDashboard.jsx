@@ -53,6 +53,7 @@ const Badge = ({ children, color }) => {
     indigo:  'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
     sky:     'bg-sky-500/10 text-sky-400 border-sky-500/20',
     teal:    'bg-teal-500/10 text-teal-400 border-teal-500/20',
+    rose:    'bg-rose-500/10 text-rose-500 border-rose-500/20',
   };
   return (
     <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black border ${styles[color] || styles.zinc} uppercase tracking-widest font-sans`}>
@@ -977,14 +978,20 @@ export default function AdminDashboard() {
                <div className="w-10 h-10 rounded-xl bg-surface-hover border border-main flex items-center justify-center text-primary-500 shadow-sm"><FileText size={18} strokeWidth={2.2} /></div>
                <div>
                  <h4 className="text-lg font-bold text-primary tracking-tight leading-none">Intelligence Logs</h4>
-                 <p className="text-[12px] font-medium text-muted mt-1">Platform-wide operation trail</p>
+                 <p className="text-[12px] font-medium text-muted mt-1">Platform-wide operation trail & security events</p>
                </div>
              </div>
              <div className="flex items-center gap-3">
-               {auditLogs.length > 0 && (
-                 <button onClick={handleClearAllLogs} className="text-xs font-semibold text-red-500 hover:text-red-600 px-4 py-2 rounded-lg border border-red-500/10 hover:bg-red-500/5 transition-all shadow-sm">Clear All</button>
-               )}
-               {loading && <RefreshCw size={14} className="animate-spin text-muted/50" />}
+                <button 
+                  onClick={() => setContentTab('Results')} 
+                  className="text-[10px] font-black text-primary-500 hover:text-primary uppercase tracking-widest transition-all mr-4 bg-primary-500/5 px-3 py-1.5 rounded-lg border border-primary-500/10 shadow-sm"
+                >
+                  View All Reports
+                </button>
+                {auditLogs.length > 0 && (
+                  <button onClick={handleClearAllLogs} className="text-xs font-semibold text-red-500 hover:text-red-600 px-4 py-2 rounded-lg border border-red-500/10 hover:bg-red-500/5 transition-all shadow-sm">Clear All</button>
+                )}
+                {loading && <RefreshCw size={14} className="animate-spin text-muted/50" />}
              </div>
           </div>
           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3 relative z-10">
@@ -997,10 +1004,10 @@ export default function AdminDashboard() {
                       </div>
                       <button onClick={() => handleDeleteLog(log._id)} className="opacity-0 group-hover:opacity-100 p-1.5 text-muted/40 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-all"><Trash2 size={14} /></button>
                    </div>
-                   <p className="text-xs text-primary font-semibold tracking-tight mb-2">Principal: {log.adminId?.name || 'System'} <span className="opacity-50 font-medium ml-1">({log.adminId?.email || 'AUTH_INTERNAL'})</span></p>
+                   <p className="text-xs text-primary font-semibold tracking-tight mb-2">Principal: {log.performedBy?.name || 'System'} <span className="opacity-50 font-medium ml-1">({log.performedBy?.email || 'AUTH_INTERNAL'})</span></p>
                    {log.details && (
                       <div className="p-3 bg-surface border border-main rounded-xl text-[11px] font-mono text-muted/70 break-all leading-relaxed shadow-sm">
-                         {JSON.stringify(log.details)}
+                         {typeof log.details === 'object' ? Object.entries(log.details).map(([k,v]) => `${k}: ${v}`).join(' | ') : JSON.stringify(log.details)}
                       </div>
                    )}
                 </div>
@@ -1030,7 +1037,7 @@ export default function AdminDashboard() {
            </div>
            
            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4 relative z-10">
-              {helpRequests.length === 0 && notifications.filter(n => n.type === 'violation').length === 0 ? (
+              {helpRequests.length === 0 && notifications.filter(n => n.type === 'violation' || n.type === 'IDENTITY_VIOLATION').length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-muted/30 gap-4 grayscale">
                    <Radio size={48} strokeWidth={1} />
                    <p className="text-[13px] font-semibold tracking-wide">Standing by for signals</p>
@@ -1056,19 +1063,17 @@ export default function AdminDashboard() {
                   ))}
 
                   {/* Violations from Notifications state */}
-                  {notifications.filter(n => n.type === 'violation').map(notif => (
-                    <div key={notif.id} className="p-8 bg-red-500/[0.03] border border-red-500/10 rounded-[2rem] relative overflow-hidden group/violation hover:bg-red-500/[0.05] transition-colors duration-500">
-                       <div className="flex items-center gap-3 mb-5">
-                          <ShieldAlert size={16} className="text-red-500" strokeWidth={3} />
-                          <span className="text-[9px] font-black text-red-500 uppercase tracking-[0.2em]">Integrity Violation Protocol</span>
-                          <span className="ml-auto text-[9px] font-black text-red-400/50 uppercase tracking-widest">{new Date(notif.timestamp).toLocaleTimeString()}</span>
+                  {notifications.filter(n => n.type === 'violation' || n.type === 'IDENTITY_VIOLATION').map((notif, i) => (
+                    <div key={notif.id || i} className="p-4 bg-red-500/[0.03] border border-red-500/10 rounded-2xl group/alert hover:bg-red-500/[0.05] transition-colors duration-300">
+                       <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                             <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                             <span className="text-[9px] font-black text-red-500 uppercase tracking-[0.2em]">{notif.type.replace('_', ' ')}</span>
+                          </div>
+                          <span className="text-[9px] font-medium text-muted opacity-40">{notif.time || 'JUST NOW'}</span>
                        </div>
-                       <p className="text-[12px] font-black text-primary leading-relaxed uppercase tracking-tight">
-                          <span className="text-red-500">{notif.studentId}</span> triggered a <span className="text-red-500 underline underline-offset-4 decoration-2">{notif.type}</span> anomaly.
-                       </p>
-                       <button onClick={() => setActiveTab('LiveMonitoring')} className="mt-6 text-[10px] font-black text-red-500 uppercase tracking-[0.2em] flex items-center gap-3 hover:gap-5 transition-all group-hover/violation:translate-x-2 duration-500">
-                          Initiate Countermeasures <ChevronRight size={14} strokeWidth={3} />
-                       </button>
+                       <h5 className="text-[13px] font-black text-primary uppercase tracking-tight">{notif.studentName || notif.student}</h5>
+                       <p className="text-[10px] text-red-500/70 font-black uppercase tracking-widest mt-1 opacity-80">{notif.message}</p>
                     </div>
                   ))}
                 </>
@@ -1403,15 +1408,20 @@ export default function AdminDashboard() {
       </div>
       <DataTable 
         loading={loading}
-        headers={['Exam Title', 'Created By', 'Category', 'Status', 'Actions']}
+        headers={['Exam Title', 'Created By', 'Category', 'Duration', 'Questions', 'Status', 'Actions']}
         data={exams}
         renderRow={(exam) => (
-          <tr key={exam.id || exam._id} className="hover:bg-surface-hover/50 transition-colors group/row">
+          <tr key={exam.id || exam._id} className="hover:bg-surface-hover/50 transition-colors group/row last:border-0">
             <td className="px-6 py-4">
-              <span className="text-[14px] font-semibold text-primary group-hover/row:text-primary-500 transition-colors">{exam.name || exam.title}</span>
+              <div className="flex flex-col">
+                <span className="font-semibold text-[14px] text-primary group-hover/row:text-primary-500 transition-colors">{exam.name || exam.title}</span>
+                <span className="text-[11px] font-medium text-muted mt-0.5 opacity-60">ID: {exam.id || exam._id}</span>
+              </div>
             </td>
             <td className="px-6 py-4 text-[13px] font-medium text-muted">{exam.creatorName || exam.creator?.name || 'Unknown'}</td>
             <td className="px-6 py-4 text-[13px] font-medium text-muted">{exam.category || 'Standard'}</td>
+            <td className="px-6 py-4 text-[13px] text-primary font-medium">{exam.duration || '—'} min</td>
+            <td className="px-6 py-4 text-[13px] text-primary font-medium">{exam.questionsCount || 0} qs</td>
             <td className="px-6 py-4">
                {(() => {
                  const now = new Date();
@@ -1433,6 +1443,13 @@ export default function AdminDashboard() {
             </td>
             <td className="px-6 py-4">
               <div className="flex items-center gap-4">
+                <button 
+                  onClick={() => navigate(`/mentor/exam/${exam.id || exam._id}/monitoring`)}
+                  className="w-8 h-8 flex items-center justify-center text-muted/50 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-all active:scale-95"
+                  title="Live Monitoring"
+                >
+                  <Radio size={16} strokeWidth={2} className={exam.status === 'published' || exam.status === 'active' ? 'animate-pulse text-emerald-500' : ''} /> 
+                </button>
                 <button 
                   onClick={() => handleTogglePublishResults(exam.id || exam._id, exam.resultsPublished)} 
                   className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all active:scale-95 ${exam.resultsPublished ? 'text-emerald-500 bg-emerald-500/10' : 'text-muted/50 hover:text-emerald-500 hover:bg-emerald-500/10'}`}
@@ -1672,7 +1689,7 @@ export default function AdminDashboard() {
             <h2 className="text-xl font-bold text-primary tracking-tight">System-Wide Results & Reports</h2>
             
             <div className="hidden lg:flex bg-surface-hover/50 p-1 rounded-xl border border-main">
-              {['ALL', 'PENDING', 'EVALUATED / PAST'].map(f => (
+              {['ALL', 'PENDING', 'AUTO_SUBMITTED', 'IN_PROGRESS', 'EVALUATED / PAST'].map(f => (
                 <button 
                   key={f}
                   onClick={() => setResultFilter(f)}
@@ -1700,7 +1717,7 @@ export default function AdminDashboard() {
       </div>
       {/* Mobile filter bar */}
       <div className="lg:hidden flex bg-surface-hover/50 p-1 rounded-xl border border-main w-full overflow-x-auto scroll-thin mb-8">
-        {['ALL', 'PENDING', 'EVALUATED / PAST'].map(f => (
+        {['ALL', 'PENDING', 'AUTO_SUBMITTED', 'IN_PROGRESS', 'EVALUATED / PAST'].map(f => (
           <button 
             key={f}
             onClick={() => setResultFilter(f)}
@@ -1717,6 +1734,8 @@ export default function AdminDashboard() {
         data={adminResults.filter(r => {
           if (resultFilter === 'ALL') return true;
           if (resultFilter === 'PENDING') return r.status === 'pending_review';
+          if (resultFilter === 'AUTO_SUBMITTED') return r.status === 'auto_submitted';
+          if (resultFilter === 'IN_PROGRESS') return r.status === 'in_progress';
           if (resultFilter === 'EVALUATED / PAST') return r.status === 'submitted' || r.status === 'evaluated' || r.status === 'completed';
           return true;
         })}
@@ -1740,14 +1759,35 @@ export default function AdminDashboard() {
                </div>
             </td>
             <td className="px-5 py-4">
-               <div className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[9px] font-bold border ${
-                 res.totalViolations > 8 ? 'bg-blue-50 text-blue-600 border-blue-200/50' :
-                 res.status === 'submitted' ? 'bg-emerald-50 text-emerald-600 border-emerald-200/50' :
-                 'bg-slate-100 text-slate-600 border-slate-200/50'
-               }`}>
-                 {res.status === 'submitted' && <span className="mr-1">✅</span>}
-                 {res.totalViolations > 8 ? 'Blocked' : res.status === 'submitted' ? 'Graded' : res.status}
-               </div>
+               {(() => {
+                 const isBlocked = res.totalViolations > 8;
+                 let badgeStyle = "bg-slate-100 text-slate-600 border-slate-200/50";
+                 let label = res.status;
+
+                 if (isBlocked) {
+                   badgeStyle = "bg-red-50 text-red-600 border-red-200/50";
+                   label = "Blocked";
+                 } else if (res.status === 'submitted' || res.status === 'evaluated') {
+                   badgeStyle = "bg-emerald-50 text-emerald-600 border-emerald-200/50";
+                   label = "Graded";
+                 } else if (res.status === 'auto_submitted') {
+                   badgeStyle = "bg-amber-50 text-amber-600 border-amber-200/50";
+                   label = "Auto-Submitted";
+                 } else if (res.status === 'in_progress') {
+                   badgeStyle = "bg-blue-50 text-blue-600 border-blue-200/50 animate-pulse";
+                   label = "In-Progress";
+                 } else if (res.status === 'pending_review') {
+                   badgeStyle = "bg-purple-50 text-purple-600 border-purple-200/50";
+                   label = "Needs Review";
+                 }
+
+                 return (
+                   <div className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[9px] font-bold border ${badgeStyle}`}>
+                     {(res.status === 'submitted' || res.status === 'evaluated') && <span className="mr-1">✅</span>}
+                     {label}
+                   </div>
+                 );
+               })()}
             </td>
             <td className="px-5 py-4">
                <span className={`text-[11px] font-bold tracking-tight ${res.totalViolations > 0 ? 'text-red-500' : 'text-slate-400'}`}>
@@ -1846,65 +1886,29 @@ export default function AdminDashboard() {
   const handleAutoAIIdentify = async () => {
     const loadingToast = toast.loading('AI analyzing identity proofs for quality...');
     
-    // Simulate AI processing delay
-    await new Promise(r => setTimeout(r, 1500));
-    
-    let flaggedCount = 0;
-    const flaggedIds = [];
-    
-    const updatedCandidates = candidates.map(c => {
-      // Process ALL candidates (even verified ones) to audit quality
-      if (!c.verificationIssue) {
-        const pic = c.profilePicture || '';
-        const idPic = c.idCardUrl || '';
+    try {
+      const response = await api.post('/api/admin/ai-scan');
+      
+      if (response.data.success) {
+        const flaggedCount = response.data.flaggedCount;
         
-        const hasMissingPhoto = !pic || pic.includes('default') || pic.includes('ui-avatars') || pic.includes('placeholder');
-        const hasMissingId = !idPic || idPic.includes('default') || idPic.includes('placeholder');
+        // Refresh data
+        const res = await getCandidates(candidateSearch);
+        setCandidates(res || []);
         
-        let issueText = null;
-        
-        if (hasMissingPhoto) {
-          issueText = 'No Face Detected';
-        } else if (hasMissingId) {
-          issueText = 'No ID Uploaded';
+        if (flaggedCount > 0) {
+          toast.success(`AI flagged ${flaggedCount} candidate(s) for review.`, { id: loadingToast });
+          setCandidateFilter('ISSUES'); 
         } else {
-          // If the admin verified a test/dummy candidate (like "SWEETY"), the AI catches it:
-          if (c.name && c.name.toLowerCase().includes('sweety')) {
-             issueText = 'AI: Invalid ID / Ceiling Photo';
-          } else {
-             // Simulated AI heuristics for demo purposes
-             const rand = Math.random();
-             if (rand < 0.25) { issueText = 'AI: Blurry Face'; }
-             else if (rand < 0.45) { issueText = 'AI: Partial Face'; }
-             else if (rand < 0.55) { issueText = 'AI: ID Glare'; }
-          }
+          toast.success('AI found no obvious issues. Proofs look adequate.', { id: loadingToast });
         }
         
-        if (issueText) {
-          flaggedCount++;
-          if (c.isVerified) flaggedIds.push(c._id);
-          return { ...c, isVerified: false, verificationIssue: issueText };
-        }
+        // Trigger a refresh of stats to update violation count
+        fetchDataForTab('Overview');
       }
-      return c;
-    });
-
-    // Revoke verification on backend for flagged users that were previously verified
-    if (flaggedIds.length > 0) {
-      try {
-        await Promise.all(flaggedIds.map(id => unverifyCandidate(id)));
-      } catch (err) {
-        console.error("Failed to revoke verification for some flagged candidates", err);
-      }
-    }
-
-    setCandidates(updatedCandidates);
-    
-    if (flaggedCount > 0) {
-      toast.success(`AI flagged ${flaggedCount} candidate(s) for review.`, { id: loadingToast });
-      setCandidateFilter('ISSUES'); // Auto-switch to issues tab to show results
-    } else {
-      toast.success('AI found no obvious issues. Proofs look adequate.', { id: loadingToast });
+    } catch (err) {
+      console.error("AI Scan failed:", err);
+      toast.error('AI Intelligence Engine is currently busy. Please try again.', { id: loadingToast });
     }
   };
 

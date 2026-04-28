@@ -131,6 +131,12 @@ exports.getStudentIntelligence = asyncHandler(async (req, res) => {
     // --- Risk Scoring Logic ---
     let weightedRisk = 0;
     const violationsBreakdown = {};
+
+    // Identity Risk (Higher weight for unverified/flagged users)
+    if (!student.isVerified && student.verificationIssue) {
+        weightedRisk += 15; // Significant boost to risk if identity is flagged
+        violationsBreakdown['Identity Alert'] = 1;
+    }
     
     overview.allViolations.flat().forEach(v => {
         if (!v) return;
@@ -143,12 +149,10 @@ exports.getStudentIntelligence = asyncHandler(async (req, res) => {
             default: weightedRisk += 1;
         }
     });
-    weightedRisk += (overview.totalTabSwitches * 0.5); // Tab switches contribute but slightly less weight per unit
+    weightedRisk += (overview.totalTabSwitches * 0.5); 
 
-    // Normalize Risk (0-100)
-    // Formula: (Weighted Risk / (Total Exams * Max Possible Risk Factor)) * 100
     const MAX_RISK_FACTOR = 10; 
-    const riskScore = totalExams > 0 ? Math.min((weightedRisk / (totalExams * MAX_RISK_FACTOR)) * 100, 100).toFixed(0) : 0;
+    const riskScore = totalExams > 0 ? Math.min((weightedRisk / (totalExams * MAX_RISK_FACTOR)) * 100, 100).toFixed(0) : (weightedRisk > 0 ? Math.min(weightedRisk * 5, 100) : 0);
 
     // --- Insight Logic ---
     const strongArea = data.categoryPerformance[0]?._id || 'N/A';

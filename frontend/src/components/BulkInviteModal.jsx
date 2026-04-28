@@ -172,67 +172,98 @@ export default function BulkInviteModal({ isOpen, onClose, examId, examTitle }) 
                             </table>
                             {students.length > 50 && <p style={{ textAlign: 'center', color: '#71717a', fontSize: 11, padding: 8 }}>Showing 50 of {students.length}</p>}
                         </div>
-                        <button onClick={handleSendInvites} disabled={sending} style={{...S.sendBtn, ...(sending ? { opacity: 0.7 } : {})}}>
-                            {sending ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> Sending Invites...</> : <><Send size={15} /> Send {students.length} Invites</>}
-                        </button>
+                        <div style={{ marginTop: '24px' }}>
+                            <button 
+                                onClick={handleSendInvites} 
+                                disabled={sending} 
+                                style={{
+                                    ...S.sendBtn, 
+                                    ...(sending ? { opacity: 0.8, cursor: 'not-allowed' } : {}),
+                                    background: sending ? 'var(--primary-500)' : 'linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%)'
+                                }}
+                            >
+                                {sending ? (
+                                    <>
+                                        <Loader2 size={18} className="animate-spin" />
+                                        <span>Dispatching Protocols...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Send size={18} strokeWidth={2.5} />
+                                        <span>Authorize & Send {students.length} Invites</span>
+                                    </>
+                                )}
+                            </button>
+                            <p style={{ textAlign: 'center', fontSize: '10px', color: 'var(--text-muted)', marginTop: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.4 }}>
+                                Secure delivery via Vision Mail Relay
+                            </p>
+                        </div>
                     </>
                 )}
 
                 {/* Result */}
                 {result && !result.error && (
                     <div style={S.resultBox}>
-                        <CheckCircle size={28} color="#10b981" />
-                        <h3 style={{ color: '#fff', margin: '8px 0 4px', fontSize: 16 }}>Invites Processed!</h3>
-                        <p style={{ color: '#a1a1aa', fontSize: 13, margin: 0 }}>{result.message}</p>
-                        <div style={S.statsGrid}>
-                            <div style={S.stat}><span style={S.statNum}>{result.summary?.newUsersCreated || 0}</span><span style={S.statLabel}>New Users</span></div>
-                            <div style={S.stat}><span style={S.statNum}>{result.summary?.existingUsers || 0}</span><span style={S.statLabel}>Existing</span></div>
-                            <div style={S.stat}><span style={S.statNum}>{result.summary?.emailsQueued || 0}</span><span style={S.statLabel}>Emails Queued</span></div>
-                            <div style={S.stat}><span style={S.statNum}>{result.summary?.skipped || 0}</span><span style={S.statLabel}>Skipped</span></div>
+                        <div style={{ width: 80, hieght: 80, borderRadius: 24, background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justify: 'center', margin: '0 auto 24px' }}>
+                           <CheckCircle size={40} color="#10b981" strokeWidth={2.5} />
                         </div>
-                        <p style={{ color: '#52525b', fontSize: 11, marginTop: 12 }}>Credentials CSV has been downloaded automatically.</p>
-                        <button onClick={onClose} style={S.doneBtn}>Done</button>
+                        <h3 style={{ color: 'var(--text-primary)', margin: '0 0 8px', fontSize: 20, fontWeight: 900, textTransform: 'uppercase', fontStyle: 'italic' }}>Transmission Success</h3>
+                        <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0, fontWeight: 500 }}>{result.message}</p>
+                        
+                        <div style={S.statsGrid}>
+                            <div style={S.stat}><span style={S.statNum}>{result.summary?.newUsersCreated || 0}</span><span style={S.statLabel}>New</span></div>
+                            <div style={S.stat}><span style={S.statNum}>{result.summary?.existingUsers || 0}</span><span style={S.statLabel}>Active</span></div>
+                            <div style={S.stat}><span style={S.statNum}>{result.summary?.emailsQueued || 0}</span><span style={S.statLabel}>Sent</span></div>
+                            <div style={S.stat}><span style={S.statNum}>{result.summary?.skipped || 0}</span><span style={S.statLabel}>Skip</span></div>
+                        </div>
+                        <p style={{ color: 'var(--primary-500)', fontSize: 11, marginTop: 24, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Credentials CSV downloaded automatically.</p>
+                        <button onClick={onClose} style={S.doneBtn}>Close Uplink</button>
                     </div>
                 )}
                 {result?.error && (
                     <div style={S.errorBox}>
-                        <AlertCircle size={16} color="#ef4444" />
-                        <p style={{ margin: 0, color: '#fca5a5', fontSize: 13 }}>{result.error}</p>
+                        <AlertCircle size={20} color="#ef4444" strokeWidth={2.5} />
+                        <div>
+                           <p style={{ margin: 0, color: '#fff', fontSize: 14, fontWeight: 800, textTransform: 'uppercase' }}>Protocol Error</p>
+                           <p style={{ margin: '4px 0 0', color: 'rgba(255,255,255,0.6)', fontSize: 12 }}>{result.error}</p>
+                        </div>
                     </div>
                 )}
-                <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+                <style>{`
+                    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+                    .animate-spin { animation: spin 1s linear infinite; }
+                `}</style>
             </div>
         </div>
     );
 }
 
 const S = {
-    overlay: { position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.8)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16 },
-    modal: { background: 'var(--bg-surface)', border: '1px solid var(--border-main)', borderRadius: 32, width: '100%', maxWidth: 560, maxHeight: '85vh', overflow: 'auto', padding: '40px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' },
-    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 },
-    title: { color: 'var(--text-primary)', fontSize: 24, fontWeight: 900, margin: 0, display: 'flex', alignItems: 'center', gap: 12, letterSpacing: -0.8, textTransform: 'uppercase', fontStyle: 'italic' },
-    subtitle: { color: 'var(--text-muted)', fontSize: 11, margin: '6px 0 0', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.2em', opacity: 0.5 },
-    closeBtn: { background: 'var(--bg-surface-hover)', border: '1px solid var(--border-main)', borderRadius: 12, padding: 10, color: 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.2s' },
-    dropZone: { border: '2px dashed var(--border-main)', borderRadius: 24, padding: '60px 24px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s', background: 'var(--bg-surface-hover)' },
-    dropZoneActive: { borderColor: 'var(--primary-500)', background: 'var(--bg-surface)' },
-    dropText: { color: 'var(--text-primary)', fontSize: 15, fontWeight: 900, margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: -0.2 },
-    dropHint: { color: 'var(--text-muted)', fontSize: 12, margin: 0 },
-    sampleBtn: { display: 'flex', alignItems: 'center', gap: 10, margin: '16px auto 0', background: 'var(--bg-surface)', border: '1px solid var(--border-main)', borderRadius: 14, padding: '12px 24px', color: 'var(--text-muted)', fontSize: 10, fontWeight: 900, cursor: 'pointer', transition: 'all 0.2s', textTransform: 'uppercase', letterSpacing: '0.1em' },
-    errorBox: { display: 'flex', gap: 12, alignItems: 'flex-start', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 16, padding: '16px 20px', marginTop: 24, color: '#fca5a5', fontSize: 13 },
-    tableHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, marginTop: 24 },
-    badge: { display: 'flex', alignItems: 'center', gap: 10, color: 'var(--primary-500)', fontSize: 12, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em' },
-    clearBtn: { display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-surface)', border: '1px solid var(--border-main)', borderRadius: 12, padding: '8px 16px', color: '#ef4444', fontSize: 10, fontWeight: 900, cursor: 'pointer', textTransform: 'uppercase' },
-    tableWrap: { maxHeight: 300, overflow: 'auto', border: '1px solid var(--border-main)', borderRadius: 20, marginBottom: 24, background: 'var(--bg-surface-hover)' },
+    overlay: { position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.85)', backdropFilter: 'blur(20px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 24 },
+    modal: { background: 'var(--bg-surface)', border: '1px solid var(--border-main)', borderRadius: 40, width: '100%', maxWidth: 580, maxHeight: '90vh', overflowY: 'auto', padding: '48px', boxShadow: '0 50px 100px -20px rgba(0, 0, 0, 0.7)', position: 'relative' },
+    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 40 },
+    title: { color: 'var(--text-primary)', fontSize: 26, fontWeight: 900, margin: 0, display: 'flex', alignItems: 'center', gap: 14, letterSpacing: -1, textTransform: 'uppercase', fontStyle: 'italic' },
+    subtitle: { color: 'var(--text-muted)', fontSize: 12, margin: '8px 0 0', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.2em', opacity: 0.5 },
+    closeBtn: { background: 'var(--bg-surface-hover)', border: '1px solid var(--border-main)', borderRadius: 16, padding: 12, color: 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+    dropZone: { border: '2px dashed var(--border-main)', borderRadius: 32, padding: '80px 24px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', background: 'var(--bg-surface-hover)' },
+    dropZoneActive: { borderColor: 'var(--primary-500)', background: 'rgba(var(--primary-500-rgb), 0.05)', transform: 'scale(1.02)' },
+    dropText: { color: 'var(--text-primary)', fontSize: 16, fontWeight: 900, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: -0.2 },
+    sampleBtn: { display: 'flex', alignItems: 'center', gap: 10, margin: '16px auto 0', background: 'var(--bg-surface)', border: '1px solid var(--border-main)', borderRadius: 16, padding: '14px 28px', color: 'var(--text-muted)', fontSize: 11, fontWeight: 900, cursor: 'pointer', transition: 'all 0.2s', textTransform: 'uppercase', letterSpacing: '0.1em' },
+    errorBox: { display: 'flex', gap: 16, alignItems: 'center', background: '#ef4444', borderRadius: 24, padding: '24px', marginTop: 32, boxShadow: '0 20px 40px -10px rgba(239, 68, 68, 0.3)' },
+    tableHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, marginTop: 40 },
+    badge: { display: 'flex', alignItems: 'center', gap: 12, color: 'var(--primary-500)', fontSize: 13, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', background: 'rgba(var(--primary-500-rgb), 0.1)', padding: '8px 16px', borderRadius: 12 },
+    clearBtn: { display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 12, padding: '10px 20px', color: '#ef4444', fontSize: 11, fontWeight: 900, cursor: 'pointer', textTransform: 'uppercase', transition: 'all 0.2s' },
+    tableWrap: { maxHeight: 350, overflowY: 'auto', border: '1px solid var(--border-main)', borderRadius: 24, background: 'var(--bg-surface-hover)', boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.1)' },
     table: { width: '100%', borderCollapse: 'collapse' },
-    th: { textAlign: 'left', padding: '14px 20px', fontSize: 9, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.2em', background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-main)' },
-    tr: { borderBottom: '1px solid var(--border-main)' },
-    td: { padding: '12px 20px', fontSize: 13, color: 'var(--text-primary)', fontWeight: 600 },
-    removeBtn: { background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 6, transition: 'all 0.2s', opacity: 0.3 },
-    sendBtn: { width: '100%', background: 'var(--primary-500)', border: 'none', borderRadius: 16, padding: '16px 24px', color: '#fff', fontSize: 12, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, transition: 'all 0.2s', boxShadow: '0 10px 20px -5px rgba(var(--primary-500-rgb), 0.3)', textTransform: 'uppercase', letterSpacing: '0.1em' },
-    resultBox: { textAlign: 'center', padding: '32px 0' },
-    statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginTop: 32 },
-    stat: { background: 'var(--bg-surface-hover)', border: '1px solid var(--border-main)', borderRadius: 16, padding: '20px 12px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 6 },
-    statNum: { fontSize: 24, fontWeight: 900, color: 'var(--primary-500)' },
-    statLabel: { fontSize: 9, color: 'var(--text-muted)', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.6 },
-    doneBtn: { marginTop: 32, background: 'var(--bg-surface-hover)', border: '1px solid var(--border-main)', borderRadius: 14, padding: '14px 40px', color: 'var(--text-primary)', fontSize: 12, fontWeight: 900, cursor: 'pointer', transition: 'all 0.2s', textTransform: 'uppercase', letterSpacing: '0.1em' }
+    th: { textAlign: 'left', padding: '18px 24px', fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.2em', background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-main)', position: 'sticky', top: 0, zIndex: 10 },
+    tr: { borderBottom: '1px solid var(--border-main)', transition: 'background 0.2s' },
+    td: { padding: '16px 24px', fontSize: 14, color: 'var(--text-primary)', fontWeight: 600 },
+    removeBtn: { background: 'var(--bg-surface)', border: '1px solid var(--border-main)', borderRadius: 8, color: 'var(--text-muted)', cursor: 'pointer', padding: 8, transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+    sendBtn: { width: '100%', border: 'none', borderRadius: 20, padding: '20px 32px', color: '#fff', fontSize: 14, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, transition: 'all 0.3s', boxShadow: '0 20px 40px -10px rgba(var(--primary-500-rgb), 0.4)', textTransform: 'uppercase', letterSpacing: '0.15em' },
+    resultBox: { textAlign: 'center', padding: '16px 0' },
+    statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginTop: 40 },
+    stat: { background: 'var(--bg-surface-hover)', border: '1px solid var(--border-main)', borderRadius: 20, padding: '24px 12px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 8, transition: 'transform 0.2s' },
+    statNum: { fontSize: 28, fontWeight: 900, color: 'var(--primary-500)', letterSpacing: -1 },
+    statLabel: { fontSize: 10, color: 'var(--text-muted)', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.6 },
+    doneBtn: { marginTop: 40, background: 'var(--bg-surface-hover)', border: '1px solid var(--border-main)', borderRadius: 16, padding: '18px 48px', color: 'var(--text-primary)', fontSize: 13, fontWeight: 900, cursor: 'pointer', transition: 'all 0.2s', textTransform: 'uppercase', letterSpacing: '0.15em' }
 };
