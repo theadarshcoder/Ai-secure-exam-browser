@@ -1,6 +1,12 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User'); 
 const cacheService = require('../services/cacheService');
+const NodeCache = require('node-cache');
+
+// 🛡️ Fix 16: L1 In-Memory Cache (5s TTL to absorb thundering herd)
+// 🛡️ Fix 1 (Last-Mile): useClones: false to avoid GC pressure on high churn
+const l1Cache = new NodeCache({ stdTTL: 5, checkperiod: 10, useClones: false });
+const inFlightRequests = new Map();
 
 const verifyToken = async (req, res, next) => {
     const token = req.headers.authorization?.split(" ")[1];
@@ -8,35 +14,77 @@ const verifyToken = async (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        // ⚡ SCALING GUARD: Check Redis first
-        let cachedToken = null;
-        try {
-            cachedToken = await cacheService.getUserSession(decoded.id);
-        } catch (cacheErr) {
-            console.error('🛡️ Cache Service Down (verifyToken):', cacheErr.message);
-            // 🔄 Fallback to MongoDB automatically by leaving cachedToken as null
+        // 🛡️ Fix 16 (Upgraded): L1 Cache + Request Coalescing (Thundering Herd Protection)
+        const l1Key = `auth_meta:${decoded.id}`;
+        const cachedL1 = l1Cache.get(l1Key);
+
+        if (cachedL1 && cachedL1.token === token) {
+            req.user = { ...decoded, permissions: cachedL1.permissions };
+            return next();
         }
 
-        if (cachedToken) {
-            if (cachedToken.token !== token) {
+        // Request Coalescing: If multiple requests for same user hit, reuse the first promise
+        if (inFlightRequests.has(l1Key)) {
+            const result = await inFlightRequests.get(l1Key);
+            if (result.token === token) {
+                req.user = { ...decoded, permissions: result.permissions };
+                return next();
+            }
+        }
+
+        const authTask = (async () => {
+            let permissions = [];
+            let cachedToken = null;
+            
+            try {
+                cachedToken = await cacheService.getUserSession(decoded.id);
+            } catch (cacheErr) {
+                console.error('🛡️ L2 Cache Service Down:', cacheErr.message);
+            }
+
+            if (cachedToken) {
+                if (cachedToken.token !== token) throw new Error('SESSION_COLLISION');
+                permissions = cachedToken.permissions || [];
+            } else {
+                // L3: Fallback to MongoDB
+                const user = await User.findById(decoded.id).select('permissions sessionVersion');
+                if (!user) throw new Error('USER_NOT_FOUND');
+                
+                // Elite Fix: Session Versioning
+                if (decoded.sessionVersion && user.sessionVersion !== decoded.sessionVersion) {
+                    throw new Error('STALE_SESSION');
+                }
+                permissions = user.permissions || [];
+            }
+
+            const result = { token, permissions };
+            l1Cache.set(l1Key, result);
+            return result;
+        })();
+
+        inFlightRequests.set(l1Key, authTask);
+        try {
+            const authResult = await authTask;
+            req.user = { ...decoded, permissions: authResult.permissions };
+            next();
+        } catch (err) {
+            if (err.message === 'SESSION_COLLISION') {
                 return res.status(401).json({ 
                     message: "Security Alert: This session has been terminated because you logged in from another device.",
                     code: "SESSION_COLLISION" 
                 });
-            }
-            // 🛡️ Attach cached permissions to req.user
-            decoded.permissions = cachedToken.permissions || [];
-        } else {
-            // ⚡ REDIS DOWN / MISS: Fallback to MongoDB
-            const user = await User.findById(decoded.id).select('permissions');
-            if (!user) {
+            } else if (err.message === 'STALE_SESSION') {
+                return res.status(401).json({ 
+                    message: "Security: This session is no longer valid. Your account was logged in elsewhere.",
+                    code: "STALE_SESSION" 
+                });
+            } else if (err.message === 'USER_NOT_FOUND') {
                 return res.status(403).json({ message: "User account not found" });
             }
-            decoded.permissions = user.permissions || [];
+            throw err; // Let outer catch handle it
+        } finally {
+            inFlightRequests.delete(l1Key);
         }
-        
-        req.user = decoded;
-        next();
     } catch (error) {
         if (error.name === 'TokenExpiredError') {
             return res.status(403).json({

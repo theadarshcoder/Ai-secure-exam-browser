@@ -16,7 +16,8 @@ const userSchema = new mongoose.Schema({
     // Identity Verification (eKYC)
     profilePicture: { type: String, default: null },
     idCardUrl: { type: String, default: null },
-    isVerified: { type: Boolean, default: false }
+    isVerified: { type: Boolean, default: false },
+    sessionVersion: { type: Number, default: 1 }
 }, { timestamps: true });
 
 // ─── Password Hashing ───────────────────────────────────

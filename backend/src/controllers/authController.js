@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const ExamSession = require('../models/ExamSession');
 const jwt = require('jsonwebtoken');
 const { asyncHandler } = require('../middlewares/errorMiddleware');
 const cacheService = require('../services/cacheService');
@@ -101,8 +102,45 @@ exports.login = asyncHandler(async (req, res) => {
 
     console.log(`✅ [LOGIN SUCCESS] User: ${searchEmail} (${user.role})`);
 
-    // ✨ DEVICE FINGERPRINTING: Anti-Login Sharing
+    // ✨ DEVICE FINGERPRINTING: Anti-Login Sharing (Upgraded Fix 5 & 3)
     if (deviceId) {
+        // If student is mid-exam, block login unless 'force' is used
+        if (user.role === 'student') {
+            const activeSession = await ExamSession.findOne({ 
+                student: user._id, 
+                status: { $in: ['in_progress', 'flagged'] } 
+            });
+
+            if (activeSession && user.currentDeviceId && user.currentDeviceId !== deviceId) {
+                if (!req.body.force) {
+                    return res.status(403).json({
+                        code: 'ACTIVE_SESSION_DEVICE_MISMATCH',
+                        message: 'Security: You have an active exam session on another device. Resume there or use "Force Login" if that device is inaccessible.'
+                    });
+                }
+
+                // 🛡️ Fix 3: Force Login Rate Limiting
+                const { getRedisClient } = require('../config/redis');
+                const redisClient = getRedisClient();
+                if (redisClient) {
+                    const forceLoginKey = `force_login_count:${user._id}`;
+                    const currentCount = await redisClient.get(forceLoginKey);
+                    
+                    if (currentCount && parseInt(currentCount) >= 3) {
+                        return res.status(429).json({
+                            code: 'FORCE_LOGIN_LIMIT_EXCEEDED',
+                            message: 'Security Alert: Too many "Force Login" attempts. Your account has been temporarily restricted. Please contact support.'
+                        });
+                    }
+                    
+                    await redisClient.incr(forceLoginKey);
+                    await redisClient.expire(forceLoginKey, 600); // 10 min window
+                }
+
+                console.warn(`[SECURITY] Force Login by ${user.email} during active exam ${activeSession.exam}`);
+            }
+        }
+
         if (user.currentDeviceId && user.currentDeviceId !== deviceId) {
             const io = req.app.get('io');
             if (io) {
@@ -133,26 +171,31 @@ exports.login = asyncHandler(async (req, res) => {
         finalRole = user.role;
     }
 
+    // 🛡️ Fix 32: Use dedicated Refresh Secret
+    const refreshToken = jwt.sign(
+        { id: user._id },
+        process.env.JWT_REFRESH_SECRET,
+        { expiresIn: '7d' }
+    );
+
+    // Increment session version to invalidate old tokens (Bonus: Session Versioning)
+    user.sessionVersion = (user.sessionVersion || 0) + 1;
+    user.currentDeviceId = deviceId;
+    user.refreshToken = refreshToken;
+    await user.save();
+
     // 🛡️ Optimized JWT Payload: Permissions removed to save header space
     const accessToken = jwt.sign(
         { 
             id: user._id, 
             email: user.email, 
             role: user.role,         
-            displayRole: finalRole 
+            displayRole: finalRole,
+            sessionVersion: user.sessionVersion // Elite Fix: Session Versioning
         },
         process.env.JWT_SECRET,
         { expiresIn: '1h' } 
     );
-
-    const refreshToken = jwt.sign(
-        { id: user._id },
-        process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
-        { expiresIn: '7d' } 
-    );
-
-    user.refreshToken = refreshToken;
-    await user.save();
 
     // ⚡ SYNC TO CACHE: Redis handles active session tracking & permissions
     try {
@@ -204,7 +247,8 @@ exports.refresh = asyncHandler(async (req, res) => {
     }
 
     try {
-        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
+        // 🛡️ Fix 32: No fallback to JWT_SECRET. Refresh tokens MUST use the dedicated secret.
+        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
         const user = await User.findById(decoded.id);
 
         if (!user || user.refreshToken !== refreshToken) {

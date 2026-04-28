@@ -4,7 +4,7 @@ require('dotenv').config();
 const connectDB = async () => {
     try {
         await mongoose.connect(process.env.MONGODB_URI, {
-            maxPoolSize: 10,
+            maxPoolSize: 100, // 🏎️ Fix 20: Increased for 50k concurrent users
             serverSelectionTimeoutMS: 5000,
         });
         console.log('✅ MongoDB Connected');
@@ -15,4 +15,3 @@ const connectDB = async () => {
 };
 
 module.exports = connectDB;
-

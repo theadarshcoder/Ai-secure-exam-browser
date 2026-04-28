@@ -6,6 +6,12 @@
 const { executeCode } = require('./judge0');
 const axios = require('axios');
 
+// ─── Normalization Helper (Fix 13) ───────────────────────
+const normalize = (str) => {
+    if (typeof str !== 'string') return str;
+    return str.replace(/\s+/g, ' ').trim().toLowerCase();
+};
+
 // ═══════════════════════════════════════════════════════════
 //  1. MCQ Grading — Instant, deterministic
 // ═══════════════════════════════════════════════════════════
@@ -142,7 +148,7 @@ async function gradeCoding(question, studentCode) {
             const result = await executeCode(wrappedCode, language, '');
 
             if (result.success) {
-                const passed = result.output.trim() === tc.expectedOutput.trim();
+                const passed = normalize(result.output) === normalize(tc.expectedOutput);
                 if (passed) passedCount++;
 
                 testCaseResults.push({
