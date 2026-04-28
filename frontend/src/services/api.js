@@ -127,15 +127,25 @@ api.interceptors.response.use(
   }
 );
 
-// 🛡️ Robust Error Parsing (Bug 5 Fix)
+// 🛡️ Robust Error Parsing (Bug 5 Fix + Phase 5 Governance)
 const getErrorMessage = (error) => {
     const errData = error.response?.data;
-    if (errData && typeof errData === 'object' && errData.message) {
-        return errData.message;
+    if (!errData) return error.message || 'System error occurred. Please try again later.';
+    
+    // If errData.error is a string, use it directly
+    if (typeof errData.error === 'string') return errData.error;
+    
+    // If errData.error is an object (nested validation response), extract the message
+    if (errData.error && typeof errData.error === 'object') {
+        return errData.error.message || JSON.stringify(errData.error);
     }
-    if (typeof errData === 'string' && !errData.startsWith('<!DOCTYPE')) {
-        return errData;
-    }
+
+    // Fallback to message field
+    if (typeof errData.message === 'string') return errData.message;
+
+    // Fallback to raw string response (but not HTML error pages)
+    if (typeof errData === 'string' && !errData.startsWith('<!DOCTYPE')) return errData;
+
     return error.message || 'System error occurred. Please try again later.';
 };
 
@@ -468,7 +478,7 @@ export const resendInvite = async (examId, email) => {
         const response = await api.post(`/api/exams/${examId}/resend-invite`, { email });
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -480,7 +490,7 @@ export const getStudentReport = async (studentId, page = 1, limit = 10) => {
         });
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 

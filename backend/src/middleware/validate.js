@@ -23,16 +23,19 @@ const validate = (schema) => (req, res, next) => {
         next();
     } catch (err) {
         if (err instanceof z.ZodError) {
+            // 🛡️ Error shape MUST be compatible with frontend expectations:
+            // Frontend reads: err.response.data.error (expects STRING)
+            // Frontend reads: err.response.data.message (expects STRING)
+            const fieldErrors = err.errors.map(e => `${e.path.slice(1).join('.')}: ${e.message}`);
             return res.status(400).json({
                 success: false,
-                error: {
-                    code: "VALIDATION_ERROR",
-                    message: "Malformed input data",
-                    details: err.errors.map(e => ({
-                        path: e.path.join('.'),
-                        message: e.message
-                    }))
-                }
+                error: fieldErrors.join(', ') || 'Malformed input data',
+                message: fieldErrors.join(', ') || 'Malformed input data',
+                code: "VALIDATION_ERROR",
+                validationDetails: err.errors.map(e => ({
+                    path: e.path.join('.'),
+                    message: e.message
+                }))
             });
         }
         next(err);
