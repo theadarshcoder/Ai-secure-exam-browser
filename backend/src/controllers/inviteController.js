@@ -321,54 +321,55 @@ exports.verifyInvite = asyncHandler(async (req, res) => {
     }
 
     // ─── Generate/Reuse JWT for auto-login ────────────────
-    const student = invite.student;
-    if (!student) {
+    const user = invite.student;
+    if (!user) {
         res.status(403);
         throw new Error(GENERIC_ERROR);
     }
 
-    // ─── Phase 2 Fix: Modern Auth Model (refreshToken + sessionVersion) ───
-    // Security: Generate a fresh session for this invite verification
+    // 🛡️ Final Unification Fix: Standardized tokens across all entry points (Login, Refresh, Invite)
+    user.sessionVersion = (user.sessionVersion || 0) + 1;
+    
     const refreshToken = jwt.sign(
-        { id: student._id },
+        { id: user._id, sessionVersion: user.sessionVersion },
         process.env.JWT_REFRESH_SECRET,
         { expiresIn: '7d' }
     );
 
     const accessToken = jwt.sign(
         { 
-            id: student._id, 
-            email: student.email, 
-            role: student.role || 'student',
-            displayRole: student.role || 'student',
-            sessionVersion: (student.sessionVersion || 0) + 1 
+            id: user._id, 
+            email: user.email, 
+            role: user.role, 
+            sessionVersion: user.sessionVersion 
         },
         process.env.JWT_SECRET,
         { expiresIn: '1h' }
     );
 
-    // Atomic update of user session data
-    await User.findByIdAndUpdate(student._id, { 
-        $set: { refreshToken: refreshToken },
-        $inc: { sessionVersion: 1 } 
-    });
+    user.refreshToken = refreshToken;
+    await user.save();
 
-    // Backfill cache for performance
-    await cacheService.saveUserSession(student._id, accessToken, student.permissions || []);
+    // ⚡ SYNC TO CACHE
+    try {
+        await cacheService.saveUserSession(user._id, accessToken, user.permissions || []);
+    } catch (cacheErr) {
+        console.warn('🛡️ Cache sync failed during invite (Redis down):', cacheErr.message);
+    }
 
-    console.log(`🔑 [Security] User ${student.email} logged in via invite link (Session V${(student.sessionVersion || 0) + 1})`);
+    console.log(`🔑 [Security] User ${user.email} logged in via invite link (Session V${user.sessionVersion})`);
 
     res.json({
         message: 'Invitation verified! Redirecting to exam...',
-        accessToken, // Standardized key
-        refreshToken, // Standardized key
+        accessToken, 
+        refreshToken, 
         examId: invite.exam._id,
         examTitle: invite.exam.title,
         user: {
-            id: student._id,
-            name: student.name,
-            email: student.email,
-            role: student.role || 'student'
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role || 'student'
         }
     });
 });

@@ -180,33 +180,33 @@ exports.login = asyncHandler(async (req, res) => {
         finalRole = user.role;
     }
 
-    // 🛡️ Fix 32: Use dedicated Refresh Secret
+    // 🛡️ Phase 2/3 Fix: Use dedicated Refresh Secret & Include sessionVersion
+    user.sessionVersion = (user.sessionVersion || 0) + 1;
+    user.currentDeviceId = deviceId;
+    
     const refreshToken = jwt.sign(
-        { id: user._id },
+        { id: user._id, sessionVersion: user.sessionVersion },
         process.env.JWT_REFRESH_SECRET,
         { expiresIn: '7d' }
     );
 
-    // Increment session version to invalidate old tokens (Bonus: Session Versioning)
-    user.sessionVersion = (user.sessionVersion || 0) + 1;
-    user.currentDeviceId = deviceId;
     user.refreshToken = refreshToken;
     await user.save();
 
-    // 🛡️ Optimized JWT Payload: Permissions removed to save header space
+    // 🛡️ Optimized JWT Payload: Standardized Access Token
     const accessToken = jwt.sign(
         { 
             id: user._id, 
             email: user.email, 
             role: user.role,         
             displayRole: finalRole,
-            sessionVersion: user.sessionVersion // Elite Fix: Session Versioning
+            sessionVersion: user.sessionVersion 
         },
         process.env.JWT_SECRET,
         { expiresIn: '1h' } 
     );
 
-    // ⚡ SYNC TO CACHE: Redis handles active session tracking & permissions
+    // ⚡ SYNC TO CACHE: Redis handles active session tracking
     try {
         await cacheService.saveUserSession(user._id, accessToken, user.permissions);
     } catch (cacheErr) {
@@ -232,7 +232,6 @@ exports.logout = asyncHandler(async (req, res) => {
     const userId = req.user.id;
     
     // 🛡️ Phase 2 Fix: Atomic Session Invalidation
-    // Clears the refresh token AND increments version to kill all access tokens immediately
     await User.findByIdAndUpdate(userId, { 
         $set: { refreshToken: null },
         $inc: { sessionVersion: 1 }
@@ -249,41 +248,76 @@ exports.logout = asyncHandler(async (req, res) => {
 
 // ─── POST /api/auth/refresh ───────────────────────────────
 exports.refresh = asyncHandler(async (req, res) => {
-    const { refreshToken } = req.body;
+    const { refreshToken: incomingToken } = req.body;
 
-    if (!refreshToken) {
+    if (!incomingToken) {
         res.status(401);
         throw new Error('Refresh Token is required!');
     }
 
     try {
-        // 🛡️ Fix 32: No fallback to JWT_SECRET. Refresh tokens MUST use the dedicated secret.
-        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-        const user = await User.findById(decoded.id);
+        // 1. Verify token structure & secret
+        const decoded = jwt.verify(incomingToken, process.env.JWT_REFRESH_SECRET);
+        
+        // 2. Atomic check: find user where this SPECIFIC token is valid
+        const user = await User.findOne({ _id: decoded.id, refreshToken: incomingToken });
 
-        if (!user || user.refreshToken !== refreshToken) {
+        if (!user) {
+            // 🚨 POSSIBLE TOKEN THEFT DETECTED
+            // If we found the user by ID but the token doesn't match, someone used an old token.
+            const compromisedUser = await User.findById(decoded.id);
+            if (compromisedUser) {
+                console.error(`⚠️ [SECURITY] Token reuse detected for user: ${decoded.id}. Invalidating all sessions.`);
+                compromisedUser.refreshToken = null;
+                compromisedUser.sessionVersion = (compromisedUser.sessionVersion || 0) + 1;
+                await compromisedUser.save();
+            }
             res.status(403);
-            throw new Error('Invalid or expired Refresh Token');
+            throw new Error('Security Alert: Session compromised or token reused. Please login again.');
         }
 
-        // Generate new Access Token (Optimized payload)
-        const accessToken = jwt.sign(
+        // 3. Version Check: Ensure token version matches DB version
+        if (decoded.sessionVersion !== user.sessionVersion) {
+            res.status(403);
+            throw new Error('Session invalidated. Please login again.');
+        }
+
+        // 4. 🔥 ROTATE: Generate NEW Access + NEW Refresh Token
+        const newRefreshToken = jwt.sign(
+            { id: user._id, sessionVersion: user.sessionVersion },
+            process.env.JWT_REFRESH_SECRET,
+            { expiresIn: '7d' }
+        );
+
+        const newAccessToken = jwt.sign(
             { 
                 id: user._id, 
                 email: user.email, 
                 role: user.role,
-                displayRole: user.role
+                displayRole: user.role,
+                sessionVersion: user.sessionVersion
             },
             process.env.JWT_SECRET,
             { expiresIn: '1h' }
         );
 
-        // Sync new token to Redis with permissions
-        await cacheService.saveUserSession(user._id, accessToken, user.permissions);
+        // 5. Save rotated token
+        user.refreshToken = newRefreshToken;
+        await user.save();
 
-        res.json({ accessToken });
+        // 6. Sync new session to cache
+        await cacheService.saveUserSession(user._id, newAccessToken, user.permissions);
+
+        console.log(`🔁 [Auth] Token rotated successfully for user: ${user.email}`);
+
+        res.json({ 
+            accessToken: newAccessToken, 
+            refreshToken: newRefreshToken 
+        });
+
     } catch (error) {
+        console.warn(`🚫 [Auth] Refresh failed: ${error.message}`);
         res.status(403);
-        throw new Error('Refresh Token validation failed');
+        throw new Error(error.message || 'Refresh Token validation failed');
     }
 });

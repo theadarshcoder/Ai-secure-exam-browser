@@ -884,3 +884,5 @@ server.listen(PORT, '0.0.0.0', async () => {
 
     cacheService.preWarmCache();
 });
+
+module.exports = app;
