@@ -15,7 +15,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
         platform: navigator.platform,
         width: window.screen.width,
         height: window.screen.height
-    })
+    }),
+    // 🔗 Magic Deep Link: Listen for auth tokens from main process
+    onAuthToken: (callback) => {
+        ipcRenderer.on('deep-link-auth', (event, token) => callback(token));
+    }
 });
 
 // 🔒 Client-side hardening (Paste prevention)

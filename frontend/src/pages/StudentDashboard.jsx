@@ -427,12 +427,7 @@ export default function StudentDashboard() {
                         exam={exam}
                         now={now}
                       onLaunch={(id) => {
-                        const examObj = exams.find(e => e.id === id);
-                        if (examObj?.settings?.requireIDVerification === false) {
-                            navigate(`/exam/${id}/waiting`);
-                        } else {
-                            navigate(`/exam/${id}/verify`);
-                        }
+                        navigate(`/exam/${id}/preflight`);
                       }}
                         onViewResults={() => navigate(`/exam/${exam.id}/result`)}
                       />
@@ -519,8 +514,9 @@ export default function StudentDashboard() {
       <div className="flex flex-col gap-3 relative z-10">
         <button 
           onClick={() => {
-            window.location.href = 'vision-secure://launch';
-            toast.success('Attempting to launch VISION...', { icon: '🚀' });
+            const token = sessionStorage.getItem('vision_token') || '';
+            window.location.href = 'vision-secure://launch?token=' + encodeURIComponent(token);
+            toast.success('Launching VISION Secure Browser...', { icon: '🔗' });
           }}
           className="w-full h-12 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-emerald-700 transition-all flex items-center justify-center gap-3 shadow-xl shadow-emerald-500/10 active:scale-95"
         >

@@ -16,6 +16,7 @@ import StudentResult from './pages/StudentResult';
 import VerifyInvite from './pages/VerifyInvite';
 import StudentIntelligenceDashboard from './pages/StudentIntelligenceDashboard';
 import MentorLiveMonitoring from './pages/MentorLiveMonitoring';
+import PreFlightCheck from './pages/PreFlightCheck';
 
 const ThemeEnforcer = () => {
   const { pathname } = useLocation();
@@ -174,6 +175,12 @@ export default function AppRouter() {
           <Route path="/exam/:examId/waiting" element={
             <ProtectedRoute allowedRoles={['student']}>
               <ExamWaitingRoom />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/exam/:examId/preflight" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <PreFlightCheck />
             </ProtectedRoute>
           } />
 
