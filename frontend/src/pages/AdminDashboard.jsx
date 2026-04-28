@@ -829,7 +829,7 @@ export default function AdminDashboard() {
           fetchDataForTab('Users');
           toast.success('User created successfully.');
       } catch (err) {
-          toast.error("Error creating user: " + err.message);
+          toast.error("Error creating user: " + (err.message || err));
       }
   };
 
