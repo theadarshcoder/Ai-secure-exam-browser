@@ -1502,7 +1502,7 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                           <div><label className={LABEL_BASE}>Coding</label><StepperInput value={aiConfig.coding} onChange={v => setAiConfig({...aiConfig, coding:v})} min={0} /></div>
                        </div>
 
-                       <button onClick={generateAI} disabled={aiLoading} className="w-full h-11 bg-primary-500 text-white rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary-500/20 active:scale-95">
+                       <button type="button" onClick={generateAI} disabled={aiLoading} className="w-full h-11 bg-primary-500 text-white rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary-500/20 active:scale-95">
                           {aiLoading ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
                           <span>{aiLoading ? 'Generating...' : 'Generate'}</span>
                        </button>
