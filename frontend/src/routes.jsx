@@ -15,6 +15,7 @@ import SessionMonitor from './pages/SessionMonitor';
 import StudentResult from './pages/StudentResult';
 import VerifyInvite from './pages/VerifyInvite';
 import StudentIntelligenceDashboard from './pages/StudentIntelligenceDashboard';
+import MentorLiveMonitoring from './pages/MentorLiveMonitoring';
 
 const ThemeEnforcer = () => {
   const { pathname } = useLocation();
@@ -44,26 +45,47 @@ const ThemeEnforcer = () => {
 };
 
 // --- Mock/Utility Components to prevent crashes ---
+// 🛡️ Security Fix: Extract role from JWT instead of trusting SessionStorage
+const getRoleFromToken = (token) => {
+  if (!token) return null;
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => {
+      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+    return JSON.parse(jsonPayload).role?.toLowerCase();
+  } catch (e) {
+    console.error("Token decoding failed:", e);
+    return null;
+  }
+};
+
 const DashboardRedirect = () => {
   const navigate = useNavigate();
   useEffect(() => {
-    const role = sessionStorage.getItem('vision_role')?.toLowerCase();
+    const token = sessionStorage.getItem('vision_token');
+    const role = getRoleFromToken(token);
+
     if (role === 'admin' || role === 'super_mentor') navigate('/admin');
     else if (role === 'mentor') navigate('/mentor');
-    else navigate('/student');
+    else if (role === 'student') navigate('/student');
+    else navigate('/login');
   }, [navigate]);
   return null;
 };
 
 const ProtectedRoute = ({ allowedRoles, children }) => {
   const token = sessionStorage.getItem('vision_token');
-  const role = sessionStorage.getItem('vision_role')?.toLowerCase();
+  const role = getRoleFromToken(token);
 
-  if (!token) {
+  if (!token || !role) {
+    sessionStorage.clear(); // Clear potentially corrupted/stale data
     return <Navigate to="/login" replace />;
   }
 
   if (allowedRoles && !allowedRoles.includes(role)) {
+    console.warn(`🔒 Access Denied: User role "${role}" is not in ${allowedRoles}`);
     const redirectMap = {
       admin: '/admin',
       super_mentor: '/admin',
@@ -116,6 +138,12 @@ export default function AppRouter() {
           <Route path="/mentor/create-exam" element={
             <ProtectedRoute allowedRoles={['mentor', 'admin', 'super_mentor']}>
               <CreateExam />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/mentor/exam/:examId/monitoring" element={
+            <ProtectedRoute allowedRoles={['mentor', 'admin', 'super_mentor']}>
+              <MentorLiveMonitoring />
             </ProtectedRoute>
           } />
           

@@ -10,7 +10,7 @@ import {
   Filter, Download, Eye, Power, Users, ShieldCheck, 
   Edit3, RefreshCw, Trash2, X, Check, AlertCircle,
   Code, MessageSquare, Star, CheckCircle, AlertOctagon, EyeOff,
-  TrendingUp, Activity, ScanFace, Radio, ShieldAlert, User
+  TrendingUp, Activity, ScanFace, Radio, ShieldAlert, User, Sparkles, Target
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import PremiumSidebar from '../components/PremiumSidebar';
@@ -209,6 +209,14 @@ const EvaluationModal = ({ sessionData, onClose, onGradeSubmit, submitStatus }) 
     }
   }, [sessionData]);
 
+  // Accept AI suggestion for a specific question
+  const handleAcceptAI = (qIndex, aiMarks) => {
+    setGrades(prev => ({
+      ...prev,
+      [qIndex]: { ...prev[qIndex], marksObtained: aiMarks }
+    }));
+  };
+
   const handleSubmit = () => {
     const gradeArray = Object.entries(grades).map(([idx, g]) => ({
       questionIndex: Number(idx),
@@ -350,9 +358,30 @@ const EvaluationModal = ({ sessionData, onClose, onGradeSubmit, submitStatus }) 
                   {q.aiSuggestedMarks != null && (
                     <div className="bg-primary-500/5 border border-primary-500/20 rounded-[1.5rem] p-6 shadow-sm relative overflow-hidden">
                       <div className="absolute top-0 right-0 w-32 h-32 bg-primary-500/5 rounded-full blur-2xl -mr-16 -mt-16" />
-                      <div className="flex items-center gap-3 mb-3 relative z-10">
-                        <Sparkles size={16} className="text-primary-500" />
-                        <p className="text-[9px] font-black text-primary-500 uppercase tracking-[0.2em]">AI Suggested Marks: {q.aiSuggestedMarks} <span className="text-muted/30">/</span> {q.maxMarks}</p>
+                      <div className="flex items-center justify-between mb-3 relative z-10">
+                        <div className="flex items-center gap-3">
+                          <Sparkles size={16} className="text-primary-500" />
+                          <p className="text-[9px] font-black text-primary-500 uppercase tracking-[0.2em]">AI Suggested: {q.aiSuggestedMarks} <span className="text-muted/30">/</span> {q.maxMarks}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {q.aiConfidence && (
+                            <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${
+                              q.aiConfidence === 'high' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                              q.aiConfidence === 'medium' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                              'bg-red-500/10 text-red-500 border-red-500/20'
+                            }`}>
+                              {q.aiConfidence} confidence
+                            </span>
+                          )}
+                          {q.status === 'pending_review' && grades[q.index] !== undefined && (
+                            <button
+                              onClick={() => handleAcceptAI(q.index, q.aiSuggestedMarks)}
+                              className="px-4 py-1.5 bg-primary-500 text-white text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-primary-600 transition-all active:scale-95 shadow-lg shadow-primary-500/20 flex items-center gap-2"
+                            >
+                              <Check size={12} strokeWidth={3} /> Accept AI
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <p className="text-[11px] text-primary-500 font-bold opacity-80 relative z-10 leading-relaxed">{q.aiReasoning}</p>
                     </div>
@@ -1203,6 +1232,13 @@ export default function MentorDashboard() {
             </td>
             <td className="px-6 py-4">
                <div className="flex items-center gap-4">
+                  <button 
+                    onClick={() => navigate(`/mentor/exam/${exam.id || exam._id}/monitoring`)}
+                    className="w-8 h-8 flex items-center justify-center text-muted/50 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-all active:scale-95"
+                    title="Live Monitoring"
+                  >
+                    <Radio size={16} strokeWidth={2} className={exam.status === 'published' || exam.status === 'active' ? 'animate-pulse text-emerald-500' : ''} /> 
+                  </button>
                   <button 
                     onClick={() => handleTogglePublishResults(exam.id || exam._id, exam.resultsPublished)} 
                     className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all active:scale-95 ${exam.resultsPublished ? 'text-emerald-500 bg-emerald-500/10' : 'text-muted/50 hover:text-emerald-500 hover:bg-emerald-500/10'}`}

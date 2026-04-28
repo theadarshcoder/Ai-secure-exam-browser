@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ShieldCheck, Clock, CalendarDays, AlertCircle, Radio,
-  Lock as LockIcon, BookOpen, Power, Fingerprint, CheckCircle2
+  Lock as LockIcon, BookOpen, Power, Fingerprint, CheckCircle2,
+  Download, MonitorOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as faceapi from '@vladmandic/face-api';
@@ -122,6 +123,29 @@ const CountdownTimer = ({ hours, minutes, seconds, isStarted, onStart }) => (
   </div>
 );
 
+const SecureEnvironmentWarning = () => (
+  <motion.div 
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    className="w-full bg-red-50 border border-red-100 rounded-3xl p-8 flex flex-col items-center text-center shadow-sm"
+  >
+    <div className="w-16 h-16 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mb-6 shadow-inner">
+      <MonitorOff size={32} />
+    </div>
+    <h3 className="text-xl font-bold text-red-900 mb-3">Secure Environment Required</h3>
+    <p className="text-sm text-red-700/80 mb-8 leading-relaxed max-w-[300px]">
+      This exam is protected. You must use the <strong>Vision Secure Browser</strong> to proceed. Regular browsers are blocked.
+    </p>
+    <button 
+      onClick={() => window.open('/download-secure-browser', '_blank')}
+      className="w-full bg-red-600 hover:bg-red-700 text-white py-4 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2.5 transition-all shadow-md active:scale-95"
+    >
+      <Download size={18} /> Download Secure Browser
+    </button>
+    <p className="mt-5 text-[11px] font-medium text-red-400 uppercase tracking-widest">Version 1.0.0 (Windows/macOS)</p>
+  </motion.div>
+);
+
 /* ─────────────── Main Component ─────────────── */
 
 export default function ExamWaitingRoom() {
@@ -136,8 +160,10 @@ export default function ExamWaitingRoom() {
   const [settings,       setSettings]       = useState(null);
   const [aiReady,        setAiReady]        = useState(false);
   const [alertConfig,    setAlertConfig]    = useState({ isOpen: false, title: '', message: '', type: 'info' });
+  const [isSecure,       setIsSecure]       = useState(true);
 
   useEffect(() => {
+    // 🛡️ Detect Secure Environment (Disabled for standard browser mode)
     document.body.style.overflow = 'hidden';
     const timer = setInterval(() => setNow(new Date()), 1000);
 
@@ -242,26 +268,30 @@ export default function ExamWaitingRoom() {
           <InstructionCard rules={exam.rules} />
         </motion.div>
 
-        {/* ── Right: Countdown ── */}
+        {/* ── Right: Countdown or Warning ── */}
         <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6 }} className="flex flex-col items-center ml-auto w-full max-w-[460px]">
-          <CountdownTimer
-            hours={h} minutes={m} seconds={s}
-            isStarted={isStarted}
-            onStart={async () => {
-              try {
-                if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
-                navigate(`/exam/${exam.id}`);
-              } catch (err) {
-                console.warn('Fullscreen request failed:', err);
-                setAlertConfig({
-                  isOpen: true,
-                  title: 'Action Required',
-                  message: 'Please allow Fullscreen permission to start the exam. This is mandatory for security protocols.',
-                  type: 'warning'
-                });
-              }
-            }}
-          />
+          {isSecure ? (
+            <CountdownTimer
+              hours={h} minutes={m} seconds={s}
+              isStarted={isStarted}
+              onStart={async () => {
+                try {
+                  if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
+                  navigate(`/exam/${exam.id}`);
+                } catch (err) {
+                  console.warn('Fullscreen request failed:', err);
+                  setAlertConfig({
+                    isOpen: true,
+                    title: 'Action Required',
+                    message: 'Please allow Fullscreen permission to start the exam. This is mandatory for security protocols.',
+                    type: 'warning'
+                  });
+                }
+              }}
+            />
+          ) : (
+            <SecureEnvironmentWarning />
+          )}
         </motion.div>
       </main>
 

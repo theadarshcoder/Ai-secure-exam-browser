@@ -996,12 +996,34 @@ const ExamTimer = React.memo(({ seconds, isCritical }) => {
 
 export default function ExamCockpit() {
   const navigate = useNavigate();
-  const { examId } = useParams();
+const { examId } = useParams();
   const videoRef = useRef(null);
   const tabToast = useTabVisibility();
 
   const [exam, setExam] = useState(null);
   const [sessionId, setSessionId] = useState(null);
+
+  // 💓 HEARTBEAT SYSTEM (V4 Hardened)
+  useEffect(() => {
+    if (!examId) return;
+
+    const heartbeatInterval = setInterval(async () => {
+      try {
+        await api.post('/exams/heartbeat', { examId: examId });
+        console.log('💓 Heartbeat sent & verified');
+      } catch (err) {
+        console.error('❌ Heartbeat failure:', err);
+        if (err.response?.status === 403) {
+          toast.error('Security Breach: Secure environment lost.', { duration: 5000 });
+          // Force logout or block UI
+          setTerminated({ reason: "Environment verification failed." });
+        }
+      }
+    }, 30000); // 30 Seconds
+
+    return () => clearInterval(heartbeatInterval);
+  }, [examId]);
+
   const [questions, setQuestions] = useState([]); // Will store shuffled list
   const [secondsLeft, setSecondsLeft] = useState(TOTAL_SECONDS);
   const [endTime, setEndTime] = useState(null);
@@ -1044,10 +1066,13 @@ export default function ExamCockpit() {
   const [helpStatus, setHelpStatus] = useState("idle");
   const [isTabViolation, setIsTabViolation] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
+  const [blockReason, setBlockReason] = useState("");
   const [activeWarning, setActiveWarning] = useState(null);
   const [camError, setCamError] = useState(false);
   const [settings, setSettings] = useState(null);
   const [headerAlert, setHeaderAlert] = useState(null);
+  const [helpCooldown, setHelpCooldown] = useState(0); 
+  const [aiModel, setAiModel] = useState(null); // 🧠 AI Proctoring Model
 
   // Layout state
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
@@ -1152,6 +1177,24 @@ export default function ExamCockpit() {
     socket.on("code_evaluation_error", handleCodeEvaluationError);
     socket.on("warning", handleWarning);
 
+    // 🛡️ Proctoring: Real-time Block/Unblock Handlers
+    socket.on("force_block_screen", (data) => {
+      console.log("🔒 Received force_block_screen:", data);
+      setBlockReason(data.reason || "");
+      setIsBlocked(true);
+      toast.error(data.reason || "Your screen has been blocked by an administrator.", { 
+        id: "force-block-toast",
+        duration: Infinity 
+      });
+    });
+
+    socket.on("unblock_screen", () => {
+      console.log("🔓 Received unblock_screen");
+      setIsBlocked(false);
+      toast.dismiss("force-block-toast");
+      toast.success("Screen unblocked by supervisor. You may resume.", { duration: 5000 });
+    });
+
     // 🛡️ Sync Socket if Token Refreshed
     socketService.reAuth();
 
@@ -1161,6 +1204,8 @@ export default function ExamCockpit() {
       socket.off("code_evaluation_result", handleCodeEvaluationResult);
       socket.off("code_evaluation_error", handleCodeEvaluationError);
       socket.off("warning", handleWarning);
+      socket.off("force_block_screen");
+      socket.off("unblock_screen");
     };
   }, [examId]);
 
@@ -1402,6 +1447,73 @@ export default function ExamCockpit() {
     captureAndUploadSnapshot,
   ]);
 
+  // 🧠 AI Proctoring: Load Model & Detection Loop
+  useEffect(() => {
+    let isMounted = true;
+    
+    const loadModel = async () => {
+      try {
+        if (!window.cocoSsd) {
+          console.warn("AI: COCO-SSD script not loaded yet...");
+          return;
+        }
+        console.log("🧠 AI: Initializing Object Detection Model...");
+        const model = await window.cocoSsd.load();
+        if (isMounted) {
+          setAiModel(model);
+          setModelsLoaded(true);
+          console.log("🚀 AI: Proctoring Engine Active (COCO-SSD)");
+        }
+      } catch (err) {
+        console.error("❌ AI: Failed to load detection model:", err.message);
+      }
+    };
+
+    loadModel();
+    return () => { isMounted = false; };
+  }, []);
+
+  const runAIDetection = useCallback(async () => {
+    if (!aiModel || !videoRef.current || submitted || terminated || isBlocked) return;
+    
+    try {
+      const predictions = await aiModel.detect(videoRef.current);
+      
+      const prohibited = ["cell phone", "book", "laptop", "remote"];
+      const detectedProhibited = predictions.filter(p => prohibited.includes(p.class) && p.score > 0.65);
+      const people = predictions.filter(p => p.class === "person" && p.score > 0.6);
+
+      // 1. Multiple People Detection
+      if (people.length > 1) {
+        logIncident("Multiple People Detected", "critical", `AI detected ${people.length} persons in frame.`);
+        toast.error("SECURITY ALERT: Multiple people detected in frame!", { icon: "🚨" });
+      }
+
+      // 2. Prohibited Objects Detection
+      if (detectedProhibited.length > 0) {
+        const item = detectedProhibited[0].class;
+        logIncident("Prohibited Object", "critical", `AI detected a ${item} during exam.`);
+        toast.error(`SECURITY ALERT: ${item.toUpperCase()} detected! This incident has been reported.`, { 
+            icon: "🚨",
+            duration: 6000 
+        });
+        
+        // Take a snapshot for evidence
+        captureAndUploadSnapshot("ai_violation");
+      }
+    } catch (err) {
+      console.warn("AI: Detection cycle skipped:", err.message);
+    }
+  }, [aiModel, submitted, terminated, isBlocked, logIncident, captureAndUploadSnapshot]);
+
+  useEffect(() => {
+    if (!aiModel || !cameraActive || submitted || terminated) return;
+
+    // Run AI scan every 15 seconds
+    const interval = setInterval(runAIDetection, 15000);
+    return () => clearInterval(interval);
+  }, [aiModel, cameraActive, submitted, terminated, runAIDetection]);
+
   // 🔒 Security: Fullscreen & Shortcuts
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -1472,6 +1584,10 @@ export default function ExamCockpit() {
             (Date.now() - bgHiddenTimeRef.current) / 1000,
           );
           socketService.emitViolationReport("TAB_HIDDEN", duration, examId);
+          
+          // 🛡️ Fix 2: Persistent Cheating Protection
+          logIncident("Tab Switch", "high", `User left exam environment for ${duration}s`);
+          
           bgHiddenTimeRef.current = null;
           setIsTabViolation(true);
         }
@@ -1597,6 +1713,15 @@ export default function ExamCockpit() {
     }, 1000);
     return () => clearInterval(timer);
   }, [cooldownSeconds]);
+
+  // ⏲️ Help Request Cooldown Timer
+  useEffect(() => {
+    if (helpCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setHelpCooldown((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [helpCooldown]);
 
    const handleFinalSubmit = useCallback(async () => {
     if (isSubmittingRef.current || submitted) {
@@ -2861,7 +2986,7 @@ export default function ExamCockpit() {
         )}
       </AnimatePresence>
 
-      <FullBlockOverlay isOpen={isBlocked} />
+      <FullBlockOverlay isOpen={isBlocked} reason={blockReason} />
 
       <StudentMessageModal 
         userId={sessionStorage.getItem("vision_id") || sessionStorage.getItem("vision_email")} 

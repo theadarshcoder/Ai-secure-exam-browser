@@ -428,14 +428,7 @@ export default function StudentDashboard() {
                         key={exam.id}
                         exam={exam}
                         now={now}
-                      onLaunch={(id) => {
-                        const examObj = exams.find(e => e.id === id);
-                        if (examObj?.settings?.requireIDVerification === false) {
-                            navigate(`/exam/${id}/waiting`);
-                        } else {
-                            navigate(`/exam/${id}/verify`);
-                        }
-                      }}
+                      onLaunch={(id) => navigate(`/exam/${id}/verify`)}
                         onViewResults={() => navigate(`/exam/${exam.id}/result`)}
                       />
                     ))}
@@ -498,6 +491,8 @@ export default function StudentDashboard() {
         </div>
       </>
     )}
+
+
 
 
     {/* Exit FAB — Global Candidate Style */}

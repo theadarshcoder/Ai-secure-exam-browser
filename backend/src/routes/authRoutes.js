@@ -11,6 +11,7 @@ const inviteController = require('../controllers/inviteController');
 // ─── Public Route (koi bhi access kar sakta hai) ─────────
 // POST /api/auth/login — Email + Password se login karo, JWT token milega
 router.post('/login', authController.login);
+router.post('/refresh', authController.refresh);
 
 // ─── Public Route — Student email link se verify karta hai ──
 // POST /api/auth/verify-invite — Token verify → auto-login → exam redirect

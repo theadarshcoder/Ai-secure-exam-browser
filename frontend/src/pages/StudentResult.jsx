@@ -58,26 +58,14 @@ const StudentResult = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-page flex items-center justify-center relative overflow-hidden">
-                {/* Background Glow */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary-500/5 rounded-full blur-[120px] animate-pulse" />
-                
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
                 <motion.div 
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="flex flex-col items-center gap-6 relative z-10"
+                    className="flex flex-col items-center gap-4"
                 >
-                    <div className="w-16 h-16 border-4 border-main border-t-primary-500 rounded-2xl animate-spin shadow-2xl shadow-primary-500/20" />
-                    <div className="flex flex-col items-center gap-2">
-                        <p className="text-primary font-black uppercase text-[11px] tracking-[0.4em] animate-pulse">Analyzing Metrics</p>
-                        <div className="w-32 h-1 bg-main rounded-full overflow-hidden">
-                            <motion.div 
-                                className="h-full bg-primary-500" 
-                                animate={{ x: [-128, 128] }} 
-                                transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }} 
-                            />
-                        </div>
-                    </div>
+                    <div className="w-10 h-10 border-2 border-slate-200 border-t-indigo-500 rounded-full animate-spin" />
+                    <p className="text-slate-400 font-bold uppercase text-[9px] tracking-[0.3em]">Processing Intel</p>
                 </motion.div>
             </div>
         );
@@ -88,30 +76,24 @@ const StudentResult = () => {
     const displayDate = result.submittedAt || result.startedAt;
 
     return (
-        <div className="min-h-screen bg-page text-primary font-['Outfit'] selection:bg-primary-500/20 antialiased pb-24 relative overflow-hidden">
-            {/* Background Decor */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] bg-gradient-to-b from-primary-500/[0.03] to-transparent pointer-events-none" />
-            
-            <main className="max-w-7xl mx-auto px-8 py-16 lg:px-12 flex flex-col gap-12 relative z-10">
+        <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-['Outfit'] selection:bg-indigo-100 antialiased pb-20">
+            <main className="max-w-6xl mx-auto px-6 py-10 lg:px-8 flex flex-col gap-10">
                 
                 {/* 1. HEADER SECTION */}
                 <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                    <div className="flex flex-col gap-5">
-                        <div className="flex flex-col gap-2">
-                            <div className="flex items-center gap-4">
-                                <div className="flex items-center gap-2 px-3 py-1 bg-primary-500/10 border border-primary-500/20 rounded-full shadow-lg shadow-primary-500/5">
-                                    <ShieldCheck size={12} className="text-primary-500" />
-                                    <span className="text-[9px] font-black tracking-[0.2em] uppercase text-primary-500">
-                                        Validated Protocol Session
-                                    </span>
-                                </div>
-                                <span className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-50">
+                    <div className="flex flex-col gap-4">
+                        <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-3">
+                                <span className="text-[9px] font-bold tracking-[0.2em] uppercase text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-100/50">
+                                    ExamVault Session
+                                </span>
+                                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                                     {displayDate ? (
-                                        `Concluded ${new Date(displayDate).toLocaleDateString()} • ${new Date(displayDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`
-                                    ) : 'Protocol Terminated'}
+                                        `Completed ${new Date(displayDate).toLocaleDateString()} • ${new Date(displayDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`
+                                    ) : 'Session Completed'}
                                 </span>
                             </div>
-                            <h1 className="text-5xl font-black tracking-tighter text-primary uppercase leading-none">
+                            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
                                 {result.examTitle}
                             </h1>
                         </div>
@@ -119,98 +101,103 @@ const StudentResult = () => {
 
                     <button 
                         onClick={() => navigate('/student')}
-                        className="flex items-center gap-4 px-8 h-14 bg-surface border border-main text-primary rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-surface-hover hover:border-primary-500/30 transition-all active:scale-95 shadow-2xl group/btn"
+                        className="flex items-center gap-2.5 px-5 py-2.5 bg-slate-900 text-white rounded-xl text-[11px] font-bold uppercase tracking-widest hover:bg-black transition-all active:scale-[0.97] shadow-lg shadow-slate-900/10 group"
                     >
-                        <LayoutDashboard size={16} className="group-hover/btn:rotate-12 transition-transform duration-500" />
-                        Access Terminal
-                        <ArrowRight size={16} className="group-hover/btn:translate-x-1 transition-transform duration-500" />
+                        <LayoutDashboard size={14} className="group-hover:rotate-12 transition-transform" />
+                        Return to Dashboard
+                        <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                     </button>
                 </header>
 
                 {/* 2. TOP STATS: Bento Grid */}
-                <section className="grid grid-cols-2 md:grid-cols-4 bg-surface border border-main rounded-[2.5rem] shadow-2xl overflow-hidden divide-y md:divide-y-0 md:divide-x divide-main">
-                    <div className="p-10 flex flex-col justify-between min-h-[160px] hover:bg-surface-hover/50 transition-all duration-500 group/stat">
-                        <h2 className="text-[10px] font-black tracking-[0.3em] uppercase text-muted group-hover/stat:text-primary-500 transition-colors">Efficiency Score</h2>
-                        <p className="text-5xl font-black tracking-tighter mt-4 text-primary uppercase leading-none">
-                            {result.score}<span className="text-2xl text-muted/30 ml-2">/{result.totalMarks}</span>
+                <section className="grid grid-cols-2 md:grid-cols-4 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden divide-y md:divide-y-0 md:divide-x divide-slate-100">
+                    <div className="p-6 flex flex-col justify-between min-h-[130px] hover:bg-slate-50/50 transition-colors">
+                        <h2 className="text-[10px] font-bold tracking-[0.15em] uppercase text-slate-400">Total Score</h2>
+                        <p className="text-3xl font-bold tracking-tight mt-2 text-slate-900">
+                            {result.score}<span className="text-xl text-slate-300 ml-1">/{result.totalMarks}</span>
                         </p>
                     </div>
-                    <div className="p-10 flex flex-col justify-between min-h-[160px] hover:bg-surface-hover/50 transition-all duration-500 group/stat">
-                        <h2 className="text-[10px] font-black tracking-[0.3em] uppercase text-muted group-hover/stat:text-primary-500 transition-colors">Accuracy Rate</h2>
-                        <p className="text-5xl font-black tracking-tighter mt-4 text-primary uppercase leading-none">
+                    <div className="p-6 flex flex-col justify-between min-h-[130px] hover:bg-slate-50/50 transition-colors">
+                        <h2 className="text-[10px] font-bold tracking-[0.15em] uppercase text-slate-400">Accuracy</h2>
+                        <p className="text-3xl font-bold tracking-tight mt-2 text-slate-900">
                             {result.percentage}%
                         </p>
                     </div>
-                    <div className="p-10 flex flex-col justify-between min-h-[160px] hover:bg-surface-hover/50 transition-all duration-500 group/stat">
-                        <h2 className="text-[10px] font-black tracking-[0.3em] uppercase text-muted group-hover/stat:text-primary-500 transition-colors">Protocol Outcome</h2>
-                        <p className={`text-4xl font-black tracking-tighter mt-4 uppercase leading-none ${result.passed ? 'text-emerald-500 shadow-emerald-500/20' : 'text-red-500 shadow-red-500/20'}`}>
-                            {result.passed ? 'Validated' : 'Failed'}
+                    <div className="p-6 flex flex-col justify-between min-h-[130px] hover:bg-slate-50/50 transition-colors">
+                        <h2 className="text-[10px] font-bold tracking-[0.15em] uppercase text-slate-400">Status</h2>
+                        <p className={`text-2xl font-bold tracking-tight mt-2 ${result.passed ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            {result.passed ? 'Passed' : 'Failed'}
                         </p>
                     </div>
-                    <div className="p-10 flex flex-col justify-between min-h-[160px] hover:bg-surface-hover/50 transition-all duration-500 group/stat">
-                        <h2 className="text-[10px] font-black tracking-[0.3em] uppercase text-muted group-hover/stat:text-primary-500 transition-colors">Integrity Flags</h2>
-                        <p className={`text-5xl font-black tracking-tighter mt-4 uppercase leading-none ${result.violations > 3 ? 'text-red-500' : 'text-primary'}`}>
+                    <div className="p-6 flex flex-col justify-between min-h-[130px] hover:bg-slate-50/50 transition-colors">
+                        <h2 className="text-[10px] font-bold tracking-[0.15em] uppercase text-slate-400">Flags</h2>
+                        <p className={`text-3xl font-bold tracking-tight mt-2 ${result.violations > 3 ? 'text-rose-600' : 'text-slate-900'}`}>
                             {result.violations || 0}
                         </p>
                     </div>
                 </section>
 
                 {/* 3. BOTTOM CONTENT */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
                     
                     {/* Left Column: Grouped Breakdown */}
-                    <section className="lg:col-span-8 flex flex-col gap-16">
+                    <section className="lg:col-span-8 flex flex-col gap-12">
                         
                         <div>
-                            <h3 className="text-[11px] font-black tracking-[0.4em] uppercase text-muted mb-10 px-2 flex items-center gap-3">
-                                <BarChart3 size={14} className="text-primary-500" />
-                                Section Performance Telemetry
+                            <h3 className="text-[11px] font-bold tracking-[0.2em] uppercase text-slate-400 mb-8 px-1 flex items-center gap-2">
+                                <BarChart3 size={12} className="text-indigo-400" />
+                                Section-Wise Performance
                             </h3>
                             
-                            <div className="space-y-16">
+                            <div className="space-y-12">
                                 {Object.entries(groupedResults).map(([category, questions]) => (
-                                    <div key={category} className="flex flex-col gap-8">
+                                    <div key={category} className="flex flex-col gap-6">
                                         {/* Section Header */}
-                                        <div className="flex items-center justify-between border-b border-main pb-6">
-                                            <div className="flex items-center gap-5">
-                                                <div className="w-12 h-12 rounded-[1.25rem] bg-surface-hover text-primary flex items-center justify-center border border-main shadow-lg shadow-black/20">
-                                                    {category.toLowerCase().includes('coding') ? <Code size={20} strokeWidth={2.5} /> : 
-                                                     category.toLowerCase().includes('section') ? <BookOpen size={20} strokeWidth={2.5} /> : 
-                                                     <HelpCircle size={20} strokeWidth={2.5} />}
+                                        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center border border-indigo-100/50">
+                                                    {category.toLowerCase().includes('coding') ? <Code size={18} /> : 
+                                                     category.toLowerCase().includes('section') ? <BookOpen size={18} /> : 
+                                                     <HelpCircle size={18} />}
                                                 </div>
                                                 <div>
-                                                    <h4 className="text-lg font-black text-primary uppercase tracking-tight">{category}</h4>
-                                                    <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-50 mt-1">{questions.length} Protocols Analyzed</p>
+                                                    <h4 className="text-sm font-bold text-slate-900 uppercase tracking-widest">{category}</h4>
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{questions.length} Items</p>
                                                 </div>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-2xl font-black text-primary tracking-tighter uppercase">
-                                                    {questions.reduce((sum, q) => sum + q.marksObtained, 0)}<span className="text-muted/30 mx-2">/</span>{questions.reduce((sum, q) => sum + q.maxMarks, 0)}
+                                                <p className="text-lg font-bold text-slate-900 font-mono tracking-tighter">
+                                                    {questions.reduce((sum, q) => sum + q.marksObtained, 0)}<span className="text-slate-300 mx-1">/</span>{questions.reduce((sum, q) => sum + q.maxMarks, 0)}
                                                 </p>
-                                                <p className="text-[9px] font-black text-muted uppercase tracking-[0.2em] opacity-50">Efficiency Units</p>
+                                                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Section Marks</p>
                                             </div>
                                         </div>
 
                                         {/* Questions in this Section */}
-                                        <div className="flex flex-col space-y-3">
+                                        <div className="flex flex-col space-y-1">
                                             {questions.map((q, i) => (
                                                 <div 
                                                     key={i} 
-                                                    className="flex items-center justify-between py-6 px-6 bg-surface border border-main hover:border-primary-500/30 rounded-[2rem] transition-all duration-500 group relative overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-primary-500/5"
+                                                    className="flex items-center justify-between py-4 px-4 hover:bg-white hover:shadow-xl hover:shadow-indigo-500/5 rounded-2xl transition-all duration-300 -mx-4 group relative overflow-hidden"
                                                 >
-                                                    <div className="flex items-center gap-6">
-                                                        <span className="text-[11px] font-black text-muted/30 w-8 group-hover:text-primary-500 transition-colors duration-500">
+                                                    {/* Decorative sidebar for status */}
+                                                    <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity ${
+                                                        q.status === 'correct' ? 'bg-emerald-500' : q.status === 'incorrect' ? 'bg-rose-500' : 'bg-slate-200'
+                                                    }`} />
+
+                                                    <div className="flex items-center gap-5">
+                                                        <span className="text-[10px] font-bold text-slate-300 w-6 font-mono group-hover:text-indigo-500 transition-colors">
                                                             {String(i + 1).padStart(2, '0')}
                                                         </span>
-                                                        <div className="flex flex-col gap-1.5">
-                                                            <span className="text-sm font-black text-primary group-hover:text-primary-500 transition-colors duration-500 uppercase tracking-tight">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-[13px] font-semibold text-slate-700 group-hover:text-slate-900 transition-colors">
                                                                 {q.questionText || `Evaluation Item ${i+1}`}
                                                             </span>
-                                                            <div className="flex items-center gap-3">
-                                                                <span className="text-[9px] font-black text-muted uppercase tracking-[0.2em] opacity-50">{q.type}</span>
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <span className="text-[8px] font-bold text-slate-400 uppercase tracking-[0.1em]">{q.type}</span>
                                                                 {q.status === 'correct' && (
-                                                                    <div className="flex items-center gap-1.5 text-emerald-500 bg-emerald-500/5 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-[0.15em] border border-emerald-500/20">
-                                                                        <CheckCircle2 size={10} strokeWidth={3} />
+                                                                    <div className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest border border-emerald-100/50">
+                                                                        <CheckCircle2 size={8} />
                                                                         Verified
                                                                     </div>
                                                                 )}
@@ -218,28 +205,28 @@ const StudentResult = () => {
                                                         </div>
                                                     </div>
 
-                                                    <div className="flex items-center gap-10">
-                                                        <div className="hidden sm:flex items-center gap-2 text-muted/40 group-hover:text-muted transition-colors">
-                                                            <Clock size={12} strokeWidth={2.5} />
-                                                            <span className="text-[11px] font-black">{q.timeSpent || '--'}S</span>
+                                                    <div className="flex items-center gap-8">
+                                                        <div className="flex items-center gap-1.5 text-slate-300 group-hover:text-slate-400 transition-colors">
+                                                            <Clock size={11} />
+                                                            <span className="text-[10px] font-bold font-mono">{q.timeSpent || '--'}s</span>
                                                         </div>
-                                                        <div className="flex flex-col items-end min-w-[80px]">
-                                                            <span className="text-lg font-black text-primary tracking-tighter uppercase">
-                                                                {q.marksObtained}<span className="text-muted/30 mx-1">/</span>{q.maxMarks}
+                                                        <div className="flex flex-col items-end min-w-[60px]">
+                                                            <span className="text-sm font-bold text-slate-900 font-mono tracking-tighter">
+                                                                {q.marksObtained}<span className="text-slate-300 mx-0.5">/</span>{q.maxMarks}
                                                             </span>
-                                                            <span className="text-[8px] font-black text-muted uppercase tracking-[0.2em] opacity-50 leading-none">Yield</span>
+                                                            <span className="text-[7px] font-bold text-slate-400 uppercase tracking-widest leading-none">Score</span>
                                                         </div>
-                                                        <div className="w-10 h-10 flex items-center justify-center">
+                                                        <div className="w-5 h-5 flex items-center justify-center">
                                                             {q.status === 'correct' ? (
-                                                                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center border border-emerald-500/20 shadow-lg shadow-emerald-500/10">
-                                                                    <CheckCircle2 size={18} strokeWidth={2.5} />
+                                                                <div className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-500 flex items-center justify-center border border-emerald-100/50">
+                                                                    <CheckCircle2 size={13} />
                                                                 </div>
                                                             ) : q.status === 'incorrect' ? (
-                                                                <div className="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center border border-red-500/20 shadow-lg shadow-red-500/10">
-                                                                    <XCircle size={18} strokeWidth={2.5} />
+                                                                <div className="w-6 h-6 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center border border-rose-100/50">
+                                                                    <XCircle size={13} />
                                                                 </div>
                                                             ) : (
-                                                                <div className="w-6 h-6 rounded-lg border-2 border-main" />
+                                                                <div className="w-4 h-4 rounded-full border border-slate-200" />
                                                             )}
                                                         </div>
                                                     </div>
@@ -254,52 +241,50 @@ const StudentResult = () => {
                     </section>
 
                     {/* Right Column */}
-                    <aside className="lg:col-span-4 flex flex-col gap-8">
+                    <aside className="lg:col-span-4 flex flex-col gap-6">
                         {/* Security Report */}
-                        <div className="bg-surface p-8 rounded-[2.5rem] border border-main shadow-2xl relative overflow-hidden group/audit">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-primary-500/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover/audit:bg-primary-500/10 transition-colors duration-700" />
-                            
-                            <div className="flex items-center gap-3 mb-8 relative z-10">
-                                <Shield size={16} className="text-primary-500" strokeWidth={2.5} />
-                                <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted group-hover/audit:text-primary transition-colors">Security Intelligence</h4>
+                        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                            <div className="flex items-center gap-2 mb-6">
+                                <Shield size={14} className="text-slate-400" />
+                                <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Security Audit</h4>
                             </div>
                             
-                            <div className="space-y-2 divide-y divide-main font-black relative z-10">
-                                <div className="flex justify-between items-center py-5">
-                                    <span className="text-[11px] text-muted uppercase tracking-[0.2em]">Session Integrity</span>
-                                    <span className={`text-[10px] px-3 py-1 rounded-lg border font-black uppercase tracking-widest ${result.violations > 0 ? 'bg-red-500/10 text-red-500 border-red-500/20 shadow-lg shadow-red-500/10' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 shadow-lg shadow-emerald-500/10'}`}>
-                                        {result.violations === 0 ? 'COMPLIANT' : `${result.violations} ANOMALIES`}
+                            <div className="space-y-1 divide-y divide-slate-100/60 font-mono">
+                                <div className="flex justify-between items-center py-4">
+                                    <span className="text-[11px] font-bold text-slate-500 font-sans">Integrity</span>
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${result.violations > 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                                        {result.violations === 0 ? 'SECURE' : `${result.violations} FLAGS`}
                                     </span>
                                 </div>
-                                <div className="flex justify-between items-center py-5">
-                                    <span className="text-[11px] text-muted uppercase tracking-[0.2em]">Focus Deviations</span>
-                                    <span className="text-[10px] text-primary uppercase tracking-[0.1em] font-mono">{result.tabSwitches || 0} UNITS</span>
+                                <div className="flex justify-between items-center py-4">
+                                    <span className="text-[11px] font-bold text-slate-500 font-sans">Focus Deviations</span>
+                                    <span className="text-[10px] font-bold text-slate-800">{result.tabSwitches || 0} UNITS</span>
                                 </div>
-                                <div className="flex justify-between items-center py-5 border-none!">
-                                    <span className="text-[11px] text-muted uppercase tracking-[0.2em]">Sync Protocol</span>
-                                    <span className="text-[10px] text-primary uppercase tracking-[0.2em]">{result.status.includes('auto') ? 'SYSTEM_FINAL' : 'USER_MANUAL'}</span>
+                                <div className="flex justify-between items-center py-4 border-none!">
+                                    <span className="text-[11px] font-bold text-slate-500 font-sans">Submission</span>
+                                    <span className="text-[10px] font-bold text-slate-800 uppercase tracking-widest">{result.status.includes('auto') ? 'SYNC' : 'USER'}</span>
                                 </div>
                             </div>
                         </div>
 
                         {/* Verification Badge Card */}
-                        <div className="bg-surface-hover/50 border border-primary-500/20 p-6 rounded-[2rem] flex items-center gap-5 shadow-2xl group/badge">
-                            <div className="w-12 h-12 rounded-xl bg-primary-500/10 flex items-center justify-center text-primary-500 border border-primary-500/20 shadow-xl shadow-primary-500/5 group-hover/badge:rotate-12 transition-transform duration-500">
-                                <ShieldCheck size={24} strokeWidth={2.5} />
+                        <div className="bg-white border border-indigo-100 p-5 rounded-2xl flex items-center gap-4 shadow-sm shadow-indigo-500/5">
+                            <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500">
+                                <ShieldCheck size={20} />
                             </div>
                             <div>
-                                <p className="text-[11px] font-black text-primary-500 uppercase tracking-[0.2em]">Encrypted Session</p>
-                                <p className="text-[10px] text-muted font-black uppercase tracking-widest leading-tight mt-1 opacity-50">Digitally Signed Protocol</p>
+                                <p className="text-[11px] font-bold text-indigo-600 uppercase tracking-widest">Verified Session</p>
+                                <p className="text-[10px] text-slate-400 font-medium leading-tight mt-0.5">Digitally signed for official certification.</p>
                             </div>
                         </div>
 
                         {/* Active Monitor Footer */}
-                        <div className="flex items-center justify-center gap-4 py-4 opacity-30">
-                            <div className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                        <div className="flex items-center justify-center gap-3 py-2 opacity-30">
+                            <div className="relative flex h-1.5 w-1.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
                             </div>
-                            <span className="text-[9px] font-black uppercase tracking-[0.5em] text-muted">Surveillance Node Active</span>
+                            <span className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-400">Monitoring Active</span>
                         </div>
                     </aside>
                 </div>

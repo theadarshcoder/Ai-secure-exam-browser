@@ -8,6 +8,6 @@ const { verifyToken, checkRole } = require('../middlewares/authMiddleware');
  * @desc    Generate questions based on syllabus/category
  * @access  Private (Mentor/Admin)
  */
-router.post('/generate', verifyToken, checkRole(['mentor', 'admin']), aiController.generateQuestions);
+router.post('/generate', verifyToken, checkRole(['mentor', 'super_mentor', 'admin']), aiController.generateQuestions);
 
 module.exports = router;

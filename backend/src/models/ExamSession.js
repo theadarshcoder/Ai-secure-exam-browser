@@ -111,7 +111,15 @@ const examSessionSchema = new mongoose.Schema({
     // ─── Security & Auto-Blocking ────────────────────
     isBlocked: { type: Boolean, default: false },
     blockReason: { type: String, default: '' },
-    violationCount: { type: Number, default: 0 }
+    violationCount: { type: Number, default: 0 },
+    
+    // ─── 🆕 Enterprise Secure Client Meta ───────────
+    secureMeta: {
+        isSecureClient: { type: Boolean, default: false },
+        verifiedAt: { type: Date },
+        client: { type: String, default: '' },
+        userAgent: { type: String, default: '' }
+    }
 }, { timestamps: true });
 
 // Ensure only one exam session exists per student per exam

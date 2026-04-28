@@ -20,7 +20,12 @@ exports.getStudentIntelligence = asyncHandler(async (req, res) => {
     // 1. Check Redis Cache
     const cachedData = await redis.get(cacheKey);
     if (cachedData) {
-        return res.json(JSON.parse(cachedData));
+        try {
+            return res.json(JSON.parse(cachedData));
+        } catch (err) {
+            console.error('⚠️ Redis parse error in getStudentIntelligence:', err.message);
+            // If parse fails, continue to DB fetch
+        }
     }
 
     // 2. Validate Student ID

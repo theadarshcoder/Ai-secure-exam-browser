@@ -9,13 +9,13 @@ const studentIntelligenceController = require('../controllers/StudentIntelligenc
 // ═══════════════════════════════════════════════════════════
 
 // Fetch all exam results and sessions
-router.get('/results', verifyToken, checkRole(['admin', 'mentor']), adminController.getAllResults);
+router.get('/results', verifyToken, checkRole(['admin', 'super_mentor', 'mentor']), adminController.getAllResults);
 
 // Dashboard counters (Live Students, Total Exams, etc.)
 router.get('/stats', verifyToken, checkRole(['admin', 'super_mentor', 'mentor']), adminController.getDashboardStats);
 
 // Live Proctoring - Fetch all active sessions
-router.get('/live-sessions', verifyToken, checkRole(['admin', 'mentor']), adminController.getLiveSessions);
+router.get('/live-sessions', verifyToken, checkRole(['admin', 'super_mentor', 'mentor']), adminController.getLiveSessions);
 
 // Extend live exam time for all students
 router.post('/extend-time', verifyToken, checkRole(['admin', 'super_mentor', 'mentor']), adminController.extendExamTime);
@@ -44,17 +44,22 @@ router.delete('/mentors/:id', verifyToken, checkRole(['admin']), adminController
 // Global Health Check (DB, Judge0, Live Layer)
 router.get('/health', verifyToken, checkRole(['admin', 'super_mentor']), adminController.getSystemHealth);
 
-// Audit Logs retrieval
-router.get('/audit-logs', verifyToken, checkRole(['admin', 'super_mentor']), adminController.getAuditLogs);
+// Audit Logs retrieval (Restricted to Admins)
+router.get('/audit-logs', verifyToken, checkRole(['admin']), adminController.getAuditLogs);
 router.delete('/audit-logs/:id', verifyToken, checkRole(['admin']), adminController.deleteAuditLog);
 router.delete('/audit-logs', verifyToken, checkRole(['admin']), adminController.clearAuditLogs);
+
+// Intelligence Logs (Platform Trails & Critical Errors)
+router.get('/intelligence-logs', verifyToken, checkRole(['admin', 'super_mentor']), adminController.getIntelligenceLogs);
+router.delete('/intelligence-logs/:id', verifyToken, checkRole(['admin']), adminController.deleteIntelligenceLog);
+router.delete('/intelligence-logs', verifyToken, checkRole(['admin']), adminController.clearIntelligenceLogs);
 
 // ─────────────────────────────────────────────────────────
 // Global Settings
 // ─────────────────────────────────────────────────────────
 
-router.get('/settings', verifyToken, checkRole(['admin', 'super_mentor']), adminController.getSettings);
-router.post('/settings', verifyToken, checkRole(['admin', 'super_mentor']), adminController.saveSettings);
+router.get('/settings', verifyToken, checkRole(['admin']), adminController.getSettings);
+router.post('/settings', verifyToken, checkRole(['admin']), adminController.saveSettings);
 
 // ─────────────────────────────────────────────────────────
 // Candidate Identity Verification (eKYC)
@@ -65,6 +70,6 @@ router.put('/candidates/verify/:userId', verifyToken, checkRole(['admin', 'super
 router.put('/candidates/unverify/:userId', verifyToken, checkRole(['admin', 'super_mentor']), adminController.unverifyCandidate);
 
 // Student Intelligence Report
-router.get('/students/:studentId/report', verifyToken, checkRole(['admin', 'mentor']), studentIntelligenceController.getStudentIntelligence);
+router.get('/students/:studentId/report', verifyToken, checkRole(['admin', 'super_mentor', 'mentor']), studentIntelligenceController.getStudentIntelligence);
 
 module.exports = router;

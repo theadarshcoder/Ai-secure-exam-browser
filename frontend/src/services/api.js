@@ -11,11 +11,14 @@ const api = axios.create({
 
 // Request interceptor for attaching JWT
 api.interceptors.request.use(
-  (config) => {
+  async (config) => {
     const token = sessionStorage.getItem('vision_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+
+
     return config;
   },
   (error) => Promise.reject(error)
@@ -30,7 +33,12 @@ export const getCurrentUserId = () => {
   const token = sessionStorage.getItem('vision_token');
   if (token) {
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      // 🛡️ Unicode-safe base64 decoding (Bug 3 Fix)
+      const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      const payload = JSON.parse(jsonPayload);
       return payload.id;
     } catch (e) {
       return sessionStorage.getItem('vision_email');
@@ -39,29 +47,66 @@ export const getCurrentUserId = () => {
   return sessionStorage.getItem('vision_email');
 };
 
-// Response interceptor for handling 401s
+let isRedirecting = false; // 🛡️ Fix Bug 4: Prevent infinite redirect flicker
+
+// Response interceptor for handling 401s and Silent Refresh
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response) {
-      // 🛡️ CRITICAL FIX: Only redirect on 401 (Unauthorized). 
-      // 403 (Forbidden) means student tried accessing admin route, which shouldn't kick them out.
-      if (error.response.status === 401 && !error.config?.url?.includes('/login')) {
-        sessionStorage.clear(); localStorage.clear();
+  async (error) => {
+    const originalRequest = error.config;
+
+    // 🛡️ Handle Token Expiry (Silent Refresh)
+    if (error.response?.status === 403 && error.response.data?.code === 'TOKEN_EXPIRED' && !originalRequest._retry) {
+      originalRequest._retry = true;
+      try {
+        const refreshToken = localStorage.getItem('vision_refresh_token');
+        if (!refreshToken) throw new Error('No refresh token');
+
+        const { data } = await axios.post(`${API_BASE_URL}/api/auth/refresh`, { refreshToken });
+        
+        // Update storage
+        sessionStorage.setItem('vision_token', data.accessToken);
+        
+        // Retry original request with new token
+        originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+        return api(originalRequest);
+      } catch (refreshError) {
+        console.error('🛡️ Silent Refresh Failed:', refreshError);
+        sessionStorage.clear();
+        localStorage.removeItem('vision_refresh_token');
         window.location.href = '/login';
-      } else {
-        // Show Reference ID for support
-        const errorId = error.response.data?.errorId;
-        const message = error.response.data?.message || error.message;
-        if (errorId) {
-          console.error(`[Reference ID: ${errorId}] ${message}`);
-          // alert(`Error: ${message}\nReference ID: ${errorId}`); // Optional: user-friendly alert
-        }
       }
     }
+
+    // 🛡️ Handle Unauthorized (401)
+    if (error.response?.status === 401 && !error.config?.url?.includes('/login')) {
+      if (!isRedirecting) {
+        isRedirecting = true;
+        sessionStorage.clear(); 
+        localStorage.removeItem('vision_refresh_token');
+        window.location.href = '/login';
+      }
+    } else {
+      const errorId = error.response?.data?.errorId;
+      const message = getErrorMessage(error);
+      if (errorId) console.error(`[Reference ID: ${errorId}] ${message}`);
+    }
+    
     return Promise.reject(error);
   }
 );
+
+// 🛡️ Robust Error Parsing (Bug 5 Fix)
+const getErrorMessage = (error) => {
+    const errData = error.response?.data;
+    if (errData && typeof errData === 'object' && errData.message) {
+        return errData.message;
+    }
+    if (typeof errData === 'string' && !errData.startsWith('<!DOCTYPE')) {
+        return errData;
+    }
+    return error.message || 'System error occurred. Please try again later.';
+};
 
 // Run Coding Question via Judge0
 export const runCodingQuestion = async (examId, questionId, sourceCode, language, isSubmit = false) => {
@@ -75,7 +120,7 @@ export const runCodingQuestion = async (examId, questionId, sourceCode, language
     });
     return response.data;
   } catch (error) {
-    throw error.response?.data || error.message;
+    throw getErrorMessage(error);
   }
 };
 
@@ -89,7 +134,7 @@ export const getStudents = async () => {
         const response = await api.get('/api/admin/students');
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -98,7 +143,7 @@ export const removeStudent = async (id) => {
         const response = await api.delete(`/api/admin/students/${id}`);
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -108,7 +153,7 @@ export const getMentors = async () => {
         const response = await api.get('/api/admin/mentors');
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -117,7 +162,7 @@ export const getAdmins = async () => {
         const response = await api.get('/api/admin/admins');
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -126,7 +171,7 @@ export const removeMentor = async (id) => {
         const response = await api.delete(`/api/admin/mentors/${id}`);
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -136,7 +181,7 @@ export const addUser = async (userData) => {
         const response = await api.post('/api/auth/register', userData);
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -149,7 +194,7 @@ export const getSystemHealth = async () => {
         const response = await api.get('/api/admin/health');
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -158,7 +203,7 @@ export const getDashboardStats = async () => {
         const response = await api.get('/api/admin/stats');
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -167,7 +212,7 @@ export const getLiveSessions = async () => {
         const response = await api.get('/api/admin/live-sessions');
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -176,7 +221,7 @@ export const bulkImportUsers = async (usersArray) => {
         const response = await api.post('/api/admin/bulk-import', { users: usersArray });
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -185,7 +230,7 @@ export const getSettings = async () => {
         const response = await api.get('/api/admin/settings');
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -194,7 +239,7 @@ export const saveSettings = async (settingsData) => {
         const response = await api.post('/api/admin/settings', settingsData);
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -203,7 +248,7 @@ export const getAdminExams = async () => {
         const response = await api.get('/api/exams/mentor-list');
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -213,7 +258,7 @@ export const getAuditLogs = async () => {
         const response = await api.get('/api/admin/audit-logs');
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -222,7 +267,7 @@ export const deleteAuditLog = async (id) => {
         const response = await api.delete(`/api/admin/audit-logs/${id}`);
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -231,7 +276,7 @@ export const clearAllAuditLogs = async () => {
         const response = await api.delete('/api/admin/audit-logs');
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -244,7 +289,7 @@ export const getMentorStats = async () => {
         const response = await api.get('/api/exams/mentor-stats');
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -253,7 +298,7 @@ export const getMentorExamList = async () => {
         const response = await api.get('/api/exams/mentor-list');
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -262,7 +307,7 @@ export const getAdminResults = async () => {
         const response = await api.get('/api/admin/results');
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -273,7 +318,7 @@ export const deleteExam = async (id) => {
         const response = await api.delete(`/api/exams/${id}`);
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -282,7 +327,7 @@ export const togglePublishResults = async (id, resultsPublished) => {
         const response = await api.put(`/api/exams/${id}/publish-results`, { resultsPublished });
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -296,7 +341,7 @@ export const getSessionDetail = async (sessionId) => {
         const response = await api.get(`/api/exams/session-detail/${sessionId}`);
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -306,7 +351,7 @@ export const evaluateSession = async (sessionId, grades) => {
         const response = await api.put(`/api/exams/evaluate/${sessionId}`, { grades });
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -316,7 +361,7 @@ export const requestHelp = async (examId, msg) => {
         const response = await api.post('/api/exams/help', { examId, msg });
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -329,7 +374,7 @@ export const getCandidates = async (search = '') => {
         const response = await api.get('/api/admin/candidates', { params: { search } });
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -338,7 +383,7 @@ export const verifyCandidate = async (userId) => {
         const response = await api.put(`/api/admin/candidates/verify/${userId}`);
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -347,7 +392,7 @@ export const unverifyCandidate = async (userId) => {
         const response = await api.put(`/api/admin/candidates/unverify/${userId}`);
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -360,7 +405,7 @@ export const bulkInviteStudents = async (examId, students) => {
         const response = await api.post(`/api/exams/${examId}/bulk-invite`, { students });
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -369,7 +414,7 @@ export const verifyInviteToken = async (token, deviceId) => {
         const response = await api.post('/api/auth/verify-invite', { token, deviceId });
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -378,7 +423,7 @@ export const getInviteStatus = async (examId) => {
         const response = await api.get(`/api/exams/${examId}/invites`);
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 

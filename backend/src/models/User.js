@@ -10,7 +10,7 @@ const userSchema = new mongoose.Schema({
         enum: ['student', 'mentor', 'super_mentor', 'admin'],
         default: 'student' 
     },
-    currentSessionToken: { type: String },
+    refreshToken: { type: String },
     currentDeviceId: { type: String },
     permissions: [{ type: String }],
     // Identity Verification (eKYC)
@@ -31,6 +31,15 @@ userSchema.pre('save', async function () {
     // Hash the password with 10 rounds of salt for strong security
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
+});
+
+// 🛡️ Security Fix: Handle updates via findOneAndUpdate/findByIdAndUpdate
+userSchema.pre('findOneAndUpdate', async function() {
+    const update = this.getUpdate();
+    if (update.password) {
+        const salt = await bcrypt.genSalt(10);
+        update.password = await bcrypt.hash(update.password, salt);
+    }
 });
 
 // ─── Password Compare Helper ────────────────────────────

@@ -200,6 +200,7 @@ async function gradeShortAnswer(question, studentAnswer) {
             maxMarks,
             status: 'pending_review',
             aiSuggestedMarks: 0,
+            aiConfidence: 'high',
             aiReasoning: 'Student did not provide an answer.'
         };
     }
@@ -217,6 +218,7 @@ async function gradeShortAnswer(question, studentAnswer) {
                 maxMarks,
                 status: 'pending_review',
                 aiSuggestedMarks: aiResult.suggestedMarks,
+                aiConfidence: aiResult.confidence || 'medium',
                 aiReasoning: aiResult.reasoning
             };
         } catch (err) {
@@ -232,6 +234,7 @@ async function gradeShortAnswer(question, studentAnswer) {
                 maxMarks,
                 status: 'pending_review',
                 aiSuggestedMarks: aiResult.suggestedMarks,
+                aiConfidence: aiResult.confidence || 'medium',
                 aiReasoning: aiResult.reasoning
             };
         } catch (err) {
@@ -245,6 +248,7 @@ async function gradeShortAnswer(question, studentAnswer) {
         maxMarks,
         status: 'pending_review',
         aiSuggestedMarks: keywordResult.suggestedMarks,
+        aiConfidence: keywordResult.confidence || 'low',
         aiReasoning: keywordResult.reasoning
     };
 }
@@ -253,7 +257,7 @@ async function gradeShortAnswer(question, studentAnswer) {
 // ─── AI Providers ────────────────────────────────────────
 
 async function gradeWithGemini(apiKey, questionText, expectedAnswer, studentAnswer, maxMarks) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
     
     const prompt = `You are a strict exam evaluator. Compare the student's answer with the expected answer.
 
@@ -263,8 +267,12 @@ Student's Answer: ${studentAnswer}
 Maximum Marks: ${maxMarks}
 
 Evaluate the student's answer for conceptual accuracy, completeness, and relevance.
+Also rate your confidence in this evaluation as "high", "medium", or "low".
+- high: Answer is clearly correct/incorrect, easy to evaluate
+- medium: Answer has some ambiguity but evaluation is reasonable
+- low: Answer is vague or evaluation requires human judgement
 Respond ONLY in valid JSON format (no markdown):
-{"suggestedMarks": <number between 0 and ${maxMarks}>, "reasoning": "<brief 1-2 line explanation>"}`;
+{"suggestedMarks": <number between 0 and ${maxMarks}>, "confidence": "<high|medium|low>", "reasoning": "<brief 1-2 line explanation>"}`;
 
     const response = await axios.post(url, {
         contents: [{ parts: [{ text: prompt }] }]
@@ -276,6 +284,7 @@ Respond ONLY in valid JSON format (no markdown):
         const parsed = JSON.parse(jsonMatch[0]);
         return {
             suggestedMarks: Math.min(Math.max(Number(parsed.suggestedMarks) || 0, 0), maxMarks),
+            confidence: ['high', 'medium', 'low'].includes(parsed.confidence) ? parsed.confidence : 'medium',
             reasoning: parsed.reasoning || 'AI evaluation completed.'
         };
     }
@@ -293,8 +302,9 @@ Student's Answer: ${studentAnswer}
 Maximum Marks: ${maxMarks}
 
 Evaluate the student's answer for conceptual accuracy, completeness, and relevance.
+Also rate your confidence in this evaluation as "high", "medium", or "low".
 Respond ONLY in valid JSON format:
-{"suggestedMarks": <number between 0 and ${maxMarks}>, "reasoning": "<brief 1-2 line explanation>"}`;
+{"suggestedMarks": <number between 0 and ${maxMarks}>, "confidence": "<high|medium|low>", "reasoning": "<brief 1-2 line explanation>"}`;
 
     const response = await axios.post(url, {
         model: 'gpt-3.5-turbo',
@@ -311,6 +321,7 @@ Respond ONLY in valid JSON format:
         const parsed = JSON.parse(jsonMatch[0]);
         return {
             suggestedMarks: Math.min(Math.max(Number(parsed.suggestedMarks) || 0, 0), maxMarks),
+            confidence: ['high', 'medium', 'low'].includes(parsed.confidence) ? parsed.confidence : 'medium',
             reasoning: parsed.reasoning || 'AI evaluation completed.'
         };
     }
@@ -350,8 +361,12 @@ function gradeWithKeywords(expectedAnswer, studentAnswer, maxMarks) {
     const matchRatio = matchedCount / expectedKeywords.length;
     const suggestedMarks = Math.round(matchRatio * maxMarks);
 
+    // Compute confidence from match quality
+    const confidence = matchRatio >= 0.8 ? 'high' : matchRatio >= 0.4 ? 'medium' : 'low';
+
     return {
         suggestedMarks,
+        confidence,
         reasoning: `Keyword match: ${matchedCount}/${expectedKeywords.length} keywords found (${Math.round(matchRatio * 100)}% match). Manual review recommended.`
     };
 }

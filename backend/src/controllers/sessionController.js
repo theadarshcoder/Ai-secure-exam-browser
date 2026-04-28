@@ -1,5 +1,6 @@
 const ExamSession = require('../models/ExamSession');
 const User = require('../models/User');
+const Setting = require('../models/Setting');
 const { asyncHandler } = require('../middlewares/errorMiddleware');
 const { getRiskInfo } = require('../utils/helpers');
 
@@ -33,24 +34,57 @@ exports.logViolation = asyncHandler(async (req, res) => {
     }
 
     const session = await ExamSession.findOneAndUpdate(
-        { exam: examId, student: studentId },
+        { exam: examId, student: studentId, status: { $ne: 'blocked' } },
         update,
         { new: true }
     );
 
     if (!session) {
         res.status(404);
-        throw new Error('Exam session not found. Was the exam started?');
+        throw new Error('Exam session not found or already blocked.');
+    }
+
+    // ─── 2. Auto-Block Enforcement (Based on Settings) ───
+    const settings = await Setting.findOne() || { maxTabSwitches: 5, maxViolations: 5 };
+    let shouldBlock = false;
+    let blockReason = '';
+
+    if (session.tabSwitchCount >= settings.maxTabSwitches) {
+        shouldBlock = true;
+        blockReason = `Maximum tab switches exceeded (${session.tabSwitchCount} / ${settings.maxTabSwitches})`;
+    } else if (session.violations.length >= settings.maxViolations) {
+        shouldBlock = true;
+        blockReason = `Maximum total violations reached (${session.violations.length} / ${settings.maxViolations})`;
+    }
+
+    if (shouldBlock) {
+        session.status = 'blocked';
+        session.isBlocked = true;
+        session.blockReason = blockReason;
+        await session.save();
+
+        // Broadcast to Student & Mentors
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`user_${studentId}`).emit('force_block_screen', { reason: blockReason });
+            io.to(`exam_monitor_${examId}`).emit('mentor_alert', {
+                type: 'AUTO_BLOCK',
+                studentEmail: req.user.email,
+                reason: blockReason,
+                timestamp: new Date()
+            });
+        }
     }
 
     const { level } = getRiskInfo(session.violations.length);
 
     res.json({ 
-        message: 'Violation logged!',
+        message: shouldBlock ? 'User blocked due to violations!' : 'Violation logged!',
         violationCount: session.violations.length,
         tabSwitches: session.tabSwitchCount,
         warningLevel: level,
-        latestViolation: session.violations[session.violations.length - 1]
+        isBlocked: session.isBlocked,
+        blockReason: session.blockReason
     });
 });
 

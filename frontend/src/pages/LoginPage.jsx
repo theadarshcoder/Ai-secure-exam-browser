@@ -250,11 +250,13 @@ const LoginPage = () => {
     setError(null);
     
     try {
-      // 🛡️ Generate or retrieve device ID
-      let deviceId = sessionStorage.getItem('vision_device_id');
+      // 🛡️ Fix Bug 2: Use localStorage instead of sessionStorage for persistent device fingerprinting
+      let deviceId = localStorage.getItem('vision_device_id');
       if (!deviceId) {
-          deviceId = crypto.randomUUID();
-          sessionStorage.setItem('vision_device_id', deviceId);
+          deviceId = (window.crypto && window.crypto.randomUUID) 
+              ? window.crypto.randomUUID() 
+              : `dev_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 10)}`;
+          localStorage.setItem('vision_device_id', deviceId);
       }
 
       // 🚀 Real API Authentication
@@ -265,10 +267,11 @@ const LoginPage = () => {
         deviceId
       });
 
-      const { token, user: userData } = response.data;
+      const { accessToken, refreshToken, user: userData } = response.data;
 
       // Store real session data
-      sessionStorage.setItem('vision_token', token);
+      sessionStorage.setItem('vision_token', accessToken);
+      localStorage.setItem('vision_refresh_token', refreshToken);
       sessionStorage.setItem('vision_id', userData.id || userData._id);
       sessionStorage.setItem('vision_role', userData.role);
       sessionStorage.setItem('vision_email', userData.email);
@@ -286,7 +289,10 @@ const LoginPage = () => {
         }
       }
 
-      const target = userData.role === 'student' ? '/student' : (userData.role === 'mentor' ? '/mentor' : '/admin');
+      // 🛡️ Fix Bug 3: Super Mentor redirection to mentor dashboard
+      const target = userData.role === 'student' 
+        ? '/student' 
+        : (['mentor', 'super_mentor'].includes(userData.role) ? '/mentor' : '/admin');
       navigate(target);
     } catch (err) {
       console.error('Login Error:', err);
