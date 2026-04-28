@@ -7,8 +7,10 @@ const { z } = require('zod');
 
 const loginSchema = z.object({
     body: z.object({
-        email: z.string().email("Invalid email format").trim().toLowerCase(),
-        password: z.string().min(6, "Password must be at least 6 characters")
+        email: z.string().min(3, "Username/Email must be at least 3 characters").trim().toLowerCase(),
+        password: z.string().min(4, "Password must be at least 4 characters"),
+        role: z.enum(['student', 'mentor', 'admin']).optional(),
+        deviceId: z.string().optional()
     }).strict()
 });
 
