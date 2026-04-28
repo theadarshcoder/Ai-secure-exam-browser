@@ -75,7 +75,7 @@ import {
   Upload, FilePlus, FileSpreadsheet, Lock,
   LayoutDashboard, Users, BarChart3, Settings, Bell,
   ChevronRight, LogOut, Eye, Edit3, Star, RefreshCw,
-  Download, UploadCloud, Link, Calendar, ScanFace, LayoutList, PlusCircle, TrendingUp
+  Download, UploadCloud, Link, Calendar, ScanFace, LayoutList, PlusCircle, TrendingUp, ArrowRight
 } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
