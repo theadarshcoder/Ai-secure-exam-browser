@@ -95,6 +95,21 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+
+// 🚀 [PHASE 4] Readiness Flag
+let isReady = false;
+
+// 🚀 [PHASE 4] Health Check Endpoint (For Load Balancers/K8s)
+app.get('/health', (req, res) => {
+    if (!isReady) return res.status(503).json({ status: 'Not Ready', uptime: process.uptime() });
+    res.json({ 
+        status: 'UP', 
+        timestamp: new Date(),
+        uptime: process.uptime(),
+        memory: process.memoryUsage()
+    });
+});
+
 // Fix 7: Scoped JSON Limit (Progress saving needs more, others stay tight)
 app.use('/api/exams/save-progress', express.json({ limit: '2mb' }));
 app.use(express.json({ limit: '100kb' }));
@@ -242,12 +257,11 @@ const io = new Server(server, {
 // Expose Socket.IO instance to routes/controllers globally
 app.set('io', io);
 
-// 🚀 Initialize Background Workers
-setupCodeEvaluationWorker(io);
-setupFrontendEvaluationWorker(io);
-setupInviteEmailWorker();
-startIntelligenceWorker();
-// startHealthMonitor(io); // 🛡️ Moved to server.listen for full system readiness
+// 🚀 [PHASE 4] Worker Registry
+const workers = [];
+
+// ─── Auth Middleware & Handlers Logic stays here ───
+// ...
 
 // Socket.IO Authentication Middleware
 // Har connection se pehle JWT token verify hoga
@@ -310,16 +324,7 @@ io.use(async (socket, next) => {
 });
 
 
-// ═══════════════════════════════════════════════════════════
-//  🔌 SECURITY 3: Initialize Database & Cache
-// ═══════════════════════════════════════════════════════════
-
-(async () => {
-    validateEnv(); // Verify required variables before starting
-    await connectDB();
-    await connectRedis();
-    // startHealthMonitor(io); // 🛡️ Moved to server.listen
-})();
+// 🛡️ Removed: Scattered IIFE startup logic
 
 app.get('/', (req, res) => res.send('<h1>Server & Sockets working perfectly 🔒</h1>'));
 
@@ -867,22 +872,110 @@ const shutdown = (signal) => {
         }
     });
 };
+// ═══════════════════════════════════════════════════════════
+//  🚀 CENTRALIZED BOOTSTRAP (The Engine Room)
+// ═══════════════════════════════════════════════════════════
 
-process.on('SIGINT', () => shutdown('SIGINT'));
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-
-server.listen(PORT, '0.0.0.0', async () => {
-    console.log(`🚀 AI Exam Platform Server running on port ${PORT}`);
-    console.log(`🏠 Environment: ${process.env.NODE_ENV || 'development'}`);
-    validateEnv();
-    
-    // 🛡️ Phase 2: Consolidated single initialization after full startup
-    if (!isHealthMonitorStarted) {
-        startHealthMonitor(io);
-        isHealthMonitorStarted = true;
+async function bootstrap() {
+    // 🛡️ Fix: Guard against double bootstrap (Nodemon/Reload)
+    if (global.__BOOTSTRAPPED__) {
+        console.warn('⚠️  [BOOT] Duplicate bootstrap attempt blocked.');
+        return;
     }
+    global.__BOOTSTRAPPED__ = true;
 
-    cacheService.preWarmCache();
-});
+    try {
+        console.log('🏗️  [BOOT] Starting Centralized System Bootstrap...');
+        
+        validateEnv();
+        console.log('✅ [BOOT] Environment Variables Validated');
+
+        await connectDB();
+        console.log('✅ [BOOT] MongoDB Connection Established');
+
+        await connectRedis();
+        console.log('✅ [BOOT] Redis Connection Established');
+
+        // 🚀 Initialize and Track Workers for Graceful Shutdown
+        workers.push(setupCodeEvaluationWorker(io));
+        workers.push(setupFrontendEvaluationWorker(io));
+        workers.push(setupInviteEmailWorker());
+        workers.push(startIntelligenceWorker());
+        console.log('✅ [BOOT] Background Workers Initialized (4/4)');
+
+        await cacheService.preWarmCache();
+        console.log('✅ [BOOT] Performance Cache Pre-warmed');
+
+        server.listen(PORT, '0.0.0.0', () => {
+            console.log(`🚀 [BOOT] Server Live & Accepting Traffic on Port ${PORT}`);
+            isReady = true;
+
+            // Start Monitoring ONLY after server is live
+            startHealthMonitor(io);
+            console.log('🩺 [BOOT] Real-time Health Monitor Active');
+        });
+
+    } catch (err) {
+        console.error('❌ [BOOT] Fatal Bootstrap Failure:', err.message);
+        process.exit(1);
+    }
+}
+
+// ─── GRACEFUL SHUTDOWN (Cleanup Crew) ─────────────────────
+
+const mongoose = require('mongoose');
+
+async function gracefulShutdown(signal) {
+    console.log(`\n🛑 [SHUTDOWN] Received ${signal}. Starting Safe Cleanup...`);
+    isReady = false; // Immediately fail health checks
+
+    const shutdownWithTimeout = (promise, timeout = 10000, name) =>
+        Promise.race([
+            promise,
+            new Promise((_, reject) =>
+                setTimeout(() => reject(new Error(`Shutdown timeout for ${name}`)), timeout)
+            )
+        ]);
+
+    try {
+        // 1. Stop accepting new HTTP requests
+        if (server) {
+            await new Promise((resolve) => server.close(resolve));
+            console.log('📉 [SHUTDOWN] HTTP Server offline');
+        }
+
+        // 2. Close Workers (allow active jobs to finish or timeout)
+        console.log('⚙️  [SHUTDOWN] Closing Active Workers...');
+        await Promise.all(workers.map((w, i) => 
+            shutdownWithTimeout(w.close(), 15000, `Worker-${i}`).catch(e => console.warn(`⚠️  ${e.message}`))
+        ));
+        console.log('✅ [SHUTDOWN] Background Processing terminated');
+
+        // 3. Close Infrastructure Connections
+        if (mongoose.connection.readyState === 1) {
+            await mongoose.connection.close();
+            console.log('📦 [SHUTDOWN] MongoDB connection closed');
+        }
+
+        const redisClient = getRedisClient();
+        if (redisClient) {
+            await redisClient.quit();
+            console.log('📡 [SHUTDOWN] Redis connection closed');
+        }
+
+        console.log('🏁 [SHUTDOWN] System Clean. Process exiting. 👋');
+        process.exit(0);
+    } catch (err) {
+        console.error('❌ [SHUTDOWN] Error during cleanup:', err.message);
+        process.exit(1);
+    }
+}
+
+// OS Signal Listeners
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// 🚀 Start the application
+bootstrap();
 
 module.exports = app;
