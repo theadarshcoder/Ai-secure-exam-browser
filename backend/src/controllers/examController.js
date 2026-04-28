@@ -7,7 +7,7 @@ const { getRedisClient } = require('../config/redis');
 const { executeCode } = require('../services/judge0');
 const { asyncHandler } = require('../middlewares/errorMiddleware');
 const { getTimeAgo, parseLeetCode, parseCodeChef } = require('../utils/helpers');
-const { gradeMCQ, gradeCoding, gradeShortAnswer } = require('../services/gradingService');
+const { gradeMCQ, gradeCoding, gradeShortAnswer, wrapStudentCode } = require('../services/gradingService');
 const { addCodeEvaluationJob } = require('../queues/codeGradingQueue');
 const { addFrontendEvaluationJob } = require('../queues/frontendGradingQueue');
 const { getCache, setCache, clearCache, clearPattern, TTL_API_CACHE } = require('../services/cacheService');
@@ -1775,11 +1775,13 @@ exports.runCode = asyncHandler(async (req, res) => {
         throw new Error('Invalid coding question');
     }
 
-    // RAW EXECUTION - Just return output
+    // RAW EXECUTION - Just return output (for the "Run" button)
     if (!isSubmit) {
-        // We can pass a sample input if one exists, else empty
-        const sampleInput = question.testCases && question.testCases.length > 0 ? question.testCases[0].input : "";
-        const executionResult = await executeCode(sourceCode, language, sampleInput);
+        const sampleTc = question.testCases && question.testCases.length > 0 ? question.testCases[0] : null;
+        const sampleInput = sampleTc ? sampleTc.input : '';
+        // Auto-wrap: bake the first test case input as the function argument
+        const wrappedCode = wrapStudentCode(sourceCode, question, language, sampleInput);
+        const executionResult = await executeCode(wrappedCode, language, ''); // stdin is empty — arg is in the code
 
         if (!executionResult.success) {
             return res.json({ allPassed: false, error: 'Execution Error', details: executionResult.error, isRawExecution: true });
@@ -1787,36 +1789,17 @@ exports.runCode = asyncHandler(async (req, res) => {
         return res.json({ allPassed: true, rawOutput: executionResult.output, isRawExecution: true });
     }
 
-    // FORMAL SUBMISSION - Evaluate against all test cases via Background Queue (with Sync Fallback)
-    try {
-        const { getRedisClient } = require('../config/redis');
-        const redisClient = getRedisClient();
-        if (!redisClient) {
-            throw new Error('Redis not connected. Forcing local sync execution.');
-        }
+    // FORMAL SUBMISSION - Run all test cases synchronously and return results immediately
+    // (BullMQ async approach removed: socket broadcast was unreliable causing infinite spinner)
+    const results = [];
+    let allPassed = true;
 
-        await addCodeEvaluationJob({
-            sourceCode,
-            language,
-            testCases: question.testCases,
-            studentId: req.user.id,
-            questionId
-        });
-
-        return res.json({ 
-            status: 'queued', 
-            message: 'Code evaluation initiated in the background. Results will be broadcast via Socket.IO.' 
-        });
-    } catch (qErr) {
-        console.warn('⚠️ [QUEUE FALLBACK] BullMQ failed, falling back to synchronous execution:', qErr.message);
-        
-        // --- SYNC FALLBACK LOGIC ---
-        const results = [];
-        let allPassed = true;
-
-        for (let i = 0; i < question.testCases.length; i++) {
-            const tc = question.testCases[i];
-            const executionResult = await executeCode(sourceCode, language, tc.input);
+    for (let i = 0; i < question.testCases.length; i++) {
+        const tc = question.testCases[i];
+        try {
+            // Wrap per test case — bakes the specific input as a function call argument
+            const wrappedCode = wrapStudentCode(sourceCode, question, language, tc.input);
+            const executionResult = await executeCode(wrappedCode, language, '');
 
             if (executionResult.success) {
                 const passed = executionResult.output.trim() === tc.expectedOutput.trim();
@@ -1827,17 +1810,30 @@ exports.runCode = asyncHandler(async (req, res) => {
                     passed,
                     input: tc.isHidden ? 'Hidden' : tc.input,
                     expectedOutput: tc.isHidden ? 'Hidden' : tc.expectedOutput,
-                    actualOutput: tc.isHidden ? 'Hidden' : executionResult.output,
+                    actualOutput: tc.isHidden ? 'Hidden' : executionResult.output.trim(),
                 });
             } else {
                 allPassed = false;
-                results.push({ testCaseId: i + 1, passed: false, error: executionResult.error });
-                break; 
+                results.push({
+                    testCaseId: i + 1,
+                    passed: false,
+                    input: tc.isHidden ? 'Hidden' : tc.input,
+                    expectedOutput: tc.isHidden ? 'Hidden' : tc.expectedOutput,
+                    actualOutput: '',
+                    error: executionResult.error || 'Execution failed',
+                });
+                break; // Stop on compile/runtime error
             }
+        } catch (execErr) {
+            allPassed = false;
+            results.push({ testCaseId: i + 1, passed: false, error: execErr.message });
+            break;
         }
-        return res.json({ allPassed, results, isRawExecution: false, fallback: true });
     }
+
+    return res.json({ allPassed, results, isRawExecution: false });
 });
+
 
 // ─────────────── POST /api/exams/help ───────────────
 // Student requests help from mentor/admin

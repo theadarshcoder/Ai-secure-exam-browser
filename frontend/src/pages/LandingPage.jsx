@@ -6,7 +6,7 @@ import {
   Server, ChevronRight, Cpu, Eye, QrCode, Check 
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
-
+import { ThemeToggle } from '../contexts/ThemeContext';
 
 // --- Static Metadata & Configuration ---
 
@@ -88,24 +88,24 @@ const GRID_COLORS = {
 };
 
 const FEATURE_STEPS = [
-  { label: 'Detecting face…', color: 'text-indigo-400' },
-  { label: 'Mapping geometry…', color: 'text-indigo-400' },
-  { label: 'Matching records…', color: 'text-amber-400' },
-  { label: '✓ Identity confirmed', color: 'text-emerald-400' },
+  { label: 'Detecting faceΓÇª', color: 'text-indigo-400' },
+  { label: 'Mapping geometryΓÇª', color: 'text-indigo-400' },
+  { label: 'Matching recordsΓÇª', color: 'text-amber-400' },
+  { label: 'Γ£ô Identity confirmed', color: 'text-emerald-400' },
 ];
 
 const LOCKDOWN_STEPS = [
-  { label: 'Suspending processes…', color: 'text-emerald-400' },
-  { label: 'Blocking net egress…',  color: 'text-emerald-400' },
-  { label: 'Disabling clipboard…',  color: 'text-amber-400'   },
-  { label: '✓ Environment secured', color: 'text-emerald-400' },
+  { label: 'Suspending processesΓÇª', color: 'text-emerald-400' },
+  { label: 'Blocking net egressΓÇª',  color: 'text-emerald-400' },
+  { label: 'Disabling clipboardΓÇª',  color: 'text-amber-400'   },
+  { label: 'Γ£ô Environment secured', color: 'text-emerald-400' },
 ];
 
 const MONITOR_STEPS = [
-  { label: 'Calibrating gaze…',   color: 'text-zinc-400'  },
-  { label: 'Audio analysis on…', color: 'text-rose-400'   },
+  { label: 'Calibrating gazeΓÇª',   color: 'text-zinc-400'  },
+  { label: 'Audio analysis onΓÇª', color: 'text-rose-400'   },
   { label: 'Anomaly detected!',  color: 'text-amber-400'  },
-  { label: '✓ All clear',         color: 'text-emerald-400'},
+  { label: 'Γ£ô All clear',         color: 'text-emerald-400'},
 ];
 
 const SYSTEM_PROCESSES = [
@@ -131,7 +131,7 @@ const HybridNavbar = () => {
   const [scrolled, setScrolled] = React.useState(false);
   const [activeSection, setActiveSection] = React.useState('hero');
 
-  // Section definitions — map to the div ids in the page
+  // Section definitions ΓÇö map to the div ids in the page
   const NAV_LINKS = [
     { label: 'Home',     section: 'hero'     },
     { label: 'Security', section: 'security' },
@@ -147,7 +147,7 @@ const HybridNavbar = () => {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // IntersectionObserver — highlight nav link matching visible section
+  // IntersectionObserver ΓÇö highlight nav link matching visible section
   React.useEffect(() => {
     const observers = [];
     NAV_LINKS.forEach(({ section }) => {
@@ -208,7 +208,7 @@ const HybridNavbar = () => {
         className="flex items-center justify-between pointer-events-auto"
         style={{ maxWidth: '100%' }}
       >
-        {/* ── Logo — always shows VISION ── */}
+        {/* ΓöÇΓöÇ Logo ΓÇö always shows VISION ΓöÇΓöÇ */}
         <div
           className="flex items-center gap-2.5 cursor-pointer shrink-0"
           onClick={() => scrollTo('hero')}
@@ -236,7 +236,7 @@ const HybridNavbar = () => {
           </motion.span>
         </div>
 
-        {/* ── Center nav links ── */}
+        {/* ΓöÇΓöÇ Center nav links ΓöÇΓöÇ */}
         <div className="hidden md:flex items-center gap-0.5">
           {NAV_LINKS.map(({ label, section }) => {
             const isActive = activeSection === section;
@@ -277,7 +277,7 @@ const HybridNavbar = () => {
           })}
         </div>
 
-        {/* ── Right side ── */}
+        {/* ΓöÇΓöÇ Right side ΓöÇΓöÇ */}
         <div className="flex items-center shrink-0">
           <motion.button
             whileHover={{ scale: 1.04, backgroundColor: '#e4e4e7' }}
@@ -453,57 +453,50 @@ const KineticTextSequence = () => {
 
   useEffect(() => {
     const sequence = [
-      { t: 800, p: 1 },
-      { t: 1600, p: 2 },
-      { t: 2400, p: 3 }, // clear screen
-      { t: 2600, p: 4 }, // show final
+      { t: 900,  p: 1 },
+      { t: 1900, p: 2 },
+      { t: 2900, p: 3 }, // brief blank
+      { t: 3100, p: 4 }, // show final
     ];
     const timers = sequence.map(s => setTimeout(() => setPhase(s.p), s.t));
     return () => timers.forEach(clearTimeout);
   }, []);
 
-  const singleWordVariants = {
-    initial: { scale: 1.5, opacity: 0, rotateX: 90, z: -300, filter: 'blur(10px)' },
-    animate: { scale: 1, opacity: 1, rotateX: 0, z: 0, filter: 'blur(0px)', transition: { type: 'spring', stiffness: 500, damping: 25, mass: 1.5 } },
-    exit: { scale: 0.8, opacity: 0, rotateX: -90, z: 200, filter: 'blur(10px)', transition: { duration: 0.25 } }
-  };
-
+  // Final UNCOMPROMISED EXAMS reveal — same smooth ease
   const finalVariants = {
-    initial: { opacity: 0, scale: 0.9, rotateX: 45, z: -100 },
-    animate: { opacity: 1, scale: 1, rotateX: 0, z: 0, transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] } }
+    initial: { opacity: 0, scale: 0.95, filter: 'blur(10px)' },
+    animate: { opacity: 1, scale: 1, filter: 'blur(0px)', transition: { duration: 1.1, ease: [0.16, 1, 0.3, 1] } }
   };
 
-
+  // Word style: exactly matches UNCOMPROMISED EXAMS font
+  // text-glow-sweep restarts because key changes on each word (DOM remount)
+  const wordCls = "absolute text-7xl md:text-9xl font-semibold tracking-tight uppercase text-glow-sweep kinetic-word";
 
   return (
-    <div style={{ perspective: '2000px' }} className="relative z-30 flex flex-col items-center justify-center h-auto w-full px-6 py-8">
-      <AnimatePresence mode="popLayout">
-        {phase === 0 && (
-          <motion.h1 key="w1" variants={singleWordVariants} initial="initial" animate="animate" exit="exit" className={`absolute text-7xl md:text-9xl font-semibold tracking-tight uppercase text-white`} style={{ transformStyle: 'preserve-3d' }}>
-            JUST YOU
-          </motion.h1>
-        )}
-        {phase === 1 && (
-          <motion.h1 key="w2" variants={singleWordVariants} initial="initial" animate="animate" exit="exit" className={`absolute text-7xl md:text-9xl font-semibold tracking-tight uppercase text-white`} style={{ transformStyle: 'preserve-3d' }}>
-            THE SCREEN
-          </motion.h1>
-        )}
-        {phase === 2 && (
-          <motion.h1 key="w3" variants={singleWordVariants} initial="initial" animate="animate" exit="exit" className={`absolute text-7xl md:text-9xl font-semibold tracking-tight uppercase text-white`} style={{ transformStyle: 'preserve-3d' }}>
-            THE TRUTH
-          </motion.h1>
-        )}
-      </AnimatePresence>
+    <div className="relative z-30 flex flex-col items-center justify-center h-auto w-full px-6 py-8">
+      {/* Sequence words — CSS-only instant snap, same font as UNCOMPROMISED EXAMS */}
+      <div className="relative flex items-center justify-center" style={{ height: '1.15em', minWidth: '60vw' }}>
+        {phase === 0 && <h1 key="w1-a" className={wordCls}>JUST YOU</h1>}
+        {phase === 1 && <h1 key="w2-b" className={wordCls}>THE SCREEN</h1>}
+        {phase === 2 && <h1 key="w3-c" className={wordCls}>THE TRUTH</h1>}
+      </div>
 
       <AnimatePresence>
         {phase === 4 && (
-          <motion.div key="final" variants={finalVariants} initial="initial" animate="animate" style={{ transformStyle: 'preserve-3d' }} className="flex flex-col items-center text-center">
-             <h1 className="text-5xl md:text-7xl lg:text-[6.5rem] font-semibold uppercase tracking-tight text-glow-sweep flex items-center justify-center mb-4">
-                UNCOMPROMISED EXAMS
-             </h1>
-             <p className="text-zinc-400 text-lg md:text-xl font-medium max-w-2xl tracking-wide opacity-90 mt-4">
-               A perfect score means nothing if the process is broken<br />We protect the integrity of the test so your hard work actually matters
-             </p>
+          <motion.div
+            key="final"
+            variants={finalVariants}
+            initial="initial"
+            animate="animate"
+            className="flex flex-col items-center text-center"
+            style={{ willChange: 'transform, opacity, filter' }}
+          >
+            <h1 className="text-5xl md:text-7xl lg:text-[6.5rem] font-semibold uppercase tracking-tight text-glow-sweep flex items-center justify-center mb-4">
+              UNCOMPROMISED EXAMS
+            </h1>
+            <p className="text-zinc-400 text-lg md:text-xl font-medium max-w-2xl tracking-wide opacity-90 mt-4">
+              A perfect score means nothing if the process is broken<br />We protect the integrity of the test so your hard work actually matters
+            </p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -523,7 +516,7 @@ const CredHeroParallax = () => {
       {/* Ultra Premium Silk Waves Background */}
       <UltraPremiumSilkBackground />
 
-      {/* Center content — fills the screen minus navbar height */}
+      {/* Center content ΓÇö fills the screen minus navbar height */}
       <div className="flex-1 flex items-center justify-center pt-20 pb-8 relative z-30">
         <KineticTextSequence />
       </div>
@@ -545,7 +538,7 @@ const CleanFeatureBlocks = () => {
         viewport={{ once: true, margin: '-80px' }}
         transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
       >
-        {/* Identity Check Visual — Premium Redesign */}
+        {/* Identity Check Visual ΓÇö Premium Redesign */}
           {React.createElement(function IdentityVisual() {
             const [stepIndex, setStepIndex] = React.useState(0);
             const [clock, setClock] = React.useState('');
@@ -565,7 +558,7 @@ const CleanFeatureBlocks = () => {
             const step = FEATURE_STEPS[stepIndex];
           return (
             <div className="w-full md:w-1/2 aspect-[16/10] bg-[#06060e] rounded-2xl border border-white/[0.06] shadow-[0_0_80px_rgba(0,0,0,0.9),0_0_0_1px_rgba(99,102,241,0.07)] overflow-hidden flex flex-col group relative">
-              {/* ── Title bar ── */}
+              {/* ΓöÇΓöÇ Title bar ΓöÇΓöÇ */}
               <div className="h-9 bg-[#0d0d18] border-b border-white/[0.05] flex items-center justify-between px-4 shrink-0">
                 <div className="flex items-center gap-2">
                   <div className="w-2.5 h-2.5 rounded-full bg-white/10 group-hover:bg-[#ff5f56] transition-colors duration-300" />
@@ -659,13 +652,13 @@ const CleanFeatureBlocks = () => {
                         {[...[
                           { check: 'Face detect',  result: 'Matched',   score: '99%', color: 'text-emerald-300', badge: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300' },
                           { check: 'Liveness',     result: 'Real',      score: '94%', color: 'text-emerald-300', badge: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300' },
-                          { check: 'ID document',  result: 'Scanning…', score: '—',   color: 'text-indigo-300', badge: 'bg-indigo-500/20 border-indigo-500/30 text-indigo-300' },
+                          { check: 'ID document',  result: 'ScanningΓÇª', score: 'ΓÇö',   color: 'text-indigo-300', badge: 'bg-indigo-500/20 border-indigo-500/30 text-indigo-300' },
                           { check: 'Multi-person', result: 'Clear',     score: '100%',color: 'text-emerald-300', badge: '' },
                           { check: 'Spoof detect', result: 'Passed',    score: '97%', color: 'text-emerald-300', badge: '' },
                         ], ...[
                           { check: 'Face detect',  result: 'Matched',   score: '99%', color: 'text-emerald-300', badge: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300' },
                           { check: 'Liveness',     result: 'Real',      score: '94%', color: 'text-emerald-300', badge: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300' },
-                          { check: 'ID document',  result: 'Scanning…', score: '—',   color: 'text-indigo-300', badge: 'bg-indigo-500/20 border-indigo-500/30 text-indigo-300' },
+                          { check: 'ID document',  result: 'ScanningΓÇª', score: 'ΓÇö',   color: 'text-indigo-300', badge: 'bg-indigo-500/20 border-indigo-500/30 text-indigo-300' },
                           { check: 'Multi-person', result: 'Clear',     score: '100%',color: 'text-emerald-300', badge: '' },
                           { check: 'Spoof detect', result: 'Passed',    score: '97%', color: 'text-emerald-300', badge: '' },
                         ]].map((row, i) => (
@@ -760,7 +753,7 @@ const CleanFeatureBlocks = () => {
             </li>
           </ul>
         </div>
-        {/* Feature 2 Visual — Lockdown */}
+        {/* Feature 2 Visual ΓÇö Lockdown */}
         {React.createElement(function LockdownVisual() {
           const [lockStep, setLockStep] = React.useState(0);
           const [clock2, setClock2] = React.useState('');
@@ -900,7 +893,7 @@ const CleanFeatureBlocks = () => {
         viewport={{ once: true, margin: '-80px' }}
         transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.05 }}
       >
-        {/* Feature 3 Visual — Monitor */}
+        {/* Feature 3 Visual ΓÇö Monitor */}
         {React.createElement(function MonitorVisual() {
           const [monStep, setMonStep] = React.useState(0);
           const [clock3, setClock3] = React.useState('');
@@ -1140,7 +1133,7 @@ const CredMockupSequence = () => {
           transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
           className="flex whitespace-nowrap gap-12 font-mono text-xs tracking-[0.3em] text-white/20 uppercase"
         >
-          {Array(8).fill("Continuous Verification · Zero Trust Environment · AI-Powered Vision · ").map((text, i) => (
+          {Array(8).fill("Continuous Verification ┬╖ Zero Trust Environment ┬╖ AI-Powered Vision ┬╖ ").map((text, i) => (
             <span key={i}>{text}</span>
           ))}
         </motion.div>
@@ -1386,7 +1379,7 @@ const CredTrustFooter = () => {
       {/* Subtle ambient glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[200px] bg-teal-600/5 blur-[100px] pointer-events-none rounded-full" />
 
-      {/* ── Trust quote band ── */}
+      {/* ΓöÇΓöÇ Trust quote band ΓöÇΓöÇ */}
       <div className="border-b border-white/[0.06] py-12 px-8">
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
           <motion.p
@@ -1408,12 +1401,12 @@ const CredTrustFooter = () => {
             onClick={() => window.location.href = '/login'}
             className="shrink-0 bg-white text-black font-bold text-sm tracking-widest uppercase px-8 py-4 rounded-full hover:bg-zinc-100 transition-colors"
           >
-            Get Started →
+            Get Started &rarr;
           </motion.button>
         </div>
       </div>
 
-      {/* ── Main footer grid ── */}
+      {/* ΓöÇΓöÇ Main footer grid ΓöÇΓöÇ */}
       <div className="max-w-7xl mx-auto px-8 py-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12">
 
         {/* Link columns */}
@@ -1496,7 +1489,7 @@ const CredTrustFooter = () => {
         </div>
       </div>
 
-      {/* ── Bottom bar ── */}
+      {/* ΓöÇΓöÇ Bottom bar ΓöÇΓöÇ */}
       <div className="border-t border-white/[0.06] px-8 py-6">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           {/* Logo */}
@@ -1509,12 +1502,12 @@ const CredTrustFooter = () => {
 
           {/* Copyright */}
           <p className="text-[11px] text-zinc-600 font-medium">
-            © 2026 Vision Secure Exams. All rights reserved.
+            &copy; 2026 Vision Secure Exams. All rights reserved.
           </p>
 
           {/* Right links */}
           <div className="flex items-center gap-6">
-            <span className="text-zinc-800 text-[10px]">•</span>
+            <span className="text-zinc-700 text-[10px]">&bull;</span>
             <a href="#" onClick={e=>e.preventDefault()} className="text-[11px] text-zinc-500 hover:text-white transition-colors font-medium">Privacy Policy</a>
             <a href="#" onClick={e=>e.preventDefault()} className="text-[11px] text-zinc-500 hover:text-white transition-colors font-medium">Terms of Use</a>
             <a href="#" onClick={e=>e.preventDefault()} className="text-[11px] text-zinc-500 hover:text-white transition-colors font-medium">Security</a>
@@ -1527,7 +1520,7 @@ const CredTrustFooter = () => {
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             className="w-10 h-10 rounded-full border border-zinc-700 text-zinc-400 flex items-center justify-center text-sm font-bold transition-colors"
           >
-            ↑
+            &uarr;
           </motion.button>
         </div>
       </div>

@@ -17,30 +17,30 @@ const ROLE_DATA = {
     label: 'Candidate',
     icon: <User size={12} />,
     diagnostics: [
-      { id: 'webcam', label: 'Webcam Hardware Active', icon: <Webcam size={16} /> },
-      { id: 'ext', label: 'Display Configuration Verified', icon: <MonitorCheck size={16} /> },
-      { id: 'tabs', label: 'Environment Isolated', icon: <AppWindow size={16} /> },
-      { id: 'lock', label: 'Secure Browser Sandbox', icon: <LockIcon size={16} /> }
+      { id: 'webcam', label: 'Webcam Ready', icon: <Webcam size={16} /> },
+      { id: 'ext', label: 'Display Verified', icon: <MonitorCheck size={16} /> },
+      { id: 'tabs', label: 'Secure Environment', icon: <AppWindow size={16} /> },
+      { id: 'lock', label: 'Safe Browser Active', icon: <LockIcon size={16} /> }
     ]
   },
   mentor: {
     label: 'Mentor',
     icon: <ShieldCheck size={12} />,
     diagnostics: [
-      { id: 'cam', label: 'Live Room View Engaged', icon: <Video size={16} /> },
-      { id: 'fraud', label: 'Fraud Detection Active', icon: <BrainCircuit size={16} /> },
-      { id: 'ai', label: 'AI Behavior Analytics', icon: <Activity size={16} /> },
-      { id: 'enc', label: 'P2P Encrypted Channel', icon: <LockIcon size={16} /> }
+      { id: 'cam', label: 'Live Monitoring Active', icon: <Video size={16} /> },
+      { id: 'fraud', label: 'Detection System On', icon: <BrainCircuit size={16} /> },
+      { id: 'ai', label: 'Smart Analytics Active', icon: <Activity size={16} /> },
+      { id: 'enc', label: 'Secure Channel Link', icon: <LockIcon size={16} /> }
     ]
   },
   admin: {
     label: 'Admin',
     icon: <Shield size={12} />,
     diagnostics: [
-      { id: 'tel', label: 'System Telemetry Synced', icon: <Database size={16} /> },
-      { id: 'glob', label: 'Global Infrastructure Up', icon: <Globe size={16} /> },
-      { id: 'audit', label: 'Audit Trails Recording', icon: <ScrollText size={16} /> },
-      { id: 'lvl1', label: 'Level-1 Admins Protocols', icon: <Shield size={16} /> }
+      { id: 'tel', label: 'Data Sync Complete', icon: <Database size={16} /> },
+      { id: 'glob', label: 'Network Connected', icon: <Globe size={16} /> },
+      { id: 'audit', label: 'Activity Logging On', icon: <ScrollText size={16} /> },
+      { id: 'lvl1', label: 'Admin Access Level 1', icon: <Shield size={16} /> }
     ]
   }
 };
@@ -60,8 +60,8 @@ const DiagnosticSidebar = ({ role, activeCount }) => {
           <span className="text-[15px] font-bold tracking-widest text-slate-900 uppercase">VISION</span>
         </div>
 
-        <h2 className="text-2xl font-bold tracking-tight mb-1 text-slate-900">System Health</h2>
-        <p className="text-slate-500 text-xs leading-relaxed mb-6">Verifying environment integrity protocols. Proceed securely.</p>
+        <h2 className="text-2xl font-bold tracking-tight mb-1 text-slate-900">Security Check</h2>
+        <p className="text-slate-500 text-[11px] font-medium leading-relaxed mb-6">Verifying your environment for a safe session.</p>
 
         <div className="space-y-3 flex-grow">
           {data.diagnostics.map((check, idx) => {
@@ -81,7 +81,7 @@ const DiagnosticSidebar = ({ role, activeCount }) => {
                       <div className="w-[1.5px] bg-emerald-400 rounded-full animate-pulse h-[100%]" />
                       <div className="w-[1.5px] bg-emerald-400 rounded-full animate-pulse h-[60%]" />
                     </div>
-                    SECURE
+                    VERIFIED
                   </div>
                 ) : <span className="text-slate-500 text-[9px] uppercase tracking-widest font-bold">WAIT</span>}
               </div>
@@ -92,12 +92,12 @@ const DiagnosticSidebar = ({ role, activeCount }) => {
         <div className="mt-6 w-full bg-slate-50 rounded-xl p-3 border border-slate-200 shadow-sm h-[95px] overflow-hidden">
           <div className="flex items-center gap-1.5 mb-2 border-b border-slate-200 pb-1.5">
             <TerminalSquare size={10} className="text-emerald-600" />
-            <span className="text-[8px] uppercase tracking-[0.2em] font-bold text-slate-500">AI Vigilance Output</span>
+            <span className="text-[8px] uppercase tracking-[0.2em] font-bold text-slate-500">Active Monitors</span>
           </div>
           <div className="font-mono text-[9px] space-y-1 text-slate-600 uppercase">
-            <p className="flex items-center gap-1.5 truncate"><span className="text-slate-400">&gt;</span> Tracking patterns: <span className="text-emerald-600 font-bold ml-auto">ACTIVE</span></p>
-            <p className="flex items-center gap-1.5 truncate"><span className="text-slate-400">&gt;</span> Detection hook: <span className="text-emerald-600 font-bold ml-auto">SECURE</span></p>
-            <p className="flex items-center gap-1.5 truncate"><span className="text-slate-400">&gt;</span> Environment lock: <span className="text-emerald-600 font-bold ml-auto">100%</span></p>
+            <p className="flex items-center gap-1.5 truncate"><span className="text-slate-400">&gt;</span> Security shield: <span className="text-emerald-600 font-bold ml-auto">ACTIVE</span></p>
+            <p className="flex items-center gap-1.5 truncate"><span className="text-slate-400">&gt;</span> Encrypted link: <span className="text-emerald-600 font-bold ml-auto">SECURE</span></p>
+            <p className="flex items-center gap-1.5 truncate"><span className="text-slate-400">&gt;</span> Access status: <span className="text-emerald-600 font-bold ml-auto">READY</span></p>
           </div>
         </div>
 
@@ -151,7 +151,7 @@ const BiometricScanner = ({ progress }) => (
       </div>
     </div>
     <span className={`text-[10px] uppercase tracking-widest font-bold px-3 py-1 rounded-full border shadow-sm transition-all duration-300 ${progress === 100 ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-slate-500 bg-slate-50 border-slate-200'}`}>
-      {progress === 100 ? <><ShieldCheck size={12} className="inline mr-1 mb-[2px]" /> Biometric Verified</> : `Syncing Hardware... ${progress}%`}
+      {progress === 100 ? <><ShieldCheck size={12} className="inline mr-1 mb-[2px]" /> Identity Verified</> : `Connecting... ${progress}%`}
     </span>
   </div>
 );
@@ -315,10 +315,10 @@ const LoginPage = () => {
         <DiagnosticSidebar role={role} activeCount={activeDiagnostics} />
 
         <div className="w-full md:w-[55%] bg-white flex flex-col p-7 relative self-stretch">
-          <div className="w-full max-w-sm mx-auto flex flex-col flex-1 justify-center">
+          <div className="w-full max-sm mx-auto flex flex-col flex-1 justify-center">
             <div className={`text-center ${role === 'student' ? 'mb-4' : 'mb-8'}`}>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 mb-1 uppercase">Gateway Access</h1>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Please authenticate to continue.</p>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900 mb-1">Welcome Back</h1>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Please sign in to continue</p>
             </div>
 
             <RoleSwitcher currentRole={role} setRole={(r) => { setRole(r); setError(null); }} />
@@ -338,7 +338,7 @@ const LoginPage = () => {
 
             <form onSubmit={handleSubmit} className={role === 'student' ? 'space-y-3' : 'space-y-6'}>
               <div>
-                <label className="block text-[10px] font-bold tracking-wider uppercase text-slate-500 mb-1.5 ml-1">Access Identity</label>
+                <label className="block text-[11px] font-bold tracking-widest uppercase text-slate-500 mb-1.5 ml-1">Email Address</label>
                 <div className="relative">
                   <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                   <input
@@ -347,15 +347,15 @@ const LoginPage = () => {
                     autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder={role === 'student' ? "VSN-89241" : "system@vision.auth"}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm font-bold outline-none focus:bg-white focus:border-indigo-400 transition-all text-slate-900 placeholder:text-slate-400"
+                    placeholder={role === 'student' ? "student@institution.com" : "admin@institution.com"}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm font-semibold outline-none focus:bg-white focus:border-indigo-400 transition-all text-slate-900 placeholder:text-slate-400"
                     required
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[10px] font-black tracking-widest uppercase text-slate-500 mb-1.5 ml-1">Pin / Secure Key</label>
+                <label className="block text-[11px] font-bold tracking-widest uppercase text-slate-500 mb-1.5 ml-1">Password</label>
                 <div className="relative">
                   <LockIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                   <input
@@ -378,7 +378,7 @@ const LoginPage = () => {
                   className="w-full bg-white text-[#0a0c10] hover:bg-slate-200 rounded-[2rem] py-3.5 font-bold text-xs tracking-[0.1em] uppercase transition-all shadow-md active:scale-[0.98] disabled:opacity-50"
                   style={{ backgroundColor: '#0f172a', color: '#ffffff' }}
                 >
-                  {isAuthenticating ? <span className="flex items-center justify-center gap-3"><span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> Authenticating...</span> : 'Authorize & Enter'}
+                  {isAuthenticating ? <span className="flex items-center justify-center gap-3"><span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> Signing in...</span> : 'Sign In'}
                 </button>
               </div>
             </form>
