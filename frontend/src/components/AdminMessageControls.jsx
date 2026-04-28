@@ -155,7 +155,7 @@ const AdminMessageControls = ({ examId, activeStudents = [], mode = 'full' }) =>
                             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all border ${
                                 msgType === 'broadcast' 
                                     ? 'bg-surface text-primary border-main shadow-sm' 
-                                    : 'bg-surface-hover/30 text-muted border-transparent hover:border-main hover:bg-surface-hover hover:text-primary'
+                                    : 'bg-surface-hover/20 text-muted border-main/50 hover:border-main hover:bg-surface-hover hover:text-primary'
                             }`}
                         >
                             <Radio size={14} /> Broadcast
@@ -166,7 +166,7 @@ const AdminMessageControls = ({ examId, activeStudents = [], mode = 'full' }) =>
                                 className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all border ${
                                     msgType === 'direct' 
                                         ? 'bg-surface text-primary border-main shadow-sm' 
-                                        : 'bg-surface-hover/30 text-muted border-transparent hover:border-main hover:bg-surface-hover hover:text-primary'
+                                        : 'bg-surface-hover/20 text-muted border-main/50 hover:border-main hover:bg-surface-hover hover:text-primary'
                                 }`}
                             >
                                 <MessageSquare size={14} /> Direct
