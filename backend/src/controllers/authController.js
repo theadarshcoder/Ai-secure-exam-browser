@@ -3,6 +3,7 @@ const ExamSession = require('../models/ExamSession');
 const jwt = require('jsonwebtoken');
 const { asyncHandler } = require('../middlewares/errorMiddleware');
 const cacheService = require('../services/cacheService');
+const AppError = require('../utils/AppError');
 
 // ─── POST /api/auth/register ─────────────────────────────
 // Creates a new user (Restricted to Admin)
@@ -88,8 +89,7 @@ exports.login = asyncHandler(async (req, res) => {
     const { email, password, role: requestedRole, deviceId } = req.body;
 
     if (!email || !password) {
-        res.status(400);
-        throw new Error('Email and password are both required!');
+        throw new AppError('Email and password are both required!', 400);
     }
 
     let searchEmail = email.trim();
@@ -98,15 +98,13 @@ exports.login = asyncHandler(async (req, res) => {
     const user = await User.findOne({ email: searchEmail });
     if (!user) {
         console.warn(`❌ [LOGIN FAILED] User not found: ${searchEmail}`);
-        res.status(401);
-        throw new Error('Invalid Access Identity or Secure Key!');
+        throw new AppError('Invalid Access Identity or Secure Key!', 401, 'AUTH_FAILED');
     }
 
     const isPasswordCorrect = await user.comparePassword(password);
     if (!isPasswordCorrect) {
         console.warn(`❌ [LOGIN FAILED] Incorrect password for: ${searchEmail}`);
-        res.status(401);
-        throw new Error('Invalid Access Identity or Secure Key!');
+        throw new AppError('Invalid Access Identity or Secure Key!', 401, 'AUTH_FAILED');
     }
 
     console.log(`✅ [LOGIN SUCCESS] User: ${searchEmail} (${user.role})`);
