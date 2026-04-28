@@ -94,13 +94,15 @@ const Sidebar = ({ currentTime, userName, userEmail, onSupport }) => (
 );
 
 const ExamCard = ({ exam, now, onLaunch, onViewResults, index }) => {
-  const startTime = new Date(exam.startTime);
-  const endTime = new Date(startTime.getTime() + exam.duration * 60000);
-  const unlockTime = new Date(startTime.getTime() - 15 * 60000); 
-  
-  const isLive = now >= startTime && now <= endTime;
-  const isExpired = now > endTime;
-  const isPreOnboarding = now >= unlockTime && now < startTime;
+  // If no startTime set → treat as always available (open-ended exam)
+  const hasSchedule = !!exam.startTime;
+  const startTime = hasSchedule ? new Date(exam.startTime) : null;
+  const endTime = hasSchedule ? new Date(startTime.getTime() + exam.duration * 60000) : null;
+  const unlockTime = hasSchedule ? new Date(startTime.getTime() - 15 * 60000) : null;
+
+  const isLive = !hasSchedule || (now >= startTime && now <= endTime);
+  const isExpired = hasSchedule && now > endTime;
+  const isPreOnboarding = hasSchedule && now >= unlockTime && now < startTime;
   const isSubmitted = exam.alreadySubmitted;
 
   // Derive visual states
@@ -170,7 +172,7 @@ const ExamCard = ({ exam, now, onLaunch, onViewResults, index }) => {
           </div>
           
           <div className="flex items-center gap-2 text-[13px] text-slate-500 font-medium">
-            <span>{startTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+            <span>{hasSchedule ? startTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Open Access'}</span>
             <span>•</span>
             <span>{exam.duration} min</span>
           </div>
@@ -260,7 +262,7 @@ export default function StudentDashboard() {
             title: exam?.title || 'Untitled Assessment',
             duration: exam?.duration || 60,
             questionsCount: exam?.questionsCount || 0,
-            startTime: exam?.startTime || new Date().toISOString(),
+            startTime: exam?.startTime || null,
             alreadySubmitted: exam?.alreadySubmitted || false,
             resultsPublished: exam?.resultsPublished || false,
             settings: exam?.settings || {}

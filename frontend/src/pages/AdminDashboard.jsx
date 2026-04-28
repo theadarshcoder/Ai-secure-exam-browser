@@ -1157,54 +1157,63 @@ export default function AdminDashboard() {
                <Badge color={user.role === 'admin' ? 'indigo' : user.role === 'super_mentor' ? 'sky' : user.role === 'mentor' ? 'teal' : 'zinc'}>
                  {user.role}
                </Badge>
-            </td>
-            <td className={`px-6 py-4 text-[12px] font-medium ${isSelected ? 'text-primary/80' : 'text-secondary'}`}>{new Date(user.createdAt).toLocaleDateString()}</td>
-            <td className="px-6 py-4">
-              <button 
-                onClick={(e) => { e.stopPropagation(); handleDeleteUser(user._id, user.role); }} 
-                className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all active:scale-95 ${isSelected ? 'text-primary hover:text-red-500 hover:bg-red-500/10' : 'text-muted/50 hover:text-red-500 hover:bg-red-500/10'}`}
-              >
-                <Trash2 size={16} strokeWidth={2} />
-              </button>
-            </td>
-          </tr>
-        )}}
-      />
+             </td>
+             <td className={`px-6 py-4 text-[12px] font-medium ${isSelected ? 'text-primary/80' : 'text-secondary'}`}>{new Date(user.createdAt).toLocaleDateString()}</td>
+             <td className="px-6 py-4">
+               <button 
+                 onClick={(e) => { e.stopPropagation(); handleDeleteUser(user._id, user.role); }} 
+                 className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all active:scale-95 ${isSelected ? 'text-primary hover:text-red-500 hover:bg-red-500/10' : 'text-muted/50 hover:text-red-500 hover:bg-red-500/10'}`}
+               >
+                 <Trash2 size={16} strokeWidth={2} />
+               </button>
+             </td>
+           </tr>
+         )}}
+       />
 
-       {/* Add User Modal */}
-       {showAddUserModal && (
+        {/* Add User Modal */}
+        {showAddUserModal && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-50 flex items-center justify-center p-6">
-            <div className="bg-surface p-10 rounded-[3rem] shadow-2xl w-full max-w-lg border border-main animate-in zoom-in-95 duration-300 relative overflow-hidden">
+            <div className="bg-surface p-10 rounded-[2.5rem] shadow-2xl w-full max-w-lg border border-main animate-in zoom-in-95 duration-300 relative overflow-hidden font-sans">
                <div className="absolute top-0 left-0 w-full h-1 bg-primary-500/10" />
-               <h3 className="text-2xl font-bold text-primary mb-6">Commission Unit</h3>
+               <div className="mb-8">
+                 <h3 className="text-2xl font-bold text-primary tracking-tight">Add New Member</h3>
+                 <p className="text-xs text-muted mt-1 font-medium">Create a new account for your institution's portal.</p>
+               </div>
+               
                <form onSubmit={handleCreateUser} className="space-y-6">
-                  <div className="grid grid-cols-2 gap-6">
+                  <div className="grid grid-cols-2 gap-5">
                     <div>
-                        <label className="block text-[9px] font-black text-muted uppercase tracking-[0.3em] mb-3">Operator Name</label>
-                        <input required type="text" placeholder="FULL NAME" value={newUser.name} onChange={e=>setNewUser({...newUser, name: e.target.value})} className="w-full px-6 py-4 bg-surface-hover border border-main text-[13px] font-black text-primary rounded-2xl focus:outline-none focus:border-primary-500/50 transition-all placeholder:text-muted/20" />
+                        <label className="block text-[11px] font-bold text-muted uppercase tracking-widest mb-2.5 ml-1">Full Name</label>
+                        <input required type="text" placeholder="John Doe" value={newUser.name} onChange={e=>setNewUser({...newUser, name: e.target.value})} className="w-full px-5 py-3.5 bg-surface-hover border border-main text-[13px] font-semibold text-primary rounded-2xl focus:outline-none focus:border-primary-500/50 transition-all placeholder:text-muted/30" />
                     </div>
                     <div>
-                        <label className="block text-[9px] font-black text-muted uppercase tracking-[0.3em] mb-3">Auth Channel</label>
-                        <input required type="email" placeholder="EMAIL ADDRESS" value={newUser.email} onChange={e=>setNewUser({...newUser, email: e.target.value})} className="w-full px-6 py-4 bg-surface-hover border border-main text-[13px] font-black text-primary rounded-2xl focus:outline-none focus:border-primary-500/50 transition-all placeholder:text-muted/20" />
+                        <label className="block text-[11px] font-bold text-muted uppercase tracking-widest mb-2.5 ml-1">Email Address</label>
+                        <input required type="email" placeholder="john@example.com" value={newUser.email} onChange={e=>setNewUser({...newUser, email: e.target.value})} className="w-full px-5 py-3.5 bg-surface-hover border border-main text-[13px] font-semibold text-primary rounded-2xl focus:outline-none focus:border-primary-500/50 transition-all placeholder:text-muted/30" />
                     </div>
                   </div>
                   <div>
-                      <label className="block text-[9px] font-black text-muted uppercase tracking-[0.3em] mb-3">Access Protocol (Password)</label>
-                      <input required type="password" placeholder="SECURE KEY" value={newUser.password} onChange={e=>setNewUser({...newUser, password: e.target.value})} className="w-full px-6 py-4 bg-surface-hover border border-main text-[13px] font-mono font-black text-primary rounded-2xl focus:outline-none focus:border-primary-500/50 transition-all placeholder:text-muted/20 tracking-widest" />
+                      <label className="block text-[11px] font-bold text-muted uppercase tracking-widest mb-2.5 ml-1">Password</label>
+                      <input required type="password" placeholder="Create a strong password" value={newUser.password} onChange={e=>setNewUser({...newUser, password: e.target.value})} className="w-full px-5 py-3.5 bg-surface-hover border border-main text-[13px] font-semibold text-primary rounded-2xl focus:outline-none focus:border-primary-500/50 transition-all placeholder:text-muted/30" />
                   </div>
                   <div>
-                      <label className="block text-[9px] font-black text-muted uppercase tracking-[0.3em] mb-3">Clearance Level</label>
-                      <select value={newUser.role} onChange={e=>setNewUser({...newUser, role: e.target.value})} className="w-full px-6 py-4 bg-surface-hover border border-main text-[11px] font-black text-primary uppercase tracking-widest rounded-2xl focus:outline-none focus:border-primary-500/50 transition-all appearance-none">
-                         <option value="student">Candidate / Student</option>
-                         <option value="mentor">Monitor / Mentor</option>
-                         <option value="super_mentor">Superintendent</option>
-                         <option value="admin">Platform Admin</option>
-                      </select>
+                      <label className="block text-[11px] font-bold text-muted uppercase tracking-widest mb-2.5 ml-1">Assign Role</label>
+                      <div className="relative">
+                        <select value={newUser.role} onChange={e=>setNewUser({...newUser, role: e.target.value})} className="w-full px-5 py-3.5 bg-surface-hover border border-main text-[12px] font-bold text-primary uppercase tracking-wider rounded-2xl focus:outline-none focus:border-primary-500/50 transition-all appearance-none cursor-pointer">
+                           <option value="student">Student / Candidate</option>
+                           <option value="mentor">Mentor / Proctor</option>
+                           <option value="super_mentor">Superintendent</option>
+                           <option value="admin">System Administrator</option>
+                        </select>
+                        <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-muted">
+                          <ChevronRight size={14} className="rotate-90" />
+                        </div>
+                      </div>
                   </div>
-                  <div className="flex items-center justify-end gap-4 pt-10 border-t border-main mt-6">
-                     <button type="button" onClick={() => setShowAddUserModal(false)} className="px-8 py-3.5 text-[11px] font-black text-muted uppercase tracking-widest hover:text-primary transition-all active:scale-95">Abort</button>
-                     <button type="submit" className="px-10 py-4 bg-primary-500 text-white text-[11px] font-black uppercase tracking-widest hover:bg-primary-600 rounded-2xl transition-all shadow-2xl shadow-primary-500/20 active:scale-95 flex items-center gap-3">
-                       Commit Operator <Check size={16} strokeWidth={3} />
+                  <div className="flex items-center justify-end gap-3 pt-8 border-t border-main mt-4">
+                     <button type="button" onClick={() => setShowAddUserModal(false)} className="px-6 py-3 text-[11px] font-bold text-muted uppercase tracking-widest hover:text-primary transition-all active:scale-95">Cancel</button>
+                     <button type="submit" className="px-8 py-3.5 bg-primary-500 text-white text-[11px] font-bold uppercase tracking-widest hover:bg-primary-600 rounded-2xl transition-all shadow-xl shadow-primary-500/10 active:scale-95 flex items-center gap-2.5">
+                       Create Member <Check size={16} strokeWidth={3} />
                      </button>
                   </div>
                </form>

@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { requestHelp } from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, AlertCircle, Loader2 } from 'lucide-react';
+import { X, Send, AlertCircle, Loader2, Sparkles } from 'lucide-react';
+import VisionLogo from './VisionLogo';
 
 const FAQ_RULES = [
     {
@@ -87,9 +88,25 @@ const FAQBot = ({ examId, userId, isOpen, onClose }) => {
     };
 
     const escalateToAdmin = async () => {
+        const lastTimeStr = sessionStorage.getItem(`lastHelpReq_${examId}`);
+        const now = Date.now();
+        if (lastTimeStr && now - parseInt(lastTimeStr, 10) < 5 * 60 * 1000) {
+            setMessages(prev => {
+                if (prev.length > 0 && prev[prev.length - 1].text.includes('already requested help')) {
+                    return prev;
+                }
+                return [...prev, {
+                    sender: 'bot',
+                    text: '⏳ You have already requested help recently. Please wait 5 minutes before trying again.'
+                }];
+            });
+            return;
+        }
+
         setIsEscalating(true);
         try {
             await requestHelp(examId, 'Student needs manual intervention via support bot.');
+            sessionStorage.setItem(`lastHelpReq_${examId}`, now.toString());
             setMessages(prev => [...prev, {
                 sender: 'bot',
                 text: '✅ Help request sent! A proctor will message you shortly. Keep the exam window open.'
@@ -112,38 +129,38 @@ const FAQBot = ({ examId, userId, isOpen, onClose }) => {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.95 }}
                         transition={{ type: 'spring', damping: 22, stiffness: 300 }}
-                        className="mb-4 bg-surface border border-main rounded-[2rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] w-80 h-[460px] flex flex-col overflow-hidden"
+                        className="mb-4 bg-surface rounded-2xl shadow-[0_24px_48px_-12px_rgba(0,0,0,0.25)] w-[300px] h-[400px] flex flex-col overflow-hidden"
                     >
                         {/* Header */}
-                        <div className="bg-surface-hover/50 border-b border-main px-6 py-5 flex items-center justify-between shrink-0">
-                            <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-lg shadow-xl shadow-primary-500/5">
-                                    <Sparkles size={18} className="text-primary-500" />
+                        <div className="bg-[#1e2235] px-5 py-4 flex items-center justify-between shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
+                                    <VisionLogo className="w-5 h-5 text-white" />
                                 </div>
                                 <div>
-                                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Vision Support</h3>
-                                    <p className="text-[9px] text-muted font-black uppercase tracking-widest opacity-50">Instant Assistance</p>
+                                    <h3 className="text-[11px] font-bold uppercase tracking-widest text-white">Vision Support</h3>
+                                    <p className="text-[9px] text-white/40 font-semibold tracking-wide">Instant Assistance</p>
                                 </div>
                             </div>
                             <button
                                 onClick={onClose}
-                                className="w-8 h-8 flex items-center justify-center hover:bg-primary-500/10 rounded-lg transition-all group"
+                                className="w-7 h-7 flex items-center justify-center hover:bg-white/10 rounded-lg transition-all"
                             >
-                                <X size={14} className="text-muted group-hover:text-primary-500" />
+                                <X size={14} className="text-white/60 hover:text-white" />
                             </button>
                         </div>
 
                         {/* Messages */}
-                        <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-surface custom-scrollbar">
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-surface scroll-thin">
                             {messages.map((msg, i) => (
                                 <div
                                     key={i}
                                     className={`flex ${msg.sender === 'student' ? 'justify-end' : 'justify-start'}`}
                                 >
-                                    <div className={`max-w-[90%] px-4 py-3 rounded-2xl text-[11px] leading-relaxed font-bold uppercase tracking-wide transition-all ${
+                                    <div className={`max-w-[85%] px-4 py-3 text-[11px] leading-relaxed transition-all ${
                                         msg.sender === 'student'
-                                            ? 'bg-primary-500 text-white rounded-br-none shadow-lg shadow-primary-500/20'
-                                            : 'bg-surface-hover border border-main text-primary rounded-bl-none shadow-sm'
+                                            ? 'bg-[#1e2235] text-white font-bold rounded-2xl rounded-br-sm shadow-md'
+                                            : 'bg-surface-hover border border-main text-primary font-bold rounded-2xl rounded-bl-sm shadow-sm'
                                     }`}>
                                         {msg.text}
                                     </div>
@@ -153,22 +170,22 @@ const FAQBot = ({ examId, userId, isOpen, onClose }) => {
                         </div>
 
                         {/* Actions & Input Container */}
-                        <div className="p-4 bg-surface-hover/30 border-t border-main space-y-3">
+                        <div className="px-4 pt-3 pb-4 bg-surface border-t border-main space-y-3">
                             {/* Escalate Button */}
                             <button
                                 onClick={escalateToAdmin}
                                 disabled={isEscalating}
-                                className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-[9px] font-black text-red-500 hover:bg-red-500/5 uppercase tracking-[0.2em] transition-all disabled:opacity-30 border border-transparent hover:border-red-500/20"
+                                className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-[10px] font-bold text-[#1e2235] hover:bg-[#1e2235]/5 uppercase tracking-widest transition-all disabled:opacity-30 border border-main hover:border-[#1e2235]/30"
                             >
                                 {isEscalating ? (
                                     <>
                                         <Loader2 size={12} className="animate-spin" />
-                                        Relaying...
+                                        Sending...
                                     </>
                                 ) : (
                                     <>
                                         <AlertCircle size={12} />
-                                        Request Supervisor
+                                        Contact Supervisor
                                     </>
                                 )}
                             </button>
@@ -180,13 +197,13 @@ const FAQBot = ({ examId, userId, isOpen, onClose }) => {
                                     value={input}
                                     onChange={(e) => setInput(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                                    className="flex-1 bg-surface border border-main rounded-xl px-4 py-2.5 text-[11px] font-bold text-primary placeholder:text-muted/30 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/5 transition-all uppercase tracking-wider"
-                                    placeholder="Type protocol issue..."
+                                    className="flex-1 bg-surface-hover border border-main rounded-xl px-4 py-2.5 text-[13px] font-medium text-primary placeholder:text-muted/40 focus:outline-none focus:border-[#1e2235] focus:ring-2 focus:ring-[#1e2235]/10 transition-all"
+                                    placeholder="Describe your issue..."
                                 />
                                 <button
                                     onClick={handleSend}
                                     disabled={!input.trim()}
-                                    className="w-10 h-10 rounded-xl bg-primary-500 hover:bg-primary-600 text-white flex items-center justify-center transition-all active:scale-95 disabled:opacity-20 disabled:grayscale shadow-xl shadow-primary-500/20 shrink-0"
+                                    className="w-10 h-10 rounded-xl bg-[#1e2235] hover:bg-[#1e2235]/90 text-white flex items-center justify-center transition-all active:scale-95 disabled:opacity-20 shadow-lg shadow-[#1e2235]/20 shrink-0"
                                 >
                                     <Send size={14} />
                                 </button>

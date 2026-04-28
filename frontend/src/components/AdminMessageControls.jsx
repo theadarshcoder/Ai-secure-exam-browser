@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Send, Radio, MessageSquare, AlertTriangle, Info, OctagonX, Search, ChevronDown, X } from 'lucide-react';
 import socketService from '../services/socket';
 import { toast } from 'react-hot-toast';
@@ -282,7 +282,7 @@ const AdminMessageControls = ({ examId, activeStudents = [], mode = 'full' }) =>
                     <button
                         onClick={handleSend}
                         disabled={!messageText.trim() || isSending}
-                        className="flex items-center justify-center gap-3 bg-primary text-surface px-8 py-3.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shadow-xl hover:shadow-2xl sm:w-auto w-full"
+                        className="flex items-center justify-center gap-2.5 bg-primary-500 text-zinc-900 hover:bg-primary-600 px-5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-primary-500/20 sm:w-auto w-full"
                     >
                         <Send size={14} />
                         {isSending ? 'Sending...' : 'Send Alert'}

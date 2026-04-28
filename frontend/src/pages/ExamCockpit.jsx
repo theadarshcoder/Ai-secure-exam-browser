@@ -20,6 +20,7 @@ import {
   ChevronDown,
   Send,
   XCircle,
+  X,
   Bookmark,
   Terminal,
   Power,
@@ -33,6 +34,8 @@ import {
   MessageSquare,
   Radio,
   Bot,
+  ChevronsLeftRight,
+  ChevronsUpDown,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTabVisibility, TabToast } from "../components/TabVisibility";
@@ -114,44 +117,44 @@ const QuestionPalette = React.memo(
 
     const stateStyles = {
       current:
-        "bg-primary-500 text-white border-primary-600 shadow-lg shadow-primary-500/20 scale-110 z-10 font-bold",
-      answered: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 font-medium",
-      marked: "bg-primary-500/10 text-primary-500 border-primary-500/20 font-medium",
+        "bg-[#14172a] text-white border-2 border-[#14172a] shadow-md font-bold",
+      answered: "bg-emerald-50 text-emerald-700 border-emerald-200 font-medium",
+      marked: "bg-amber-50 text-amber-700 border-amber-200 font-medium",
       "marked-answered":
-        "bg-primary-500/20 text-primary-500 border-primary-500/30 font-medium ring-2 ring-primary-500 ring-offset-1 ring-offset-black",
-      visited: "bg-surface-hover text-muted border-main font-medium",
+        "bg-amber-50 text-amber-700 border-amber-200 font-medium ring-2 ring-[#1e2235] ring-offset-1",
+      visited: "bg-slate-50 text-slate-600 border-slate-200 font-medium",
       unseen:
-        "bg-surface text-muted border-main hover:border-primary-500/50 font-medium",
+        "bg-white text-slate-500 border-slate-100 hover:border-indigo-300 font-medium",
     };
 
     return (
-      <div className="flex flex-col h-full overflow-hidden">
-        <div className="px-5 pt-6 pb-4">
-          <div className="flex items-center justify-between mb-5">
+      <div className="flex flex-col shrink-0">
+        <div className="px-4 pt-4 pb-2">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-primary-500" />
-              <span className="text-[11px] font-bold text-muted uppercase tracking-widest">
+              <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
                 Questions
               </span>
             </div>
-            <span className="text-[10px] font-bold text-muted tabular-nums uppercase">
+            <span className="text-[10px] font-bold text-slate-400 tabular-nums uppercase">
               {answered}/{questions.length} Solved
             </span>
           </div>
-          <div className="p-1 bg-surface-hover rounded-xl flex items-center gap-1 border border-main">
+          <div className="p-1 bg-slate-100 rounded-xl flex items-center gap-1">
             {sections.map((sec) => (
               <button
                 key={sec.id}
                 onClick={() => handleSectionClick(sec)}
-                className={`flex-1 py-2 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all ${activeSection === sec.id ? "bg-primary-500 text-white shadow-lg shadow-primary-500/20" : "text-muted hover:text-primary"}`}
+                className={`flex-1 py-2 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all ${activeSection === sec.id ? "bg-white text-[#1e2235] shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
               >
                 {sec.label}
               </button>
             ))}
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto px-5 py-2 scroll-thin">
-          <div className="grid grid-cols-4 gap-3">
+        <div className="pl-3 pr-2 pt-0 pb-2">
+          <div className="grid grid-cols-4 gap-2 max-h-[294px] overflow-y-auto scroll-thin pl-1 pr-2 pt-1.5 pb-2">
             {visibleIndices.map((i) => (
               <button
                 key={i}
@@ -165,54 +168,23 @@ const QuestionPalette = React.memo(
                     questions[i]?._id
                 ] &&
                   getQState(i) !== "current" && (
-                    <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-primary-500 border-2 border-black rounded-full" />
+                    <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 border-2 border-white rounded-full" />
                   )}
               </button>
             ))}
           </div>
         </div>
-        <div className="px-4 pb-5 pt-4 border-t border-main mt-auto">
-          <div className="grid grid-cols-2 gap-2">
+        <div className="px-3 py-2.5 border-t border-slate-100">
+          <div className="grid grid-cols-2 gap-1.5">
             {[
-              {
-                color: "bg-primary-500",
-                text: "text-primary",
-                bg: "bg-surface-hover",
-                border: "border-main",
-                label: "Current",
-              },
-              {
-                color: "bg-emerald-500",
-                text: "text-emerald-400",
-                bg: "bg-emerald-500/5",
-                border: "border-emerald-500/10",
-                label: "Solved",
-              },
-              {
-                color: "bg-primary-500",
-                text: "text-primary-500",
-                bg: "bg-primary-500/5",
-                border: "border-primary-500/10",
-                label: "Marked",
-              },
-              {
-                color: "bg-muted",
-                text: "text-muted",
-                bg: "bg-surface",
-                border: "border-main",
-                label: "Unseen",
-              },
+              { color: "bg-[#14172a]", text: "text-slate-700", bg: "bg-slate-100", border: "border-slate-200", label: "Current" },
+              { color: "bg-emerald-500", text: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-100", label: "Solved" },
+              { color: "bg-amber-400", text: "text-amber-700", bg: "bg-amber-50", border: "border-amber-100", label: "Marked" },
+              { color: "bg-slate-300", text: "text-slate-500", bg: "bg-slate-50", border: "border-slate-100", label: "Unseen" },
             ].map((item, i) => (
-              <div
-                key={i}
-                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg border ${item.bg} ${item.border}`}
-              >
+              <div key={i} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border ${item.bg} ${item.border}`}>
                 <div className={`w-2 h-2 rounded-sm shrink-0 ${item.color}`} />
-                <span
-                  className={`text-[10px] font-bold uppercase tracking-wide ${item.text}`}
-                >
-                  {item.label}
-                </span>
+                <span className={`text-[10px] font-bold uppercase tracking-wide ${item.text}`}>{item.label}</span>
               </div>
             ))}
           </div>
@@ -232,16 +204,22 @@ const ProctoringSidebar = React.memo(
     onRetryCamera,
   }) => (
     <div className="flex flex-col items-center w-full gap-2">
-      <div className="relative group w-[140px]">
-        <div className="relative aspect-video w-full rounded-xl bg-surface border border-main overflow-hidden shadow-xl">
+      <div className="relative group w-full">
+        <div className="relative aspect-[4/3] w-full rounded-xl bg-surface border border-main overflow-hidden shadow-xl">
           {cameraActive ? (
-            <video
-              ref={videoRef}
-              autoPlay
-              muted
-              playsInline
-              className="w-full h-full object-cover scale-x-[-1]"
-            />
+            <>
+              <video
+                ref={videoRef}
+                autoPlay
+                muted
+                playsInline
+                disablePictureInPicture
+                controlsList="noplaybackrate nodownload"
+                className="w-full h-full object-cover scale-x-[-1]"
+              />
+              {/* Transparent overlay to block Chrome's native video hover controls */}
+              <div className="absolute inset-0 z-[5]" />
+            </>
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-surface-hover">
               <CameraOff size={24} className="text-muted opacity-20" />
@@ -284,7 +262,7 @@ const SubmitModal = React.memo(({ isOpen, onClose, onConfirm, stats, password, s
           animate={{ scale: 1, y: 0, opacity: 1 }}
           className="bg-surface rounded-3xl p-8 max-w-md w-full shadow-2xl border border-main"
         >
-          <div className="w-16 h-16 rounded-2xl bg-primary-500/10 border border-primary-500/20 text-primary-500 mb-6 flex items-center justify-center shadow-lg shadow-primary-500/10">
+          <div className="w-16 h-16 rounded-2xl bg-[#1e2235]/10 border border-[#1e2235]/20 text-[#1e2235] mb-6 flex items-center justify-center shadow-lg shadow-[#1e2235]/10">
             <Send size={28} />
           </div>
           <h2 className="text-2xl font-bold text-primary mb-2 tracking-tight">
@@ -326,7 +304,7 @@ const SubmitModal = React.memo(({ isOpen, onClose, onConfirm, stats, password, s
                value={password}
                onChange={(e) => setPassword(e.target.value)}
                placeholder="Supervisor Password"
-               className="w-full bg-surface-hover border border-main rounded-xl px-4 py-3.5 text-center text-primary font-mono text-[14px] tracking-[0.4em] focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all"
+               className="w-full bg-surface-hover border border-main rounded-xl px-4 py-3.5 text-center text-primary font-mono text-[14px] tracking-[0.4em] focus:outline-none focus:border-[#1e2235] focus:ring-4 focus:ring-[#1e2235]/10 transition-all"
              />
              {error && (
                <div className="absolute top-full left-0 right-0 mt-2 text-center">
@@ -345,7 +323,7 @@ const SubmitModal = React.memo(({ isOpen, onClose, onConfirm, stats, password, s
             </button>
             <button
               onClick={onConfirm}
-              className="flex-1 py-3.5 px-4 rounded-xl bg-primary-500 hover:bg-primary-600 text-white transition-all text-[12px] font-bold uppercase tracking-widest shadow-lg shadow-primary-500/20"
+              className="flex-1 py-3.5 px-4 rounded-xl bg-[#1e2235] hover:bg-[#14172a] text-white transition-all text-[12px] font-bold uppercase tracking-widest shadow-lg shadow-[#1e2235]/20"
             >
               Confirm & Submit
             </button>
@@ -367,8 +345,8 @@ const TabViolationOverlay = React.memo(({ isOpen, onResume }) => (
         >
           <div className="w-16 h-16 rounded-2xl bg-red-50 text-red-500 mb-6 mx-auto flex items-center justify-center border border-red-100 shadow-sm relative">
             <ShieldAlert size={28} strokeWidth={2.5} />
-            <div className="absolute top-0 right-0 -mt-1 -mr-1 w-3 h-3 bg-primary-500 rounded-full animate-ping" />
-            <div className="absolute top-0 right-0 -mt-1 -mr-1 w-3 h-3 bg-primary-500 rounded-full border-2 border-black" />
+            <div className="absolute top-0 right-0 -mt-1 -mr-1 w-3 h-3 bg-[#1e2235] rounded-full animate-ping" />
+            <div className="absolute top-0 right-0 -mt-1 -mr-1 w-3 h-3 bg-[#1e2235] rounded-full border-2 border-black" />
           </div>
           <h2 className="text-2xl font-bold text-primary mb-3 tracking-tight">
             Navigation Alert
@@ -379,7 +357,7 @@ const TabViolationOverlay = React.memo(({ isOpen, onResume }) => (
           </p>
           <button
             onClick={onResume}
-            className="w-full h-12 rounded-xl bg-primary-500 hover:bg-primary-600 text-white transition-all text-[13px] font-bold shadow-xl shadow-primary-500/20 active:scale-95 flex items-center justify-center gap-2"
+            className="w-full h-12 rounded-xl bg-[#1e2235] hover:bg-[#14172a] text-white transition-all text-[13px] font-bold shadow-xl shadow-[#1e2235]/20 active:scale-95 flex items-center justify-center gap-2"
           >
             Acknowledge & Resume
           </button>
@@ -418,7 +396,7 @@ const ExitModal = React.memo(
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Supervisor Password"
-                className="w-full bg-surface-hover border border-main rounded-xl px-4 py-3.5 text-center text-primary font-mono text-[14px] tracking-[0.4em] focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all"
+                className="w-full bg-surface-hover border border-main rounded-xl px-4 py-3.5 text-center text-primary font-mono text-[14px] tracking-[0.4em] focus:outline-none focus:border-[#1e2235] focus:ring-4 focus:ring-[#1e2235]/10 transition-all"
               />
               {error && (
                 <div className="absolute top-full left-0 right-0 mt-2">
@@ -480,21 +458,22 @@ const FullBlockOverlay = React.memo(({ isOpen, reason }) => (
   </AnimatePresence>
 ));
 
+
 const ObjectivePanel = React.memo(
   ({ question, index, markedForReview, panelWidth }) => (
     <div
       style={{ width: `${panelWidth}%` }}
       className="shrink-0 flex flex-col min-h-0 bg-surface"
     >
-      <div className="bg-surface-hover border-b border-main px-6 py-3.5 flex items-center justify-between shrink-0">
+      <div className="bg-surface-hover border-b border-main px-6 h-10 flex items-center justify-between shrink-0">
         <span className="text-[11px] font-bold text-primary uppercase tracking-widest">
           Objective
         </span>
         {markedForReview[
           question?.originalId || question?.id || question?._id
         ] && (
-          <div className="flex items-center gap-1.5 bg-primary-500/10 text-primary-500 px-2 py-0.5 rounded-md border border-primary-500/20">
-            <Bookmark size={10} className="fill-primary-500" />
+          <div className="flex items-center gap-1.5 bg-[#1e2235]/10 text-[#1e2235] px-2 py-0.5 rounded-md border border-[#1e2235]/20">
+            <Bookmark size={10} className="fill-slate-800" />
             <span className="text-[9px] font-bold uppercase tracking-wider">
               Flagged
             </span>
@@ -510,9 +489,9 @@ const ObjectivePanel = React.memo(
             {question?.marks || 10} Marks
           </div>
         </div>
-        <h2 className="text-xl font-medium text-primary leading-snug tracking-tight mb-6">
-          {question?.questionText}
-        </h2>
+        <h2 className="text-xl font-medium text-primary leading-snug tracking-tight mb-6"
+          dangerouslySetInnerHTML={{ __html: question?.questionText || '' }}
+        />
         <div className="prose prose-invert prose-sm text-muted leading-relaxed space-y-4">
           <p>
             Implement the solution according to constraints. Standard
@@ -561,7 +540,7 @@ const CodingEnvironment = React.memo(
               <div className="flex items-center gap-2 text-muted">
                 <Terminal size={14} />
                 <span className="text-[11px] font-bold uppercase tracking-widest">
-                  Environment
+                  Code
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -592,7 +571,7 @@ const CodingEnvironment = React.memo(
                             setSelectedLanguage(l);
                             setIsLangDropdownOpen(false);
                           }}
-                          className={`w-full text-left px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${selectedLanguage === l ? "bg-primary-500 text-white" : "text-muted hover:bg-surface-hover"}`}
+                          className={`w-full text-left px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${selectedLanguage === l ? "bg-[#1e2235] text-white" : "text-muted hover:bg-surface-hover"}`}
                         >
                           {l}
                         </button>
@@ -637,102 +616,195 @@ const CodingEnvironment = React.memo(
             </div>
           </div>
           <div
-            className="relative h-2 -my-1 cursor-row-resize z-20 flex items-center justify-center group/resizer shrink-0"
+            className="relative h-4 -my-2 cursor-row-resize z-20 flex group/resizer shrink-0"
             onMouseDown={onMouseDown}
+            onMouseMove={(e) => {
+              const icon = e.currentTarget.querySelector('.grip-icon-h');
+              if (icon) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = Math.max(20, Math.min(e.clientX - rect.left, rect.width - 20));
+                icon.style.left = `${x}px`;
+              }
+            }}
+            onMouseLeave={(e) => {
+              const icon = e.currentTarget.querySelector('.grip-icon-h');
+              if (icon) icon.style.left = '50%';
+            }}
           >
-            <div className="absolute inset-x-0 top-1/2 w-full h-[1px] bg-main group-hover/resizer:bg-primary-500/50 transition-colors" />
-            <div className="absolute z-30 flex gap-[3px] opacity-0 group-hover/resizer:opacity-100 transition-opacity bg-surface border border-main shadow-sm px-2 py-0.5 rounded-full">
-              <div className="w-1 h-1 rounded-full bg-muted" />
-              <div className="w-1 h-1 rounded-full bg-muted" />
-              <div className="w-1 h-1 rounded-full bg-muted" />
+            <div className="absolute inset-x-0 top-1/2 h-[1px] bg-transparent group-hover/resizer:bg-[#1e2235]/20 transition-colors duration-200" />
+            <div className="grip-icon-h absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 z-30 opacity-0 group-hover/resizer:opacity-100 bg-surface border border-main rounded-full shadow-sm text-primary flex items-center justify-center pointer-events-none" style={{ transition: 'opacity 0.2s, left 0.05s linear' }}>
+              <ChevronsUpDown size={14} className="m-[3px]" />
             </div>
           </div>
           <div className="flex-1 flex flex-col min-h-0 bg-surface relative z-10 overflow-hidden">
             <div className="flex items-center px-4 border-b border-main shrink-0 h-10 bg-surface z-10">
               <button
                 onClick={() => setActiveTab("Test Cases")}
-                className={`h-full px-4 text-[11px] font-bold uppercase tracking-widest border-b-2 transition-all ${activeTab === "Test Cases" ? "text-primary border-primary-500" : "text-muted border-transparent hover:text-primary"}`}
+                className={`h-full px-4 text-[11px] font-bold uppercase tracking-widest border-b-2 transition-all ${activeTab === "Test Cases" ? "text-primary border-[#1e2235]" : "text-muted border-transparent hover:text-primary"}`}
               >
                 Test Cases
               </button>
               <button
                 onClick={() => setActiveTab("Execution Details")}
-                className={`h-full px-4 text-[11px] font-bold uppercase tracking-widest border-b-2 transition-all ${activeTab === "Execution Details" ? "text-primary border-primary-500" : "text-muted border-transparent hover:text-primary"}`}
+                className={`h-full px-4 text-[11px] font-bold uppercase tracking-widest border-b-2 transition-all ${activeTab === "Execution Details" ? "text-primary border-[#1e2235]" : "text-muted border-transparent hover:text-primary"}`}
               >
                 Output Log
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-6 scroll-thin bg-page/50">
               {isExecuting ? (
-                <div className="h-full flex flex-col items-center justify-center gap-3 text-slate-800">
-                  <RotateCcw size={24} className="animate-spin" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest animate-pulse">
-                    Processing Execution...
+                <div className="h-full flex flex-col items-center justify-center gap-3">
+                  <div className="w-5 h-5 rounded-full border-2 border-main border-t-emerald-500 animate-spin" />
+                  <span className="text-[11px] font-medium text-muted tracking-widest uppercase">
+                    Fetching result...
                   </span>
                 </div>
               ) : executionResult ? (
-                <div className="space-y-4">
-                  {activeTab === "Test Cases" ? (
-                    <div className="grid grid-cols-1 gap-4">
-                      {executionResult.results ? (
-                        executionResult.results.map((res, i) => (
-                          <div
-                            key={i}
-                            className={`bg-surface border rounded-2xl border-main overflow-hidden shadow-sm`}
-                          >
-                            <div
-                              className={`px-4 py-2.5 border-b flex items-center justify-between ${res.passed ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-red-500/10 text-red-400 border-red-500/20"}`}
-                            >
-                              <span className="text-[10px] font-bold uppercase tracking-widest">
-                                Case {i + 1}
+                <div className="space-y-3">
+                  {activeTab === "Test Cases" ? (() => {
+                    const results = executionResult.results;
+                    if (!results) {
+                      // Raw "Run" execution — no test case results yet
+                      if (executionResult.isRawExecution || executionResult.rawOutput !== undefined) {
+                        return (
+                          <div className="h-full flex flex-col items-center justify-center gap-3 text-muted py-10">
+                            <div className="w-10 h-10 rounded-full bg-surface-hover border border-main flex items-center justify-center">
+                              <Check size={18} className="text-muted" />
+                            </div>
+                            <p className="text-[12px] font-semibold text-primary text-center">Code ran successfully</p>
+                            <p className="text-[11px] text-muted text-center max-w-[220px] leading-relaxed">
+                              Check the <strong>Output Log</strong> tab for output, or click <strong>Check Test Cases</strong> to validate against all test cases.
+                            </p>
+                          </div>
+                        );
+                      }
+                      // Actual error from backend
+                      if (executionResult.error) return (
+                        <div className="p-4 rounded-xl border border-red-300 bg-red-50 text-red-600 font-mono text-sm">
+                          {executionResult.error}: {executionResult.details}
+                        </div>
+                      );
+                      // No data at all — empty state
+                      return (
+                        <div className="h-full flex flex-col items-center justify-center gap-3 text-muted py-10">
+                          <p className="text-[11px] font-medium">No test case results yet.</p>
+                        </div>
+                      );
+                    }
+                    const allPassed = results.every(r => r.passed);
+                    const passedCount = results.filter(r => r.passed).length;
+                    const total = results.length;
+                    return (
+                      <div className="space-y-3">
+
+                        {/* ── Summary banner ── */}
+                        <div className={`flex items-center gap-3 px-4 py-3.5 rounded-xl border-l-[3px] ${
+                          allPassed
+                            ? 'border-l-emerald-500 bg-emerald-50 border border-emerald-200'
+                            : 'border-l-red-500 bg-red-50 border border-red-200'
+                        }`}>
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 shadow-sm ${
+                            allPassed ? 'bg-emerald-500' : 'bg-red-500'
+                          }`}>
+                            {allPassed
+                              ? <Check size={14} className="text-white" strokeWidth={3} />
+                              : <X size={14} className="text-white" strokeWidth={3} />}
+                          </div>
+                          <div className="flex flex-col flex-1 min-w-0">
+                            <span className={`text-[14px] font-bold leading-tight ${
+                              allPassed ? 'text-emerald-700' : 'text-red-700'
+                            }`}>
+                              {allPassed ? 'Excellent work! All test cases passed.' : 'Some test cases failed.'}
+                            </span>
+                            <span className={`text-[11px] font-medium mt-0.5 ${
+                              allPassed ? 'text-emerald-600' : 'text-red-500'
+                            }`}>
+                              {passedCount} of {total} test cases passed
+                            </span>
+                          </div>
+                          <span className={`text-[13px] font-bold px-3 py-1.5 rounded-lg shrink-0 ${
+                            allPassed
+                              ? 'bg-emerald-500 text-white'
+                              : 'bg-red-500 text-white'
+                          }`}>
+                            {passedCount}/{total}
+                          </span>
+                        </div>
+
+                        {/* ── Per-case rows ── */}
+                        {results.map((res, i) => (
+                          <div key={i} className="rounded-xl border border-main bg-surface overflow-hidden shadow-sm">
+                            {/* Header */}
+                            <div className={`flex items-center justify-between px-4 py-2.5 border-b border-main ${
+                              res.passed ? 'bg-emerald-50' : 'bg-red-50'
+                            }`}>
+                              <span className="text-[12px] font-bold text-primary">
+                                Test Case {i + 1}
                               </span>
-                              <span className="text-[9px] font-bold uppercase">
-                                {res.passed ? "PASSED ✅" : "FAILED ❌"}
+                              <span className={`flex items-center gap-1.5 text-[11px] font-bold ${
+                                res.passed ? 'text-emerald-600' : 'text-red-600'
+                              }`}>
+                                {res.passed
+                                  ? <><Check size={11} strokeWidth={3}/> Passed</>
+                                  : <><X size={11} strokeWidth={3}/> Failed</>}
                               </span>
                             </div>
-                            <div className="p-4 grid grid-cols-3 gap-4">
-                              <div>
-                                <p className="text-[9px] font-bold text-muted uppercase mb-1">
-                                  Actual
+
+                            {/* Columns */}
+                            <div className="grid grid-cols-2 divide-x divide-main">
+                              <div className="p-4">
+                                <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-2">
+                                  Your Output
                                 </p>
-                                <pre className="text-[10px] font-mono bg-page p-2 rounded border border-main overflow-x-auto text-primary">
-                                  {res.actualOutput || "N/A"}
-                                </pre>
+                                <div className={`px-3 py-2.5 rounded-lg border text-[13px] font-mono font-semibold ${
+                                  res.passed
+                                    ? 'bg-surface-hover border-main text-primary'
+                                    : 'bg-red-50 border-red-200 text-red-700'
+                                }`}>
+                                  {res.actualOutput || <span className="text-muted italic">no output</span>}
+                                </div>
                               </div>
-                              <div className="col-span-2">
-                                <p className="text-[9px] font-bold text-muted uppercase mb-1">
-                                  Error/Detail
+                              <div className="p-4">
+                                <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-2">
+                                  {res.error ? 'Error' : 'Expected'}
                                 </p>
-                                <pre className="text-[10px] font-mono text-red-500">
-                                  {res.error || "None"}
-                                </pre>
+                                <div className={`px-3 py-2.5 rounded-lg border text-[13px] font-mono font-semibold ${
+                                  res.error
+                                    ? 'bg-red-50 border-red-200 text-red-700'
+                                    : 'bg-surface-hover border-main text-primary'
+                                }`}>
+                                  {res.error || res.expectedOutput || <span className="text-muted italic">—</span>}
+                                </div>
                               </div>
                             </div>
                           </div>
-                        ))
-                      ) : (
-                        <pre className="text-red-500 font-mono text-xs">
-                          {executionResult.error}: {executionResult.details}
+                        ))}
+                      </div>
+                    );
+                  })() : (
+                    /* Output Log tab */
+                    <div className="rounded-xl border border-main bg-surface overflow-hidden shadow-sm">
+                      <div className="px-4 py-2.5 bg-surface-hover border-b border-main flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                        <span className="text-[11px] font-bold text-muted uppercase tracking-widest">Output Log</span>
+                      </div>
+                      <div className="p-5">
+                        <pre className="text-[14px] font-mono text-primary leading-relaxed whitespace-pre-wrap">
+                          {executionResult.rawOutput ||
+                            executionResult.stdout ||
+                            executionResult.details ||
+                            executionResult.error ||
+                            "No output."}
                         </pre>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="bg-surface border border-main rounded-2xl p-6">
-                      <pre className="text-[13px] font-mono leading-relaxed text-primary-500 whitespace-pre-wrap">
-                        {executionResult.rawOutput ||
-                          executionResult.stdout ||
-                          executionResult.details ||
-                          executionResult.error ||
-                          "No output."}
-                      </pre>
+                      </div>
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="h-full flex flex-col items-center justify-center text-muted/30 gap-4">
-                  <Play size={48} className="translate-x-1" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted/50">
-                    Awaiting Code Execution
+                <div className="h-full flex flex-col items-center justify-center gap-3 text-muted">
+                  <Play size={32} className="translate-x-0.5 opacity-25" />
+                  <span className="text-[11px] font-semibold uppercase tracking-widest">
+                    Run your code to see results
                   </span>
                 </div>
               )}
@@ -851,7 +923,7 @@ const FrontendReactEnvironment = React.memo(
             <div className="flex items-center px-4 border-b border-main shrink-0 h-10 bg-surface-hover">
               <button
                 onClick={() => setActiveTab("Test Cases")}
-                className={`h-full px-4 text-[11px] font-bold uppercase tracking-widest border-b-2 transition-all ${activeTab === "Test Cases" ? "text-primary border-primary-500" : "text-muted border-transparent hover:text-primary"}`}
+                className={`h-full px-4 text-[11px] font-bold uppercase tracking-widest border-b-2 transition-all ${activeTab === "Test Cases" ? "text-primary border-[#1e2235]" : "text-muted border-transparent hover:text-primary"}`}
               >
                 UI Validation Results
               </button>
@@ -1281,16 +1353,24 @@ export default function ExamCockpit() {
   );
 
   const handleRequestHelp = async () => {
+    const lastTimeStr = sessionStorage.getItem(`lastHelpReq_${examId}`);
+    const now = Date.now();
+    if (lastTimeStr && now - parseInt(lastTimeStr, 10) < 5 * 60 * 1000) {
+      toast.error("You have already requested help recently. Please wait 5 minutes.", { position: "top-center", id: "help-cooldown" });
+      return;
+    }
+
     try {
       setHelpStatus("loading");
-      await requestHelp("Student needs manual intervention or has a query.");
+      await requestHelp(examId, "Student needs manual intervention or has a query.");
+      sessionStorage.setItem(`lastHelpReq_${examId}`, now.toString());
       setHelpStatus("success");
-      toast.success("Help request sent to supervisor.");
+      toast.success("Help Request Submitted Successfully", { position: "top-center", id: "help-success" });
       setTimeout(() => setHelpStatus("idle"), 5000);
     } catch (_err) {
       console.error("Failed to send help request.");
       setHelpStatus("error");
-      toast.error("Failed to send help request. Please try again.");
+      toast.error("Failed to submit help request", { position: "top-center", id: "help-error" });
       setTimeout(() => setHelpStatus("idle"), 5000);
     }
   };
@@ -1901,13 +1981,18 @@ export default function ExamCockpit() {
     if (cooldownSeconds > 0) return;
 
     if (q.type === "frontend-react") {
-      // For React labs, "Run" is just "Verify"
       handleCheckTestCases();
       return;
     }
 
     setIsExecuting(true);
     setActiveTab("Execution Details");
+
+    // Safety net: clear spinner after 15s no matter what
+    const safetyTimer = setTimeout(() => {
+      setIsExecuting(false);
+    }, 15000);
+
     try {
       const qId = q.originalId || q.id || q._id;
       setExecutionResultsByQuestion((prev) => {
@@ -1937,6 +2022,7 @@ export default function ExamCockpit() {
       }));
       if (err.error === "Cooldown Active") setCooldownSeconds(10);
     } finally {
+      clearTimeout(safetyTimer);
       setIsExecuting(false);
     }
   };
@@ -1948,6 +2034,12 @@ export default function ExamCockpit() {
 
     setIsExecuting(true);
     setActiveTab("Test Cases");
+
+    // Safety net: clear spinner after 15s no matter what
+    const safetyTimer = setTimeout(() => {
+      setIsExecuting(false);
+    }, 15000);
+
     try {
       const qId = q.originalId || q.id || q._id;
       setExecutionResultsByQuestion((prev) => {
@@ -1973,11 +2065,13 @@ export default function ExamCockpit() {
             id: "code-queued",
             duration: 3000,
           });
+          // Spinner clears via safety timer
         } else {
           setExecutionResultsByQuestion((prev) => ({
             ...prev,
             [qId]: res.data,
           }));
+          clearTimeout(safetyTimer);
           setIsExecuting(false);
           setCooldownSeconds(5);
         }
@@ -1996,23 +2090,18 @@ export default function ExamCockpit() {
         true,
       );
 
-      if (res.status === "queued") {
-        // Keep isExecuting true, wait for socket event
-        toast.loading("Submission queued... evaluating on server", {
-          id: "code-queued",
-          duration: 3000,
-        });
-      } else {
-        setExecutionResultsByQuestion((prev) => ({ ...prev, [qId]: res }));
-        setIsExecuting(false);
-        setCooldownSeconds(10);
-      }
+      // Backend always returns results synchronously — no queue/socket needed
+      setExecutionResultsByQuestion((prev) => ({ ...prev, [qId]: res }));
+      clearTimeout(safetyTimer);
+      setIsExecuting(false);
+      setCooldownSeconds(10);
     } catch (err) {
       const qId = q.originalId || q.id || q._id;
       setExecutionResultsByQuestion((prev) => ({
         ...prev,
         [qId]: { error: "Failed", details: err.message },
       }));
+      clearTimeout(safetyTimer);
       setIsExecuting(false);
       if (err.error === "Cooldown Active") setCooldownSeconds(10);
     }
@@ -2103,36 +2192,37 @@ export default function ExamCockpit() {
 
   if (submitted)
     return (
-      <div className="h-screen flex items-center justify-center bg-black font-sans relative overflow-hidden">
-        {/* Premium Backdrop Effects */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary-500/5 rounded-full blur-3xl opacity-50 mix-blend-plus-lighter pointer-events-none" />
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl opacity-50 pointer-events-none" />
+      <div className="h-screen flex items-center justify-center bg-gray-50 font-sans relative overflow-hidden">
+        {/* Premium Light Backdrop Effects */}
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-50/50 via-white to-white pointer-events-none" />
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-indigo-100/50 rounded-full blur-3xl opacity-60 pointer-events-none" />
+        <div className="absolute bottom-0 left-20 w-80 h-80 bg-blue-50 rounded-full blur-3xl opacity-60 pointer-events-none" />
 
-        <div className="text-center relative z-10 max-w-md w-full mx-4 animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out">
+        <div className="text-center relative z-10 max-w-md w-full mx-4 animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out bg-white p-10 rounded-[2rem] shadow-2xl shadow-indigo-900/5 border border-indigo-50">
           {/* Success Icon */}
-          <div className="relative mb-8 inline-block animate-in zoom-in duration-500 delay-150 fill-mode-both">
-            <div className="absolute inset-0 bg-primary-500 blur-xl opacity-30 rounded-full"></div>
-            <div className="w-20 h-20 bg-surface border-2 border-primary-500/20 rounded-3xl flex items-center justify-center shadow-lg shadow-primary-500/10">
+          <div className="relative mb-6 inline-block animate-in zoom-in duration-500 delay-150 fill-mode-both">
+            <div className="absolute inset-0 bg-emerald-100 blur-xl opacity-60 rounded-full"></div>
+            <div className="w-20 h-20 bg-emerald-50 border-2 border-emerald-100 rounded-3xl flex items-center justify-center shadow-lg shadow-emerald-900/5 relative z-10">
               <CheckCircle
                 size={36}
-                className="text-primary-500"
+                className="text-emerald-500"
                 strokeWidth={2.5}
               />
             </div>
           </div>
 
           {/* Titles */}
-          <h2 className="text-3xl font-black text-primary tracking-tight mb-2">
+          <h2 className="text-2xl font-black text-gray-900 tracking-tight mb-2">
             Submission Successful
           </h2>
-          <p className="text-muted text-[13px] font-medium leading-relaxed mb-10 px-4">
+          <p className="text-gray-500 text-[13px] font-medium leading-relaxed mb-8 px-2">
             Your responses have been securely stored and evaluated. How would
             you rate your assessment experience?
           </p>
 
           {/* Star Rating System */}
           <div
-            className="flex justify-center gap-2 mb-10 group"
+            className="flex justify-center gap-3 mb-8 group"
             onMouseLeave={() => setHoverRating(0)}
           >
             {[1, 2, 3, 4, 5].map((star) => {
@@ -2143,10 +2233,10 @@ export default function ExamCockpit() {
                   type="button"
                   onClick={() => setRating(star)}
                   onMouseEnter={() => setHoverRating(star)}
-                  className={`p-2 transition-all duration-300 transform outline-none hover:scale-110 active:scale-95 ${
+                  className={`p-1.5 transition-all duration-300 transform outline-none hover:scale-110 active:scale-95 ${
                     isFilled
-                      ? "text-primary-500 drop-shadow-md"
-                      : "text-muted/20 group-hover:text-muted/30"
+                      ? "text-yellow-400 drop-shadow-sm"
+                      : "text-gray-200 group-hover:text-gray-300"
                   }`}
                 >
                   <svg
@@ -2170,8 +2260,8 @@ export default function ExamCockpit() {
 
           {/* Action Button */}
           <button
-            onClick={() => navigate("/candidate")}
-            className="w-full flex items-center justify-center gap-2 h-12 bg-primary-500 text-white rounded-xl font-bold uppercase tracking-widest text-[12px] shadow-xl shadow-primary-500/20 hover:bg-primary-600 transition-all hover:-translate-y-0.5 active:scale-95 group/btn"
+            onClick={() => navigate("/student")}
+            className="w-full flex items-center justify-center gap-2 h-14 bg-[#1e2235] text-white rounded-xl font-bold uppercase tracking-widest text-[12px] shadow-lg shadow-[#1e2235]/20 hover:bg-[#14172a] transition-all hover:-translate-y-0.5 active:scale-95 group/btn"
           >
             Exit to Dashboard
             <span className="group-hover/btn:translate-x-1 transition-transform">
@@ -2192,14 +2282,14 @@ export default function ExamCockpit() {
 
         <header className="shrink-0 bg-surface border-b border-main shadow-sm px-5 h-[48px] flex items-center justify-between z-30 relative">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center shadow-lg shadow-primary-500/20">
+            <div className="w-8 h-8 rounded-lg bg-[#1e2235] flex items-center justify-center shadow-lg shadow-[#1e2235]/20">
               <VisionLogo className="w-5 h-5 text-white" />
             </div>
             <span className="text-[13px] font-black tracking-widest text-primary">
               VISION
             </span>
             <div className="h-4 w-px bg-main" />
-            <span className="text-[11px] font-bold text-muted uppercase tracking-widest max-w-[200px] truncate">
+            <span className="text-[11px] font-bold text-muted uppercase tracking-widest">
               {exam?.title || "Exam"}
             </span>
           </div>
@@ -2210,7 +2300,7 @@ export default function ExamCockpit() {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="absolute left-1/2 -translate-x-1/2 bg-primary-500 text-white px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg z-50 shadow-primary-500/20"
+                className="absolute left-1/2 -translate-x-1/2 bg-[#1e2235] text-white px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg z-50 shadow-[#1e2235]/20"
               >
                 {headerAlert}
               </motion.div>
@@ -2236,7 +2326,7 @@ export default function ExamCockpit() {
           </div>
           <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-surface">
             <div
-              className="h-full bg-primary-500 transition-all duration-700 shadow-[0_0_8px_rgba(255,59,0,0.5)]"
+              className="h-full bg-[#0a0a0a] transition-all duration-700 shadow-[0_0_8px_rgba(10,10,10,0.8)]"
               style={{
                 width: `${(answeredCount / Math.max(questions.length, 1)) * 100}%`,
               }}
@@ -2254,7 +2344,7 @@ export default function ExamCockpit() {
               markedForReview={markedForReview}
               navigateTo={navigateTo}
             />
-            <div className="px-5 py-2 border-t border-main flex-shrink-0">
+            <div className="px-3 pb-3 pt-5 border-t border-main flex justify-center">
               <ProctoringSidebar
                 cameraActive={cameraActive}
                 videoRef={videoRef}
@@ -2264,37 +2354,39 @@ export default function ExamCockpit() {
                 onRetryCamera={initCamera}
               />
             </div>
-            <div className="p-4 border-t border-main mt-auto flex flex-col gap-2">
-              <button
-                onClick={handleRequestHelp}
-                disabled={helpStatus !== "idle"}
-                className={`w-full h-10 rounded-xl flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-80 ${helpStatus === "success" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : helpStatus === "error" ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-primary-500/10 text-primary-500 border-primary-500/20 hover:bg-primary-500/20"}`}
-              >
-                <AnimatedStatusIcon
-                  status={helpStatus}
-                  icon={<MessageSquare size={14} />}
-                  size={14}
-                />
-                {helpStatus === "success"
-                  ? "Request Sent"
-                  : helpStatus === "error"
-                    ? "Request Failed"
-                    : "Need Help?"}
-              </button>
+            <div className="h-[92px] border-t border-main shrink-0 mt-auto flex flex-col bg-surface">
+              <div className="flex-1 px-3 flex flex-col justify-center">
+                <button
+                  onClick={handleRequestHelp}
+                  disabled={helpStatus !== "idle"}
+                  className={`w-full h-8 rounded-lg flex items-center justify-center gap-2 text-[12px] font-semibold tracking-tight transition-all active:scale-95 disabled:opacity-80 border ${helpStatus === "success" ? "bg-emerald-50 text-emerald-600 border-emerald-200" : helpStatus === "error" ? "bg-red-50 text-red-600 border-red-200" : "bg-[#0a0a0a] text-white shadow-sm shadow-black/10 hover:bg-black hover:shadow-md"}`}
+                >
+                  <AnimatedStatusIcon
+                    status={helpStatus}
+                    icon={<MessageSquare size={13} />}
+                    size={13}
+                  />
+                  {helpStatus === "success"
+                    ? "Request Sent"
+                    : helpStatus === "error"
+                      ? "Request Failed"
+                      : "Need Help?"}
+                </button>
+              </div>
 
-              <div className="flex gap-2">
+              <div className="h-10 px-3 border-t border-main shrink-0 flex items-center justify-between gap-2 bg-gray-50/50">
                 <button
                   onClick={() => setIsFAQOpen(!isFAQOpen)}
-                  className={`flex-1 h-9 rounded-xl flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest transition-all active:scale-95 ${isFAQOpen ? "bg-primary-500 text-white shadow-lg shadow-primary-500/20" : "bg-surface border border-main text-muted hover:text-primary hover:bg-surface-hover"}`}
+                  className={`flex-1 h-7 rounded-md flex items-center justify-center gap-1.5 text-[11px] font-semibold tracking-tight transition-all active:scale-95 border ${isFAQOpen ? "bg-[#0a0a0a] text-white border-transparent shadow-sm" : "bg-white text-[#0a0a0a] border-[#0a0a0a]/10 hover:border-[#0a0a0a]/30 hover:bg-gray-50 shadow-sm"}`}
                 >
-                  <Bot size={14} /> AI Chat
+                  <Bot size={13} /> AI Chat
                 </button>
                 <button
                   onClick={() => setShowExitPrompt(true)}
-                  className="w-9 h-9 shrink-0 rounded-xl bg-surface border border-main text-muted hover:text-red-500 hover:border-red-500/20 hover:bg-red-500/10 transition-all flex items-center justify-center active:scale-95 shadow-sm"
+                  className="w-7 h-7 shrink-0 rounded-md bg-white border border-[#0a0a0a]/10 text-[#0a0a0a] hover:text-white hover:bg-red-500 hover:border-red-500 transition-all flex items-center justify-center active:scale-95 shadow-sm"
                   title="Exit Session"
                 >
-                  <Power size={14} className="stroke-[2.5px]" />
+                  <Power size={13} className="stroke-[2px]" />
                 </button>
               </div>
             </div>
@@ -2312,14 +2404,24 @@ export default function ExamCockpit() {
                     panelWidth={panelWidth}
                   />
                   <div
-                    className="relative w-2 -mx-1 cursor-col-resize z-20 flex items-center justify-center group/resizer shrink-0"
+                    className="relative w-4 -mx-2 cursor-col-resize z-20 flex group/resizer shrink-0"
                     onMouseDown={onPanelMouseDown}
+                    onMouseMove={(e) => {
+                      const icon = e.currentTarget.querySelector('.grip-icon');
+                      if (icon) {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const y = Math.max(20, Math.min(e.clientY - rect.top, rect.height - 20));
+                        icon.style.top = `${y}px`;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      const icon = e.currentTarget.querySelector('.grip-icon');
+                      if (icon) icon.style.top = '50%';
+                    }}
                   >
-                    <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-[1px] bg-main group-hover/resizer:bg-primary-500/50 transition-colors" />
-                    <div className="absolute z-30 flex flex-col gap-[3px] opacity-0 group-hover/resizer:opacity-100 transition-opacity bg-surface border border-main shadow-sm py-2 px-0.5 rounded-full">
-                      <div className="w-1 h-1 rounded-full bg-muted" />
-                      <div className="w-1 h-1 rounded-full bg-muted" />
-                      <div className="w-1 h-1 rounded-full bg-muted" />
+                    <div className="absolute inset-y-0 left-1/2 w-[1px] bg-transparent group-hover/resizer:bg-[#1e2235]/20 transition-colors duration-200" />
+                    <div className="grip-icon absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 z-30 opacity-0 group-hover/resizer:opacity-100 bg-surface border border-main rounded-full shadow-sm text-primary flex items-center justify-center pointer-events-none" style={{ transition: 'opacity 0.2s, top 0.05s linear' }}>
+                      <ChevronsLeftRight size={14} className="m-[3px]" />
                     </div>
                   </div>
                   <CodingEnvironment
@@ -2357,10 +2459,10 @@ export default function ExamCockpit() {
                   />
                 </div>
               ) : (
-                <div className="flex-1 flex flex-col bg-page px-8 py-8 min-h-0 overflow-hidden">
-                  <div className="max-w-4xl mx-auto w-full flex flex-col flex-1 bg-surface rounded-[2rem] border border-main shadow-2xl overflow-hidden min-h-0">
-                    <div className="px-10 py-10 border-b border-main shrink-0 bg-surface">
-                      <div className="flex items-center gap-3 mb-6">
+                <div className="flex-1 flex flex-col items-center justify-center bg-page px-4 py-6 overflow-y-auto">
+                  <div className="max-w-5xl w-full flex flex-col bg-surface rounded-xl border border-main shadow-md overflow-hidden min-h-[500px] max-h-full">
+                    <div className="px-6 py-5 border-b border-main shrink-0 bg-surface">
+                      <div className="flex items-center gap-2 mb-3">
                         <div className="px-3 py-1 bg-surface-hover text-primary rounded-xl text-[11px] font-black uppercase tracking-widest border border-main shadow-sm">
                           Q{currentQ + 1}
                         </div>
@@ -2372,18 +2474,18 @@ export default function ExamCockpit() {
                               : "Written Case"}
                         </div>
                         {markedForReview[currentQuestionId] && (
-                          <div className="ml-auto text-primary-500 bg-primary-500/10 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border border-primary-500/20 shadow-sm flex items-center gap-2">
-                            <Bookmark size={14} fill="currentColor" /> Flagged
+                          <div className="ml-auto text-[#1e2235] bg-[#1e2235]/10 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border border-[#1e2235]/20 shadow-sm flex items-center gap-1.5">
+                            <Bookmark size={12} fill="currentColor" /> Flagged
                           </div>
                         )}
                       </div>
-                      <h2 className="text-[26px] font-medium text-primary leading-snug tracking-tight">
-                        {q?.questionText}
-                      </h2>
+                      <h2 className="text-[19px] font-medium text-primary leading-snug tracking-tight"
+                        dangerouslySetInnerHTML={{ __html: q?.questionText || '' }}
+                      />
                     </div>
-                    <div className="flex-1 p-10 flex flex-col min-h-0 bg-surface">
+                    <div className="p-10 flex flex-col min-h-0 bg-surface">
                       {q?.type?.toLowerCase() === "mcq" ? (
-                        <div className="grid gap-3 max-w-3xl overflow-y-auto scroll-thin pr-4 pb-4">
+                        <div className="grid gap-4 max-w-4xl overflow-y-auto scroll-thin pr-2 pb-2">
                           {q?.displayOptions?.map((opt, i) => {
                             const isS =
                               answers[currentQuestionId] === opt.originalIndex;
@@ -2396,25 +2498,31 @@ export default function ExamCockpit() {
                                     [currentQuestionId]: opt.originalIndex,
                                   }))
                                 }
-                                className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all duration-200 text-left relative group outline-none ${isS ? "bg-primary-500/5 border-primary-500 shadow-lg shadow-primary-500/10" : "bg-surface border-main hover:border-primary-500/50 hover:shadow-sm"}`}
+                                className={`w-full flex items-center gap-4 p-5 rounded-xl border-2 transition-all duration-200 text-left relative group outline-none ${
+                                  isS
+                                    ? "bg-slate-50 border-[#1e2235] shadow-sm"
+                                    : "bg-surface border-main hover:border-indigo-300 hover:shadow-sm"
+                                }`}
                               >
                                 <div
-                                  className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-[14px] font-bold transition-all shadow-sm ${isS ? "bg-primary-500 text-white shadow-primary-500/20" : "bg-surface-hover text-muted group-hover:bg-primary-500/10 group-hover:text-primary-500"}`}
+                                  className={`w-8 h-8 shrink-0 rounded-lg flex items-center justify-center text-[13px] font-bold transition-all ${
+                                    isS
+                                      ? "bg-[#1e2235] text-white"
+                                      : "bg-surface-hover text-muted group-hover:bg-slate-50 group-hover:text-[#1e2235]"
+                                  }`}
                                 >
                                   {String.fromCharCode(65 + i)}
                                 </div>
                                 <span
-                                  className={`text-[15px] leading-relaxed flex-1 ${isS ? "font-semibold text-primary" : "font-medium text-muted"}`}
+                                  className={`text-[14px] leading-snug flex-1 ${
+                                    isS ? "font-semibold text-[#1e2235]" : "font-medium text-muted"
+                                  }`}
                                 >
                                   {opt.text}
                                 </span>
                                 {isS && (
-                                  <div className="shrink-0 w-8 h-8 rounded-full bg-primary-500 flex items-center justify-center shadow-lg animate-in zoom-in duration-300">
-                                    <Check
-                                      size={16}
-                                      className="text-white"
-                                      strokeWidth={2}
-                                    />
+                                  <div className="shrink-0 w-5 h-5 rounded-full bg-[#1e2235] flex items-center justify-center animate-in zoom-in duration-300">
+                                    <Check size={11} className="text-white" strokeWidth={3} />
                                   </div>
                                 )}
                               </button>
@@ -2432,7 +2540,7 @@ export default function ExamCockpit() {
                               }))
                             }
                             placeholder="Type your structured response here..."
-                            className="flex-1 w-full bg-surface-hover border-2 border-main rounded-3xl p-8 focus:bg-surface focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all outline-none resize-none font-medium text-primary leading-relaxed text-[16px] scroll-thin placeholder:text-muted/30"
+                            className="flex-1 w-full min-h-[280px] bg-surface-hover border-2 border-main rounded-2xl p-5 focus:bg-surface focus:border-[#1e2235] focus:ring-2 focus:ring-[#1e2235]/10 transition-all outline-none resize-none font-medium text-primary leading-relaxed text-[14px] scroll-thin placeholder:text-muted/30"
                           />
                           {(() => {
                             const words = (
@@ -2501,7 +2609,7 @@ export default function ExamCockpit() {
                           }, 200); // 200ms delay so they can visually see the button turn orange first
                         }
                       }}
-                      className={`h-9 px-4 rounded-lg text-[11px] font-bold uppercase tracking-widest border transition-all ${markedForReview[currentQuestionId] ? "bg-primary-500 text-white border-primary-500 shadow-lg shadow-primary-500/20" : "bg-surface text-muted border-main hover:text-primary hover:bg-surface-hover"}`}
+                      className={`h-9 px-4 rounded-lg text-[11px] font-bold uppercase tracking-widest border transition-all ${markedForReview[currentQuestionId] ? "bg-[#1e2235] text-white border-[#1e2235] shadow-lg shadow-[#1e2235]/20" : "bg-surface text-muted border-main hover:text-primary hover:bg-surface-hover"}`}
                     >
                       {markedForReview[currentQuestionId]
                         ? "Flagged"
@@ -2537,7 +2645,7 @@ export default function ExamCockpit() {
                           disabled={
                             isExecuting || cooldownSeconds > 0 || isOffline
                           }
-                          className={`h-9 px-5 flex items-center gap-2 rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all active:scale-95 ${isOffline ? "bg-surface-hover text-muted/30 cursor-not-allowed shadow-none" : cooldownSeconds > 0 ? "bg-primary-600 text-white cursor-not-allowed opacity-80" : "bg-primary-500 text-white hover:bg-primary-600 shadow-lg shadow-primary-500/20"}`}
+                          className={`h-9 px-5 flex items-center gap-2 rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all active:scale-95 ${isOffline ? "bg-surface-hover text-muted/30 cursor-not-allowed shadow-none" : cooldownSeconds > 0 ? "bg-[#14172a] text-white cursor-not-allowed opacity-80" : "bg-[#1e2235] text-white hover:bg-[#14172a] shadow-lg shadow-[#1e2235]/20"}`}
                         >
                           {isOffline
                             ? "Internet Required"
@@ -2563,7 +2671,7 @@ export default function ExamCockpit() {
                         }
                       }}
                       disabled={isOffline}
-                      className={`h-9 px-6 rounded-lg text-[12px] font-bold uppercase tracking-widest transition-all ${isOffline ? "bg-surface-hover text-muted/30 cursor-not-allowed shadow-none" : currentQ === questions.length - 1 ? "bg-emerald-600 text-white shadow-lg hover:bg-emerald-700 active:scale-95" : "bg-primary-500 text-white shadow-lg hover:bg-primary-600 active:scale-95"}`}
+                      className={`h-9 px-6 rounded-lg text-[12px] font-bold uppercase tracking-widest transition-all ${isOffline ? "bg-surface-hover text-muted/30 cursor-not-allowed shadow-none" : currentQ === questions.length - 1 ? "bg-emerald-600 text-white shadow-lg hover:bg-emerald-700 active:scale-95" : "bg-[#1e2235] text-white shadow-lg hover:bg-[#14172a] active:scale-95"}`}
                     >
                       {isOffline
                         ? "Offline"
@@ -2639,10 +2747,10 @@ export default function ExamCockpit() {
       {!isFullscreen && !submitted && !terminated && (
         <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-md flex items-center justify-center p-6">
           <div className="bg-surface rounded-[2rem] p-8 max-w-sm w-full shadow-2xl border border-main text-center">
-            <div className="w-16 h-16 rounded-2xl bg-primary-500/10 text-primary-500 mb-6 mx-auto flex items-center justify-center border border-primary-500/20 shadow-sm relative">
+            <div className="w-16 h-16 rounded-2xl bg-[#1e2235]/10 text-[#1e2235] mb-6 mx-auto flex items-center justify-center border border-[#1e2235]/20 shadow-sm relative">
               <ShieldAlert size={28} strokeWidth={2.5} />
-              <div className="absolute top-0 right-0 -mt-1 -mr-1 w-3 h-3 bg-primary-500 rounded-full animate-ping" />
-              <div className="absolute top-0 right-0 -mt-1 -mr-1 w-3 h-3 bg-primary-500 rounded-full border-2 border-black" />
+              <div className="absolute top-0 right-0 -mt-1 -mr-1 w-3 h-3 bg-[#1e2235] rounded-full animate-ping" />
+              <div className="absolute top-0 right-0 -mt-1 -mr-1 w-3 h-3 bg-[#1e2235] rounded-full border-2 border-black" />
             </div>
             <h2 className="text-2xl font-bold text-primary mb-3 tracking-tight">
               Security Violation
@@ -2653,7 +2761,7 @@ export default function ExamCockpit() {
             </p>
             <button
               onClick={() => document.documentElement.requestFullscreen()}
-              className="w-full h-12 rounded-xl bg-primary-500 hover:bg-primary-600 text-white transition-all text-[13px] font-bold shadow-xl shadow-primary-500/20 active:scale-95 flex items-center justify-center gap-2"
+              className="w-full h-12 rounded-xl bg-[#1e2235] hover:bg-[#14172a] text-white transition-all text-[13px] font-bold shadow-xl shadow-[#1e2235]/20 active:scale-95 flex items-center justify-center gap-2"
             >
               Restore Secure Session
             </button>
@@ -2695,7 +2803,7 @@ export default function ExamCockpit() {
             exit={{ opacity: 0, y: -50 }}
             className="fixed top-16 left-1/2 -translate-x-1/2 z-[250] pointer-events-none"
           >
-            <div className="bg-surface text-primary px-6 py-4 rounded-2xl shadow-2xl flex items-start gap-4 max-w-xl border border-main ring-8 ring-primary-500/5 pointer-events-auto">
+            <div className="bg-surface text-primary px-6 py-4 rounded-2xl shadow-2xl flex items-start gap-4 max-w-xl border border-main ring-8 ring-[#1e2235]/5 pointer-events-auto">
               <div className="bg-white/20 p-2 rounded-xl shrink-0 mt-0.5">
                 <Radio size={20} className="animate-pulse" />
               </div>
@@ -2727,9 +2835,9 @@ export default function ExamCockpit() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[200] bg-black flex flex-col items-center justify-center p-6 text-center"
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-primary-500/5 via-transparent to-primary-500/10" />
+            <div className="absolute inset-0 bg-gradient-to-br from-[#1e2235]/5 via-transparent to-[#1e2235]/10" />
             <div className="relative z-10 max-w-md">
-              <div className="w-20 h-20 rounded-3xl bg-primary-500 flex items-center justify-center shadow-2xl mb-10 mx-auto animate-bounce shadow-primary-500/20">
+              <div className="w-20 h-20 rounded-3xl bg-[#1e2235] flex items-center justify-center shadow-2xl mb-10 mx-auto animate-bounce shadow-[#1e2235]/20">
                 <Shield size={40} className="text-white" />
               </div>
               <h1 className="text-4xl font-black text-primary tracking-tighter mb-4 uppercase italic">
@@ -2741,7 +2849,7 @@ export default function ExamCockpit() {
               </p>
               <button
                 onClick={handleSecureEntry}
-                className="w-full h-14 bg-primary-500 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-2xl hover:bg-primary-600 transition-all flex items-center justify-center gap-3 active:scale-95 shadow-primary-500/20"
+                className="w-full h-14 bg-[#1e2235] text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-2xl hover:bg-[#14172a] transition-all flex items-center justify-center gap-3 active:scale-95 shadow-[#1e2235]/20"
               >
                 <LockIcon size={18} /> Initialize Secure Entry
               </button>
@@ -2765,6 +2873,8 @@ export default function ExamCockpit() {
         isOpen={isFAQOpen}
         onClose={() => setIsFAQOpen(false)}
       />
+      
+
     </div>
   );
 }

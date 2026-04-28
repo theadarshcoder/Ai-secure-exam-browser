@@ -35,6 +35,60 @@ function gradeMCQ(question, studentAnswer) {
 
 
 // ═══════════════════════════════════════════════════════════
+//  Helper — Auto-wrap student function code with driver code
+// ═══════════════════════════════════════════════════════════
+/**
+ * The examiner pre-defines test case `input` as the exact function argument(s)
+ * (e.g., `"racecar"` for isPalindrome, or `[2,7,11,15], 9` for twoSum).
+ *
+ * If the student writes only the function body (no console.log / print),
+ * the system auto-generates:
+ *
+ *   JS:  console.log(JSON.stringify(functionName(<input>)));
+ *   PY:  print(str(functionName(<input>)).lower())
+ *
+ * This means the examiner only needs to set the input as the raw argument
+ * expression and the expected output as the JSON/string result.
+ */
+function wrapStudentCode(code, question, language, testCaseInput) {
+    const lang = (language || 'javascript').toLowerCase();
+
+    // Detect if student already has output statements — run as-is
+    const hasOutput = /console\.log|print\s*\(|System\.out/i.test(code);
+    const hasStdin  = /readFileSync|readline|process\.stdin|sys\.stdin|input\s*\(|Scanner/i.test(code);
+    if (hasOutput || hasStdin) return code;
+
+    // Extract function name from student's code
+    let funcName = null;
+    if (lang === 'python') {
+        const m = code.match(/def\s+([a-zA-Z_]\w*)\s*\(/);
+        if (m) funcName = m[1];
+    } else {
+        // JS/TS/Java: function foo(...) or const foo = (...)
+        const m = code.match(/(?:function\s+([a-zA-Z_$][\w$]*)|(?:const|let|var)\s+([a-zA-Z_$][\w$]*)\s*=\s*(?:async\s*)?\()/);
+        if (m) funcName = m[1] || m[2];
+    }
+
+    if (!funcName) return code; // Can't detect function name — run as-is
+
+    // Use the test case input directly as the function call argument(s)
+    const args = (testCaseInput || '').trim();
+
+    // Build the driver call
+    let driverCall;
+    if (lang === 'python') {
+        // Python: normalize boolean output to lowercase (True → true)
+        driverCall = `result = ${funcName}(${args})\nprint(str(result).lower() if isinstance(result, bool) else result)`;
+    } else {
+        // JavaScript: JSON.stringify handles arrays, booleans, numbers, strings
+        driverCall = `console.log(JSON.stringify(${funcName}(${args})));`;
+    }
+
+    return code.trim() + '\n\n' + driverCall;
+}
+
+
+// ═══════════════════════════════════════════════════════════
 //  2. Coding Grading — Run code against test cases via Judge0
 // ═══════════════════════════════════════════════════════════
 async function gradeCoding(question, studentCode) {
@@ -66,7 +120,6 @@ async function gradeCoding(question, studentCode) {
     }
 
     if (testCases.length === 0) {
-        // No test cases defined — give full marks (trust the submission)
         return {
             marksObtained: maxMarks,
             maxMarks,
@@ -82,7 +135,11 @@ async function gradeCoding(question, studentCode) {
     for (let i = 0; i < testCases.length; i++) {
         const tc = testCases[i];
         try {
-            const result = await executeCode(actualCode, language, tc.input);
+            // Auto-wrap per test case so each call uses the specific input as argument
+            const wrappedCode = wrapStudentCode(actualCode, question, language, tc.input);
+
+            // stdin is empty — the function call is baked into the code
+            const result = await executeCode(wrappedCode, language, '');
 
             if (result.success) {
                 const passed = result.output.trim() === tc.expectedOutput.trim();
@@ -105,7 +162,6 @@ async function gradeCoding(question, studentCode) {
                     actualOutput: '',
                     error: result.error || result.status || 'Execution failed'
                 });
-                // Stop on first compilation error (don't waste API calls)
                 if (result.error && result.error.includes('Compilation')) break;
             }
         } catch (err) {
@@ -117,25 +173,18 @@ async function gradeCoding(question, studentCode) {
                 actualOutput: '',
                 error: err.message || 'Judge0 execution error'
             });
-            break; // Stop on execution failure
+            break;
         }
     }
 
-    // Proportional marks based on test cases passed
     const proportion = testCases.length > 0 ? passedCount / testCases.length : 0;
-    // Fix: Exact marks division (e.g., 33.33 for 1/3 of 100)
     const marksObtained = parseFloat((proportion * maxMarks).toFixed(2));
 
     let status = 'incorrect';
     if (passedCount === testCases.length) status = 'correct';
     else if (passedCount > 0) status = 'partial';
 
-    return {
-        marksObtained,
-        maxMarks,
-        status,
-        testCaseResults
-    };
+    return { marksObtained, maxMarks, status, testCaseResults };
 }
 
 
@@ -157,7 +206,6 @@ async function gradeShortAnswer(question, studentAnswer) {
 
     const expectedAnswer = question.expectedAnswer || '';
     
-    // Try AI grading first (Gemini or OpenAI)
     const geminiKey = process.env.GEMINI_API_KEY;
     const openaiKey = process.env.OPENAI_API_KEY;
 
@@ -165,7 +213,7 @@ async function gradeShortAnswer(question, studentAnswer) {
         try {
             const aiResult = await gradeWithGemini(geminiKey, question.questionText, expectedAnswer, studentAnswer, maxMarks);
             return {
-                marksObtained: 0, // AI suggests, mentor finalizes
+                marksObtained: 0,
                 maxMarks,
                 status: 'pending_review',
                 aiSuggestedMarks: aiResult.suggestedMarks,
@@ -191,10 +239,9 @@ async function gradeShortAnswer(question, studentAnswer) {
         }
     }
 
-    // Fallback: Keyword matching
     const keywordResult = gradeWithKeywords(expectedAnswer, studentAnswer, maxMarks);
     return {
-        marksObtained: 0, // Still pending mentor review
+        marksObtained: 0,
         maxMarks,
         status: 'pending_review',
         aiSuggestedMarks: keywordResult.suggestedMarks,
@@ -224,7 +271,6 @@ Respond ONLY in valid JSON format (no markdown):
     }, { timeout: 15000 });
 
     const text = response.data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    // Extract JSON from response (handle potential markdown wrapping)
     const jsonMatch = text.match(/\{[\s\S]*?\}/);
     if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
@@ -281,7 +327,6 @@ function gradeWithKeywords(expectedAnswer, studentAnswer, maxMarks) {
         };
     }
 
-    // Extract meaningful keywords (3+ chars, excluding common stop words)
     const stopWords = new Set(['the', 'is', 'at', 'which', 'on', 'a', 'an', 'and', 'or', 'but', 'in', 'with', 'to', 'for', 'of', 'are', 'was', 'were', 'been', 'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those', 'it', 'its', 'not', 'from', 'by', 'as']);
     
     const extractKeywords = (text) => {
@@ -312,4 +357,4 @@ function gradeWithKeywords(expectedAnswer, studentAnswer, maxMarks) {
 }
 
 
-module.exports = { gradeMCQ, gradeCoding, gradeShortAnswer };
+module.exports = { gradeMCQ, gradeCoding, gradeShortAnswer, wrapStudentCode };

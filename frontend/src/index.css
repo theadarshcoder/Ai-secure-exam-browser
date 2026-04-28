@@ -775,3 +775,60 @@
 .table-saas td {
   @apply px-6 py-4 text-sm text-slate-600 border-b border-slate-100;
 }
+
+/* ── Landing page particles — CSS only, zero JS rAF loops ── */
+@keyframes floatParticle {
+  0%   { transform: translateY(0);    opacity: 0;   }
+  10%  { opacity: 0.45; }
+  90%  { opacity: 0.15; }
+  100% { transform: translateY(-220px); opacity: 0; }
+}
+
+.landing-particle {
+  position: absolute;
+  border-radius: 9999px;
+  background: white;
+  box-shadow: 0 0 6px rgba(255,255,255,0.8);
+  animation-name: floatParticle;
+  animation-iteration-count: infinite;
+  will-change: transform, opacity;
+}
+
+/* ── Kinetic word sequence — pure CSS, compositor-threaded ── */
+@keyframes kineticWordIn {
+  0%   { opacity: 0; transform: scale(1.18); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes kineticFinalIn {
+  0%   { opacity: 0; transform: scale(0.96); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.kinetic-word {
+  animation: kineticWordIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.kinetic-final {
+  animation: kineticFinalIn 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* ── Hide Chrome's built-in video overlay controls (PiP, translate, etc.) ── */
+video::-webkit-media-controls {
+  display: none !important;
+}
+video::-webkit-media-controls-enclosure {
+  display: none !important;
+}
+video::-webkit-media-controls-overlay-play-button {
+  display: none !important;
+}
+video::-webkit-media-controls-panel {
+  display: none !important;
+}
+video::-webkit-media-controls-picture-in-picture-button {
+  display: none !important;
+}
+
