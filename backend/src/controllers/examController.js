@@ -1259,6 +1259,7 @@ exports.getSessionDetail = asyncHandler(async (req, res) => {
             detail.expectedAnswer = q.expectedAnswer;
             detail.maxWords = q.maxWords;
             detail.aiSuggestedMarks = result.aiSuggestedMarks;
+            detail.aiConfidence = result.aiConfidence || null;
             detail.aiReasoning = result.aiReasoning;
             detail.mentorFeedback = result.mentorFeedback || '';
         }

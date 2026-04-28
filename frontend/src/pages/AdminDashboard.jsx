@@ -9,7 +9,7 @@ import {
   Search, FileUp, UserPlus, Trash2, Eye,
   ShieldCheck, Activity, AlertOctagon,
   ChevronRight, LogOut, Bell, RefreshCw, Edit3,
-  BarChart3, Download, Clock, Check, X, Star, CheckCircle, AlertCircle, Plus, ScanFace, Radio, ShieldAlert, User, EyeOff, MessageCircle, AlertTriangle, OctagonX, TrendingUp
+  BarChart3, Download, Clock, Check, X, Star, CheckCircle, AlertCircle, Plus, ScanFace, Radio, ShieldAlert, User, EyeOff, MessageCircle, AlertTriangle, OctagonX, TrendingUp, Sparkles
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import PremiumSidebar from '../components/PremiumSidebar';
@@ -117,14 +117,14 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
   const [localGrades, setLocalGrades] = React.useState({});
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  // Initialize local grades from session data
+  // Initialize local grades from session data (pre-fill with AI suggestions)
   React.useEffect(() => {
     if (sessionData?.questions) {
       const initial = {};
       sessionData.questions.forEach(q => {
         if (q.type === 'short' || q.status === 'pending_review') {
           initial[q.questionId || q.id] = {
-            marksObtained: q.marksObtained || 0,
+            marksObtained: q.aiSuggestedMarks ?? q.marksObtained ?? 0,
             mentorFeedback: q.mentorFeedback || ''
           };
         }
@@ -132,6 +132,14 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
       setLocalGrades(initial);
     }
   }, [sessionData]);
+
+  // Accept AI suggestion for a specific question
+  const handleAcceptAI = (qId, aiMarks) => {
+    setLocalGrades(prev => ({
+      ...prev,
+      [qId]: { ...prev[qId], marksObtained: aiMarks }
+    }));
+  };
 
   if (!sessionData) return null;
 
@@ -340,6 +348,41 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
                           </div>
                         </div>
                       </div>
+
+                      {/* 🤖 AI Suggestion Panel */}
+                      {q.aiSuggestedMarks != null && (
+                        <div className="bg-primary-500/5 border border-primary-500/20 rounded-[1.5rem] p-6 shadow-sm relative overflow-hidden">
+                          <div className="absolute top-0 right-0 w-32 h-32 bg-primary-500/5 rounded-full blur-2xl -mr-16 -mt-16" />
+                          <div className="flex items-center justify-between mb-3 relative z-10">
+                            <div className="flex items-center gap-3">
+                              <Sparkles size={16} className="text-primary-500" />
+                              <p className="text-[9px] font-black text-primary-500 uppercase tracking-[0.2em]">
+                                AI Suggested: {q.aiSuggestedMarks} <span className="text-muted/30">/</span> {q.maxMarks || q.marks}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              {q.aiConfidence && (
+                                <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${
+                                  q.aiConfidence === 'high' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                                  q.aiConfidence === 'medium' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                                  'bg-red-500/10 text-red-500 border-red-500/20'
+                                }`}>
+                                  {q.aiConfidence} confidence
+                                </span>
+                              )}
+                              {isEvaluating && (
+                                <button
+                                  onClick={() => handleAcceptAI(qId, q.aiSuggestedMarks)}
+                                  className="px-4 py-1.5 bg-primary-500 text-white text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-primary-600 transition-all active:scale-95 shadow-lg shadow-primary-500/20 flex items-center gap-2"
+                                >
+                                  <Check size={12} strokeWidth={3} /> Accept AI
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-[11px] text-primary-500 font-bold opacity-80 relative z-10 leading-relaxed">{q.aiReasoning}</p>
+                        </div>
+                      )}
                       
                       {isEvaluating && (
                         <div className="mt-6">
@@ -350,6 +393,14 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
                             placeholder="Add evaluation insights..."
                             className="w-full px-6 py-4 bg-surface border border-main rounded-2xl text-sm text-primary focus:outline-none focus:border-primary-500 transition-all min-h-[100px] shadow-inner"
                           />
+                        </div>
+                      )}
+
+                      {/* Already graded feedback */}
+                      {q.status === 'manually_graded' && q.mentorFeedback && (
+                        <div className="bg-blue-500/[0.03] border border-blue-500/20 rounded-2xl p-5">
+                          <p className="text-[9px] font-black text-blue-500 uppercase tracking-[0.2em] mb-2">Mentor Feedback</p>
+                          <p className="text-[12px] text-blue-400 leading-relaxed">{q.mentorFeedback}</p>
                         </div>
                       )}
                     </div>
