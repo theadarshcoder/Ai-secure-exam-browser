@@ -235,7 +235,7 @@ io.use(async (socket, next) => {
         const cachedToken = await cacheService.getUserSession(decoded.id);
 
         if (cachedToken) {
-            if (cachedToken !== token) {
+            if (cachedToken.token !== token) {
                 return next(new Error('🚫 Session terminated! You logged in from another device.'));
             }
             console.log(`📡 [SCALING] Socket Auth: Redis Cache Hit for ${decoded.email}`);
@@ -247,7 +247,7 @@ io.use(async (socket, next) => {
                 return next(new Error('🚫 Session terminated! You logged in from another device.'));
             }
             // Backfill cache for next time
-            await cacheService.saveUserSession(decoded.id, token);
+            await cacheService.saveUserSession(decoded.id, token, user.permissions || []);
         }
 
         // User info socket object mein attach karo — baad mein use hoga
