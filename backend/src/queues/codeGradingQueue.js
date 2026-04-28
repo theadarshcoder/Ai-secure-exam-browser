@@ -10,13 +10,18 @@ const codeEvaluationQueue = new Queue('CodeEvaluation', {
     connection
 });
 
+const { codeGradingPayloadSchema } = require('../validations/queue.schema');
+
 /**
  * Adds a code evaluation job to the BullMQ queue.
  * @param {Object} jobData - { sourceCode, language, testCases, studentId, questionId }
  */
 const addCodeEvaluationJob = async (jobData) => {
-    console.log(`[Queue] Adding job for Student: ${jobData.studentId}, Question: ${jobData.questionId}`);
-    const job = await codeEvaluationQueue.add('evaluate', jobData, {
+    // 🛡️ [PHASE 5] Input Governance: Validate before adding to Redis
+    const validatedData = codeGradingPayloadSchema.parse(jobData);
+
+    console.log(`[Queue] Adding job for Student: ${validatedData.studentId}, Question: ${validatedData.questionId}`);
+    const job = await codeEvaluationQueue.add('evaluate', validatedData, {
         attempts: 3,
         backoff: { type: 'exponential', delay: 2000 },
         removeOnComplete: true,

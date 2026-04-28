@@ -46,6 +46,9 @@ router.get('/submissions/:examId', verifyToken, checkRole(['admin', 'super_mento
 router.get('/admin-stats', verifyToken, checkRole(['admin']), examController.getAdminStats);
 
 
+const validate = require('../middleware/validate');
+const { startExamSchema, saveProgressSchema, submitExamSchema, incidentSchema } = require('../validations/exam.schema');
+
 // ═══════════════════════════════════════════════════════════
 //  🎓 Student Endpoints
 // ═══════════════════════════════════════════════════════════
@@ -54,17 +57,17 @@ router.get('/admin-stats', verifyToken, checkRole(['admin']), examController.get
 router.get('/active', verifyToken, examController.getActiveExams);
 
 // Exam start karo — naya session banega ya purana resume hoga
-router.post('/start', verifyToken, secureActionLimiter, examController.startExam);
+router.post('/start', verifyToken, validate(startExamSchema), secureActionLimiter, examController.startExam);
 
 // ⭐ Live Progress Save — har 30 sec mein auto-call hoga
 // Isse answers, current question, remaining time sab silently save hota hai
-router.post('/save-progress', verifyToken, autosaveLimiter, examController.saveProgress);
+router.post('/save-progress', verifyToken, validate(saveProgressSchema), autosaveLimiter, examController.saveProgress);
 
 // Resume endpoint — internet/light wapas aane pe poora state restore karo
 router.get('/resume/:examId', verifyToken, examController.resumeExam);
 
 // Exam submit karo — auto-scoring hogi, results milenge
-router.post('/submit', verifyToken, secureActionLimiter, examController.submitExam);
+router.post('/submit', verifyToken, validate(submitExamSchema), secureActionLimiter, examController.submitExam);
 
 // 🆕 Student Result — Student view of their own performance breakdown
 router.get('/student-result/:examId', verifyToken, examController.getStudentResult);
@@ -79,7 +82,7 @@ router.put('/evaluate/:sessionId', verifyToken, checkRole(['admin', 'super_mento
 router.put('/terminate/:sessionId', verifyToken, checkRole(['admin', 'super_mentor', 'mentor']), examController.terminateSession);
 
 // Proctoring violation log karo (Tab Switch, Face Not Detected, etc.)
-router.post('/incident', verifyToken, examController.logIncident);
+router.post('/incident', verifyToken, validate(incidentSchema), examController.logIncident);
 
 // 💓 Heartbeat — Continuous secure client verification
 router.post('/heartbeat', verifyToken, secureActionLimiter, examController.heartbeat);

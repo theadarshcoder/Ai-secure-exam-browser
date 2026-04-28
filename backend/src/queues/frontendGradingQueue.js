@@ -11,13 +11,18 @@ const frontendEvaluationQueue = new Queue('FrontendEvaluation', {
 });
 
 
+const { frontendGradingPayloadSchema } = require('../validations/queue.schema');
+
 /**
  * Adds a frontend evaluation job to the BullMQ queue.
  * @param {Object} jobData - { codeFiles, testCases, studentId, questionId }
  */
 const addFrontendEvaluationJob = async (jobData) => {
-    console.log(`[Queue] Adding Frontend job for Student: ${jobData.studentId}, Question: ${jobData.questionId}`);
-    const job = await frontendEvaluationQueue.add('evaluate-ui', jobData, {
+    // 🛡️ [PHASE 5] Input Governance: Validate before adding to Redis
+    const validatedData = frontendGradingPayloadSchema.parse(jobData);
+
+    console.log(`[Queue] Adding Frontend job for Student: ${validatedData.studentId}, Question: ${validatedData.questionId}`);
+    const job = await frontendEvaluationQueue.add('evaluate-ui', validatedData, {
         attempts: 1, // No retries for frontend grading to avoid infinite loops hanging the queue
         removeOnComplete: true,
         removeOnFail: false
