@@ -145,7 +145,8 @@ const globalLimiter = rateLimit({
         retryAfter: '15 minutes'
     },
     standardHeaders: true,
-    legacyHeaders: false
+    legacyHeaders: false,
+    validate: { ip: false }
 });
 
 // Auth Rate Limiter — Strict limits for Login/Register endpoints
@@ -158,7 +159,8 @@ const authLimiter = rateLimit({
         retryAfter: '5 minutes'
     },
     standardHeaders: true,
-    legacyHeaders: false
+    legacyHeaders: false,
+    validate: { ip: false }
 });
 
 // Relaxed Rate Limiter for Auto-Save
@@ -166,9 +168,12 @@ const autoSaveLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 1000, 
     store: createRedisStore('autosave'),
-    message: { error: 'Too many save attempts. Slow down!' },
+    message: {
+        error: 'Too many autosave requests! Please reduce frequency.'
+    },
     standardHeaders: true,
-    legacyHeaders: false
+    legacyHeaders: false,
+    validate: { ip: false }
 });
 
 // 🛡️ Telemetry Limiter — Prevent log spamming
