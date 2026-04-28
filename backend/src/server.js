@@ -35,6 +35,7 @@ const { setupCodeEvaluationWorker } = require('./queues/codeGradingQueue');
 const { setupFrontendEvaluationWorker } = require('./queues/frontendGradingQueue');
 const { setupInviteEmailWorker } = require('./queues/inviteEmailQueue');
 const { startIntelligenceWorker } = require('./queues/intelligenceWorker');
+const { inviteVerifyLimiter } = require('./middlewares/rateLimiter');
 const traceMiddleware = require('./middlewares/traceMiddleware');
 
 const app = express();

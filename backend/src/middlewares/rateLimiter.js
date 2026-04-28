@@ -109,10 +109,28 @@ const secureActionLimiter = rateLimit({
     }
 });
 
+/**
+ * 📧 Invite Verification Limiter
+ */
+const inviteVerifyLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 20, // 20 attempts
+    store: createRedisStore('invite_verify'),
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => req.ip,
+    validate: { ip: false }, // 🛡️ Disable IPv6 internal check for custom keyGenerator
+    message: {
+        success: false,
+        error: "Too many verification attempts. Please try again later."
+    }
+});
+
 module.exports = { 
     codeExecutionLimiter, 
     telemetryLimiter, 
     importLimiter, 
     autosaveLimiter,
-    secureActionLimiter
+    secureActionLimiter,
+    inviteVerifyLimiter
 };
