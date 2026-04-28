@@ -11,14 +11,12 @@ exports.register = asyncHandler(async (req, res) => {
     const { name, email, password, role } = req.body;
 
     if (!name || !email || !password) {
-        res.status(400);
-        throw new Error('Name, email, and password are all required!');
+        throw new AppError('Name, email, and password are all required!', 400);
     }
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-        res.status(409);
-        throw new Error('An account with this email already exists.');
+        throw new AppError('An account with this email already exists.', 409);
     }
 
     const rolePermissions = {
@@ -49,14 +47,12 @@ exports.register = asyncHandler(async (req, res) => {
         // 🛡️ Security Fix: Anti-Privilege Escalation
         // Only Admin can create anyone. Super Mentor can only create students or mentors.
         if (requesterRole === 'super_mentor' && (assignedRole === 'admin' || assignedRole === 'super_mentor')) {
-            res.status(403);
-            throw new Error(`Security Violation: As a 'super_mentor', you are restricted to creating 'student' or 'mentor' accounts only.`);
+            throw new AppError(`Security Violation: As a 'super_mentor', you are restricted to creating 'student' or 'mentor' accounts only.`, 403);
         }
         
         const adminUser = await User.findById(requesterId);
         if (!adminUser || (adminUser.role !== 'admin' && adminUser.role !== 'super_mentor')) {
-            res.status(403);
-            throw new Error('Only administrators or super mentors can register mentors or admins.');
+            throw new AppError('Only administrators or super mentors can register mentors or admins.', 403);
         }
     }
 
@@ -248,9 +244,9 @@ exports.logout = asyncHandler(async (req, res) => {
 exports.refresh = asyncHandler(async (req, res) => {
     const { refreshToken: incomingToken } = req.body;
 
-    if (!incomingToken) {
-        res.status(401);
-        throw new Error('Refresh Token is required!');
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        throw new AppError('No token provided. Session might be expired.', 401, 'AUTH_MISSING');
     }
 
     try {
@@ -270,14 +266,12 @@ exports.refresh = asyncHandler(async (req, res) => {
                 compromisedUser.sessionVersion = (compromisedUser.sessionVersion || 0) + 1;
                 await compromisedUser.save();
             }
-            res.status(403);
-            throw new Error('Security Alert: Session compromised or token reused. Please login again.');
+            throw new AppError('Security Alert: Session compromised or token reused. Please login again.', 403);
         }
 
         // 3. Version Check: Ensure token version matches DB version
         if (decoded.sessionVersion !== user.sessionVersion) {
-            res.status(403);
-            throw new Error('Session invalidated. Please login again.');
+            throw new AppError('Invalid refresh token. Please login again.', 403, 'REFRESH_INVALID');
         }
 
         // 4. 🔥 ROTATE: Generate NEW Access + NEW Refresh Token
@@ -315,7 +309,6 @@ exports.refresh = asyncHandler(async (req, res) => {
 
     } catch (error) {
         console.warn(`🚫 [Auth] Refresh failed: ${error.message}`);
-        res.status(403);
-        throw new Error(error.message || 'Refresh Token validation failed');
+        throw new AppError(error.message || 'Refresh Token validation failed', 403);
     }
 });
