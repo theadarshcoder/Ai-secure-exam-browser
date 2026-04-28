@@ -39,7 +39,7 @@ exports.generateQuestions = async (req, res) => {
 
     try {
         const prompt = buildPrompt(category, syllabus, mcqCount, shortCount, codingCount);
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${geminiKey}`;
 
         const response = await axios.post(url, {
             contents: [{ parts: [{ text: prompt }] }],

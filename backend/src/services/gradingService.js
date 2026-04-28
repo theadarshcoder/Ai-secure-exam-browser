@@ -210,7 +210,7 @@ async function gradeShortAnswer(question, studentAnswer) {
 // ─── AI Providers ────────────────────────────────────────
 
 async function gradeWithGemini(apiKey, questionText, expectedAnswer, studentAnswer, maxMarks) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
     
     const prompt = `You are a strict exam evaluator. Compare the student's answer with the expected answer.
 
