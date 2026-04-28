@@ -31,48 +31,54 @@ const setupFrontendEvaluationWorker = (io) => {
         console.warn('⚠️ [Worker] Socket.IO instance missing. Frontend worker results will not be broadcasted.');
     }
 
+    // 🛡️ Phase 3: Grading Resilience — Added 30s timeout
     const worker = new Worker('FrontendEvaluation', async (job) => {
-        const { codeFiles, testCases, studentId, questionId } = job.data;
+        // 🛡️ Contract Fix: Extracting from versioned payload
+        const { codeFiles, testCases, studentId, questionId, version, requestId } = job.data;
         
-        console.log(`[Worker] Started Frontend Evaluation: Student ${studentId} | Q: ${questionId}`);
+        console.log(`📡 [Grading][${requestId || 'N/A'}] Worker Started: Student ${studentId} | Q: ${questionId} | Contract V${version || 0}`);
         
         try {
+            // Worker is "thin" — no DB calls, just computation
             const result = await evaluateFrontendCode(codeFiles, testCases);
 
-            // Final result broadcast to student's private socket room
+            console.log(`✅ [Grading][${requestId || 'N/A'}] Evaluation complete for ${studentId}. Emitting to user_${studentId}`);
+
+            // Final result broadcast to student's private socket room (using DB ID)
             if (io) {
                 io.to(`user_${studentId}`).emit('code_evaluation_result', {
                     questionId,
                     type: 'frontend-react',
                     ...result,
+                    requestId,
                     timestamp: new Date()
                 });
             }
 
             return result;
         } catch (err) {
-            console.error(`[Worker] Frontend Grading Error:`, err.message);
+            console.error(`❌ [Grading][${requestId || 'N/A'}] Worker Error for Student ${studentId}:`, err.message);
             if (io) {
                 io.to(`user_${studentId}`).emit('code_evaluation_error', {
                     questionId,
-                    message: 'Frontend evaluation failed due to an internal error.'
+                    requestId,
+                    message: 'Frontend evaluation failed or timed out. Please try again.'
                 });
             }
             throw err;
         }
-    }, { 
-        connection,
-        concurrency: 3, // Lower concurrency for frontend as JSDOM/Babel are heavier
-        lockDuration: 10000 // 10 seconds lock
+    }, {
+        connection: getRedisConnection(),
+        concurrency: 5,
+        lockDuration: 35000 // Slightly longer than job timeout
     });
 
-
     worker.on('completed', (job) => {
-        console.log(`✅ [Worker] Frontend Job ${job.id} completed for student ${job.data.studentId}`);
+        console.log(`✅ [Grading][${job.data.requestId || job.id}] Completed successfully.`);
     });
 
     worker.on('failed', (job, err) => {
-        console.error(`❌ [Worker] Frontend Job ${job.id} failed. Error:`, err.message);
+        console.error(`❌ [Grading][${job.data.requestId || job.id}] Failed. Reason:`, err.message);
     });
 
     return worker;

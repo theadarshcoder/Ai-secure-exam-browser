@@ -37,16 +37,25 @@ exports.register = asyncHandler(async (req, res) => {
     }
 
     if (assignedRole !== 'student') {
-        const requesterId = req.user?.id; // Requires verifyToken middleware on the route
+        const requesterId = req.user?.id;
+        const requesterRole = req.user?.role;
+
         if (!requesterId) {
             res.status(403);
             throw new Error('Unauthorized role assignment. Public registration is limited to student accounts.');
+        }
+
+        // 🛡️ Security Fix: Anti-Privilege Escalation
+        // Only Admin can create anyone. Super Mentor can only create students or mentors.
+        if (requesterRole === 'super_mentor' && (assignedRole === 'admin' || assignedRole === 'super_mentor')) {
+            res.status(403);
+            throw new Error(`Security Violation: As a 'super_mentor', you are restricted to creating 'student' or 'mentor' accounts only.`);
         }
         
         const adminUser = await User.findById(requesterId);
         if (!adminUser || (adminUser.role !== 'admin' && adminUser.role !== 'super_mentor')) {
             res.status(403);
-            throw new Error('Only administrators can register mentors or admins.');
+            throw new Error('Only administrators or super mentors can register mentors or admins.');
         }
     }
 
@@ -222,11 +231,12 @@ exports.login = asyncHandler(async (req, res) => {
 exports.logout = asyncHandler(async (req, res) => {
     const userId = req.user.id;
     
-    const user = await User.findById(userId);
-    if (user) {
-        user.refreshToken = null;
-        await user.save();
-    }
+    // 🛡️ Phase 2 Fix: Atomic Session Invalidation
+    // Clears the refresh token AND increments version to kill all access tokens immediately
+    await User.findByIdAndUpdate(userId, { 
+        $set: { refreshToken: null },
+        $inc: { sessionVersion: 1 }
+    });
 
     try {
         await cacheService.removeUserSession(userId);

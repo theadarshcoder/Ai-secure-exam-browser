@@ -84,7 +84,7 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = sessionStorage.getItem('vision_refresh_token');
+        const refreshToken = localStorage.getItem('vision_refresh_token');
         if (!refreshToken) throw new Error('No refresh token');
 
         const { data } = await axios.post(`${API_BASE_URL}/api/auth/refresh`, { refreshToken });

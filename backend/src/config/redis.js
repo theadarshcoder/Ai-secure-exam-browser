@@ -3,7 +3,7 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
-const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6373';
+const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 
 let redisInstance = null;
 
@@ -13,6 +13,7 @@ let redisInstance = null;
  */
 const getRedisConnection = () => {
     if (!redisInstance) {
+        console.log(`📡 [Redis] Connecting to: ${redisUrl}`);
         console.log('🔄 Initializing singleton Redis connection...');
         redisInstance = new IORedis(redisUrl, {
             maxRetriesPerRequest: null, // Required for BullMQ

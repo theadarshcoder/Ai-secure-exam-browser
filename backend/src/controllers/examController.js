@@ -340,6 +340,20 @@ exports.getMentorExams = asyncHandler(async (req, res) => {
         { $sort: { createdAt: -1 } },
         {
             $lookup: {
+                from: 'users',
+                localField: 'creator',
+                foreignField: '_id',
+                as: 'creatorInfo'
+            }
+        },
+        {
+            $unwind: {
+                path: '$creatorInfo',
+                preserveNullAndEmptyArrays: true
+            }
+        },
+        {
+            $lookup: {
                 from: 'examsessions',
                 localField: '_id',
                 foreignField: 'exam',
@@ -375,7 +389,7 @@ exports.getMentorExams = asyncHandler(async (req, res) => {
                         }
                     }
                 },
-                creatorName: { $first: '$creatorInfo.name' },
+                creatorName: { $ifNull: ['$creatorInfo.name', 'Unknown System'] },
                 resultsPublished: '$resultsPublished'
             }
         }
@@ -2201,11 +2215,24 @@ exports.importQuestionFromLink = asyncHandler(async (req, res) => {
 // Evaluates a React/UI lab submission using BullMQ background worker
 exports.runFrontendCode = asyncHandler(async (req, res) => {
     const { examId, questionId, files } = req.body;
-    const studentId = req.user.email;
+    const studentId = req.user.id; // 🛡️ Standardized: Using database ID
 
     if (!examId || !questionId || !files) {
         res.status(400);
         throw new Error("Missing parameters for UI evaluation.");
+    }
+
+    // 🛡️ Data Contract: Fetch test cases in Controller to ensure Worker is "thin"
+    const exam = await Exam.findById(examId);
+    if (!exam) {
+        res.status(404);
+        throw new Error("Exam not found.");
+    }
+
+    const question = exam.questions.id(questionId);
+    if (!question || question.type !== 'frontend-react') {
+        res.status(400);
+        throw new Error("Invalid frontend-react question ID.");
     }
 
     // 🛡️ Fix 33: Filename Path Traversal Sanitization
@@ -2215,12 +2242,18 @@ exports.runFrontendCode = asyncHandler(async (req, res) => {
         sanitizedFiles[safeName] = content;
     }
 
-    // Add to Background Queue
+    const requestId = `REQ-${Date.now()}-${studentId.slice(-4)}`;
+    console.log(`🚀 [Grading][${requestId}] Job created for student: ${studentId} | Q: ${questionId} | Exam: ${examId}`);
+
+    // Add to Background Queue with versioned contract
     const job = await addFrontendEvaluationJob({
+        version: 1, // Future-proofing
+        requestId,
         examId,
         questionId,
         studentId,
-        files: sanitizedFiles
+        codeFiles: sanitizedFiles, // Renamed 'files' to 'codeFiles' per contract
+        testCases: question.testCases || []
     });
 
     res.status(200).json({

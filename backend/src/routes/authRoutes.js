@@ -21,7 +21,7 @@ router.post('/verify-invite', inviteController.verifyInvite);
 // POST /api/auth/register — Admin naye students/mentors create karega
 // Step 1: verifyToken check karega ki request mein valid JWT hai
 // Step 2: checkRole check karega ki logged-in user 'admin' hai
-router.post('/register', verifyToken, checkRole(['admin']), authController.register);
+router.post('/register', verifyToken, checkRole(['admin', 'super_mentor']), authController.register);
 
 // ─── Protected Route (any authenticated user) ───────────
 // POST /api/auth/logout — Clear current session token

@@ -23,6 +23,7 @@ const cacheService = require('./services/cacheService');
 const morgan = require('morgan');
 const validateEnv = require('./utils/envValidator');
 const { startHealthMonitor, incrementDisconnect } = require('./services/healthMonitor');
+let isHealthMonitorStarted = false; // 🛡️ Phase 2: Guard against duplicate intervals
 const { VIOLATION_TYPES, SESSION_STATUS } = require('./utils/constants');
 const { LRUCache } = require('lru-cache');
 
@@ -102,7 +103,7 @@ app.use(mongoSanitize()); // Prevent NoSQL Injection attacks
 function isAllowedOrigin(origin) {
     if (!origin) return true;
 
-    if (allowedOrigins.includes(origin)) {
+    if (allowedOrigins.has(origin)) {
         return true;
     }
 
@@ -246,44 +247,45 @@ setupCodeEvaluationWorker(io);
 setupFrontendEvaluationWorker(io);
 setupInviteEmailWorker();
 startIntelligenceWorker();
-startHealthMonitor(io);
+// startHealthMonitor(io); // 🛡️ Moved to server.listen for full system readiness
 
 // Socket.IO Authentication Middleware
 // Har connection se pehle JWT token verify hoga
 io.use(async (socket, next) => {
     try {
-        // Token client se aayega: io(URL, { auth: { token: "xyz" } })
         const token = socket.handshake.auth?.token
             || socket.handshake.headers?.authorization?.split(' ')[1];
 
         if (!token) {
-            return next(new Error('🚫 Authentication required! Token missing.'));
+            console.error('🚫 [Socket Auth] Connection rejected: Token missing');
+            return next(new Error('Authentication required! Token missing.'));
         }
 
-        // 🛡️ Fix 32: No fallback to JWT_SECRET. Refresh tokens MUST use the dedicated secret.
-        const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
-        const user = await User.findById(decoded.id);
-
+        // 🛡️ Phase 1 Fix: Verify with JWT_SECRET (Access Token)
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        
         // ⚡ SCALING GUARD: Check Redis first (Cache Hit = 0 DB Hits)
         const cachedToken = await cacheService.getUserSession(decoded.id);
 
         if (cachedToken) {
             if (cachedToken.token !== token) {
-                return next(new Error('🚫 Session terminated! You logged in from another device.'));
+                console.warn(`🚫 [Socket Auth] Session mismatch for ${decoded.email}. Force disconnecting.`);
+                return next(new Error('Session terminated! You logged in from another device.'));
             }
             console.log(`📡 [SCALING] Socket Auth: Redis Cache Hit for ${decoded.email}`);
         } else {
             // 🔄 CACHE MISS: Fallback to MongoDB & Backfill
             console.log(`🔄 [SCALING] Socket Auth: Redis Cache Miss for ${decoded.email}. Fetching from DB.`);
             const user = await User.findById(decoded.id);
-            if (!user || (user.currentSessionToken && user.currentSessionToken !== token)) {
-                return next(new Error('🚫 Session terminated! You logged in from another device.'));
+            if (!user) {
+                console.error(`🚫 [Socket Auth] User not found: ${decoded.id}`);
+                return next(new Error('User account no longer exists.'));
             }
             // Backfill cache for next time
             await cacheService.saveUserSession(decoded.id, token, user.permissions || []);
         }
 
-        // User info socket object mein attach karo — baad mein use hoga
+        // User info socket object mein attach karo
         socket.user = {
             id: decoded.id,
             email: decoded.email,
@@ -291,12 +293,19 @@ io.use(async (socket, next) => {
         };
         socket.expiresAt = decoded.exp * 1000;
 
-        console.log(`🔑 Socket authenticated: ${decoded.email} (${decoded.role})`);
+        // 🛡️ Ensure user room join immediately after auth
+        socket.join(`user_${decoded.id}`);
+
+        console.log(`🔑 [Socket Auth] Success: ${decoded.email} (${decoded.role}) joined user_${decoded.id}`);
         next();
 
     } catch (error) {
-        console.warn(`🚫 Socket auth failed: ${error.message}`);
-        next(new Error('🚫 Invalid token! Please login again.'));
+        console.warn(`🚫 [Socket Auth] Failed: ${error.message}`);
+        // Return generic error to client but log specific error internally
+        const genericMsg = error.name === 'TokenExpiredError' 
+            ? 'Session expired. Please login again.' 
+            : 'Authentication failed. Please login again.';
+        next(new Error(genericMsg));
     }
 });
 
@@ -309,7 +318,7 @@ io.use(async (socket, next) => {
     validateEnv(); // Verify required variables before starting
     await connectDB();
     await connectRedis();
-    startHealthMonitor(io); // Start monitoring after DB is connected
+    // startHealthMonitor(io); // 🛡️ Moved to server.listen
 })();
 
 app.get('/', (req, res) => res.send('<h1>Server & Sockets working perfectly 🔒</h1>'));
@@ -866,6 +875,12 @@ server.listen(PORT, '0.0.0.0', async () => {
     console.log(`🚀 AI Exam Platform Server running on port ${PORT}`);
     console.log(`🏠 Environment: ${process.env.NODE_ENV || 'development'}`);
     validateEnv();
-    startHealthMonitor(io);
+    
+    // 🛡️ Phase 2: Consolidated single initialization after full startup
+    if (!isHealthMonitorStarted) {
+        startHealthMonitor(io);
+        isHealthMonitorStarted = true;
+    }
+
     cacheService.preWarmCache();
 });

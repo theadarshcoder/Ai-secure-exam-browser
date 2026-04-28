@@ -327,29 +327,41 @@ exports.verifyInvite = asyncHandler(async (req, res) => {
         throw new Error(GENERIC_ERROR);
     }
 
-    let jwtToken;
-    // Security Fix: Prevent JWT overlap/race condition if already opened on same device
-    if ((invite.status === 'opened' || invite.status === 'exam_started') && 
-        invite.deviceFingerprint === secureFingerprint && 
-        student.currentSessionToken) {
-        
-        jwtToken = student.currentSessionToken;
-        console.log(`♻️ Reusing existing session token for student: ${student.email}`);
-    } else {
-        jwtToken = jwt.sign(
-            { id: student._id, email: student.email, role: student.role || 'student' },
-            process.env.JWT_SECRET,
-            { expiresIn: '24h' }
-        );
+    // ─── Phase 2 Fix: Modern Auth Model (refreshToken + sessionVersion) ───
+    // Security: Generate a fresh session for this invite verification
+    const refreshToken = jwt.sign(
+        { id: student._id },
+        process.env.JWT_REFRESH_SECRET,
+        { expiresIn: '7d' }
+    );
 
-        // Update user's current session token
-        await User.findByIdAndUpdate(student._id, { currentSessionToken: jwtToken });
-        await cacheService.saveUserSession(student._id, jwtToken);
-    }
+    const accessToken = jwt.sign(
+        { 
+            id: student._id, 
+            email: student.email, 
+            role: student.role || 'student',
+            displayRole: student.role || 'student',
+            sessionVersion: (student.sessionVersion || 0) + 1 
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: '1h' }
+    );
+
+    // Atomic update of user session data
+    await User.findByIdAndUpdate(student._id, { 
+        $set: { refreshToken: refreshToken },
+        $inc: { sessionVersion: 1 } 
+    });
+
+    // Backfill cache for performance
+    await cacheService.saveUserSession(student._id, accessToken, student.permissions || []);
+
+    console.log(`🔑 [Security] User ${student.email} logged in via invite link (Session V${(student.sessionVersion || 0) + 1})`);
 
     res.json({
         message: 'Invitation verified! Redirecting to exam...',
-        token: jwtToken,
+        accessToken, // Standardized key
+        refreshToken, // Standardized key
         examId: invite.exam._id,
         examTitle: invite.exam.title,
         user: {
