@@ -1,4 +1,4 @@
-const rateLimit = require('express-rate-limit');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const { RedisStore } = require('rate-limit-redis');
 const { getRedisClient } = require('../config/redis');
 
@@ -30,8 +30,7 @@ const codeExecutionLimiter = rateLimit({
     store: createRedisStore('code_exec'),
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => req.user?.id || req.ip,
-    validate: { ip: false },
+    keyGenerator: (req, res) => req.user?.id || ipKeyGenerator(req, res),
     message: {
         allPassed: false,
         error: 'Cooldown Active',
@@ -53,8 +52,7 @@ const telemetryLimiter = rateLimit({
     store: createRedisStore('telemetry'),
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => req.user?.id || req.ip,
-    validate: { ip: false },
+    keyGenerator: (req, res) => req.user?.id || ipKeyGenerator(req, res),
     message: {
         success: false,
         message: 'Telemetry rate limit exceeded.'
@@ -70,8 +68,7 @@ const importLimiter = rateLimit({
     store: createRedisStore('import'),
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => req.user?.id || req.ip,
-    validate: { ip: false },
+    keyGenerator: (req, res) => req.user?.id || ipKeyGenerator(req, res),
     message: {
         success: false,
         error: "Too many import requests."
@@ -87,8 +84,7 @@ const autosaveLimiter = rateLimit({
     store: createRedisStore('autosave'),
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => req.user?.id || req.ip,
-    validate: { ip: false },
+    keyGenerator: (req, res) => req.user?.id || ipKeyGenerator(req, res),
     message: 'Too many autosave requests.'
 });
 
@@ -106,8 +102,7 @@ const secureActionLimiter = rateLimit({
     store: createRedisStore('secure_action'),
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => req.user?.id || req.ip,
-    validate: { ip: false },
+    keyGenerator: (req, res) => req.user?.id || ipKeyGenerator(req, res),
     message: {
         success: false,
         error: "Too many security-sensitive requests. Please slow down."
@@ -123,8 +118,7 @@ const inviteVerifyLimiter = rateLimit({
     store: createRedisStore('invite_verify'),
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => req.ip,
-    validate: { ip: false }, // 🛡️ Disable IPv6 internal check for custom keyGenerator
+    keyGenerator: ipKeyGenerator,
     message: {
         success: false,
         error: "Too many verification attempts. Please try again later."
