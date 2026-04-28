@@ -31,6 +31,7 @@ const codeExecutionLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => req.user?.id || req.ip,
+    validate: { ip: false },
     message: {
         allPassed: false,
         error: 'Cooldown Active',
@@ -53,6 +54,7 @@ const telemetryLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => req.user?.id || req.ip,
+    validate: { ip: false },
     message: {
         success: false,
         message: 'Telemetry rate limit exceeded.'
@@ -69,6 +71,7 @@ const importLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => req.user?.id || req.ip,
+    validate: { ip: false },
     message: {
         success: false,
         error: "Too many import requests."
@@ -85,6 +88,7 @@ const autosaveLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => req.user?.id || req.ip,
+    validate: { ip: false },
     message: 'Too many autosave requests.'
 });
 
@@ -103,6 +107,7 @@ const secureActionLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => req.user?.id || req.ip,
+    validate: { ip: false },
     message: {
         success: false,
         error: "Too many security-sensitive requests. Please slow down."

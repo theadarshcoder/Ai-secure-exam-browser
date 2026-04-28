@@ -17,21 +17,7 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // ─── 🛡️ SECURE CLIENT HEADERS (V4 Hardened) ───
-    if (window.electronAPI) {
-      const fingerprint = window.electronAPI.getFingerprint();
-      const secretKey = await window.electronAPI.getSecretKey();
-      const nonce = `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
-      const timestamp = Date.now().toString();
 
-      config.headers['X-App-Mode'] = 'electron';
-      config.headers['X-Electron-Key'] = secretKey;
-      config.headers['X-Nonce'] = nonce;
-      config.headers['X-Timestamp'] = timestamp;
-      config.headers['X-Fingerprint-Platform'] = fingerprint.platform;
-      config.headers['X-Fingerprint-Width'] = fingerprint.width;
-      config.headers['X-Fingerprint-Height'] = fingerprint.height;
-    }
 
     return config;
   },

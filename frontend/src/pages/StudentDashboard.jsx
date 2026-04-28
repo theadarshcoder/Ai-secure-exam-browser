@@ -426,9 +426,7 @@ export default function StudentDashboard() {
                         key={exam.id}
                         exam={exam}
                         now={now}
-                      onLaunch={(id) => {
-                        navigate(`/exam/${id}/preflight`);
-                      }}
+                      onLaunch={(id) => navigate(`/exam/${id}/verify`)}
                         onViewResults={() => navigate(`/exam/${exam.id}/result`)}
                       />
                     ))}
@@ -493,44 +491,7 @@ export default function StudentDashboard() {
     )}
 
 
-    {/* Download Secure Browser Card */}
-    <div className="fixed bottom-24 right-6 z-[90] w-64 bg-[#F5F5F5] border border-slate-200 shadow-2xl rounded-[2rem] p-6 animate-in slide-in-from-right-10 duration-700 group overflow-hidden">
-      <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl -mr-12 -mt-12 group-hover:bg-emerald-500/10 transition-colors" />
-      
-      <div className="flex items-center gap-4 mb-5 relative z-10">
-        <div className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-2xl shadow-black/20 group-hover:scale-110 transition-transform">
-          <ShieldCheck size={22} strokeWidth={2.5} />
-        </div>
-        <div className="flex flex-col">
-          <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest leading-none">Secure App</h3>
-          <p className="text-[9px] font-black text-emerald-600 uppercase tracking-tight mt-1 animate-pulse">Required for Exam</p>
-        </div>
-      </div>
 
-      <p className="text-[11px] text-slate-500 font-bold leading-relaxed mb-6 relative z-10 opacity-70">
-        Assessments are only accessible via the <b>VISION Secure Node</b>. Download the installer to proceed.
-      </p>
-
-      <div className="flex flex-col gap-3 relative z-10">
-        <button 
-          onClick={() => {
-            const token = sessionStorage.getItem('vision_token') || '';
-            window.location.href = 'vision-secure://launch?token=' + encodeURIComponent(token);
-            toast.success('Launching VISION Secure Browser...', { icon: '🔗' });
-          }}
-          className="w-full h-12 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-emerald-700 transition-all flex items-center justify-center gap-3 shadow-xl shadow-emerald-500/10 active:scale-95"
-        >
-          <Activity size={14} className="stroke-[3px]" /> Open App
-        </button>
-
-        <a 
-          href="https://github.com/codervinitjangir/Ai-secure-exam-browser/releases/download/v1.0.0/VISION_Secure_Setup.exe"
-          className="w-full h-12 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all flex items-center justify-center gap-3 shadow-xl shadow-black/10 active:scale-95"
-        >
-          <Power size={14} className="rotate-90 stroke-[3px]" /> Download App
-        </a>
-      </div>
-    </div>
 
     {/* Exit FAB — Global Candidate Style */}
     {!showExitConfirm && (

@@ -83,18 +83,23 @@ exports.login = asyncHandler(async (req, res) => {
     }
 
     let searchEmail = email.trim();
+    console.log(`🔑 [LOGIN ATTEMPT] Email: ${searchEmail} | Role: ${requestedRole}`);
 
     const user = await User.findOne({ email: searchEmail });
     if (!user) {
+        console.warn(`❌ [LOGIN FAILED] User not found: ${searchEmail}`);
         res.status(401);
         throw new Error('Invalid Access Identity or Secure Key!');
     }
 
     const isPasswordCorrect = await user.comparePassword(password);
     if (!isPasswordCorrect) {
+        console.warn(`❌ [LOGIN FAILED] Incorrect password for: ${searchEmail}`);
         res.status(401);
         throw new Error('Invalid Access Identity or Secure Key!');
     }
+
+    console.log(`✅ [LOGIN SUCCESS] User: ${searchEmail} (${user.role})`);
 
     // ✨ DEVICE FINGERPRINTING: Anti-Login Sharing
     if (deviceId) {

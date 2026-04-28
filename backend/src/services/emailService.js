@@ -98,21 +98,6 @@ const sendInviteEmail = async ({ to, studentName, password, examName, verifyLink
                                 </tr>
                             </table>
 
-                            <!-- Security Warning Box -->
-                            <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#fff7ed;border:1px solid #ffedd5;border-radius:8px;margin-bottom:24px;">
-                                <tr>
-                                    <td style="padding:12px 16px;">
-                                        <p style="margin:0;color:#9a3412;font-size:12px;font-weight:700;line-height:1.4;">
-                                            🔒 SECURE BROWSER REQUIRED:
-                                        </p>
-                                        <p style="margin:4px 0 12px;color:#c2410c;font-size:12px;line-height:1.4;">
-                                            This exam can ONLY be taken using the <b>VISION Secure Browser</b>. You can download it below or from your dashboard.
-                                        </p>
-                                        <a href="https://github.com/codervinitjangir/Ai-secure-exam-browser/releases/download/v1.0.0/VISION_Secure_Setup.exe" style="display:inline-block;padding:8px 16px;background-color:#c2410c;color:#ffffff;text-decoration:none;border-radius:6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Download Browser</a>
-                                    </td>
-                                </tr>
-                            </table>
-
                             <!-- CTA Button -->
                             <table width="100%" cellpadding="0" cellspacing="0">
                                 <tr>

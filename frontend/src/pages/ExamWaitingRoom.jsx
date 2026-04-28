@@ -160,11 +160,10 @@ export default function ExamWaitingRoom() {
   const [settings,       setSettings]       = useState(null);
   const [aiReady,        setAiReady]        = useState(false);
   const [alertConfig,    setAlertConfig]    = useState({ isOpen: false, title: '', message: '', type: 'info' });
-  const [isSecure,       setIsSecure]       = useState(false);
+  const [isSecure,       setIsSecure]       = useState(true);
 
   useEffect(() => {
-    // 🛡️ Detect Secure Environment
-    setIsSecure(!!window.electronAPI);
+    // 🛡️ Detect Secure Environment (Disabled for standard browser mode)
     document.body.style.overflow = 'hidden';
     const timer = setInterval(() => setNow(new Date()), 1000);
 
