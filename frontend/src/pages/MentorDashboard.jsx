@@ -846,10 +846,25 @@ export default function MentorDashboard() {
               </div>
               <div>
                 <h4 className="text-lg font-bold text-primary tracking-tight">Security Overview</h4>
-                <p className="text-[11px] font-medium text-muted mt-0.5">Real-time integrity telemetry</p>
+                <p className="text-[11px] font-medium text-muted mt-0.5">Real-time integrity telemetry & violation alerts</p>
               </div>
             </div>
-            <button onClick={() => setActiveTab('Results & Reports')} className="text-[11px] font-bold text-primary-500 hover:text-primary transition-colors">View All</button>
+            <div className="flex items-center gap-3">
+              {(violations.length > 0 || activity.length > 0) && (
+                <button 
+                  onClick={() => { setActivity([]); setViolations([]); }} 
+                  className="text-[10px] font-bold text-red-500/70 hover:text-red-500 uppercase tracking-widest transition-colors mr-2"
+                >
+                  Clear Recent
+                </button>
+              )}
+              <button 
+                onClick={() => setActiveTab('Results & Reports')} 
+                className="flex items-center gap-1.5 px-4 py-2 bg-primary-500/10 text-primary-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-500 hover:text-white transition-all shadow-sm shadow-primary-500/10"
+              >
+                View Detailed Reports <ChevronRight size={12} />
+              </button>
+            </div>
           </div>
           
           <div className="flex-1 overflow-y-auto pr-4 custom-scrollbar space-y-4 relative z-10">
@@ -1281,8 +1296,8 @@ export default function MentorDashboard() {
          <div className="flex items-center gap-8">
             <h2 className="text-xl font-bold text-primary tracking-tight">System-Wide Results & Reports</h2>
             
-            <div className="hidden lg:flex bg-surface-hover/50 p-1 rounded-xl border border-main">
-              {['ALL', 'PENDING', 'EVALUATED / PAST'].map(f => (
+          <div className="hidden lg:flex bg-surface-hover/50 p-1 rounded-xl border border-main">
+              {['ALL', 'PENDING', 'AUTO_SUBMITTED', 'IN_PROGRESS', 'EVALUATED / PAST'].map(f => (
                 <button 
                   key={f}
                   onClick={() => setResultFilter(f)}
@@ -1311,7 +1326,7 @@ export default function MentorDashboard() {
 
       {/* Mobile filter bar */}
       <div className="lg:hidden flex bg-surface-hover/50 p-1 rounded-xl border border-main w-full overflow-x-auto scroll-thin mb-8">
-        {['ALL', 'PENDING', 'EVALUATED / PAST'].map(f => (
+        {['ALL', 'PENDING', 'AUTO_SUBMITTED', 'IN_PROGRESS', 'EVALUATED / PAST'].map(f => (
           <button 
             key={f}
             onClick={() => setResultFilter(f)}
@@ -1340,6 +1355,8 @@ export default function MentorDashboard() {
         data={results.filter(r => {
           if (resultFilter === 'ALL') return true;
           if (resultFilter === 'PENDING') return r.status === 'pending_review';
+          if (resultFilter === 'AUTO_SUBMITTED') return r.status === 'auto_submitted';
+          if (resultFilter === 'IN_PROGRESS') return r.status === 'in_progress';
           if (resultFilter === 'EVALUATED / PAST') return r.status === 'submitted' || r.status === 'evaluated' || r.status === 'completed';
           return true;
         })}
@@ -1376,14 +1393,35 @@ export default function MentorDashboard() {
                </div>
             </td>
             <td className="px-5 py-4">
-               <div className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[9px] font-bold border ${
-                 res.totalViolations > 8 ? 'bg-blue-50 text-blue-600 border-blue-200/50' :
-                 res.status === 'submitted' ? 'bg-emerald-50 text-emerald-600 border-emerald-200/50' :
-                 'bg-slate-100 text-slate-600 border-slate-200/50'
-               }`}>
-                 {res.status === 'submitted' && <span className="mr-1">✅</span>}
-                 {res.totalViolations > 8 ? 'Blocked' : res.status === 'submitted' ? 'Graded' : res.status}
-               </div>
+               {(() => {
+                 const isBlocked = res.totalViolations > 8;
+                 let badgeStyle = "bg-slate-100 text-slate-600 border-slate-200/50";
+                 let label = res.status;
+
+                 if (isBlocked) {
+                   badgeStyle = "bg-red-50 text-red-600 border-red-200/50";
+                   label = "Blocked";
+                 } else if (res.status === 'submitted' || res.status === 'evaluated') {
+                   badgeStyle = "bg-emerald-50 text-emerald-600 border-emerald-200/50";
+                   label = "Graded";
+                 } else if (res.status === 'auto_submitted') {
+                   badgeStyle = "bg-amber-50 text-amber-600 border-amber-200/50";
+                   label = "Auto-Submitted";
+                 } else if (res.status === 'in_progress') {
+                   badgeStyle = "bg-blue-50 text-blue-600 border-blue-200/50 animate-pulse";
+                   label = "In-Progress";
+                 } else if (res.status === 'pending_review') {
+                   badgeStyle = "bg-purple-50 text-purple-600 border-purple-200/50";
+                   label = "Needs Review";
+                 }
+
+                 return (
+                   <div className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[9px] font-bold border ${badgeStyle}`}>
+                     {(res.status === 'submitted' || res.status === 'evaluated') && <span className="mr-1">✅</span>}
+                     {label}
+                   </div>
+                 );
+               })()}
             </td>
             <td className="px-5 py-4">
                <span className={`text-[11px] font-bold tracking-tight ${res.totalViolations > 0 ? 'text-red-500' : 'text-slate-400'}`}>

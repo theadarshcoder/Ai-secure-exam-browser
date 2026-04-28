@@ -593,7 +593,7 @@ export default function CreateExam() {
   const [aiSuggestions, setAiSuggestions] = useState([]);
   const [syllabus, setSyllabus] = useState('');
   const [_editingSuggestion, _setEditingSuggestion] = useState(null);
-  const [aiConfig, setAiConfig] = useState({ mcq: 5, short: 3, coding: 1 });
+  const [aiConfig, setAiConfig] = useState({ mcq: 5, short: 3, coding: 1, frontendReact: 0 });
   const [uploadedFile, setUploadedFile] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [_fileParseLoading, setFileParseLoading] = useState(false);
@@ -618,6 +618,7 @@ export default function CreateExam() {
   const [isImportingLink, setIsImportingLink] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewQuestion, setPreviewQuestion] = useState(null);
+  const [showRestorePrompt, setShowRestorePrompt] = useState(false);
   const returnTo = new URLSearchParams(location.search).get('returnTo') || '/mentor';
 
   const userRole = sessionStorage.getItem('vision_role') || 'mentor';
@@ -855,14 +856,54 @@ export default function CreateExam() {
   };
 
   useEffect(() => {
-    const queryParams = new URLSearchParams(location.search);
-    const id = queryParams.get('id');
-    const returnTo = queryParams.get('returnTo') || '/mentor';
+    const params = new URLSearchParams(location.search);
+    const id = params.get('id');
+    const returnTo = params.get('returnTo');
+
     if (id) {
       setEditId(id);
       loadDraft(id, returnTo);
+    } else {
+      // Check for auto-saved data for new exams
+      const saved = localStorage.getItem('vision_unsaved_exam');
+      if (saved) {
+        setShowRestorePrompt(true);
+      }
     }
   }, [location.search]);
+
+  // --- AUTO-SAVE TO LOCALSTORAGE ---
+  useEffect(() => {
+    if (questions.length > 0 || exam.title) {
+        const autoSaveData = {
+            exam,
+            questions,
+            timestamp: Date.now()
+        };
+        localStorage.setItem('vision_unsaved_exam', JSON.stringify(autoSaveData));
+    }
+  }, [exam, questions]);
+
+  const restoreUnsaved = () => {
+    try {
+        const saved = JSON.parse(localStorage.getItem('vision_unsaved_exam'));
+        if (saved) {
+            setExam(saved.exam);
+            setQuestions(saved.questions);
+            addToast('Draft recovered successfully!');
+        }
+    } catch (e) {
+        console.error('Failed to restore:', e);
+    } finally {
+        setShowRestorePrompt(false);
+        localStorage.removeItem('vision_unsaved_exam');
+    }
+  };
+
+  const discardUnsaved = () => {
+    localStorage.removeItem('vision_unsaved_exam');
+    setShowRestorePrompt(false);
+  };
 
   const loadDraft = async (id, returnTo = '/mentor') => {
     setInitialLoading(true);
@@ -1011,6 +1052,7 @@ export default function CreateExam() {
       localStorage.setItem('published_exams', JSON.stringify([serverExam, ...existing]));
       setPublishedExamId(serverExam.id || serverExam._id || 'EX-' + Math.random().toString(36).substr(2, 6).toUpperCase());
       setPublishStatus('success');
+      localStorage.removeItem('vision_unsaved_exam'); // Clear auto-save on success
       await new Promise(r => setTimeout(r, 1200));
       setShowSuccessModal(true);
     } catch (err) {
@@ -1109,6 +1151,7 @@ export default function CreateExam() {
         await api.post('/api/exams/create', payload);
       }
       setSaveStatus('success');
+      localStorage.removeItem('vision_unsaved_exam'); // Clear auto-save on success
       await new Promise(r => setTimeout(r, 1200));
       // Navigate to dashboard where they can see the draft
       navigate(returnTo);
@@ -1171,7 +1214,8 @@ export default function CreateExam() {
         const response = await api.post('/api/ai/generate', {
             category: exam.category,
             syllabus: syllabus,
-            config: aiConfig
+            config: aiConfig,
+            totalMarks: exam.totalMarks
         });
         
         if (response.data.success) {
@@ -1330,6 +1374,32 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-primary-500/[0.03] blur-[120px] rounded-full pointer-events-none" />
 
           <div className="max-w-7xl mx-auto">
+            {/* Restore Prompt Overlay */}
+            <AnimatePresence>
+              {showRestorePrompt && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="mb-8 p-6 bg-primary-500/10 border border-primary-500/30 rounded-[2rem] flex items-center justify-between shadow-2xl shadow-primary-500/10 backdrop-blur-xl"
+                >
+                  <div className="flex items-center gap-5">
+                    <div className="w-12 h-12 bg-primary-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary-500/20">
+                      <RefreshCw size={24} className="animate-spin-slow" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-primary">Unsaved Draft Detected</h3>
+                      <p className="text-[11px] text-muted font-medium mt-1">We found a draft from your previous session. Would you like to restore it?</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button onClick={discardUnsaved} className="px-5 py-2 text-[10px] font-black uppercase tracking-widest text-muted hover:text-red-500 transition-colors">Discard</button>
+                    <button onClick={restoreUnsaved} className="px-6 py-2 bg-primary-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-lg shadow-primary-500/20 active:scale-95">Restore Draft</button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Title Header */}
             <div className="mb-8">
               <div className="flex items-center justify-between mb-2">
@@ -1386,7 +1456,7 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mt-10 pt-10 border-t border-main">
                     <div>
                       <label className={LABEL_BASE}>
-                        Duration
+                        Exam Duration (Time)
                         {exam.status !== 'draft' && exam.id && (
                           <span className="ml-2 text-[8px] text-primary-500 font-black uppercase tracking-[0.1em] bg-primary-500/10 border border-primary-500/20 px-1.5 py-0.5 rounded-md animate-pulse">
                             Syncs Live
@@ -1496,10 +1566,11 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                          </div>
                        )}
 
-                       <div className="grid grid-cols-3 gap-3 pt-4 border-t border-main">
+                       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-4 border-t border-main">
                           <div><label className={LABEL_BASE}>MCQs</label><StepperInput value={aiConfig.mcq} onChange={v => setAiConfig({...aiConfig, mcq:v})} min={0} /></div>
                           <div><label className={LABEL_BASE}>Short Qs</label><StepperInput value={aiConfig.short} onChange={v => setAiConfig({...aiConfig, short:v})} min={0} /></div>
                           <div><label className={LABEL_BASE}>Coding</label><StepperInput value={aiConfig.coding} onChange={v => setAiConfig({...aiConfig, coding:v})} min={0} /></div>
+                          <div><label className={LABEL_BASE}>React Lab</label><StepperInput value={aiConfig.frontendReact} onChange={v => setAiConfig({...aiConfig, frontendReact:v})} min={0} /></div>
                        </div>
 
                        <button type="button" onClick={generateAI} disabled={aiLoading} className="w-full h-11 bg-primary-500 text-white rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary-500/20 active:scale-95">
@@ -1523,11 +1594,51 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                                           <span className="text-[8px] font-black uppercase px-2 py-1 rounded-lg bg-surface-hover text-primary border border-main">{typeLabels[s.type]}</span>
                                           <span className="text-[8px] font-black text-muted uppercase tracking-widest">{s.marks} PTS</span>
                                        </div>
-                                       <p className="text-[13px] font-bold text-primary leading-relaxed mb-4">{s.questionText}</p>
-                                        <button onClick={() => acceptSuggestion(s)} className="text-[10px] font-black uppercase text-emerald-500 hover:text-emerald-400 tracking-widest flex items-center gap-2 group/add">
-                                          Add Question
-                                          <ArrowRight size={12} className="group-hover/add:translate-x-1 transition-transform" />
-                                        </button>
+                                       <p className="text-[13px] font-bold text-primary leading-relaxed mb-2">{s.questionText}</p>
+                                       
+                                       {/* Dynamic Preview based on type */}
+                                       <div className="mb-4 space-y-2">
+                                         {s.type === 'mcq' && s.options && (
+                                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                                             {s.options.map((opt, oi) => (
+                                               <div key={oi} className={`text-[10px] px-2.5 py-1.5 rounded-lg border flex items-center gap-2 ${s.correctOption === oi ? 'bg-primary-500/10 border-primary-500/30 text-primary' : 'bg-surface-hover/50 border-main text-muted'}`}>
+                                                 <span className="font-black opacity-40">{String.fromCharCode(65 + oi)}</span>
+                                                 <span className="truncate">{opt}</span>
+                                                 {s.correctOption === oi && <Check size={10} className="ml-auto text-primary-500" />}
+                                               </div>
+                                             ))}
+                                           </div>
+                                         )}
+                                         
+                                         {s.type === 'coding' && (
+                                           <div className="bg-surface-hover/50 border border-main rounded-lg p-2.5">
+                                             <div className="flex items-center justify-between mb-1.5">
+                                               <span className="text-[8px] font-black uppercase text-muted tracking-widest">{s.language || 'javascript'}</span>
+                                               <Code size={10} className="text-muted/40" />
+                                             </div>
+                                             <pre className="text-[9px] font-mono text-primary/60 truncate italic">
+                                               {s.initialCode || '// No starter code provided'}
+                                             </pre>
+                                           </div>
+                                         )}
+
+                                         {s.type === 'frontend-react' && (
+                                           <div className="bg-surface-hover/50 border border-main rounded-lg p-2.5">
+                                             <div className="flex items-center justify-between mb-1.5">
+                                               <span className="text-[8px] font-black uppercase text-muted tracking-widest">React Template</span>
+                                               <LayoutDashboard size={10} className="text-muted/40" />
+                                             </div>
+                                             <pre className="text-[9px] font-mono text-primary/60 truncate italic">
+                                               {s.frontendTemplate?.files?.['/App.jsx'] || '// App.jsx template'}
+                                             </pre>
+                                           </div>
+                                         )}
+                                       </div>
+
+                                       <button onClick={() => acceptSuggestion(s)} className="text-[10px] font-black uppercase text-emerald-500 hover:text-emerald-400 tracking-widest flex items-center gap-2 group/add">
+                                         Add Question
+                                         <ArrowRight size={12} className="group-hover/add:translate-x-1 transition-transform" />
+                                       </button>
                                     </div>
                                     <button onClick={() => setAiSuggestions(prev => prev.filter((_, i) => i !== idx))} className="opacity-0 group-hover/suggest:opacity-100 p-2.5 bg-surface-hover hover:bg-red-500/10 text-muted hover:text-red-500 rounded-xl transition-all border border-main"><Trash2 size={16} /></button>
                                  </div>

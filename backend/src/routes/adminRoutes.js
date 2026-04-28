@@ -68,6 +68,7 @@ router.post('/settings', verifyToken, checkRole(['admin']), adminController.save
 router.get('/candidates', verifyToken, checkRole(['admin', 'super_mentor']), adminController.getCandidates);
 router.put('/candidates/verify/:userId', verifyToken, checkRole(['admin', 'super_mentor']), adminController.verifyCandidate);
 router.put('/candidates/unverify/:userId', verifyToken, checkRole(['admin', 'super_mentor']), adminController.unverifyCandidate);
+router.post('/ai-scan', verifyToken, checkRole(['admin', 'super_mentor']), adminController.aiScanCandidates);
 
 // Student Intelligence Report
 router.get('/students/:studentId/report', verifyToken, checkRole(['admin', 'super_mentor', 'mentor']), studentIntelligenceController.getStudentIntelligence);

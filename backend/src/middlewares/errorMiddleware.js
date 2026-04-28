@@ -5,9 +5,9 @@ const IntelligenceLog = require('../models/IntelligenceLog');
  * Catch all async/sync errors and return uniform JSON responses.
  */
 const errorHandler = async (err, req, res, next) => {
-    let statusCode = err.statusCode || 500;
+    let statusCode = err.statusCode || (res.statusCode !== 200 ? res.statusCode : 500);
     let message = err.message || 'Internal Server Error';
-    let code = err.code || 'INTERNAL_ERROR';
+    let code = err.code || (statusCode === 403 ? 'FORBIDDEN' : statusCode === 401 ? 'UNAUTHORIZED' : 'INTERNAL_ERROR');
 
     // ─── 1. Handle Known Global Errors ───────────────────
     if (err.name === 'CastError') {
