@@ -14,17 +14,21 @@ const TTL_ACTIVE_SESSION = 21600; // 6 hours for ongoing exams
 const TTL_API_CACHE = 60; // 60 seconds for dashboard data
 
 /**
- * 🔑 Save user session token and permissions to Redis
+ * 🔑 Save user session metadata to Redis
+ * 
+ * DESIGN: Stores sessionVersion + permissions (NOT the full JWT token).
+ * This aligns with the sessionVersion invalidation model used in MongoDB (L3).
+ * On login/logout, sessionVersion increments → all old tokens become invalid.
  */
-const saveUserSession = async (userId, token, permissions = []) => {
+const saveUserSession = async (userId, sessionVersion, permissions = []) => {
     const redis = getRedisClient();
     if (!redis) return;
 
     try {
         const key = `${SESSION_PREFIX}${userId}`;
-        const sessionData = JSON.stringify({ token, permissions });
+        const sessionData = JSON.stringify({ sessionVersion, permissions });
         await redis.set(key, sessionData, 'EX', DEFAULT_TTL);
-        console.log(`📡 Redis: Cached session & permissions for user ${userId}`);
+        console.log(`📡 Redis: Cached session v${sessionVersion} for user ${userId}`);
     } catch (err) {
         console.warn('⚠️  Redis: Failed to save user session:', err.message);
     }
@@ -32,6 +36,7 @@ const saveUserSession = async (userId, token, permissions = []) => {
 
 /**
  * 🔍 Retrieve user session data from Redis
+ * Returns: { sessionVersion, permissions } or null
  */
 const getUserSession = async (userId) => {
     const redis = getRedisClient();
@@ -42,11 +47,15 @@ const getUserSession = async (userId) => {
         const data = await redis.get(key);
         if (!data) return null;
         
-        // Handle legacy string-only sessions or new JSON sessions
         try {
-            return JSON.parse(data);
+            const parsed = JSON.parse(data);
+            // Handle legacy format that stored { token, permissions }
+            if (parsed.token && !parsed.sessionVersion) {
+                return null; // Force cache miss → DB fallback will re-populate
+            }
+            return parsed;
         } catch (e) {
-            return { token: data, permissions: [] };
+            return null; // Corrupt data → force cache miss
         }
     } catch (err) {
         console.warn('⚠️  Redis: Failed to retrieve session:', err.message);
@@ -113,15 +122,47 @@ const clearCache = async (key) => {
 
 /**
  * 🗑️ Clear Cache by Pattern (e.g., "active_exams_user_*")
+ * 
+ * ⚡ Uses SCAN instead of KEYS to avoid blocking the single-threaded Redis server.
+ * KEYS scans the entire keyspace in one shot → freezes ALL operations (sessions, queues, exams).
+ * SCAN iterates incrementally in batches → non-blocking, production-safe.
  */
 const clearPattern = async (pattern) => {
     const redis = getRedisClient();
     if (!redis) return;
     try {
-        const keys = await redis.keys(pattern);
-        if (keys && keys.length > 0) {
-            await redis.del(keys);
-            console.log(`📡 Redis: Cleared ${keys.length} keys matching pattern: ${pattern}`);
+        let deletedCount = 0;
+        const stream = redis.scanStream({
+            match: pattern,
+            count: 100 // Process ~100 keys per SCAN iteration
+        });
+
+        // Collect keys in batches and pipeline-delete for efficiency
+        const batch = [];
+        for await (const keys of stream) {
+            if (keys.length === 0) continue;
+            batch.push(...keys);
+
+            // Flush in batches of 100 to avoid unbounded memory growth
+            if (batch.length >= 100) {
+                const pipeline = redis.pipeline();
+                batch.forEach(key => pipeline.del(key));
+                await pipeline.exec();
+                deletedCount += batch.length;
+                batch.length = 0; // Clear batch
+            }
+        }
+
+        // Flush remaining keys
+        if (batch.length > 0) {
+            const pipeline = redis.pipeline();
+            batch.forEach(key => pipeline.del(key));
+            await pipeline.exec();
+            deletedCount += batch.length;
+        }
+
+        if (deletedCount > 0) {
+            console.log(`📡 Redis: Cleared ${deletedCount} keys matching pattern: ${pattern}`);
         }
     } catch (err) {
         console.warn(`⚠️  Redis: Failed to clear pattern ${pattern}:`, err.message);

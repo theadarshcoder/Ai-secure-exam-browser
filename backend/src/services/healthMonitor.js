@@ -38,6 +38,9 @@ const startHealthMonitor = (io) => {
                     // Ignore if ErrorLog schema is different
                 }
 
+                const { getRedisClient } = require('../config/redis');
+                const redisClient = getRedisClient();
+
                 // Emit telemetry to admins (Include examId so UI can filter)
                 io.to('role_admin').emit('server_health', {
                     examId: examStr,
@@ -45,7 +48,8 @@ const startHealthMonitor = (io) => {
                     cpuLoad: cpuLoad.toFixed(2),
                     memoryUsage: memUsagePercent.toFixed(0),
                     activeErrors: errorCount,
-                    disconnects: recentDisconnects[examStr]
+                    disconnects: recentDisconnects[examStr],
+                    redis: redisClient && redisClient.status === 'ready' ? 'connected' : 'down'
                 });
 
                 // 🔥 CRITICAL ALERTS PER EXAM 🔥

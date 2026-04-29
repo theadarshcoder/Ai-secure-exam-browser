@@ -394,11 +394,22 @@ exports.saveSettings = asyncHandler(async (req, res) => {
 // Candidate Identity Verification (eKYC)
 // ═══════════════════════════════════════════════════════════
 exports.getCandidates = asyncHandler(async (req, res) => {
-    const search = req.query.search || '';
+    const { search, role } = req.query;
     const page = parseInt(req.query.page) || 1;
     let limit = parseInt(req.query.limit) || 20;
     limit = Math.min(limit, 100); // 🛡️ Fix 18: Security limit
     const skip = (page - 1) * limit;
+
+    const query = {};
+
+    if (role) query.role = role;
+
+    if (search) {
+        query.$or = [
+            { name: { $regex: search, $options: 'i' } },
+            { email: { $regex: search, $options: 'i' } }
+        ];
+    }
 
     const candidates = await User.find(query)
         .select('name email profilePicture idCardUrl isVerified verificationIssue createdAt')
@@ -408,17 +419,28 @@ exports.getCandidates = asyncHandler(async (req, res) => {
         .lean();
 
     const total = await User.countDocuments(query);
+    
+    // Maintain enrichment logic for active sessions (eKYC feature)
     const studentIds = candidates.map(c => c._id);
     const LIVE_THRESHOLD = new Date(Date.now() - 3 * 60 * 1000);
     const activeSessions = await ExamSession.find({ student: { $in: studentIds }, status: 'in_progress', updatedAt: { $gte: LIVE_THRESHOLD } }).populate('exam', 'title').lean();
+    
     const sessionMap = {};
     activeSessions.forEach(s => { sessionMap[s.student.toString()] = s; });
-    const enriched = candidates.map(c => ({ ...c, isLive: !!sessionMap[c._id.toString()], currentExam: sessionMap[c._id.toString()]?.exam?.title || null }));
+    
+    const enriched = candidates.map(c => ({ 
+        ...c, 
+        isLive: !!sessionMap[c._id.toString()], 
+        currentExam: sessionMap[c._id.toString()]?.exam?.title || null 
+    }));
+    
     res.json({
-        candidates: enriched,
-        total,
-        page,
-        pages: Math.ceil(total / limit)
+        data: enriched,
+        pagination: {
+            total,
+            page,
+            pages: Math.ceil(total / limit)
+        }
     });
 });
 

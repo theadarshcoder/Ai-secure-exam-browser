@@ -14,10 +14,12 @@ const intelligenceQueue = new Queue('intelligence_queue', { connection });
 const addIntelligenceJob = async (studentId) => {
     try {
         await intelligenceQueue.add('update_student_stats', { studentId }, {
+            jobId: `intelligence-${studentId}`, // 🛡️ Deduplication: same student won't queue twice
             removeOnComplete: true,
             removeOnFail: { count: 100 },
             attempts: 3,
-            backoff: { type: 'exponential', delay: 1000 }
+            backoff: { type: 'exponential', delay: 1000 },
+            delay: 2000 // Wait 2s for DB writes to settle before cache warming
         });
         console.log(`📡 Intelligence Queue: Job added for student ${studentId}`);
     } catch (err) {

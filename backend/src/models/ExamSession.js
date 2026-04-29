@@ -113,6 +113,16 @@ const examSessionSchema = new mongoose.Schema({
     blockReason: { type: String, default: '' },
     // 🏎️ Fix 40: Pre-calculated Risk Score (Save CPU during monitoring)
     riskScore: { type: Number, default: 0 },
+    riskLevel: { 
+        type: String, 
+        enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'],
+        default: 'LOW'
+    },
+    
+    // ─── 🛡️ Zero-Trust Telemetry Tracking ────────────
+    lastHeartbeat: { type: Date },
+    heartbeatCount: { type: Number, default: 0 },
+    maxHeartbeatGap: { type: Number, default: 0 }, // Largest gap between heartbeats in ms
     
     // 🏎️ Fix 9: Monotonic sequence for ordering
     lastSeq: { type: Number, default: 0 },

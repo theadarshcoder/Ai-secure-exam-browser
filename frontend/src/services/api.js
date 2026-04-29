@@ -418,7 +418,7 @@ export const requestHelp = async (examId, msg) => {
 export const getCandidates = async (search = '', page = 1, limit = 20) => {
     try {
         const response = await api.get('/api/admin/candidates', { params: { search, page, limit } });
-        return response.data;
+        return response.data?.data || response.data?.candidates || response.data || [];
     } catch (error) {
         throw getErrorMessage(error);
     }

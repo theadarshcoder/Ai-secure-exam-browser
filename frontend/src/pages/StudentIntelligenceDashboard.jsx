@@ -298,7 +298,7 @@ const StudentIntelligenceDashboard = () => {
                 </div>
                 
                 {/* Identity Fraud Alert Card */}
-                {!student.info.isVerified && student.info.verificationIssue ? (
+                {!student.info.isVerified && (student.info.verificationIssue ?? null) ? (
                     <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-5 flex flex-col justify-center animate-pulse">
                         <div className="flex items-center gap-2 text-red-500 mb-2">
                             <ShieldAlert size={18} strokeWidth={3} />

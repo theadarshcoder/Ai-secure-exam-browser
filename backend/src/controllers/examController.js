@@ -713,6 +713,12 @@ exports.saveProgress = asyncHandler(async (req, res) => {
         throw new Error('Session not found. Please start the exam first.');
     }
 
+    // 🛡️ Strict State Validation (Replay Attack Prevention)
+    if (session.status !== 'in_progress') {
+        res.status(403);
+        throw new Error(`Cannot save progress. Exam is not in progress. (Status: ${session.status})`);
+    }
+
     // 🛡️ Fix 8 & 1: Server-Side Time Authority & Auto-Submission
     const now = Date.now();
     const started = new Date(session.startedAt).getTime();
@@ -1165,15 +1171,23 @@ exports.submitExam = asyncHandler(async (req, res) => {
         throw new Error(`This exam cannot be submitted. Status: ${session.status}`);
     }
 
-    // ⏱️ Fix: Timer Validation (Compare startTime + duration)
+    // ⏱️ Fix: Server-Side Timer Validation (Strict 30-sec Grace)
     const currentTime = Date.now();
     const startTime = new Date(session.startedAt).getTime();
     const durationMs = exam.duration * 60 * 1000;
-    const bufferMs = 60000; // 60 seconds buffer for network lag
+    const GRACE_MS = 30000; // 30 seconds max buffer for network lag
 
-    if (currentTime > (startTime + durationMs + bufferMs)) {
-        res.status(400);
-        throw new Error('Exam time has expired. Submission rejected.');
+    let isLateSubmission = false;
+    if (currentTime > (startTime + durationMs + GRACE_MS)) {
+        isLateSubmission = true;
+        console.warn(`🚫 [Security] Late submission detected for ${studentId}. Overtime payload rejected.`);
+        
+        session.violations.push({
+            type: 'Time Manipulation',
+            severity: 'critical',
+            details: 'Exam submitted after strict server deadline. Overtime answers were rejected.',
+            timestamp: new Date()
+        });
     }
 
     // 🚀 Redis Final Merge Logic
@@ -1186,12 +1200,19 @@ exports.submitExam = asyncHandler(async (req, res) => {
             if (cachedData && cachedData.answers) {
                 try {
                     const redisAnswers = JSON.parse(cachedData.answers);
-                    if (redisAnswers && typeof redisAnswers === 'object') {
+                    if (isLateSubmission) {
+                        // 🛡️ Discard late payload, use only what was previously auto-saved
+                        finalAnswers = redisAnswers || {};
+                    } else if (redisAnswers && typeof redisAnswers === 'object') {
+                        // Normal merge
                         finalAnswers = { ...redisAnswers, ...finalAnswers };
                     }
                 } catch (parseErr) {
                     console.error('⚠️ Redis Answers parse failed in submitExam:', parseErr.message);
                 }
+            } else if (isLateSubmission) {
+                // Late submission and no Redis backup = zero answers accepted
+                finalAnswers = {};
             }
             await redisClient.del(cacheKey); // Clean up hash
         } catch (redisErr) {
@@ -1302,14 +1323,61 @@ exports.submitExam = asyncHandler(async (req, res) => {
         await ExamAnswer.bulkWrite(answerBulkOps);
     }
 
-    // ─── Calculate Score & Update Session ──────────────
-    const totalMarks = Number(exam.totalMarks) || 1;
-    const finalStatus = hasShortAnswers ? 'pending_review' : 'submitted';
-    const percentage = Math.round((autoScore / totalMarks) * 100) || 0;
-    const passed = percentage >= (Number(exam.passingMarks) || 40);
+    // ─── 🛡️ Zero-Trust Behavioral Anomaly Detection ────────
+    const timeTakenSeconds = Math.round((Date.now() - new Date(session.startedAt).getTime()) / 1000);
+    const totalQuestions = exam.questions ? exam.questions.length : 0;
+    
+    // 1. Speed Anomaly: Adaptive check (is it impossibly fast?)
+    let speedAnomalyFlag = false;
+    if (totalQuestions > 0 && (timeTakenSeconds / totalQuestions) < 5) {
+        speedAnomalyFlag = true;
+    }
+
+    // 2. Telemetry Health (Missing data = Tampering)
+    const heartbeatInterval = 30; // expected every 30s
+    const expectedHeartbeats = Math.max(1, Math.floor(timeTakenSeconds / heartbeatInterval));
+    const actualHeartbeats = session.heartbeatCount || 0;
+    const telemetryRatio = actualHeartbeats / expectedHeartbeats;
+    
+    let missingTelemetryScore = 0;
+    if (telemetryRatio < 0.1) missingTelemetryScore = 20; // Critical missing data
+    else if (telemetryRatio < 0.3) missingTelemetryScore = 10; // Highly suspicious
+    
+    // Check Max Gap (e.g., disconnected for 5+ mins)
+    if ((session.maxHeartbeatGap || 0) > 300000) {
+        missingTelemetryScore += 10;
+    }
+
+    // 3. Suspicious Perfection
+    let perfectScoreAnomaly = false;
+    if (percentage > 95 && speedAnomalyFlag && (session.violations.length === 0 || telemetryRatio < 0.5)) {
+        perfectScoreAnomaly = true;
+    }
+
+    // 4. Central Risk Score Calculation (Overrides incremental frontend calculations)
+    const riskScoreRaw = 
+        (session.tabSwitchCount * 2) +
+        (session.violations.length * 5) +
+        missingTelemetryScore +
+        (speedAnomalyFlag ? 20 : 0) +
+        (perfectScoreAnomaly ? 15 : 0);
+
+    const riskScore = Math.min(riskScoreRaw, 100);
+    
+    let riskLevel = 'LOW';
+    if (riskScore >= 60) riskLevel = 'CRITICAL';
+    else if (riskScore >= 30) riskLevel = 'HIGH';
+    else if (riskScore >= 10) riskLevel = 'MEDIUM';
+
+    session.riskScore = riskScore;
+    session.riskLevel = riskLevel;
+
+    // ─── Update Session Status ──────────────
+    const totalMarksVal = Number(exam.totalMarks) || 1;
+    const finalStatus = hasShortAnswers ? 'pending_review' : (isLateSubmission ? 'auto_submitted' : 'submitted');
 
     session.score = Number(autoScore) || 0;
-    session.totalMarks = Number(totalMarks) || 1;
+    session.totalMarks = Number(totalMarksVal) || 1;
     session.percentage = Number(percentage) || 0;
     session.passed = hasShortAnswers ? false : passed;
     session.status = finalStatus;
@@ -1538,58 +1606,72 @@ exports.evaluateSession = asyncHandler(async (req, res) => {
 exports.logIncident = asyncHandler(async (req, res) => {
     const { examId, type, severity, details } = req.body;
     const studentId = req.user.id;
+    const now = new Date();
 
-    const update = {
-        $push: { 
-            violations: {
-                $each: [{
-                    type: type || 'Unknown',
-                    severity: severity || 'medium',
-                    details: details || '',
-                    timestamp: new Date()
-                }],
-                $slice: -100 // Bug 8: Cap violation list to prevent DoS attacks
-            }
-        }
-    };
-
-    if (type === 'Tab Switch') {
-        update.$inc = { tabSwitchCount: 1 };
+    const session = await ExamSession.findOne({ exam: examId, student: studentId });
+    
+    if (!session) {
+        res.status(404);
+        throw new Error('Exam session not found.');
     }
 
-    // 🏎️ Fix 40: Move compute to write-time (Incremental Risk Score)
+    // 🛡️ Strict State Validation (Replay Attack Prevention)
+    if (session.status !== 'in_progress') {
+        res.status(403);
+        throw new Error('Cannot log incidents. Exam is not in progress.');
+    }
+
+    // 🛡️ Server-Side Sliding Window Debounce (Spam Prevention)
+    // Ignore identical violations occurring within 2 seconds
+    const lastIncident = session.violations && session.violations.length > 0 
+        ? session.violations[session.violations.length - 1] 
+        : null;
+
+    if (lastIncident && lastIncident.type === type) {
+        const timeDiff = now - new Date(lastIncident.timestamp);
+        if (timeDiff < 2000) {
+            return res.json({ 
+                message: 'Incident ignored (debounced)', 
+                violationCount: session.violations.length,
+                tabSwitches: session.tabSwitchCount,
+                status: session.status
+            });
+        }
+    }
+
+    // Add new violation
+    session.violations.push({
+        type: type || 'Unknown',
+        severity: severity || 'medium',
+        details: details || '',
+        timestamp: now
+    });
+
+    // Cap violation list to prevent memory bloat / DoS attacks
+    if (session.violations.length > 100) {
+        session.violations = session.violations.slice(-100);
+    }
+
+    if (type === 'Tab Switch') {
+        session.tabSwitchCount += 1;
+    }
+
+    // 🏎️ Incremental Risk Score Calculation
     const riskDeltas = {
         'Tab Switch': 2,
         'Environment Tampering': 10,
         'Security Breach': 15,
         'Invalid Data': 5
     };
-    const delta = riskDeltas[type] || 3; // Default 3 for generic violations
+    const delta = riskDeltas[type] || 3;
     
-    const session = await ExamSession.findOneAndUpdate(
-        { exam: examId, student: studentId },
-        { 
-            ...update,
-            $inc: { 
-                ...(update.$inc || {}), 
-                riskScore: delta 
-            } 
-        },
-        { upsert: true, new: true }
-    );
+    session.riskScore = Math.min((session.riskScore || 0) + delta, 100);
 
-    // Cap riskScore at 100
-    if (session.riskScore > 100) {
-        session.riskScore = 100;
-        await session.save();
-    }
-
-    // 🛡️ Fix 2: Cheating Protection Enforcement
+    // 🛡️ Cheating Protection Enforcement
     const globalSettings = await Setting.findOne() || { maxTabSwitches: 5 };
     if (session.tabSwitchCount >= globalSettings.maxTabSwitches && session.status === 'in_progress') {
         session.status = 'blocked';
         session.blockReason = 'Excessive tab switching detected by system proctor';
-        await session.save();
 
         const io = req.app.get('io');
         if (io) {
@@ -1598,6 +1680,8 @@ exports.logIncident = asyncHandler(async (req, res) => {
             });
         }
     }
+
+    await session.save();
 
     res.json({ 
         message: 'Incident logged', 
@@ -2307,6 +2391,24 @@ exports.heartbeat = asyncHandler(async (req, res) => {
         throw new Error('Active session not found');
     }
 
+    // 🛡️ Strict State Validation (Replay Attack Prevention)
+    if (session.status !== 'in_progress') {
+        res.status(403);
+        throw new Error('Heartbeat ignored. Exam is not in progress.');
+    }
+
+    const now = new Date();
+
+    // ─── Zero-Trust Telemetry Tracking ───────────
+    if (session.lastHeartbeat) {
+        const gapMs = now - new Date(session.lastHeartbeat);
+        if (gapMs > (session.maxHeartbeatGap || 0)) {
+            session.maxHeartbeatGap = gapMs;
+        }
+    }
+    session.lastHeartbeat = now;
+    session.heartbeatCount = (session.heartbeatCount || 0) + 1;
+
     // 2. Update Verification Timestamp
     const fingerprint = {
         userAgent: req.headers['user-agent'],
@@ -2316,26 +2418,25 @@ exports.heartbeat = asyncHandler(async (req, res) => {
     };
 
     if (session.secureMeta) {
-        session.secureMeta.verifiedAt = new Date();
-        await session.save();
+        session.secureMeta.verifiedAt = now;
     }
 
     // Fix 8: Time validation in heartbeat
     const exam = await Exam.findById(examId);
     if (exam && session.startedAt) {
-        const now = Date.now();
         const started = new Date(session.startedAt).getTime();
         const durationMs = exam.duration * 60 * 1000;
-        const serverRemainingTime = Math.max(0, Math.floor((started + durationMs - now) / 1000));
+        const serverRemainingTime = Math.max(0, Math.floor((started + durationMs - now.getTime()) / 1000));
         
         if (serverRemainingTime <= 0) {
             session.status = 'auto_submitted';
-            session.submittedAt = new Date();
+            session.submittedAt = now;
             await session.save();
             return res.json({ success: false, code: 'EXAM_EXPIRED', status: 'auto_submitted' });
         }
         session.remainingTimeSeconds = serverRemainingTime;
     }
+    await session.save();
 
     // Baseline Check in Heartbeat with Tolerance
     const [baseUA, basePlatform, baseWidth, baseHeight] = (session.secureMeta.baselineFingerprint || "").split('|');
