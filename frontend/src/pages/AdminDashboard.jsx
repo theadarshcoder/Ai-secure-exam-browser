@@ -954,13 +954,10 @@ export default function AdminDashboard() {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
         {STAT_CARDS.map((stat, i) => (
-          <div key={i} className="p-6 rounded-2xl bg-surface border border-main shadow-sm hover:shadow-md transition-all hover:border-primary-500/30 group active:scale-95 cursor-pointer relative overflow-hidden flex flex-col gap-4" style={{ fontFamily: "'Inter', sans-serif" }}>
-            <div className="w-10 h-10 rounded-[10px] bg-surface-hover border border-main flex items-center justify-center text-primary-500 shadow-sm group-hover:bg-primary-500 group-hover:text-white transition-all duration-500 relative z-10">
-              <stat.icon size={18} strokeWidth={2.2} />
-            </div>
-            <div className="relative z-10">
+          <div key={i} className="p-6 rounded-2xl bg-surface border border-main shadow-sm hover:shadow-md transition-all hover:border-primary-500/30 group active:scale-95 cursor-pointer relative overflow-hidden flex flex-col gap-2" style={{ fontFamily: "'Inter', sans-serif" }}>
+            <div className="relative z-10 flex flex-col">
+              <p className="text-[13px] font-medium text-muted mb-2">{stat.label}</p>
               <h3 className="text-3xl font-bold text-primary tracking-tight leading-none">{stat.value}</h3>
-              <p className="text-[13px] font-medium text-muted mt-1.5">{stat.label}</p>
             </div>
           </div>
         ))}

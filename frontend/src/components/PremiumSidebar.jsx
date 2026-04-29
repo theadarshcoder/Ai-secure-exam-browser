@@ -136,14 +136,14 @@ export default function PremiumSidebar({
             width: 36,
             height: 36,
             borderRadius: 10,
-            background: 'var(--accent-primary)',
+            background: 'transparent',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
           }}
         >
-          <VisionLogo className="w-[20px] h-[20px] text-white" />
+          <VisionLogo className="w-[24px] h-[24px] text-primary" />
         </div>
 
         {/* Brand text */}
