@@ -1,7 +1,5 @@
 const Exam = require('../models/Exam');
 const ExamSession = require('../models/ExamSession');
-const { clearPattern } = require('../services/cacheService');
-const { getRedisClient } = require('../config/redis');
 const ExamAnswer = require('../models/ExamAnswer');
 const ExamInvite = require('../models/ExamInvite');
 const User = require('../models/User');
