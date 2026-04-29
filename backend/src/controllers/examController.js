@@ -1323,6 +1323,11 @@ exports.submitExam = asyncHandler(async (req, res) => {
         await ExamAnswer.bulkWrite(answerBulkOps);
     }
 
+    // ─── Calculate Score ──────────────────────
+    const totalMarksVal = Number(exam.totalMarks) || 1;
+    const percentage = Math.round((autoScore / totalMarksVal) * 100) || 0;
+    const passed = percentage >= (Number(exam.passingMarks) || 40);
+
     // ─── 🛡️ Zero-Trust Behavioral Anomaly Detection ────────
     const timeTakenSeconds = Math.round((Date.now() - new Date(session.startedAt).getTime()) / 1000);
     const totalQuestions = exam.questions ? exam.questions.length : 0;
@@ -1373,7 +1378,6 @@ exports.submitExam = asyncHandler(async (req, res) => {
     session.riskLevel = riskLevel;
 
     // ─── Update Session Status ──────────────
-    const totalMarksVal = Number(exam.totalMarks) || 1;
     const finalStatus = hasShortAnswers ? 'pending_review' : (isLateSubmission ? 'auto_submitted' : 'submitted');
 
     session.score = Number(autoScore) || 0;
