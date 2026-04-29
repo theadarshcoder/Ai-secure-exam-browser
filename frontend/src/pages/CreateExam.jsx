@@ -833,7 +833,8 @@ export default function CreateExam() {
       
     } catch (err) {
       console.error("Import failed:", err);
-      addToast(err.response?.data?.error || 'Failed to import from link.', 'error');
+      const rawErr = err.response?.data?.error;
+      addToast((typeof rawErr === 'string' ? rawErr : null) || 'Failed to import from link.', 'error');
     } finally {
       setIsImportingLink(false);
     }
@@ -1059,7 +1060,8 @@ export default function CreateExam() {
       if (err.response) {
         // Server rejected the request Ã¢â‚¬â€ do NOT show success
         console.error('Server side rejection:', err.response.data);
-        const errorMsg = err.response.data.error || err.response.data.message || 'Validation failed';
+        const rawError = err.response.data.error;
+        const errorMsg = (typeof rawError === 'string' ? rawError : null) || err.response.data.message || 'Validation failed';
         addToast(`Failed to publish exam: ${errorMsg}`, 'error');
         setPublishStatus('error');
         setTimeout(() => setPublishStatus('idle'), 2000);
@@ -1221,11 +1223,13 @@ export default function CreateExam() {
         if (response.data.success) {
             setAiSuggestions(response.data.questions);
         } else {
-            throw new Error(response.data.error || "Generation failed");
+            const aiErr = response.data.error;
+            throw new Error((typeof aiErr === 'string' ? aiErr : null) || "Generation failed");
         }
     } catch (err) {
         console.error('AI Suggestion Error:', err);
-        addToast(err.response?.data?.error || "AI Service is currently unavailable. Please try again later.", 'error');
+        const rawAiErr = err.response?.data?.error;
+        addToast((typeof rawAiErr === 'string' ? rawAiErr : null) || "AI Service is currently unavailable. Please try again later.", 'error');
     } finally {
         setAiLoading(false);
     }

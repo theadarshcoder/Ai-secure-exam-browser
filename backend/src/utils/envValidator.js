@@ -9,6 +9,7 @@
 const validateEnv = () => {
     const required = [
         'JWT_SECRET',
+        'JWT_REFRESH_SECRET', // 🛡️ Fix 32: Mandatory for dual-token security
         'MONGODB_URI'
     ];
 

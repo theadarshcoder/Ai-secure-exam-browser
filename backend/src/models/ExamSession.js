@@ -111,14 +111,20 @@ const examSessionSchema = new mongoose.Schema({
     // ─── Security & Auto-Blocking ────────────────────
     isBlocked: { type: Boolean, default: false },
     blockReason: { type: String, default: '' },
-    violationCount: { type: Number, default: 0 },
+    // 🏎️ Fix 40: Pre-calculated Risk Score (Save CPU during monitoring)
+    riskScore: { type: Number, default: 0 },
     
+    // 🏎️ Fix 9: Monotonic sequence for ordering
+    lastSeq: { type: Number, default: 0 },
+
     // ─── 🆕 Enterprise Secure Client Meta ───────────
     secureMeta: {
         isSecureClient: { type: Boolean, default: false },
         verifiedAt: { type: Date },
         client: { type: String, default: '' },
-        userAgent: { type: String, default: '' }
+        userAgent: { type: String, default: '' },
+        sessionHash: { type: String, default: '' },
+        baselineFingerprint: { type: String, default: '' }
     }
 }, { timestamps: true });
 
@@ -127,6 +133,13 @@ examSessionSchema.index({ exam: 1, student: 1 }, { unique: true });
 
 // Status index for dashboard counts (in_progress vs submitted)
 examSessionSchema.index({ status: 1 });
+
+// 🏎️ Fix 30: Critical performance indexes for live exams
+// Prevents full collection scans during time extensions and room broadcasts
+examSessionSchema.index({ exam: 1, status: 1 });
+
+// unique session per student per exam (already exists but re-ensuring)
+examSessionSchema.index({ student: 1, exam: 1 }, { unique: true });
 
 // startedAt index for recent activity sorting
 examSessionSchema.index({ startedAt: -1 });

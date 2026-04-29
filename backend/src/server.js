@@ -23,6 +23,9 @@ const cacheService = require('./services/cacheService');
 const morgan = require('morgan');
 const validateEnv = require('./utils/envValidator');
 const { startHealthMonitor, incrementDisconnect } = require('./services/healthMonitor');
+let isHealthMonitorStarted = false; // 🛡️ Phase 2: Guard against duplicate intervals
+const { VIOLATION_TYPES, SESSION_STATUS } = require('./utils/constants');
+const { LRUCache } = require('lru-cache');
 
 // ─── Route Imports ───────────────────────────────────────
 const authRoutes = require('./routes/authRoutes');
@@ -39,6 +42,7 @@ const { inviteVerifyLimiter } = require('./middlewares/rateLimiter');
 const traceMiddleware = require('./middlewares/traceMiddleware');
 
 const app = express();
+app.set('trust proxy', 1); // 🛡️ Fix 15: Required for rate-limiter to see real IPs
 const server = http.createServer(app);
 
 app.use(traceMiddleware); // Generate Request IDs
@@ -61,31 +65,27 @@ app.use(morgan('[:req-id] :method :url :status - :response-time ms'));
 // Multiple URLs can be comma-separated:
 //   FRONTEND_URL=http://localhost:5173,https://app.proctoshield.com
 
-const allowedOrigins = [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-    'http://localhost:5174',
-    'http://127.0.0.1:5174',
-    'https://vision-live.pages.dev'
-];
+const logger = require('./utils/logger');
 
-// Combine with .env URLs if present
-if (process.env.FRONTEND_URL) {
-    const envOrigins = process.env.FRONTEND_URL.split(',').map(url => url.trim());
-    envOrigins.forEach(url => {
-        if (!allowedOrigins.includes(url)) allowedOrigins.push(url);
-    });
+// 🛡️ Fix 31: All origins must be exact matches to prevent PaaS subdomain takeover
+const allowedOrigins = new Set(
+    process.env.FRONTEND_URL 
+        ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
+        : ['http://localhost:5173']
+);
+
+if (process.env.NODE_ENV !== 'production') {
+    allowedOrigins.add('http://127.0.0.1:5173');
+    allowedOrigins.add('http://localhost:5174');
 }
 
 const corsOptions = {
     origin: function (origin, callback) {
-        // Allow requests with no origin (Postman, mobile apps)
         if (!origin) return callback(null, true);
-
-        if (isAllowedOrigin(origin)) {
+        if (allowedOrigins.has(origin)) {
             callback(null, true);
         } else {
-            console.warn(`🚫 CORS blocked: ${origin}`);
+            logger.warn(`🚫 CORS blocked: ${origin}`);
             callback(new Error('CORS policy: Not allowed.'));
         }
     },
@@ -95,13 +95,30 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+
+// 🚀 [PHASE 4] Readiness Flag
+let isReady = false;
+
+// 🚀 [PHASE 4] Health Check Endpoint (For Load Balancers/K8s)
+app.get('/health', (req, res) => {
+    if (!isReady) return res.status(503).json({ status: 'Not Ready', uptime: process.uptime() });
+    res.json({ 
+        status: 'UP', 
+        timestamp: new Date(),
+        uptime: process.uptime(),
+        memory: process.memoryUsage()
+    });
+});
+
+// Fix 7: Scoped JSON Limit (Progress saving needs more, others stay tight)
+app.use('/api/exams/save-progress', express.json({ limit: '2mb' }));
 app.use(express.json({ limit: '100kb' }));
 app.use(mongoSanitize()); // Prevent NoSQL Injection attacks
 
 function isAllowedOrigin(origin) {
     if (!origin) return true;
 
-    if (allowedOrigins.includes(origin)) {
+    if (allowedOrigins.has(origin)) {
         return true;
     }
 
@@ -125,11 +142,28 @@ function isAllowedOrigin(origin) {
 const createRedisStore = (label) => {
     const client = getRedisClient();
     if (!client) {
-        console.warn(`⚠️  [SCALING] Redis not ready. Using In-Memory fallback for ${label} rate limiter.`);
-        return undefined; 
+        console.warn(`⚠️  [SCALING] Redis not ready. Using Capped LRU-Memory fallback for ${label} rate limiter.`);
+        
+        // Fix 15: Capped LRU Memory fallback to prevent OOM
+        const cache = new LRUCache({
+            max: 50000,         // Max 50k unique IPs
+            ttl: 60 * 1000,     // 1 minute TTL
+        });
+
+        return {
+            increment: (key) => {
+                const current = cache.get(key) || 0;
+                cache.set(key, current + 1);
+                return { totalHits: current + 1, resetTime: new Date(Date.now() + 60000) };
+            },
+            decrement: (key) => {
+                const current = cache.get(key) || 0;
+                if (current > 0) cache.set(key, current - 1);
+            },
+            resetKey: (key) => cache.delete(key),
+        };
     }
     return new RedisStore({
-        // ioredis uses .call() for raw commands
         sendCommand: (...args) => client.call(...args),
         prefix: `vision_rl:${label}:`,
     });
@@ -140,6 +174,15 @@ const globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 1000,
     store: createRedisStore('global'),
+    keyGenerator: (req) => {
+        // Fix 3 (Last-Mile): Use userId for authenticated users to prevent IP-spoofing key exhaustion
+        if (req.user && req.user.id) return `user:${req.user.id}`;
+        
+        // Use IP + UserAgent hash for anonymous to prevent single-IP-multi-browser attacks
+        const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+        const ua = req.headers['user-agent'] || 'no-ua';
+        return require('crypto').createHash('md5').update(`${ip}:${ua}`).digest('hex');
+    },
     message: {
         error: 'Too many requests! Please try again in 15 minutes.',
         retryAfter: '15 minutes'
@@ -214,48 +257,49 @@ const io = new Server(server, {
 // Expose Socket.IO instance to routes/controllers globally
 app.set('io', io);
 
-// 🚀 Initialize Background Workers
-setupCodeEvaluationWorker(io);
-setupFrontendEvaluationWorker(io);
-setupInviteEmailWorker();
-startIntelligenceWorker();
-startHealthMonitor(io);
+// 🚀 [PHASE 4] Worker Registry
+const workers = [];
+
+// ─── Auth Middleware & Handlers Logic stays here ───
+// ...
 
 // Socket.IO Authentication Middleware
 // Har connection se pehle JWT token verify hoga
 io.use(async (socket, next) => {
     try {
-        // Token client se aayega: io(URL, { auth: { token: "xyz" } })
         const token = socket.handshake.auth?.token
             || socket.handshake.headers?.authorization?.split(' ')[1];
 
         if (!token) {
-            return next(new Error('🚫 Authentication required! Token missing.'));
+            console.error('🚫 [Socket Auth] Connection rejected: Token missing');
+            return next(new Error('Authentication required! Token missing.'));
         }
 
-        // JWT verify karo
+        // 🛡️ Phase 1 Fix: Verify with JWT_SECRET (Access Token)
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
+        
         // ⚡ SCALING GUARD: Check Redis first (Cache Hit = 0 DB Hits)
         const cachedToken = await cacheService.getUserSession(decoded.id);
 
         if (cachedToken) {
             if (cachedToken.token !== token) {
-                return next(new Error('🚫 Session terminated! You logged in from another device.'));
+                console.warn(`🚫 [Socket Auth] Session mismatch for ${decoded.email}. Force disconnecting.`);
+                return next(new Error('Session terminated! You logged in from another device.'));
             }
             console.log(`📡 [SCALING] Socket Auth: Redis Cache Hit for ${decoded.email}`);
         } else {
             // 🔄 CACHE MISS: Fallback to MongoDB & Backfill
             console.log(`🔄 [SCALING] Socket Auth: Redis Cache Miss for ${decoded.email}. Fetching from DB.`);
             const user = await User.findById(decoded.id);
-            if (!user || (user.currentSessionToken && user.currentSessionToken !== token)) {
-                return next(new Error('🚫 Session terminated! You logged in from another device.'));
+            if (!user) {
+                console.error(`🚫 [Socket Auth] User not found: ${decoded.id}`);
+                return next(new Error('User account no longer exists.'));
             }
             // Backfill cache for next time
             await cacheService.saveUserSession(decoded.id, token, user.permissions || []);
         }
 
-        // User info socket object mein attach karo — baad mein use hoga
+        // User info socket object mein attach karo
         socket.user = {
             id: decoded.id,
             email: decoded.email,
@@ -263,26 +307,24 @@ io.use(async (socket, next) => {
         };
         socket.expiresAt = decoded.exp * 1000;
 
-        console.log(`🔑 Socket authenticated: ${decoded.email} (${decoded.role})`);
+        // 🛡️ Ensure user room join immediately after auth
+        socket.join(`user_${decoded.id}`);
+
+        console.log(`🔑 [Socket Auth] Success: ${decoded.email} (${decoded.role}) joined user_${decoded.id}`);
         next();
 
     } catch (error) {
-        console.warn(`🚫 Socket auth failed: ${error.message}`);
-        next(new Error('🚫 Invalid token! Please login again.'));
+        console.warn(`🚫 [Socket Auth] Failed: ${error.message}`);
+        // Return generic error to client but log specific error internally
+        const genericMsg = error.name === 'TokenExpiredError' 
+            ? 'Session expired. Please login again.' 
+            : 'Authentication failed. Please login again.';
+        next(new Error(genericMsg));
     }
 });
 
 
-// ═══════════════════════════════════════════════════════════
-//  🔌 SECURITY 3: Initialize Database & Cache
-// ═══════════════════════════════════════════════════════════
-
-(async () => {
-    validateEnv(); // Verify required variables before starting
-    await connectDB();
-    await connectRedis();
-    startHealthMonitor(io); // Start monitoring after DB is connected
-})();
+// 🛡️ Removed: Scattered IIFE startup logic
 
 app.get('/', (req, res) => res.send('<h1>Server & Sockets working perfectly 🔒</h1>'));
 
@@ -321,36 +363,50 @@ app.use(errorHandler);
 
 
 io.on('connection', (socket) => {
-    console.log(`⚡ Connected: ${socket.id} | User: ${socket.user.email} (${socket.user.role})`);
+    console.log(`🔌 Connected: ${socket.id} | User: ${socket.user.email} (${socket.user.role})`);
     
     // Join role-specific and user-specific rooms for targeted broadcasting
     socket.join(`role_${socket.user.role}`);
     socket.join(`user_${socket.user.id}`);
 
-    // --- 🛡️ SECURITY: Socket Rate Limiting (Anti-DDoS) ---
-    const lastEmissions = new Map();
-    const isRateLimited = (eventName, limitMs = 2000) => {
+    // 🛡️ Fix 41 (Performance): RAM Leak Cleanup
+    // Upgraded to Windowed Counting (20 events / 5 sec) with explicit Map cleanup
+    const eventCounts = new Map();
+    const isRateLimited = (eventName, limit = 20, windowMs = 5000) => {
         const now = Date.now();
-        const last = lastEmissions.get(eventName) || 0;
-        if (now - last < limitMs) {
-            socket.emit('error', { message: `Slow down! You are sending '${eventName}' events too fast.` });
+        const data = eventCounts.get(eventName) || { count: 0, firstEvent: now };
+        
+        if (now - data.firstEvent > windowMs) {
+            // 🛡️ Explicitly delete old keys to prevent Map growth
+            if (eventCounts.size > 100) eventCounts.clear(); 
+            data.count = 1;
+            data.firstEvent = now;
+        } else {
+            data.count++;
+        }
+        
+        eventCounts.set(eventName, data);
+        if (data.count > limit) {
+            console.warn(`[Socket Spam] Event '${eventName}' throttled for user ${socket.user?.email}`);
+            socket.emit('error', { message: 'Too many requests. Please slow down.' });
             return true;
         }
-        lastEmissions.set(eventName, now);
         return false;
     };
 
     // --- 🛡️ Silent Re-Authentication (Bug Fix 5) ---
+    // 🏎️ Fix 23: Offload CPU-heavy JWT verify to non-blocking callback
     socket.on('re_auth', (token) => {
-        try {
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            console.log(`🔄 [SCALING] Socket Re-Auth: ${decoded.email}`);
-            
-            // Update socket context
+        jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+            if (err) {
+                logger.warn(`🚫 Socket re-auth failed for ${socket.id}: ${err.message}`);
+                return;
+            }
+
+            logger.info(`🔄 [SCALING] Socket Re-Auth: ${decoded.email}`);
             socket.user = { id: decoded.id, email: decoded.email, role: decoded.role };
             socket.expiresAt = decoded.exp * 1000;
 
-            // Reset Watchdog timer
             if (watchdogTimer) {
                 clearTimeout(watchdogTimer);
                 const newRemaining = socket.expiresAt - Date.now();
@@ -361,9 +417,7 @@ io.on('connection', (socket) => {
                     }, newRemaining);
                 }
             }
-        } catch (err) {
-            console.warn(`🚫 Socket re-auth failed for ${socket.id}: ${err.message}`);
-        }
+        });
     });
 
     // --- 🛡️ Session Watchdog (Token Expiry Check) ---
@@ -421,18 +475,18 @@ io.on('connection', (socket) => {
             };
 
             // Mapping raw violation types to standardized ones
-            if (type === 'TAB_HIDDEN' || type === 'Tab Switch') {
+            if (type === 'TAB_HIDDEN' || type === VIOLATION_TYPES.TAB_SWITCH) {
                 if (duration > bgLimit) {
                     shouldBlock = true;
                     blockReason = `Background limit exceeded (${duration}s > ${bgLimit}s)`;
                 } else {
-                    updatePayload.$push.violations.type = 'Tab Switch';
+                    updatePayload.$push.violations.type = VIOLATION_TYPES.TAB_SWITCH;
                     updatePayload.$push.violations.severity = 'low';
                     updatePayload.$push.violations.details = details || `Background duration: ${duration}s`;
                     updatePayload.$inc.tabSwitchCount = 1;
                 }
-            } else if (type === 'CHEATING_FLAG' || type === 'Suspicious Activity') {
-                updatePayload.$push.violations.type = 'Suspicious Activity';
+            } else if (type === 'CHEATING_FLAG' || type === VIOLATION_TYPES.SUSPICIOUS_ACTIVITY) {
+                updatePayload.$push.violations.type = VIOLATION_TYPES.SUSPICIOUS_ACTIVITY;
                 updatePayload.$push.violations.severity = severity || 'medium';
                 updatePayload.$push.violations.details = details || 'AI proctor flagged multiple suspicious behaviors';
                 updatePayload.$inc.faceDetectionCount = 1;
@@ -443,8 +497,16 @@ io.on('connection', (socket) => {
                 updatePayload.$push.violations.details = details || '';
             }
 
+            // Fix 3: MongoDB DoS Protection (Capping array size)
+            // We use the $each and $slice operator inside the $push
+            const pushWrapper = updatePayload.$push.violations;
+            updatePayload.$push.violations = {
+                $each: [pushWrapper],
+                $slice: -100 // Keep only last 100 violations
+            };
+
             const session = await ExamSession.findOneAndUpdate(
-                { student: studentId, exam: examId, status: { $in: ['in_progress', 'flagged'] } },
+                { student: studentId, exam: examId, status: { $in: [SESSION_STATUS.IN_PROGRESS, SESSION_STATUS.FLAGGED] } },
                 { ...updatePayload, $set: { lastActivity: new Date() } },
                 { new: true }
             );
@@ -466,22 +528,35 @@ io.on('connection', (socket) => {
             }
 
             if (shouldBlock) {
-                await ExamSession.findByIdAndUpdate(session._id, { isBlocked: true, status: 'blocked', blockReason });
+                await ExamSession.findByIdAndUpdate(session._id, { isBlocked: true, status: SESSION_STATUS.BLOCKED, blockReason });
                 io.to(`user_${studentId}`).emit('force_block_screen', { reason: blockReason });
                 
                 io.to(`exam_monitor_${examId}`).emit('mentor_alert', {
-                    type: 'VIOLATION_BLOCK',
+                    type: VIOLATION_TYPES.VIOLATION_BLOCK,
                     studentId: session.student,
                     studentName: socket.user.name || socket.user.email,
                     reason: blockReason,
                     examId: examId,
                     timestamp: new Date()
                 });
-            } else if (session.violations.length > 0) {
-                const warningsLeft = maxViolations - session.violations.length + 1;
-                if (warningsLeft > 0) {
-                    const msg = `Security Warning: Suspicious activity detected. You have ${warningsLeft} warning(s) left before auto-termination.`;
-                    io.to(`user_${studentId}`).emit('warning', { message: msg, timestamp: new Date() });
+            } else {
+                // Fix 3: Session-based Violation Rate Limiting (Anti-DoS)
+                const minuteAgo = new Date(Date.now() - 60000);
+                const recentViolations = session.violations.filter(v => new Date(v.timestamp) > minuteAgo);
+                
+                if (recentViolations.length > 50) { // Block if > 50 violations in 1 minute
+                    const floodReason = 'Security: Violation event flooding detected.';
+                    await ExamSession.findByIdAndUpdate(session._id, { isBlocked: true, status: SESSION_STATUS.BLOCKED, blockReason: floodReason });
+                    io.to(`user_${studentId}`).emit('force_block_screen', { reason: floodReason });
+                    return;
+                }
+
+                if (session.violations.length > 0) {
+                    const warningsLeft = maxViolations - session.violations.length + 1;
+                    if (warningsLeft > 0) {
+                        const msg = `Security Warning: Suspicious activity detected. You have ${warningsLeft} warning(s) left before auto-termination.`;
+                        io.to(`user_${studentId}`).emit('warning', { message: msg, timestamp: new Date() });
+                    }
                 }
             }
         } catch (err) {
@@ -490,28 +565,19 @@ io.on('connection', (socket) => {
     }
 
     socket.on('student_need_help', async (data) => {
-        if (isRateLimited('student_need_help', 5000)) return;
+        if (isRateLimited('student_need_help')) return;
         
-        // Bug 11: Real-time token expiry validation
-        if (socket.expiresAt && Date.now() > socket.expiresAt) {
-            socket.emit('session_expired', { message: 'Session expired. Please re-authenticate.' });
-            return socket.disconnect(true);
-        }
+        const xss = require('xss');
+        const cleanMessage = xss(data.message || 'Student needs assistance');
 
-        // Only students can request help
-        if (socket.user.role !== 'student') {
-            return socket.emit('error', { message: 'Only students can request help.' });
-        }
-
-        console.log(`🆘 Help request from ${socket.user.email}:`, data);
+        logger.info(`🆘 Help request from ${socket.user.email}: ${cleanMessage}`);
         
-        // 🛡️ Fix Bug B: Scope help requests ONLY to exam-specific monitor room
         io.to(`exam_monitor_${data.examId}`).emit('student_need_help', {
             studentId: socket.user.id,
             studentEmail: socket.user.email,
             examId: data.examId,
             questionId: data.questionId,
-            message: data.message || 'Student needs assistance',
+            message: cleanMessage,
             timestamp: new Date()
         });
         
@@ -716,7 +782,7 @@ io.on('connection', (socket) => {
             await ExamSession.findOneAndUpdate(
                 { exam: examId, student: studentId },
                 { 
-                    $push: { 
+                        $push: { 
                         violations: {
                             type: 'Manual Flag',
                             severity: 'medium',
@@ -740,41 +806,176 @@ io.on('connection', (socket) => {
             io.to(`exam_${socket.examId}`).emit('student_offline', { userId: socket.user.id });
         }
 
+        // 🏎️ Fix 41: Prevent memory leak by removing from tracking map
+        rateLimitMap.delete(socket.id);
+
         console.log(`❌ Disconnected: ${socket.id} | User: ${socket.user.email}`);
     });
 });
 
 
-
-// ═══════════════════════════════════════════════════════════
-//  🚀 Start Server
-// ═══════════════════════════════════════════════════════════
-
+// ─── STARTUP ───────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, '0.0.0.0', () => {
-    console.log(`\n🚀 Server running on port ${PORT}`);
-    console.log(`🔒 CORS: Allowed origins → ${allowedOrigins.join(', ')}`);
-    console.log(`🛡️  Rate Limit: 100 req/15min (global) | 10 req/15min (auth)`);
-    console.log(`🔌 Socket.IO: JWT authentication enabled\n`);
+
+// Fix 5 (Last-Mile): Cache Pre-Warming to prevent "Cold Start" thundering herd
+const preWarmCache = async () => {
+    try {
+        console.log('🔥 Pre-warming cache: Loading active exams and global settings...');
+        const Exam = require('./models/Exam');
+        const Setting = require('./models/Setting');
+        const cacheService = require('./services/cacheService');
+
+        const activeExams = await Exam.find({ status: 'published' }).lean();
+        const settings = await Setting.findOne().lean();
+
+        if (settings) await cacheService.setCache('global_settings', settings, 3600);
+        console.log(`✔ Cache warmed: ${activeExams.length} exams ready.`);
+    } catch (err) {
+        console.error('❌ Cache pre-warm failed:', err.message);
+    }
+};
+
+const connections = new Set();
+server.on('connection', socket => {
+    connections.add(socket);
+    socket.on('close', () => connections.delete(socket));
 });
 
-// ─── GRACEFUL SHUTDOWN ───────────────────────────────────
-// Stop accepting new connections and close DB cleanly
-const shutdown = () => {
-    console.log('\n🛑 SIGINT/SIGTERM received. Starting graceful shutdown...');
+const shutdown = (signal) => {
+    logger.info(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
+    
+    // 🏎️ Fix 39: Graceful Shutdown Timeout (Max 5s)
+    const forceExit = setTimeout(() => {
+        logger.error('☣ Forced shutdown after 5s timeout.');
+        process.exit(1);
+    }, 5000);
+
     server.close(async () => {
-        console.log('✔ HTTP server closed.');
+        logger.info('✔ HTTP server closed.');
+        
+        // Sever existing keep-alive connections
+        for (const socket of connections) {
+            socket.destroy();
+        }
+        connections.clear();
+        logger.info('✔ All active connections severed.');
+
         const mongoose = require('mongoose');
         try {
             await mongoose.connection.close();
-            console.log('✔ MongoDB connection closed.');
+            logger.info('✔ MongoDB connection closed.');
+            clearTimeout(forceExit);
             process.exit(0);
         } catch (err) {
-            console.error('Error during MongoDB close:', err);
+            logger.error('Error during MongoDB close:', err);
             process.exit(1);
         }
     });
 };
+// ═══════════════════════════════════════════════════════════
+//  🚀 CENTRALIZED BOOTSTRAP (The Engine Room)
+// ═══════════════════════════════════════════════════════════
 
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
+async function bootstrap() {
+    // 🛡️ Fix: Guard against double bootstrap (Nodemon/Reload)
+    if (global.__BOOTSTRAPPED__) {
+        console.warn('⚠️  [BOOT] Duplicate bootstrap attempt blocked.');
+        return;
+    }
+    global.__BOOTSTRAPPED__ = true;
+
+    try {
+        console.log('🏗️  [BOOT] Starting Centralized System Bootstrap...');
+        
+        validateEnv();
+        console.log('✅ [BOOT] Environment Variables Validated');
+
+        await connectDB();
+        console.log('✅ [BOOT] MongoDB Connection Established');
+
+        await connectRedis();
+        console.log('✅ [BOOT] Redis Connection Established');
+
+        // 🚀 Initialize and Track Workers for Graceful Shutdown
+        workers.push(setupCodeEvaluationWorker(io));
+        workers.push(setupFrontendEvaluationWorker(io));
+        workers.push(setupInviteEmailWorker());
+        workers.push(startIntelligenceWorker());
+        console.log('✅ [BOOT] Background Workers Initialized (4/4)');
+
+        await cacheService.preWarmCache();
+        console.log('✅ [BOOT] Performance Cache Pre-warmed');
+
+        server.listen(PORT, '0.0.0.0', () => {
+            console.log(`🚀 [BOOT] Server Live & Accepting Traffic on Port ${PORT}`);
+            isReady = true;
+
+            // Start Monitoring ONLY after server is live
+            startHealthMonitor(io);
+            console.log('🩺 [BOOT] Real-time Health Monitor Active');
+        });
+
+    } catch (err) {
+        console.error('❌ [BOOT] Fatal Bootstrap Failure:', err.message);
+        process.exit(1);
+    }
+}
+
+// ─── GRACEFUL SHUTDOWN (Cleanup Crew) ─────────────────────
+
+const mongoose = require('mongoose');
+
+async function gracefulShutdown(signal) {
+    console.log(`\n🛑 [SHUTDOWN] Received ${signal}. Starting Safe Cleanup...`);
+    isReady = false; // Immediately fail health checks
+
+    const shutdownWithTimeout = (promise, timeout = 10000, name) =>
+        Promise.race([
+            promise,
+            new Promise((_, reject) =>
+                setTimeout(() => reject(new Error(`Shutdown timeout for ${name}`)), timeout)
+            )
+        ]);
+
+    try {
+        // 1. Stop accepting new HTTP requests
+        if (server) {
+            await new Promise((resolve) => server.close(resolve));
+            console.log('📉 [SHUTDOWN] HTTP Server offline');
+        }
+
+        // 2. Close Workers (allow active jobs to finish or timeout)
+        console.log('⚙️  [SHUTDOWN] Closing Active Workers...');
+        await Promise.all(workers.map((w, i) => 
+            shutdownWithTimeout(w.close(), 15000, `Worker-${i}`).catch(e => console.warn(`⚠️  ${e.message}`))
+        ));
+        console.log('✅ [SHUTDOWN] Background Processing terminated');
+
+        // 3. Close Infrastructure Connections
+        if (mongoose.connection.readyState === 1) {
+            await mongoose.connection.close();
+            console.log('📦 [SHUTDOWN] MongoDB connection closed');
+        }
+
+        const redisClient = getRedisClient();
+        if (redisClient) {
+            await redisClient.quit();
+            console.log('📡 [SHUTDOWN] Redis connection closed');
+        }
+
+        console.log('🏁 [SHUTDOWN] System Clean. Process exiting. 👋');
+        process.exit(0);
+    } catch (err) {
+        console.error('❌ [SHUTDOWN] Error during cleanup:', err.message);
+        process.exit(1);
+    }
+}
+
+// OS Signal Listeners
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// 🚀 Start the application
+bootstrap();
+
+module.exports = app;

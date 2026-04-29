@@ -121,6 +121,7 @@ const startIntelligenceWorker = () => {
     });
 
     console.log('🤖 Intelligence Worker is active and listening for jobs.');
+    return worker;
 };
 
 module.exports = { startIntelligenceWorker };

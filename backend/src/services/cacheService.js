@@ -128,6 +128,37 @@ const clearPattern = async (pattern) => {
     }
 };
 
+/**
+ * 🔥 Fix 21: Cold Start Mitigation (Cache Pre-warming)
+ * Pre-populates Redis with common data to reduce DB load on restart.
+ */
+const preWarmCache = async () => {
+    const redis = getRedisClient();
+    if (!redis) return;
+
+    try {
+        console.log('🔥 [Cache] Starting pre-warming routine...');
+        const Setting = require('../models/Setting');
+        const Exam = require('../models/Exam');
+
+        // 1. Warm Settings
+        const settings = await Setting.findOne().lean();
+        if (settings) {
+            await redis.set('global_settings', JSON.stringify(settings), 'EX', 86400);
+        }
+
+        // 2. Warm Active Exams Metadata
+        const activeExams = await Exam.find({ status: 'published' }).select('title category duration').lean();
+        if (activeExams && activeExams.length > 0) {
+            await redis.set('active_exams_metadata', JSON.stringify(activeExams), 'EX', 3600);
+        }
+
+        console.log('✅ [Cache] Pre-warming complete.');
+    } catch (err) {
+        console.warn('⚠️ [Cache] Pre-warming failed:', err.message);
+    }
+};
+
 module.exports = {
     saveUserSession,
     getUserSession,
@@ -136,6 +167,7 @@ module.exports = {
     getCache,
     clearCache,
     clearPattern,
+    preWarmCache,
     TTL_ACTIVE_SESSION,
     TTL_API_CACHE
 };

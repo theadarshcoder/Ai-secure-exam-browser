@@ -14,7 +14,8 @@ const { getCache, setCache, TTL_API_CACHE } = require('../services/cacheService'
 // ═══════════════════════════════════════════════════════════
 exports.getAllResults = asyncHandler(async (req, res) => {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    let limit = parseInt(req.query.limit) || 10;
+    limit = Math.min(limit, 100); // 🛡️ Fix 18: Security Limit
     const skip = (page - 1) * limit;
 
     const results = await ExamSession.find()
@@ -118,7 +119,8 @@ exports.getDashboardStats = asyncHandler(async (req, res) => {
 // ═══════════════════════════════════════════════════════════
 exports.getAllStudents = asyncHandler(async (req, res) => {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    let limit = parseInt(req.query.limit) || 10;
+    limit = Math.min(limit, 100); // 🛡️ Fix 18: Security Limit
     const skip = (page - 1) * limit;
 
     const students = await User.find({ role: 'student' })
@@ -393,21 +395,31 @@ exports.saveSettings = asyncHandler(async (req, res) => {
 // ═══════════════════════════════════════════════════════════
 exports.getCandidates = asyncHandler(async (req, res) => {
     const search = req.query.search || '';
-    const query = { role: 'student' };
-    if (search) {
-        query.$or = [
-            { name: { $regex: search, $options: 'i' } },
-            { email: { $regex: search, $options: 'i' } }
-        ];
-    }
-    const candidates = await User.find(query).select('name email profilePicture idCardUrl isVerified createdAt').lean();
+    const page = parseInt(req.query.page) || 1;
+    let limit = parseInt(req.query.limit) || 20;
+    limit = Math.min(limit, 100); // 🛡️ Fix 18: Security limit
+    const skip = (page - 1) * limit;
+
+    const candidates = await User.find(query)
+        .select('name email profilePicture idCardUrl isVerified verificationIssue createdAt')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+    const total = await User.countDocuments(query);
     const studentIds = candidates.map(c => c._id);
     const LIVE_THRESHOLD = new Date(Date.now() - 3 * 60 * 1000);
     const activeSessions = await ExamSession.find({ student: { $in: studentIds }, status: 'in_progress', updatedAt: { $gte: LIVE_THRESHOLD } }).populate('exam', 'title').lean();
     const sessionMap = {};
     activeSessions.forEach(s => { sessionMap[s.student.toString()] = s; });
     const enriched = candidates.map(c => ({ ...c, isLive: !!sessionMap[c._id.toString()], currentExam: sessionMap[c._id.toString()]?.exam?.title || null }));
-    res.json(enriched);
+    res.json({
+        candidates: enriched,
+        total,
+        page,
+        pages: Math.ceil(total / limit)
+    });
 });
 
 exports.verifyCandidate = asyncHandler(async (req, res) => {

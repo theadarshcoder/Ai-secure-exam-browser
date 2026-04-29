@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { jwtDecode } from 'jwt-decode';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001'; 
 
@@ -33,21 +34,31 @@ export const getCurrentUserId = () => {
   const token = sessionStorage.getItem('vision_token');
   if (token) {
     try {
-      // 🛡️ Unicode-safe base64 decoding (Bug 3 Fix)
-      const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
-          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-      }).join(''));
-      const payload = JSON.parse(jsonPayload);
-      return payload.id;
+      // 🛡️ Fix 6: Robust JWT decoding using library
+      const payload = jwtDecode(token);
+      return payload.id || null;
     } catch (e) {
-      return sessionStorage.getItem('vision_email');
+      return null;
     }
   }
-  return sessionStorage.getItem('vision_email');
+  return null;
 };
 
 let isRedirecting = false; // 🛡️ Fix Bug 4: Prevent infinite redirect flicker
+
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
 
 // Response interceptor for handling 401s and Silent Refresh
 api.interceptors.response.use(
@@ -55,26 +66,45 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // 🛡️ Handle Token Expiry (Silent Refresh)
+    // 🛡️ Fix 19 (Upgraded): Full Promise Queue for Refresh Token Storm
     if (error.response?.status === 403 && error.response.data?.code === 'TOKEN_EXPIRED' && !originalRequest._retry) {
+      
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return api(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
+      }
+
       originalRequest._retry = true;
+      isRefreshing = true;
+
       try {
         const refreshToken = localStorage.getItem('vision_refresh_token');
         if (!refreshToken) throw new Error('No refresh token');
 
         const { data } = await axios.post(`${API_BASE_URL}/api/auth/refresh`, { refreshToken });
         
-        // Update storage
         sessionStorage.setItem('vision_token', data.accessToken);
+        api.defaults.headers.common.Authorization = `Bearer ${data.accessToken}`;
         
-        // Retry original request with new token
+        processQueue(null, data.accessToken);
+        
         originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
         return api(originalRequest);
       } catch (refreshError) {
+        processQueue(refreshError, null);
         console.error('🛡️ Silent Refresh Failed:', refreshError);
         sessionStorage.clear();
         localStorage.removeItem('vision_refresh_token');
         window.location.href = '/login';
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
       }
     }
 
@@ -85,6 +115,7 @@ api.interceptors.response.use(
         sessionStorage.clear(); 
         localStorage.removeItem('vision_refresh_token');
         window.location.href = '/login';
+        setTimeout(() => { isRedirecting = false; }, 5000);
       }
     } else {
       const errorId = error.response?.data?.errorId;
@@ -96,20 +127,35 @@ api.interceptors.response.use(
   }
 );
 
-// 🛡️ Robust Error Parsing (Bug 5 Fix)
+// 🛡️ Robust Error Parsing (Bug 5 Fix + Phase 5 Governance)
 const getErrorMessage = (error) => {
     const errData = error.response?.data;
-    if (errData && typeof errData === 'object' && errData.message) {
-        return errData.message;
+    if (!errData) return error.message || 'System error occurred. Please try again later.';
+    
+    // If errData.error is a string, use it directly
+    if (typeof errData.error === 'string') return errData.error;
+    
+    // If errData.error is an object (nested validation response), extract the message
+    if (errData.error && typeof errData.error === 'object') {
+        return errData.error.message || JSON.stringify(errData.error);
     }
-    if (typeof errData === 'string' && !errData.startsWith('<!DOCTYPE')) {
-        return errData;
-    }
+
+    // Fallback to message field
+    if (typeof errData.message === 'string') return errData.message;
+
+    // Fallback to raw string response (but not HTML error pages)
+    if (typeof errData === 'string' && !errData.startsWith('<!DOCTYPE')) return errData;
+
     return error.message || 'System error occurred. Please try again later.';
 };
 
 // Run Coding Question via Judge0
 export const runCodingQuestion = async (examId, questionId, sourceCode, language, isSubmit = false) => {
+  // 🛡️ Fix 25: Frontend UX validation for source code size (Max 10KB)
+  if (sourceCode && sourceCode.length > 10000) {
+      throw 'Source code is too large. Maximum allowed size is 10KB.';
+  }
+
   try {
     const response = await api.post('/api/exams/run-code', {
       examId,
@@ -129,9 +175,9 @@ export const runCodingQuestion = async (examId, questionId, sourceCode, language
 // ─────────────────────────────────────────────────────────
 
 // Students
-export const getStudents = async () => {
+export const getStudents = async (page = 1, limit = 10) => {
     try {
-        const response = await api.get('/api/admin/students');
+        const response = await api.get('/api/admin/students', { params: { page, limit } });
         return response.data;
     } catch (error) {
         throw getErrorMessage(error);
@@ -148,9 +194,9 @@ export const removeStudent = async (id) => {
 };
 
 // Mentors
-export const getMentors = async () => {
+export const getMentors = async (page = 1, limit = 10) => {
     try {
-        const response = await api.get('/api/admin/mentors');
+        const response = await api.get('/api/admin/mentors', { params: { page, limit } });
         return response.data;
     } catch (error) {
         throw getErrorMessage(error);
@@ -369,9 +415,9 @@ export const requestHelp = async (examId, msg) => {
 // Candidate eKYC Identity APIs
 // ─────────────────────────────────────────────────────────
 
-export const getCandidates = async (search = '') => {
+export const getCandidates = async (search = '', page = 1, limit = 20) => {
     try {
-        const response = await api.get('/api/admin/candidates', { params: { search } });
+        const response = await api.get('/api/admin/candidates', { params: { search, page, limit } });
         return response.data;
     } catch (error) {
         throw getErrorMessage(error);
@@ -432,7 +478,7 @@ export const resendInvite = async (examId, email) => {
         const response = await api.post(`/api/exams/${examId}/resend-invite`, { email });
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 
@@ -444,7 +490,7 @@ export const getStudentReport = async (studentId, page = 1, limit = 10) => {
         });
         return response.data;
     } catch (error) {
-        throw error.response?.data || error.message;
+        throw getErrorMessage(error);
     }
 };
 

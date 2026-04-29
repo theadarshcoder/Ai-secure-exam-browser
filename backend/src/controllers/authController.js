@@ -1,7 +1,9 @@
 const User = require('../models/User');
+const ExamSession = require('../models/ExamSession');
 const jwt = require('jsonwebtoken');
 const { asyncHandler } = require('../middlewares/errorMiddleware');
 const cacheService = require('../services/cacheService');
+const AppError = require('../utils/AppError');
 
 // ─── POST /api/auth/register ─────────────────────────────
 // Creates a new user (Restricted to Admin)
@@ -9,14 +11,12 @@ exports.register = asyncHandler(async (req, res) => {
     const { name, email, password, role } = req.body;
 
     if (!name || !email || !password) {
-        res.status(400);
-        throw new Error('Name, email, and password are all required!');
+        throw new AppError('Name, email, and password are all required!', 400);
     }
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-        res.status(409);
-        throw new Error('An account with this email already exists.');
+        throw new AppError('An account with this email already exists.', 409);
     }
 
     const rolePermissions = {
@@ -36,16 +36,23 @@ exports.register = asyncHandler(async (req, res) => {
     }
 
     if (assignedRole !== 'student') {
-        const requesterId = req.user?.id; // Requires verifyToken middleware on the route
+        const requesterId = req.user?.id;
+        const requesterRole = req.user?.role;
+
         if (!requesterId) {
             res.status(403);
             throw new Error('Unauthorized role assignment. Public registration is limited to student accounts.');
         }
+
+        // 🛡️ Security Fix: Anti-Privilege Escalation
+        // Only Admin can create anyone. Super Mentor can only create students or mentors.
+        if (requesterRole === 'super_mentor' && (assignedRole === 'admin' || assignedRole === 'super_mentor')) {
+            throw new AppError(`Security Violation: As a 'super_mentor', you are restricted to creating 'student' or 'mentor' accounts only.`, 403);
+        }
         
         const adminUser = await User.findById(requesterId);
         if (!adminUser || (adminUser.role !== 'admin' && adminUser.role !== 'super_mentor')) {
-            res.status(403);
-            throw new Error('Only administrators can register mentors or admins.');
+            throw new AppError('Only administrators or super mentors can register mentors or admins.', 403);
         }
     }
 
@@ -78,8 +85,7 @@ exports.login = asyncHandler(async (req, res) => {
     const { email, password, role: requestedRole, deviceId } = req.body;
 
     if (!email || !password) {
-        res.status(400);
-        throw new Error('Email and password are both required!');
+        throw new AppError('Email and password are both required!', 400);
     }
 
     let searchEmail = email.trim();
@@ -88,21 +94,56 @@ exports.login = asyncHandler(async (req, res) => {
     const user = await User.findOne({ email: searchEmail });
     if (!user) {
         console.warn(`❌ [LOGIN FAILED] User not found: ${searchEmail}`);
-        res.status(401);
-        throw new Error('Invalid Access Identity or Secure Key!');
+        throw new AppError('Invalid Access Identity or Secure Key!', 401, 'AUTH_FAILED');
     }
 
     const isPasswordCorrect = await user.comparePassword(password);
     if (!isPasswordCorrect) {
         console.warn(`❌ [LOGIN FAILED] Incorrect password for: ${searchEmail}`);
-        res.status(401);
-        throw new Error('Invalid Access Identity or Secure Key!');
+        throw new AppError('Invalid Access Identity or Secure Key!', 401, 'AUTH_FAILED');
     }
 
     console.log(`✅ [LOGIN SUCCESS] User: ${searchEmail} (${user.role})`);
 
-    // ✨ DEVICE FINGERPRINTING: Anti-Login Sharing
+    // ✨ DEVICE FINGERPRINTING: Anti-Login Sharing (Upgraded Fix 5 & 3)
     if (deviceId) {
+        // If student is mid-exam, block login unless 'force' is used
+        if (user.role === 'student') {
+            const activeSession = await ExamSession.findOne({ 
+                student: user._id, 
+                status: { $in: ['in_progress', 'flagged'] } 
+            });
+
+            if (activeSession && user.currentDeviceId && user.currentDeviceId !== deviceId) {
+                if (!req.body.force) {
+                    return res.status(403).json({
+                        code: 'ACTIVE_SESSION_DEVICE_MISMATCH',
+                        message: 'Security: You have an active exam session on another device. Resume there or use "Force Login" if that device is inaccessible.'
+                    });
+                }
+
+                // 🛡️ Fix 3: Force Login Rate Limiting
+                const { getRedisClient } = require('../config/redis');
+                const redisClient = getRedisClient();
+                if (redisClient) {
+                    const forceLoginKey = `force_login_count:${user._id}`;
+                    const currentCount = await redisClient.get(forceLoginKey);
+                    
+                    if (currentCount && parseInt(currentCount) >= 3) {
+                        return res.status(429).json({
+                            code: 'FORCE_LOGIN_LIMIT_EXCEEDED',
+                            message: 'Security Alert: Too many "Force Login" attempts. Your account has been temporarily restricted. Please contact support.'
+                        });
+                    }
+                    
+                    await redisClient.incr(forceLoginKey);
+                    await redisClient.expire(forceLoginKey, 600); // 10 min window
+                }
+
+                console.warn(`[SECURITY] Force Login by ${user.email} during active exam ${activeSession.exam}`);
+            }
+        }
+
         if (user.currentDeviceId && user.currentDeviceId !== deviceId) {
             const io = req.app.get('io');
             if (io) {
@@ -133,28 +174,33 @@ exports.login = asyncHandler(async (req, res) => {
         finalRole = user.role;
     }
 
-    // 🛡️ Optimized JWT Payload: Permissions removed to save header space
-    const accessToken = jwt.sign(
-        { 
-            id: user._id, 
-            email: user.email, 
-            role: user.role,         
-            displayRole: finalRole 
-        },
-        process.env.JWT_SECRET,
-        { expiresIn: '1h' } 
-    );
-
+    // 🛡️ Phase 2/3 Fix: Use dedicated Refresh Secret & Include sessionVersion
+    user.sessionVersion = (user.sessionVersion || 0) + 1;
+    user.currentDeviceId = deviceId;
+    
     const refreshToken = jwt.sign(
-        { id: user._id },
-        process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
-        { expiresIn: '7d' } 
+        { id: user._id, sessionVersion: user.sessionVersion },
+        process.env.JWT_REFRESH_SECRET,
+        { expiresIn: '7d' }
     );
 
     user.refreshToken = refreshToken;
     await user.save();
 
-    // ⚡ SYNC TO CACHE: Redis handles active session tracking & permissions
+    // 🛡️ Optimized JWT Payload: Standardized Access Token
+    const accessToken = jwt.sign(
+        { 
+            id: user._id, 
+            email: user.email, 
+            role: user.role,         
+            displayRole: finalRole,
+            sessionVersion: user.sessionVersion 
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: '1h' } 
+    );
+
+    // ⚡ SYNC TO CACHE: Redis handles active session tracking
     try {
         await cacheService.saveUserSession(user._id, accessToken, user.permissions);
     } catch (cacheErr) {
@@ -179,11 +225,11 @@ exports.login = asyncHandler(async (req, res) => {
 exports.logout = asyncHandler(async (req, res) => {
     const userId = req.user.id;
     
-    const user = await User.findById(userId);
-    if (user) {
-        user.refreshToken = null;
-        await user.save();
-    }
+    // 🛡️ Phase 2 Fix: Atomic Session Invalidation
+    await User.findByIdAndUpdate(userId, { 
+        $set: { refreshToken: null },
+        $inc: { sessionVersion: 1 }
+    });
 
     try {
         await cacheService.removeUserSession(userId);
@@ -196,40 +242,73 @@ exports.logout = asyncHandler(async (req, res) => {
 
 // ─── POST /api/auth/refresh ───────────────────────────────
 exports.refresh = asyncHandler(async (req, res) => {
-    const { refreshToken } = req.body;
+    const { refreshToken: incomingToken } = req.body;
 
-    if (!refreshToken) {
-        res.status(401);
-        throw new Error('Refresh Token is required!');
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        throw new AppError('No token provided. Session might be expired.', 401, 'AUTH_MISSING');
     }
 
     try {
-        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
-        const user = await User.findById(decoded.id);
+        // 1. Verify token structure & secret
+        const decoded = jwt.verify(incomingToken, process.env.JWT_REFRESH_SECRET);
+        
+        // 2. Atomic check: find user where this SPECIFIC token is valid
+        const user = await User.findOne({ _id: decoded.id, refreshToken: incomingToken });
 
-        if (!user || user.refreshToken !== refreshToken) {
-            res.status(403);
-            throw new Error('Invalid or expired Refresh Token');
+        if (!user) {
+            // 🚨 POSSIBLE TOKEN THEFT DETECTED
+            // If we found the user by ID but the token doesn't match, someone used an old token.
+            const compromisedUser = await User.findById(decoded.id);
+            if (compromisedUser) {
+                console.error(`⚠️ [SECURITY] Token reuse detected for user: ${decoded.id}. Invalidating all sessions.`);
+                compromisedUser.refreshToken = null;
+                compromisedUser.sessionVersion = (compromisedUser.sessionVersion || 0) + 1;
+                await compromisedUser.save();
+            }
+            throw new AppError('Security Alert: Session compromised or token reused. Please login again.', 403);
         }
 
-        // Generate new Access Token (Optimized payload)
-        const accessToken = jwt.sign(
+        // 3. Version Check: Ensure token version matches DB version
+        if (decoded.sessionVersion !== user.sessionVersion) {
+            throw new AppError('Invalid refresh token. Please login again.', 403, 'REFRESH_INVALID');
+        }
+
+        // 4. 🔥 ROTATE: Generate NEW Access + NEW Refresh Token
+        const newRefreshToken = jwt.sign(
+            { id: user._id, sessionVersion: user.sessionVersion },
+            process.env.JWT_REFRESH_SECRET,
+            { expiresIn: '7d' }
+        );
+
+        const newAccessToken = jwt.sign(
             { 
                 id: user._id, 
                 email: user.email, 
                 role: user.role,
-                displayRole: user.role
+                displayRole: user.role,
+                sessionVersion: user.sessionVersion
             },
             process.env.JWT_SECRET,
             { expiresIn: '1h' }
         );
 
-        // Sync new token to Redis with permissions
-        await cacheService.saveUserSession(user._id, accessToken, user.permissions);
+        // 5. Save rotated token
+        user.refreshToken = newRefreshToken;
+        await user.save();
 
-        res.json({ accessToken });
+        // 6. Sync new session to cache
+        await cacheService.saveUserSession(user._id, newAccessToken, user.permissions);
+
+        console.log(`🔁 [Auth] Token rotated successfully for user: ${user.email}`);
+
+        res.json({ 
+            accessToken: newAccessToken, 
+            refreshToken: newRefreshToken 
+        });
+
     } catch (error) {
-        res.status(403);
-        throw new Error('Refresh Token validation failed');
+        console.warn(`🚫 [Auth] Refresh failed: ${error.message}`);
+        throw new AppError(error.message || 'Refresh Token validation failed', 403);
     }
 });

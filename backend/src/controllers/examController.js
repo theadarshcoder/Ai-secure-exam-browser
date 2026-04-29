@@ -13,6 +13,7 @@ const { addFrontendEvaluationJob } = require('../queues/frontendGradingQueue');
 const { getCache, setCache, clearCache, clearPattern, TTL_API_CACHE } = require('../services/cacheService');
 const Setting = require('../models/Setting');
 const { verifySecureRequest } = require('../utils/securityUtils');
+const { VIOLATION_TYPES, SESSION_STATUS } = require('../utils/constants');
 
 // ─────────────── POST /api/exams/create ───────────────
 // Mentor/Admin creates a new exam and saves it to MongoDB
@@ -68,12 +69,20 @@ exports.createExam = asyncHandler(async (req, res) => {
         }
     }
 
+    // 🛡️ Fix 35: Auto-correct passing marks (UX improvement)
+    let finalPassingMarks = passingMarks || 40;
+    const calcTotalMarks = totalMarks || (validQuestions ? validQuestions.reduce((sum, q) => sum + (Number(q.marks) || 1), 0) : 0);
+    if (finalPassingMarks > calcTotalMarks) {
+        console.warn(`[Logic Fix] Exam '${title}': passingMarks (${finalPassingMarks}) > totalMarks (${calcTotalMarks}). Auto-correcting to 40%.`);
+        finalPassingMarks = Math.floor(calcTotalMarks * 0.4);
+    }
+
     const exam = new Exam({
         title,
         category: category || 'General',
         duration,
-        totalMarks: totalMarks || (validQuestions ? validQuestions.reduce((sum, q) => sum + (Number(q.marks) || 1), 0) : 0),
-        passingMarks: passingMarks || 40,
+        totalMarks: calcTotalMarks,
+        passingMarks: finalPassingMarks,
         negativeMarks: negMarks,
         questions: validQuestions,
         creator: req.user.id,
@@ -101,7 +110,7 @@ exports.createExam = asyncHandler(async (req, res) => {
 // Mentor/Admin updates an existing exam (e.g. from draft to published)
 exports.updateExam = asyncHandler(async (req, res) => {
     const examId = req.params.id;
-    const { title, category, duration, totalMarks, passingMarks, questions, scheduledDate, status, negativeMarks } = req.body;
+    let { title, category, duration, totalMarks, passingMarks, questions, scheduledDate, status, negativeMarks } = req.body;
 
     const exam = await Exam.findById(examId);
 
@@ -162,6 +171,12 @@ exports.updateExam = asyncHandler(async (req, res) => {
             res.status(400);
             throw new Error(`Negative marks (${negMarks}) cannot exceed question marks (${q.marks}).`);
         }
+    }
+    
+    // 🛡️ Fix 35: Auto-correct passing marks (UX improvement)
+    if (passingMarks > totalMarks) {
+        console.warn(`[Logic Fix] Auto-correcting passingMarks for exam ${examId}`);
+        passingMarks = Math.floor(totalMarks * 0.4);
     }
 
     const oldDuration = exam.duration;
@@ -273,8 +288,10 @@ exports.getActiveExams = asyncHandler(async (req, res) => {
         .lean(); // Faster lookup
 
     // Check which exams this student has already submitted (Any terminal status)
+    const activeExamIds = exams.map(e => e._id);
     const submittedSessions = await ExamSession.find({ 
         student: studentId, 
+        exam: { $in: activeExamIds }, 
         status: { $in: ['submitted', 'pending_review', 'reviewed', 'auto_submitted', 'blocked'] }
     }).select('exam').lean();
     const submittedExamIds = new Set(submittedSessions.map(s => s.exam.toString()));
@@ -298,7 +315,7 @@ exports.getActiveExams = asyncHandler(async (req, res) => {
         startTime: exam.scheduledDate,
         creator: exam.creator?.name || 'Unknown',
         alreadySubmitted: submittedExamIds.has(exam._id.toString()),
-        resultsPublished: exam.resultsPublished || false,
+        resultsPublished: !!exam.resultsPublished,
         settings: globalSettings
     }));
 
@@ -310,7 +327,6 @@ exports.getActiveExams = asyncHandler(async (req, res) => {
 
 // ─────────────── GET /api/exams/mentor-list ───────────────
 // Mentors see exams THEY created + submission stats
-// Optimized with Aggregation Pipeline to avoid N+1 query pattern
 exports.getMentorExams = asyncHandler(async (req, res) => {
     const mongoose = require('mongoose');
     
@@ -324,18 +340,24 @@ exports.getMentorExams = asyncHandler(async (req, res) => {
         { $sort: { createdAt: -1 } },
         {
             $lookup: {
-                from: 'examsessions',   // MongoDB collection name is lowercase plural
-                localField: '_id',
-                foreignField: 'exam',
-                as: 'sessions'
-            }
-        },
-        {
-            $lookup: {
                 from: 'users',
                 localField: 'creator',
                 foreignField: '_id',
                 as: 'creatorInfo'
+            }
+        },
+        {
+            $unwind: {
+                path: '$creatorInfo',
+                preserveNullAndEmptyArrays: true
+            }
+        },
+        {
+            $lookup: {
+                from: 'examsessions',
+                localField: '_id',
+                foreignField: 'exam',
+                as: 'sessions'
             }
         },
         {
@@ -367,15 +389,11 @@ exports.getMentorExams = asyncHandler(async (req, res) => {
                         }
                     }
                 },
-                creatorName: { $first: '$creatorInfo.name' },
+                creatorName: { $ifNull: ['$creatorInfo.name', 'Unknown System'] },
                 resultsPublished: '$resultsPublished'
             }
         }
     ]);
-
-    // Populate creator details manually if needed, or stick to a simple lookup
-    // Since aggregate doesn't run Mongoose middleware, we can add a $lookup for creator
-
 
     res.json(stats);
 });
@@ -384,17 +402,16 @@ exports.getMentorExams = asyncHandler(async (req, res) => {
 // Load exam for student (STRIPS correct answers for security)
 exports.getExamById = asyncHandler(async (req, res) => {
     const exam = await Exam.findById(req.params.id)
-        .select('-questions.correctOption -questions.expectedAnswer -questions.testCases.expectedOutput') // Exclude sensitive fields directly from DB fetch
-        .populate('creator', 'name'); // Creator ka naam populate karo
+        .select('-questions.correctOption -questions.expectedAnswer -questions.testCases.expectedOutput')
+        .populate('creator', 'name');
 
     if (!exam) {
         res.status(404);
         throw new Error('Exam not found');
     }
 
-    // Strip correct answers so student can't cheat via network tab
     const sanitizedQuestions = exam.questions.map((q, index) => {
-        const questionObject = q.toObject(); // Mongoose document ko plain object mein convert karo
+        const questionObject = q.toObject();
         const safe = {
             id: questionObject._id,
             index,
@@ -411,16 +428,14 @@ exports.getExamById = asyncHandler(async (req, res) => {
         if (questionObject.type === 'coding') {
             safe.language = questionObject.language;
             safe.initialCode = questionObject.initialCode;
-            // Sirf input bhejo aur isHidden property ko respect karo
             safe.testCases = (questionObject.testCases || []).map(tc => ({
                 input: tc.isHidden ? 'Hidden Test Case' : tc.input,
-                isHidden: tc.isHidden
+                isHidden: !!tc.isHidden
             }));
         }
         return safe;
     });
 
-    // Fetch global settings to enforce proctoring rules dynamically
     const globalSettings = await Setting.findOne() || {
         maxTabSwitches: 5,
         forceFullscreen: true,
@@ -453,7 +468,6 @@ exports.getMentorExamById = asyncHandler(async (req, res) => {
         throw new Error('Exam not found');
     }
 
-    // Must be creator or admin
     if (exam.creator.toString() !== req.user.id && req.user.role !== 'admin') {
         res.status(403);
         throw new Error('You do not have permission to view this exam details.');
@@ -485,7 +499,6 @@ exports.updateExamStatus = asyncHandler(async (req, res) => {
         throw new Error('You do not have permission to update this exam.');
     }
 
-    // Extra check: prevent publishing an empty draft
     if (status === 'published' && (!exam.questions || exam.questions.length === 0)) {
         res.status(400);
         throw new Error('Cannot publish an exam with no questions.');
@@ -498,13 +511,9 @@ exports.updateExamStatus = asyncHandler(async (req, res) => {
 });
 
 // ─────────────── POST /api/exams/start ───────────────
-// Student starts the exam — an exam session is created
-// If a session already exists (e.g., disconnection), resume the session
 exports.startExam = asyncHandler(async (req, res) => {
     const { examId } = req.body;
     const studentId = req.user.id;
-
-    // Fetch global settings to enforce proctoring rules dynamically
     const globalSettings = await Setting.findOne() || {
         maxTabSwitches: 5,
         forceFullscreen: true,
@@ -514,7 +523,6 @@ exports.startExam = asyncHandler(async (req, res) => {
         requireIDVerification: true
     };
 
-    // ─── 🛡️ HYBRID CLIENT VERIFICATION (V5) ───
     const fingerprint = {
         userAgent: req.headers['user-agent'],
         platform: req.headers['x-fingerprint-platform'] || 'web',
@@ -533,22 +541,18 @@ exports.startExam = asyncHandler(async (req, res) => {
         baselineFingerprint: `${fingerprint.userAgent}|${fingerprint.platform}|${fingerprint.width}|${fingerprint.height}`
     };
 
-    // Step 1: Check if a session already exists
     let session = await ExamSession.findOne({ exam: examId, student: studentId });
     
-    // Block re-attempts if already submitted
     if (session && (session.status === 'submitted' || session.status === 'auto_submitted')) {
         res.status(400);
         throw new Error('You have already submitted this exam.');
     }
 
-    // Handle re-entry (resume case — e.g., internet restored)
     if (session) {
         session.resumeCount += 1;
         session.lastSavedAt = new Date();
         await session.save();
 
-        // Fetch from Redis if exists, else hydrate
         const redisClient = getRedisClient();
         let liveAnswers = session.answers;
         let liveQuestionStates = session.questionStates;
@@ -569,93 +573,66 @@ exports.startExam = asyncHandler(async (req, res) => {
                     console.error('⚠️ Redis Hash parsing error in startExam:', parseErr.message);
                 }
             } else {
-                // FALLBACK: Hydrate from ExamAnswer collection
                 const savedAnswers = await ExamAnswer.find({ sessionId: session._id });
                 liveAnswers = {};
                 savedAnswers.forEach(a => {
                     liveAnswers[a.questionId] = a.code ? { answer: a.answer, code: a.code } : a.answer;
                 });
-
-                // Backfill Redis
-                await redisClient.hset(
-                    cacheKey, 
-                    'answers', JSON.stringify(liveAnswers), 
-                    'currentQuestionIndex', (liveIndex ?? 0).toString(), 
-                    'questionStates', JSON.stringify(liveQuestionStates), 
-                    'remainingTimeSeconds', (liveRemainingTime ?? 0).toString()
-                );
+                await redisClient.hset(cacheKey, 'answers', JSON.stringify(liveAnswers), 'currentQuestionIndex', (liveIndex ?? 0).toString(), 'questionStates', JSON.stringify(liveQuestionStates), 'remainingTimeSeconds', (liveRemainingTime ?? 0).toString());
                 await redisClient.expire(cacheKey, 86400);
             }
         }
 
         const exam = await Exam.findById(examId).populate('creator', 'name');
-        if (!exam) {
-            res.status(404);
-            throw new Error('Exam not found');
-        }
+        if (!exam) throw new Error('Exam not found');
 
         const safeQuestions = exam.questions.map((q, index) => {
-            const safe = {
-                id: q._id,
-                index,
-                type: q.type,
-                questionText: q.questionText,
-                marks: q.marks,
-            };
+            const safe = { id: q._id, index, type: q.type, questionText: q.questionText, marks: q.marks };
             if (q.type === 'mcq') safe.options = q.options;
             if (q.type === 'short') safe.maxWords = q.maxWords;
-            if (q.type === 'coding') {
-                safe.language = q.language;
-                safe.initialCode = q.initialCode;
-            }
+            if (q.type === 'coding') { safe.language = q.language; safe.initialCode = q.initialCode; }
             return safe;
         });
 
-        return res.json({ 
-            message: 'Exam session resumed! Your previous progress is safe.',
-            sessionId: session._id,
-            startedAt: session.startedAt,
-            isResumed: true,                              
-            resumeCount: session.resumeCount,
-            currentQuestionIndex: liveIndex,
-            answers: liveAnswers,                      
-            questionStates: liveQuestionStates,        
-            remainingTimeSeconds: liveRemainingTime,
-            status: session.status,
-            exam: {
-                ...exam._doc,
-                questions: safeQuestions,
-                settings: globalSettings
-            }
-        });
+        return res.json({ message: 'Exam session resumed!', sessionId: session._id, startedAt: session.startedAt, isResumed: true, resumeCount: session.resumeCount, currentQuestionIndex: liveIndex, answers: liveAnswers, questionStates: liveQuestionStates, remainingTimeSeconds: liveRemainingTime, status: session.status, exam: { ...exam._doc, questions: safeQuestions, settings: globalSettings } });
     }
 
-    // Step 2: Create a new session (first attempt)
     const exam = await Exam.findById(examId);
-    if (!exam) {
-        res.status(404);
-        throw new Error('Exam not found');
-    }
+    if (!exam) throw new Error('Exam not found');
 
-    // Initialize question states — all "not_visited"
     const initialStates = {};
-    exam.questions.forEach((_, idx) => {
-        initialStates[String(idx)] = 'not_visited';
-    });
+    exam.questions.forEach((_, idx) => { initialStates[String(idx)] = 'not_visited'; });
 
-    session = new ExamSession({
+    const crypto = require('crypto');
+    const newSession = new ExamSession({
         exam: examId,
         student: studentId,
+        status: 'in_progress',
         totalMarks: exam.totalMarks,
         startedAt: new Date(),
         currentQuestionIndex: 0,
         questionStates: initialStates,
-        remainingTimeSeconds: exam.duration * 60,   // Convert minutes to seconds
+        remainingTimeSeconds: exam.duration * 60,
         answers: {},
         resumeCount: 0,
-        secureMeta: secureMeta
+        secureMeta: {
+            ...secureMeta,
+            // 🛡️ Fix 2: Multi-part session binding for flexible validation
+            sessionHash: `${crypto.createHash('sha256').update(`${req.headers['x-forwarded-for'] || req.socket.remoteAddress}|${req.headers['user-agent']}|${req.headers['x-device-id'] || 'no-device'}`).digest('hex')}|${req.headers['x-forwarded-for'] || req.socket.remoteAddress}|${req.headers['user-agent']}|${req.headers['x-device-id'] || 'no-device'}`
+        }
     });
-    await session.save();
+    try {
+        await newSession.save();
+        session = newSession;
+    } catch (saveErr) {
+        // 🛡️ Fix 36: Double-click Race Condition Handling (E11000)
+        if (saveErr.code === 11000) {
+            console.log(`[Race Condition] Handled concurrent startExam for student ${studentId}`);
+            session = await ExamSession.findOne({ exam: examId, student: studentId });
+        } else {
+            throw saveErr;
+        }
+    }
 
     // ─── Update ExamInvite Status → exam_started ─────
     ExamInvite.findOneAndUpdate(
@@ -717,46 +694,187 @@ exports.startExam = asyncHandler(async (req, res) => {
 // ⭐ CRITICAL FUNCTION — Auto-Save Progress
 // Frontend calls this API every 30 seconds to ensure data persistency
 exports.saveProgress = asyncHandler(async (req, res) => {
-    const { examId, answers, currentQuestionIndex, questionStates, remainingTimeSeconds, lastUpdated } = req.body;
+    const { examId, answers, currentQuestionIndex, questionStates, remainingTimeSeconds, lastUpdated, seq } = req.body;
     const studentId = req.user.id;
 
-    if (!examId) {
-        res.status(400);
-        throw new Error('examId is required!');
+    // 1. Fetch Exam & Session to verify ownership and time
+    const [exam, session] = await Promise.all([
+        Exam.findById(examId),
+        ExamSession.findOne({ exam: examId, student: studentId })
+    ]);
+
+    if (!exam) {
+        res.status(404);
+        throw new Error('Exam not found!');
     }
 
-    // 🛡️ GRANULAR VALIDATION: Payload Exhaustion & Format Guard
+    if (!session) {
+        res.status(404);
+        throw new Error('Session not found. Please start the exam first.');
+    }
+
+    // 🛡️ Fix 8 & 1: Server-Side Time Authority & Auto-Submission
+    const now = Date.now();
+    const started = new Date(session.startedAt).getTime();
+    const durationMs = exam.duration * 60 * 1000;
+    const serverRemainingTime = Math.max(0, Math.floor((started + durationMs - now) / 1000));
+
+    if (serverRemainingTime <= 0) {
+        // 🛡️ Fix 8 & 1: Auto-submit logic
+        if (session.status !== 'submitted' && session.status !== 'auto_submitted') {
+            // 🛡️ Fix 3: Sync latest Redis data before Auto-Submission
+            try {
+                const redisClient = getRedisClient();
+                const cached = await redisClient.hgetall(`exam_session:${examId}:${studentId}`);
+                if (cached && cached.answers) {
+                    const redisAnswers = JSON.parse(cached.answers);
+                    // Bulk write these to Mongo if they aren't in the current payload
+                    const bulkOps = Object.keys(redisAnswers).map(qId => ({
+                        updateOne: {
+                            filter: { sessionId: session._id, questionId: qId },
+                            update: { $set: { answer: redisAnswers[qId], lastSavedAt: new Date() } },
+                            upsert: true
+                        }
+                    }));
+                    if (bulkOps.length > 0) await ExamAnswer.bulkWrite(bulkOps);
+                }
+            } catch (e) { console.error('Failed to sync Redis to Mongo on auto-submit:', e.message); }
+
+            session.status = 'auto_submitted';
+            session.submittedAt = new Date();
+            session.remainingTimeSeconds = 0;
+            await session.save();
+            return res.status(403).json({ 
+                success: false, 
+                code: 'EXAM_EXPIRED',
+                message: 'Exam time has expired. Your latest progress was successfully synced and auto-submitted.' 
+            });
+        }
+    }
+
+    // 🛡️ Fix 9 (Upgraded): Time Drift & Replay Protection + Monotonic Sequence
+    if (lastUpdated) {
+        const lastSaved = session.lastSavedAt ? new Date(session.lastSavedAt).getTime() : 0;
+        if (lastUpdated < lastSaved || lastUpdated > (now + 5000)) {
+            return res.status(200).json({ 
+                success: true, 
+                message: 'Ignored inconsistent timestamp payload (Replay or Drift detected).' 
+            });
+        }
+    }
+
+    // 🏎️ Fix 9 (Upgraded): Monotonic Sequence Guard
+    if (seq !== undefined) {
+        // Fix 1 (Edge Case): Allow reset after reconnect (seq = 1)
+        if (seq <= (session.lastSeq || 0) && seq !== 1) {
+            return res.status(200).json({ 
+                success: true, 
+                message: 'Ignored out-of-order payload (Lower sequence number).' 
+            });
+        }
+        // Extra safety: max jump check (prevent massive sequence gaps)
+        if (seq > (session.lastSeq || 0) + 200) { // Increased tolerance for reconnects
+            res.status(400);
+            throw new Error('Security Alert: Massive sequence jump detected.');
+        }
+    }
+
+    // 🛡️ Fix 10: Answer-to-Exam ownership validation
+    const validQuestionIds = new Set(exam.questions.map(q => q._id.toString()));
+    
+    // 🛡️ Fix 34: Explicit type-juggling protection (No Arrays allowed)
+    if (Array.isArray(answers)) {
+        res.status(400);
+        throw new Error('Invalid answer format. Deeply nested structures (Arrays) are not permitted.');
+    }
+
+    // 🛡️ GRANULAR VALIDATION: Payload Exhaustion, Ownership & Format Guard
     if (answers && typeof answers === 'object') {
         const keys = Object.keys(answers);
         if (keys.length > 200) {
             res.status(400);
             throw new Error('Malformed payload: Excessive answer keys.');
         }
+
         for (const qId of keys) {
-            const answerVal = answers[qId];
-            
-            // Format Validation: Check if answer is too large or invalid type
-            const answerContent = typeof answerVal === 'object' ? (answerVal?.code || answerVal?.answer || '') : answerVal;
-            const contentLength = typeof answerContent === 'string' ? answerContent.length : JSON.stringify(answerContent || '').length;
-            
-            if (contentLength > 10000) {
+            // Fix 10: Check if question belongs to this exam
+            if (!validQuestionIds.has(qId)) {
                 res.status(400);
-                throw new Error(`Payload too large: Answer for question ${qId} exceeds 10KB limit.`);
+                throw new Error(`Security Alert: Question ${qId} does not belong to this exam.`);
             }
 
-            // Type Validation
-            if (answerVal !== null && typeof answerVal !== 'string' && typeof answerVal !== 'number' && typeof answerVal !== 'object') {
+            const val = answers[qId];
+            
+            // Fix 34: Explicit Array and Schema check
+            if (Array.isArray(val)) {
                 res.status(400);
-                throw new Error(`Invalid answer format for question ${qId}`);
+                throw new Error(`Invalid answer format for question ${qId}. Arrays are not permitted.`);
+            }
+
+            if (typeof val === 'object' && val !== null) {
+                const allowedKeys = ['answer', 'code', 'language'];
+                const valKeys = Object.keys(val);
+                if (valKeys.some(k => !allowedKeys.includes(k))) {
+                    res.status(400);
+                    throw new Error(`Invalid answer object for question ${qId}. Unauthorized metadata detected.`);
+                }
+            }
+
+            // Size validation
+            const content = typeof val === 'object' ? (val?.code || val?.answer || '') : val;
+            const len = typeof content === 'string' ? content.length : JSON.stringify(content || '').length;
+            if (len > 10000) {
+                res.status(400);
+                throw new Error(`Payload too large: Answer for question ${qId} exceeds 10KB limit.`);
             }
         }
     }
 
-    // 1. Find the session to get sessionId
-    const session = await ExamSession.findOne({ exam: examId, student: studentId });
-    if (!session) {
-        res.status(404);
-        throw new Error('Session not found. Please start the exam first.');
+    // 🛡️ Fix 2 (Upgraded): Atomic Status Check
+    if (session.status !== SESSION_STATUS.IN_PROGRESS && session.status !== SESSION_STATUS.FLAGGED) {
+        return res.status(403).json({ 
+            success: false, 
+            message: `Exam cannot be updated in its current state: ${session.status}` 
+        });
+    }
+
+    // 🛡️ Bonus: Session Binding Check (Anti-Spoof)
+    const crypto = require('crypto');
+    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const currentHash = crypto.createHash('sha256')
+        .update(`${clientIp}|${req.headers['user-agent']}|${req.headers['x-device-id'] || 'no-device'}`)
+        .digest('hex');
+
+    if (session.secureMeta?.sessionHash) {
+        const [storedHash, storedIp, storedUA, storedDeviceId] = session.secureMeta.sessionHash.split('|');
+        const currentIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+        const currentUA = req.headers['user-agent'];
+        const currentDeviceId = req.headers['x-device-id'] || 'no-device';
+
+        // 🛡️ Fix 2 (Upgraded): Flexible Session Binding
+        const isDeviceMatch = storedDeviceId === currentDeviceId;
+        const isUAMatch = storedUA === currentUA;
+        const isIpMatch = storedIp === currentIp;
+
+        if (!isDeviceMatch) {
+            session.status = SESSION_STATUS.FLAGGED;
+            session.violations.push({
+                type: VIOLATION_TYPES.SESSION_HASH_MISMATCH,
+                severity: 'high',
+                details: 'Critical: Device ID mismatch mid-session. Suspected session hijacking.',
+                timestamp: new Date()
+            });
+        } else if (!isUAMatch || !isIpMatch) {
+            // Soft signals: Log but don't flag as critical unless both change
+            if (!isUAMatch && !isIpMatch) session.status = SESSION_STATUS.FLAGGED;
+            
+            session.violations.push({
+                type: VIOLATION_TYPES.SESSION_HASH_MISMATCH,
+                severity: 'low',
+                details: `Identity drift: ${!isUAMatch ? 'Browser changed' : ''} ${!isIpMatch ? 'IP changed (Mobile/NAT)' : ''}`,
+                timestamp: new Date()
+            });
+        }
     }
 
     // 🛡️ RUNTIME SECURITY: Continuous Verification (Softened for Web)
@@ -774,8 +892,25 @@ exports.saveProgress = asyncHandler(async (req, res) => {
 
     // Baseline Fingerprint Check with Tolerance (+/- 50px)
     const [baseUA, basePlatform, baseWidth, baseHeight] = (session.secureMeta.baselineFingerprint || "").split('|');
-    const widthDiff = Math.abs(parseInt(baseWidth) - parseInt(fingerprint.width));
-    const heightDiff = Math.abs(parseInt(baseHeight) - parseInt(fingerprint.height));
+    
+    // Fix 2: Finite Fingerprint Validation
+    const clientWidth = Number(fingerprint.width);
+    const clientHeight = Number(fingerprint.height);
+
+    if (!Number.isFinite(clientWidth) || !Number.isFinite(clientHeight) || clientWidth > 10000 || clientHeight > 10000) {
+        session.status = 'flagged';
+        session.violations.push({
+            type: 'Invalid Data',
+            severity: 'high',
+            details: `Suspected payload tampering: Invalid resolution data (${fingerprint.width}x${fingerprint.height})`,
+            timestamp: new Date()
+        });
+        await session.save();
+        return res.status(400).json({ error: 'Security: Invalid client fingerprint data.' });
+    }
+
+    const widthDiff = Math.abs(parseInt(baseWidth) - clientWidth);
+    const heightDiff = Math.abs(parseInt(baseHeight) - clientHeight);
     const isUAMatch = baseUA === fingerprint.userAgent;
     const isPlatformMatch = basePlatform === fingerprint.platform;
 
@@ -798,35 +933,32 @@ exports.saveProgress = asyncHandler(async (req, res) => {
         });
     }
 
-    // 🏎️ Fix 5: Auto-Save Race Condition
-    // Check if we have a newer client payload already processed using Redis
+    // 🏎️ Fix 9: Replay Protection already handled above with MongoDB SoT.
+    // Redis update remains for optimization.
     const redisClient = getRedisClient();
     const cacheKey = `exam_session:${examId}:${studentId}`;
-    
-    if (redisClient && lastUpdated) {
-        const cachedData = await redisClient.hgetall(cacheKey);
-        if (cachedData && cachedData.clientLastUpdated) {
-            const previousUpdate = parseInt(cachedData.clientLastUpdated);
-            if (lastUpdated < previousUpdate) {
-                return res.status(200).json({ 
-                    success: true, 
-                    message: 'Ignored older payload to prevent race condition.' 
-                });
-            }
-        }
-    }
+
+    // 🛡️ Fix 13: Strong Normalization Helper
+    const normalizeAnswer = (val) => {
+        if (typeof val !== 'string') return val;
+        return val.replace(/\s+/g, ' ').trim().toLowerCase();
+    };
 
     // 2. Relational Split: Save answers to ExamAnswer collection
     if (answers && typeof answers === 'object') {
         const bulkOps = Object.keys(answers).map(qId => {
             const answerVal = answers[qId];
+            const studentAnswer = typeof answerVal === 'object' ? (answerVal.answer ?? null) : answerVal;
+
             return {
                 updateOne: {
                     filter: { sessionId: session._id, questionId: qId },
                     update: { 
                         $set: { 
-                            answer: typeof answerVal === 'object' ? (answerVal.answer || null) : answerVal,
-                            code: typeof answerVal === 'object' ? (answerVal.code || null) : undefined,
+                            // Fix 12: Use null instead of undefined
+                            answer: studentAnswer,
+                            normalizedAnswer: normalizeAnswer(studentAnswer),
+                            code: typeof answerVal === 'object' ? (answerVal.code ?? null) : null,
                             lastSavedAt: new Date()
                         }
                     },
@@ -840,26 +972,37 @@ exports.saveProgress = asyncHandler(async (req, res) => {
         }
     }
 
-    // 3. Update Redis Cache (High performance - keeps the combined object for fast hydration)
+    // 3. Update Redis Cache (High performance fallback)
+    // 🛡️ Fix 26: Redis is a non-blocking dependency. Success path must proceed even if Redis fails.
     if (redisClient) {
-        const updates = [];
-        if (answers !== undefined)              updates.push('answers', JSON.stringify(answers));
-        if (currentQuestionIndex !== undefined) updates.push('currentQuestionIndex', (currentQuestionIndex ?? 0).toString());
-        if (questionStates !== undefined)       updates.push('questionStates', JSON.stringify(questionStates));
-        if (remainingTimeSeconds !== undefined) updates.push('remainingTimeSeconds', (remainingTimeSeconds ?? 0).toString());
-        if (lastUpdated !== undefined)          updates.push('clientLastUpdated', (lastUpdated ?? Date.now()).toString());
-        updates.push('lastSavedAt', new Date().toISOString());
+        try {
+            const updates = [];
+            if (answers !== undefined)              updates.push('answers', JSON.stringify(answers));
+            if (currentQuestionIndex !== undefined) updates.push('currentQuestionIndex', (currentQuestionIndex ?? 0).toString());
+            if (questionStates !== undefined)       updates.push('questionStates', JSON.stringify(questionStates));
+            if (remainingTimeSeconds !== undefined) updates.push('remainingTimeSeconds', (remainingTimeSeconds ?? 0).toString());
+            if (lastUpdated !== undefined)          updates.push('clientLastUpdated', (lastUpdated ?? Date.now()).toString());
+            updates.push('lastSavedAt', new Date().toISOString());
 
-        if (updates.length > 0) {
-            await redisClient.hset(cacheKey, ...updates);
-            await redisClient.expire(cacheKey, 86400);
+            if (updates.length > 0) {
+                await redisClient.hset(cacheKey, ...updates);
+                await redisClient.expire(cacheKey, 86400);
+            }
+        } catch (redisErr) {
+            const logger = require('../utils/logger');
+            logger.warn(`📡 Redis HSET failed for ${cacheKey}, continuing with DB only: ${redisErr.message}`);
         }
     }
 
     // 4. Update ExamSession Metadata
     session.currentQuestionIndex = currentQuestionIndex !== undefined ? currentQuestionIndex : session.currentQuestionIndex;
     if (questionStates) session.questionStates = questionStates;
-    if (remainingTimeSeconds !== undefined) session.remainingTimeSeconds = remainingTimeSeconds;
+    
+    // Fix 9: Update sequence number
+    if (seq !== undefined) session.lastSeq = seq;
+
+    // Fix 1: Stop overwriting remainingTimeSeconds from client
+    session.remainingTimeSeconds = serverRemainingTime;
     session.lastSavedAt = new Date();
     await session.save();
 
@@ -928,17 +1071,26 @@ exports.resumeExam = asyncHandler(async (req, res) => {
 
     if (redisClient) {
         const cacheKey = `exam_session:${examId}:${studentId}`;
+        
+        // 🛡️ Fix 42: Performance - Pull metadata selectively if only certain fields needed
+        // For resume, we still need most fields, but let's at least use try/catch effectively
         const cachedData = await redisClient.hgetall(cacheKey);
         
         if (cachedData && Object.keys(cachedData).length > 0) {
             try {
                 liveAnswers = cachedData.answers ? JSON.parse(cachedData.answers) : liveAnswers;
-                liveQuestionStates = cachedData.questionStates ? JSON.parse(cachedData.questionStates) : liveQuestionStates;
-                liveRemainingTime = cachedData.remainingTimeSeconds ? parseInt(cachedData.remainingTimeSeconds) : liveRemainingTime;
-                liveIndex = cachedData.currentQuestionIndex ? parseInt(cachedData.currentQuestionIndex) : liveIndex;
-            } catch (pErr) {
-                console.error('⚠️ Redis Hash parsing error in resumeExam:', pErr.message);
+            } catch (e) {
+                console.error('[Integrity] Redis answers corruption:', e.message);
             }
+
+            try {
+                liveQuestionStates = cachedData.questionStates ? JSON.parse(cachedData.questionStates) : liveQuestionStates;
+            } catch (e) {
+                console.error('[Integrity] Redis states corruption:', e.message);
+            }
+
+            liveRemainingTime = cachedData.remainingTimeSeconds ? parseInt(cachedData.remainingTimeSeconds) : liveRemainingTime;
+            liveIndex = cachedData.currentQuestionIndex ? parseInt(cachedData.currentQuestionIndex) : liveIndex;
         } else {
             // FALLBACK: Hydrate from ExamAnswer collection
             const savedAnswers = await ExamAnswer.find({ sessionId: session._id });
@@ -977,7 +1129,8 @@ exports.resumeExam = asyncHandler(async (req, res) => {
         currentQuestionIndex: liveIndex,
         questionStates: liveQuestionStates,
         remainingTimeSeconds: liveRemainingTime,
-        status: session.status
+        status: session.status,
+        lastSeq: session.lastSeq || 0 // Fix 1: Sync sequence to prevent desync
     });
 });
 
@@ -1055,6 +1208,14 @@ exports.submitExam = asyncHandler(async (req, res) => {
     for (let index = 0; index < exam.questions.length; index++) {
         const q = exam.questions[index];
         const qId = q._id.toString();
+
+        // 🛡️ Fix 11: Fail-fast on Invalid Marks
+        if (typeof q.marks !== 'number' || q.marks < 0) {
+            console.error(`[SECURITY] Invalid question marks configuration for exam ${examId}, question ${qId}`);
+            res.status(500);
+            throw new Error(`Invalid exam configuration: Question ${index + 1} has invalid marks.`);
+        }
+
         const studentAnswer = finalAnswers[qId] !== undefined ? finalAnswers[qId] : finalAnswers[String(index)];
 
         let evaluation = { marksObtained: 0, status: 'not_answered', result: {} };
@@ -1313,8 +1474,14 @@ exports.evaluateSession = asyncHandler(async (req, res) => {
     // Apply mentor grades to ExamAnswer collection
     const bulkOps = grades.map(grade => {
         // Validation: awarded marks cannot exceed max marks for this question
+        // 🛡️ Fix 11: Fail-fast on Invalid Marks
         const question = exam.questions.id(grade.questionId) || exam.questions[grade.questionIndex];
-        const maxMarks = question?.marks || 0;
+        if (!question || typeof question.marks !== 'number') {
+            res.status(400);
+            throw new Error(`Invalid question configuration for ID: ${grade.questionId}`);
+        }
+        
+        const maxMarks = question.marks;
         const awarded = Math.min(Math.max(Number(grade.marksObtained) || 0, 0), maxMarks);
 
         return {
@@ -1390,11 +1557,32 @@ exports.logIncident = asyncHandler(async (req, res) => {
         update.$inc = { tabSwitchCount: 1 };
     }
 
+    // 🏎️ Fix 40: Move compute to write-time (Incremental Risk Score)
+    const riskDeltas = {
+        'Tab Switch': 2,
+        'Environment Tampering': 10,
+        'Security Breach': 15,
+        'Invalid Data': 5
+    };
+    const delta = riskDeltas[type] || 3; // Default 3 for generic violations
+    
     const session = await ExamSession.findOneAndUpdate(
         { exam: examId, student: studentId },
-        update,
+        { 
+            ...update,
+            $inc: { 
+                ...(update.$inc || {}), 
+                riskScore: delta 
+            } 
+        },
         { upsert: true, new: true }
     );
+
+    // Cap riskScore at 100
+    if (session.riskScore > 100) {
+        session.riskScore = 100;
+        await session.save();
+    }
 
     // 🛡️ Fix 2: Cheating Protection Enforcement
     const globalSettings = await Setting.findOne() || { maxTabSwitches: 5 };
@@ -2027,19 +2215,45 @@ exports.importQuestionFromLink = asyncHandler(async (req, res) => {
 // Evaluates a React/UI lab submission using BullMQ background worker
 exports.runFrontendCode = asyncHandler(async (req, res) => {
     const { examId, questionId, files } = req.body;
-    const studentId = req.user.email;
+    const studentId = req.user.id; // 🛡️ Standardized: Using database ID
 
     if (!examId || !questionId || !files) {
         res.status(400);
         throw new Error("Missing parameters for UI evaluation.");
     }
 
-    // Add to Background Queue
+    // 🛡️ Data Contract: Fetch test cases in Controller to ensure Worker is "thin"
+    const exam = await Exam.findById(examId);
+    if (!exam) {
+        res.status(404);
+        throw new Error("Exam not found.");
+    }
+
+    const question = exam.questions.id(questionId);
+    if (!question || question.type !== 'frontend-react') {
+        res.status(400);
+        throw new Error("Invalid frontend-react question ID.");
+    }
+
+    // 🛡️ Fix 33: Filename Path Traversal Sanitization
+    const sanitizedFiles = {};
+    for (const [filename, content] of Object.entries(files)) {
+        const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '');
+        sanitizedFiles[safeName] = content;
+    }
+
+    const requestId = `REQ-${Date.now()}-${studentId.slice(-4)}`;
+    console.log(`🚀 [Grading][${requestId}] Job created for student: ${studentId} | Q: ${questionId} | Exam: ${examId}`);
+
+    // Add to Background Queue with versioned contract
     const job = await addFrontendEvaluationJob({
+        version: 1, // Future-proofing
+        requestId,
         examId,
         questionId,
         studentId,
-        files
+        codeFiles: sanitizedFiles, // Renamed 'files' to 'codeFiles' per contract
+        testCases: question.testCases || []
     });
 
     res.status(200).json({
@@ -2106,10 +2320,36 @@ exports.heartbeat = asyncHandler(async (req, res) => {
         await session.save();
     }
 
+    // Fix 8: Time validation in heartbeat
+    const exam = await Exam.findById(examId);
+    if (exam && session.startedAt) {
+        const now = Date.now();
+        const started = new Date(session.startedAt).getTime();
+        const durationMs = exam.duration * 60 * 1000;
+        const serverRemainingTime = Math.max(0, Math.floor((started + durationMs - now) / 1000));
+        
+        if (serverRemainingTime <= 0) {
+            session.status = 'auto_submitted';
+            session.submittedAt = new Date();
+            await session.save();
+            return res.json({ success: false, code: 'EXAM_EXPIRED', status: 'auto_submitted' });
+        }
+        session.remainingTimeSeconds = serverRemainingTime;
+    }
+
     // Baseline Check in Heartbeat with Tolerance
     const [baseUA, basePlatform, baseWidth, baseHeight] = (session.secureMeta.baselineFingerprint || "").split('|');
-    const widthDiff = Math.abs(parseInt(baseWidth) - parseInt(fingerprint.width));
-    const heightDiff = Math.abs(parseInt(baseHeight) - parseInt(fingerprint.height));
+    
+    // Fix 2: Finite Fingerprint Validation in Heartbeat
+    const clientWidth = Number(fingerprint.width);
+    const clientHeight = Number(fingerprint.height);
+
+    if (!Number.isFinite(clientWidth) || !Number.isFinite(clientHeight)) {
+        return res.status(400).json({ error: 'Security: Invalid heartbeat data.' });
+    }
+
+    const widthDiff = Math.abs(parseInt(baseWidth) - clientWidth);
+    const heightDiff = Math.abs(parseInt(baseHeight) - clientHeight);
 
     if (baseUA && (baseUA !== fingerprint.userAgent || basePlatform !== fingerprint.platform || widthDiff > 50 || heightDiff > 50)) {
          session.status = 'flagged';
@@ -2143,19 +2383,7 @@ exports.getLiveMonitoringData = asyncHandler(async (req, res) => {
         .select('student status startedAt lastSavedAt violations secureMeta remainingTimeSeconds');
 
     const liveData = sessions.map(session => {
-        // 🧠 RISK SCORE ENGINE (V1)
-        // risk = tabSwitch * 2 + violations * 3 + heartbeat_miss * 5 + fingerprint_change * 10
-        const tabSwitches = session.violations.filter(v => v.type === 'Tab Switched').length;
-        const securityBreaches = session.violations.filter(v => v.type === 'Security Breach').length;
-        const environmentChanges = session.violations.filter(v => v.type === 'Environment Change' || v.type === 'Environment Tampering').length;
-        
-        const heartbeatMissed = (Date.now() - new Date(session.secureMeta?.verifiedAt || 0)) > 60000 ? 1 : 0;
-
-        let riskScore = (tabSwitches * 2) + (session.violations.length * 3) + (heartbeatMissed * 5) + (environmentChanges * 10) + (securityBreaches * 15);
-        
-        // Cap risk score at 100
-        riskScore = Math.min(riskScore, 100);
-
+        // 🏎️ Fix 40: High-Performance Monitoring (Zero compute at Read-time)
         return {
             id: session._id,
             student: {
@@ -2165,7 +2393,7 @@ exports.getLiveMonitoringData = asyncHandler(async (req, res) => {
                 image: session.student?.profileImage
             },
             status: session.status,
-            riskScore,
+            riskScore: session.riskScore || 0,
             isOnline: (Date.now() - new Date(session.lastSavedAt || 0)) < 45000, // Active in last 45s
             violationsCount: session.violations.length,
             startedAt: session.startedAt,

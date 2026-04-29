@@ -296,7 +296,8 @@ const LoginPage = () => {
       navigate(target);
     } catch (err) {
       console.error('Login Error:', err);
-      setError(err.response?.data?.error || 'Authorization failed. Please check your identity or secure key.');
+      const rawErr = err.response?.data?.error;
+      setError((typeof rawErr === 'string' ? rawErr : null) || err.response?.data?.message || 'Authorization failed. Please check your identity or secure key.');
     } finally {
       setIsAuthenticating(false);
     }

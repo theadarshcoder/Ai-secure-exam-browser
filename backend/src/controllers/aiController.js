@@ -41,7 +41,7 @@ exports.generateQuestions = async (req, res) => {
 
     try {
         const prompt = buildPrompt(category, syllabus, mcqCount, shortCount, codingCount, reactCount, totalMarks);
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${geminiKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
 
         const response = await axios.post(url, {
             contents: [{ parts: [{ text: prompt }] }],
@@ -92,7 +92,7 @@ exports.generateQuestions = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('AI Generation Error:', error.response?.data || error.message);
+        console.error('AI Generation Error:', error.response?.data?.error || error.response?.data || error.message);
 
         if (error.response?.status === 429) {
             return res.status(429).json({

@@ -321,42 +321,55 @@ exports.verifyInvite = asyncHandler(async (req, res) => {
     }
 
     // ─── Generate/Reuse JWT for auto-login ────────────────
-    const student = invite.student;
-    if (!student) {
+    const user = invite.student;
+    if (!user) {
         res.status(403);
         throw new Error(GENERIC_ERROR);
     }
 
-    let jwtToken;
-    // Security Fix: Prevent JWT overlap/race condition if already opened on same device
-    if ((invite.status === 'opened' || invite.status === 'exam_started') && 
-        invite.deviceFingerprint === secureFingerprint && 
-        student.currentSessionToken) {
-        
-        jwtToken = student.currentSessionToken;
-        console.log(`♻️ Reusing existing session token for student: ${student.email}`);
-    } else {
-        jwtToken = jwt.sign(
-            { id: student._id, email: student.email, role: student.role || 'student' },
-            process.env.JWT_SECRET,
-            { expiresIn: '24h' }
-        );
+    // 🛡️ Final Unification Fix: Standardized tokens across all entry points (Login, Refresh, Invite)
+    user.sessionVersion = (user.sessionVersion || 0) + 1;
+    
+    const refreshToken = jwt.sign(
+        { id: user._id, sessionVersion: user.sessionVersion },
+        process.env.JWT_REFRESH_SECRET,
+        { expiresIn: '7d' }
+    );
 
-        // Update user's current session token
-        await User.findByIdAndUpdate(student._id, { currentSessionToken: jwtToken });
-        await cacheService.saveUserSession(student._id, jwtToken);
+    const accessToken = jwt.sign(
+        { 
+            id: user._id, 
+            email: user.email, 
+            role: user.role, 
+            sessionVersion: user.sessionVersion 
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: '1h' }
+    );
+
+    user.refreshToken = refreshToken;
+    await user.save();
+
+    // ⚡ SYNC TO CACHE
+    try {
+        await cacheService.saveUserSession(user._id, accessToken, user.permissions || []);
+    } catch (cacheErr) {
+        console.warn('🛡️ Cache sync failed during invite (Redis down):', cacheErr.message);
     }
+
+    console.log(`🔑 [Security] User ${user.email} logged in via invite link (Session V${user.sessionVersion})`);
 
     res.json({
         message: 'Invitation verified! Redirecting to exam...',
-        token: jwtToken,
+        accessToken, 
+        refreshToken, 
         examId: invite.exam._id,
         examTitle: invite.exam.title,
         user: {
-            id: student._id,
-            name: student.name,
-            email: student.email,
-            role: student.role || 'student'
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role || 'student'
         }
     });
 });

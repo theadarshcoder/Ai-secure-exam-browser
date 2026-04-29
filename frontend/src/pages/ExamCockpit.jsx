@@ -1144,7 +1144,7 @@ const { examId } = useParams();
       setIsExecuting(false);
       setCooldownSeconds(0);
       toast.dismiss("code-queued");
-      toast.error(err.message || "Background evaluation failed.", {
+      toast.error(err.message || err || "Background evaluation failed.", {
         id: "code-eval-error",
       });
     };

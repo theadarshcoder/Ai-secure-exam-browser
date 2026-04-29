@@ -89,7 +89,9 @@ export default function BulkInviteModal({ isOpen, onClose, examId, examTitle }) 
                 response.data.downloadableCredentials = null;
             }
         } catch (err) {
-            setResult({ error: err.response?.data?.error || err.response?.data?.message || 'Failed to send invites.' });
+            const rawErr = err.response?.data?.error;
+            const errMsg = (typeof rawErr === 'string' ? rawErr : null) || err.response?.data?.message || 'Failed to send invites.';
+            setResult({ error: errMsg });
         } finally {
             setSending(false);
         }

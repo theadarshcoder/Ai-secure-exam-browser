@@ -63,7 +63,10 @@ export default function VerifyInvite() {
 
         } catch (err) {
             setStatus('error');
-            const msg = err.response?.data?.error || err.response?.data?.message || 'Invalid or expired invitation link.';
+            const rawError = err.response?.data?.error;
+            const msg = (typeof rawError === 'string' ? rawError : null)
+                || err.response?.data?.message
+                || 'Invalid or expired invitation link.';
             setErrorMsg(msg);
         }
     };

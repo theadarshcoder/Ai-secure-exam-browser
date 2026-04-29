@@ -8,6 +8,7 @@ const prevLiveStudents = {};  // { "examId_123": 100 }
 const lastAlertTimes = {};    // { "examId_123": { network: 0, errors: 0, drop: 0 } }
 
 const startHealthMonitor = (io) => {
+    console.log('🩺 [Health Monitor] Initialization successful. Monitoring starting...');
     setInterval(async () => {
         try {
             const now = Date.now();
