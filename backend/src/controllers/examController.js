@@ -1499,7 +1499,8 @@ exports.getSessionDetail = asyncHandler(async (req, res) => {
         passed: session.passed,
         status: session.status,
         requiresManualGrading: session.requiresManualGrading,
-        violations: session.violations.length,
+        violations: session.violations || [],
+        helpRequests: session.helpRequests || [],
         tabSwitches: session.tabSwitchCount,
         startedAt: session.startedAt,
         submittedAt: session.submittedAt,
@@ -2093,13 +2094,28 @@ exports.requestHelp = asyncHandler(async (req, res) => {
 
     const user = await User.findById(req.user.id).select('name email');
     const userName = user?.name || req.user.email;
+    const examId = req.body.examId;
     const supportMessage = {
         studentName: userName,
         studentEmail: user?.email || req.user.email,
         studentId: req.user.id,
         message: msg,
-        timestamp: new Date()
+        timestamp: new Date(),
+        examId: examId
     };
+
+    if (examId) {
+        const session = await ExamSession.findOne({ exam: examId, student: req.user.id });
+        if (session) {
+            session.helpRequests.push({
+                message: msg,
+                timestamp: supportMessage.timestamp
+            });
+            await session.save();
+            // Attach the DB id to the message for frontend mapping
+            supportMessage.id = session.helpRequests[session.helpRequests.length - 1]._id;
+        }
+    }
 
 
     const io = req.app.get('io');
@@ -2108,7 +2124,6 @@ exports.requestHelp = asyncHandler(async (req, res) => {
         io.to('role_mentor').to('role_admin').emit('student_need_help', supportMessage);
         
         // 🛡️ Fix Bug 5: Scoped alert for specific exam room
-        const examId = req.body.examId;
         if (examId) {
             io.to(`exam_monitor_${examId}`).emit('student_need_help', supportMessage);
         }

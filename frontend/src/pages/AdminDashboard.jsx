@@ -550,7 +550,44 @@ export default function AdminDashboard() {
     const fetchLive = async () => {
       try {
         const res = await getLiveSessions();
-        setLiveSessions(res || []);
+        if (res) {
+          setLiveSessions(res);
+          
+          // Extract unresolved help requests
+          const allHelpReqs = [];
+          res.forEach(session => {
+            if (session.helpRequests && session.helpRequests.length > 0) {
+               session.helpRequests.forEach(req => {
+                  if (!req.resolved) {
+                     allHelpReqs.push({
+                        ...req,
+                        id: req._id || req.id,
+                        type: 'help',
+                        unread: true,
+                        studentName: session.studentName,
+                        studentEmail: session.studentEmail,
+                        examId: session._id || session.examId,
+                     });
+                  }
+               });
+            }
+          });
+
+          if (allHelpReqs.length > 0) {
+             setHelpRequests(prev => {
+                const map = new Map(prev.map(p => [p.id, p]));
+                allHelpReqs.forEach(req => map.set(req.id, req));
+                return Array.from(map.values()).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+             });
+             setNotifications(prev => {
+                const map = new Map(prev.map(p => [p.id, p]));
+                allHelpReqs.forEach(req => map.set(req.id, req));
+                return Array.from(map.values()).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+             });
+          }
+        } else {
+          setLiveSessions([]);
+        }
       } catch (err) {
         console.error("Live sessions fetch failed:", err);
       }
@@ -618,7 +655,42 @@ export default function AdminDashboard() {
               setCandidates(res || []);
           } else if (tab === 'LiveMonitoring') {
               const res = await getLiveSessions();
-              setLiveSessions(res || []);
+              if (res) {
+                  setLiveSessions(res);
+                  const allHelpReqs = [];
+                  res.forEach(session => {
+                    if (session.helpRequests && session.helpRequests.length > 0) {
+                       session.helpRequests.forEach(req => {
+                          if (!req.resolved) {
+                             allHelpReqs.push({
+                                ...req,
+                                id: req._id || req.id,
+                                type: 'help',
+                                unread: true,
+                                studentName: session.studentName,
+                                studentEmail: session.studentEmail,
+                                examId: session._id || session.examId,
+                             });
+                          }
+                       });
+                    }
+                  });
+
+                  if (allHelpReqs.length > 0) {
+                     setHelpRequests(prev => {
+                        const map = new Map(prev.map(p => [p.id, p]));
+                        allHelpReqs.forEach(req => map.set(req.id, req));
+                        return Array.from(map.values()).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+                     });
+                     setNotifications(prev => {
+                        const map = new Map(prev.map(p => [p.id, p]));
+                        allHelpReqs.forEach(req => map.set(req.id, req));
+                        return Array.from(map.values()).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+                     });
+                  }
+              } else {
+                  setLiveSessions([]);
+              }
           } else if (tab === 'Academics') {
               const res = await getStudents().catch(() => ({ students: [] }));
               const studentsData = res?.students || res || [];

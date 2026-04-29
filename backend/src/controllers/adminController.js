@@ -78,7 +78,8 @@ exports.getLiveSessions = asyncHandler(async (req, res) => {
         isBlocked: s.isBlocked,
         violationCount: s.violationCount || 0,
         startedAt: s.startedAt,
-        risk: s.violationCount > 5 ? 'High' : s.violationCount > 2 ? 'Medium' : 'Low'
+        risk: s.violationCount > 5 ? 'High' : s.violationCount > 2 ? 'Medium' : 'Low',
+        helpRequests: s.helpRequests || []
     }));
 
     res.json(formatted);
