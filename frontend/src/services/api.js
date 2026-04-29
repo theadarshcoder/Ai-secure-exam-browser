@@ -291,13 +291,21 @@ export const saveSettings = async (settingsData) => {
     }
 };
 
-export const getAdminExams = async () => {
+const fetchWithRetry = async (url, retries = 3) => {
     try {
-        const response = await api.get('/api/exams/mentor-list');
+        const response = await api.get(url);
         return response.data;
     } catch (error) {
+        if (retries > 0) {
+            await new Promise(res => setTimeout(res, 1000));
+            return fetchWithRetry(url, retries - 1);
+        }
         throw getErrorMessage(error);
     }
+};
+
+export const getAdminExams = async () => {
+    return fetchWithRetry('/api/exams/mentor-list');
 };
 
 
@@ -342,12 +350,7 @@ export const getMentorStats = async () => {
 };
 
 export const getMentorExamList = async () => {
-    try {
-        const response = await api.get('/api/exams/mentor-list');
-        return response.data;
-    } catch (error) {
-        throw getErrorMessage(error);
-    }
+    return fetchWithRetry('/api/exams/mentor-list');
 };
 
 export const getAdminResults = async () => {

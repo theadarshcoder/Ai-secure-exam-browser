@@ -1,5 +1,7 @@
 const Exam = require('../models/Exam');
 const ExamSession = require('../models/ExamSession');
+const { clearPattern } = require('../services/cacheService');
+const { getRedisClient } = require('../config/redis');
 const ExamAnswer = require('../models/ExamAnswer');
 const ExamInvite = require('../models/ExamInvite');
 const User = require('../models/User');
@@ -93,6 +95,9 @@ exports.createExam = asyncHandler(async (req, res) => {
     });
 
     await exam.save();
+
+    // Clear mentor exams cache
+    await clearPattern(`mentor_exams_*`);
 
     res.status(201).json({
         message: 'Exam Created!',
@@ -216,6 +221,9 @@ exports.updateExam = asyncHandler(async (req, res) => {
         }
     }
 
+    // Clear mentor exams cache
+    await clearPattern(`mentor_exams_*`);
+
     res.json({ message: 'Exam updated successfully', exam });
 });
 
@@ -267,6 +275,9 @@ exports.deleteExam = asyncHandler(async (req, res) => {
     }
 
     await Exam.findByIdAndDelete(examId);
+
+    // Clear mentor exams cache
+    await clearPattern(`mentor_exams_*`);
 
     res.json({ message: 'Exam deleted successfully' });
 });
@@ -326,76 +337,56 @@ exports.getActiveExams = asyncHandler(async (req, res) => {
 });
 
 // ─────────────── GET /api/exams/mentor-list ───────────────
-// Mentors see exams THEY created + submission stats
+// Mentors see exams THEY created
 exports.getMentorExams = asyncHandler(async (req, res) => {
     const mongoose = require('mongoose');
     
     // Admins and super mentors see all exams; regular mentors see their own
     const matchStage = (req.user.role === 'admin' || req.user.role === 'super_mentor')
         ? {}
-        : { creator: new mongoose.Types.ObjectId(req.user.id) };
+        : { creator: req.user.id }; // Simplified string ID for find()
 
-    const stats = await Exam.aggregate([
-        { $match: matchStage },
-        { $sort: { createdAt: -1 } },
-        {
-            $lookup: {
-                from: 'users',
-                localField: 'creator',
-                foreignField: '_id',
-                as: 'creatorInfo'
-            }
-        },
-        {
-            $unwind: {
-                path: '$creatorInfo',
-                preserveNullAndEmptyArrays: true
-            }
-        },
-        {
-            $lookup: {
-                from: 'examsessions',
-                localField: '_id',
-                foreignField: 'exam',
-                as: 'sessions'
-            }
-        },
-        {
-            $project: {
-                id: '$_id',
-                name: '$title',
-                category: '$category',
-                status: { $cond: [{ $eq: ['$status', 'published'] }, 'live', 'draft'] },
-                time: '$scheduledDate',
-                questionsCount: { $size: '$questions' },
-                duration: '$duration',
-                totalMarks: '$totalMarks',
-                students: { $size: '$sessions' },
-                submitted: {
-                    $size: {
-                        $filter: {
-                            input: '$sessions',
-                            as: 's',
-                            cond: { $eq: ['$$s.status', 'submitted'] }
-                        }
-                    }
-                },
-                flags: {
-                    $size: {
-                        $filter: {
-                            input: '$sessions',
-                            as: 's',
-                            cond: { $gt: [{ $size: { $ifNull: ['$$s.violations', []] } }, 0] }
-                        }
-                    }
-                },
-                creatorName: { $ifNull: ['$creatorInfo.name', 'Unknown System'] },
-                resultsPublished: '$resultsPublished'
-            }
+    // 1. Try Cache
+    const redisClient = getRedisClient();
+    const cacheKey = `mentor_exams_${req.user.id}_${req.user.role}`;
+    if (redisClient) {
+        try {
+            const cached = await redisClient.get(cacheKey);
+            if (cached) return res.json(JSON.parse(cached));
+        } catch (e) {
+            console.error('Redis cache read error:', e.message);
         }
-    ]);
+    }
 
-    res.json(stats);
+    // 2. Fetch from DB without heavy aggregations
+    const exams = await Exam.find(matchStage)
+        .populate('creator', 'name')
+        .sort({ createdAt: -1 })
+        .lean();
+
+    const formattedExams = exams.map(exam => ({
+        id: exam._id,
+        name: exam.title,
+        category: exam.category,
+        status: exam.status === 'published' ? 'live' : 'draft',
+        time: exam.scheduledDate,
+        questionsCount: exam.questions ? exam.questions.length : 0,
+        duration: exam.duration,
+        totalMarks: exam.totalMarks,
+        creatorName: exam.creator ? exam.creator.name : 'Unknown System',
+        resultsPublished: exam.resultsPublished
+    }));
+
+    // 3. Set Cache
+    if (redisClient) {
+        try {
+            await redisClient.set(cacheKey, JSON.stringify(formattedExams), 'EX', 60); // 60s TTL
+        } catch (e) {
+            console.error('Redis cache write error:', e.message);
+        }
+    }
+
+    res.json(formattedExams);
 });
 
 // ─────────────── GET /api/exams/:id ───────────────
