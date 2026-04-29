@@ -7,7 +7,7 @@ const axios = require('axios');
  * POST /api/ai/generate
  * Body: { category, syllabus, config: { mcq, short, coding } }
  */
-exports.generateQuestions = async (req, res) => {
+exports.generateQuestions = async (req, res, next) => {
     const { category, syllabus, config } = req.body;
     const geminiKey = process.env.GEMINI_API_KEY;
 
@@ -41,7 +41,7 @@ exports.generateQuestions = async (req, res) => {
 
     try {
         const prompt = buildPrompt(category, syllabus, mcqCount, shortCount, codingCount, reactCount, totalMarks);
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
 
         const response = await axios.post(url, {
             contents: [{ parts: [{ text: prompt }] }],
@@ -57,10 +57,9 @@ exports.generateQuestions = async (req, res) => {
         const jsonMatch = text.match(/\[[\s\S]*\]/);
         if (!jsonMatch) {
             console.error('AI Response (no JSON found):', text.substring(0, 500));
-            return res.status(500).json({
-                success: false,
-                error: 'AI generated a response but it could not be parsed. Please try again.'
-            });
+            const parseErr = new Error('AI generated a response but it could not be parsed. Please try again.');
+            parseErr.statusCode = 500;
+            return next(parseErr);
         }
 
         let questions;
@@ -68,17 +67,15 @@ exports.generateQuestions = async (req, res) => {
             questions = JSON.parse(jsonMatch[0]);
         } catch (parseErr) {
             console.error('JSON Parse Error:', parseErr.message, '\nRaw:', jsonMatch[0].substring(0, 500));
-            return res.status(500).json({
-                success: false,
-                error: 'AI response format was invalid. Please try again.'
-            });
+            const formatErr = new Error('AI response format was invalid. Please try again.');
+            formatErr.statusCode = 500;
+            return next(formatErr);
         }
 
         if (!Array.isArray(questions) || questions.length === 0) {
-            return res.status(500).json({
-                success: false,
-                error: 'AI returned empty results. Try providing more detailed syllabus content.'
-            });
+            const emptyErr = new Error('AI returned empty results. Try providing more detailed syllabus content.');
+            emptyErr.statusCode = 500;
+            return next(emptyErr);
         }
 
         // Sanitize and normalize each question
@@ -95,16 +92,13 @@ exports.generateQuestions = async (req, res) => {
         console.error('AI Generation Error:', error.response?.data?.error || error.response?.data || error.message);
 
         if (error.response?.status === 429) {
-            return res.status(429).json({
-                success: false,
-                error: 'AI rate limit reached. Please wait a moment and try again.'
-            });
+            const limitErr = new Error('AI rate limit reached. Please wait a moment and try again.');
+            limitErr.statusCode = 429;
+            return next(limitErr);
         }
 
-        res.status(500).json({
-            success: false,
-            error: 'Failed to generate questions. AI service may be temporarily unavailable.'
-        });
+        // Pass to central error handler for Intelligence Logging
+        next(error);
     }
 };
 
