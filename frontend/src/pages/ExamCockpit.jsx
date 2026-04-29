@@ -42,6 +42,7 @@ import { useTabVisibility, TabToast } from "../components/TabVisibility";
 import StudentMessageModal from "../components/StudentMessageModal";
 import FAQBot from "../components/FAQBot";
 import * as faceapi from "@vladmandic/face-api";
+import DOMPurify from "dompurify";
 import VisionLogo from "../components/VisionLogo";
 import AnimatedStatusIcon from "../components/AnimatedStatusIcon";
 import storageService from "../services/storageService";
@@ -490,7 +491,7 @@ const ObjectivePanel = React.memo(
           </div>
         </div>
         <h2 className="text-xl font-medium text-primary leading-snug tracking-tight mb-6"
-          dangerouslySetInnerHTML={{ __html: question?.questionText || '' }}
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(question?.questionText || '') }}
         />
         <div className="prose prose-invert prose-sm text-muted leading-relaxed space-y-4">
           <p>
@@ -2605,7 +2606,7 @@ const { examId } = useParams();
                         )}
                       </div>
                       <h2 className="text-[19px] font-medium text-primary leading-snug tracking-tight"
-                        dangerouslySetInnerHTML={{ __html: q?.questionText || '' }}
+                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(q?.questionText || '') }}
                       />
                     </div>
                     <div className="p-10 flex flex-col min-h-0 bg-surface">

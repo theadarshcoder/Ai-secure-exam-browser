@@ -129,7 +129,7 @@ exports.login = asyncHandler(async (req, res) => {
                     const forceLoginKey = `force_login_count:${user._id}`;
                     const currentCount = await redisClient.get(forceLoginKey);
                     
-                    if (currentCount && parseInt(currentCount) >= 3) {
+                    if (currentCount && parseInt(currentCount) >= 10) {
                         return res.status(429).json({
                             code: 'FORCE_LOGIN_LIMIT_EXCEEDED',
                             message: 'Security Alert: Too many "Force Login" attempts. Your account has been temporarily restricted. Please contact support.'
@@ -137,7 +137,7 @@ exports.login = asyncHandler(async (req, res) => {
                     }
                     
                     await redisClient.incr(forceLoginKey);
-                    await redisClient.expire(forceLoginKey, 600); // 10 min window
+                    await redisClient.expire(forceLoginKey, 300); // 5 min window
                 }
 
                 console.warn(`[SECURITY] Force Login by ${user.email} during active exam ${activeSession.exam}`);

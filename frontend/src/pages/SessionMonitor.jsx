@@ -535,6 +535,7 @@ export default function SessionMonitor() {
             socketService.socket.off('student_need_help');
             socketService.socket.off('mentor_alert');
             socketService.socket.off('receive_admin_message');
+            socketService.disconnect(); // Fix: Prevent memory leaks from ghost connections
         }
     };
   }, [sessionData.id, sessionData.email, sessionData.examId]);

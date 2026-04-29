@@ -7,7 +7,7 @@ const Setting = require('../models/Setting');
 const { asyncHandler } = require('../middlewares/errorMiddleware');
 const axios = require('axios');
 const mongoose = require('mongoose');
-const { getCache, setCache, TTL_API_CACHE } = require('../services/cacheService');
+const { getCache, setCache, clearCache, TTL_API_CACHE } = require('../services/cacheService');
 
 // ═══════════════════════════════════════════════════════════
 // Fetch all exam results and sessions for Admin/Mentor Dashboard
@@ -387,6 +387,10 @@ exports.saveSettings = asyncHandler(async (req, res) => {
     } else {
         setting = await Setting.create(req.body);
     }
+    
+    // 🛡️ Invalidate Cache so the next rule-engine check picks up new settings
+    await clearCache('global_settings');
+
     res.json({ message: 'Settings saved successfully', settings: setting });
 });
 

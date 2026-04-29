@@ -24,8 +24,9 @@ const addCodeEvaluationJob = async (jobData) => {
     const job = await codeEvaluationQueue.add('evaluate', validatedData, {
         attempts: 3,
         backoff: { type: 'exponential', delay: 2000 },
+        timeout: 30000, // 30 seconds explicit timeout
         removeOnComplete: true,
-        removeOnFail: false
+        removeOnFail: { count: 100 } // Dead-letter queue (retains last 100 failed jobs)
     });
     return job;
 };
@@ -37,10 +38,11 @@ const setupCodeEvaluationWorker = (io) => {
     }
 
     const worker = new Worker('CodeEvaluation', async (job) => {
-        const { sourceCode, language, testCases, studentId, questionId } = job.data;
-        
-        console.log(`[Worker] Started Evaluation: Student ${studentId} | Q: ${questionId}`);
-        const results = [];
+        try {
+            const { sourceCode, language, testCases, studentId, questionId } = job.data;
+            
+            console.log(`[Worker] Started Evaluation: Student ${studentId} | Q: ${questionId}`);
+            const results = [];
         let allPassed = true;
 
         // Process each test case against Judge0
@@ -89,6 +91,10 @@ const setupCodeEvaluationWorker = (io) => {
         }
 
         return { allPassed, results };
+        } catch (error) {
+            console.error(`[Worker] Fatal Error in Code Evaluation Job ${job.id}:`, error.message);
+            throw error; // Throwing triggers BullMQ retry mechanism
+        }
     }, { 
         connection,
         concurrency: 5 

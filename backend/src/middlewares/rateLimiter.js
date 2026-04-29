@@ -15,6 +15,15 @@ const createRedisStore = (label) => {
     });
 };
 
+// ⚡ COMBINED KEY GENERATOR: Fix for shared networks (Hostels/Colleges)
+// Combines IP with a unique identifier (userId, email, or session) to prevent 
+// one student's actions from rate-limiting the entire network.
+const combinedKeyGenerator = (req, res) => {
+    const ip = ipKeyGenerator(req, res);
+    const identifier = req.user?.id || req.body?.email || req.body?.studentId || req.params?.id || 'anon';
+    return `${ip}_${identifier}`;
+};
+
 /**
  * 🛡️ Code Execution Rate Limiter
  * Specifically designed to protect Judge0 API from exhaustion.
@@ -30,7 +39,7 @@ const codeExecutionLimiter = rateLimit({
     store: createRedisStore('code_exec'),
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req, res) => req.user?.id || ipKeyGenerator(req, res),
+    keyGenerator: combinedKeyGenerator,
     message: {
         allPassed: false,
         error: 'Cooldown Active',
@@ -52,7 +61,7 @@ const telemetryLimiter = rateLimit({
     store: createRedisStore('telemetry'),
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req, res) => req.user?.id || ipKeyGenerator(req, res),
+    keyGenerator: combinedKeyGenerator,
     message: {
         success: false,
         message: 'Telemetry rate limit exceeded.'
@@ -68,7 +77,7 @@ const importLimiter = rateLimit({
     store: createRedisStore('import'),
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req, res) => req.user?.id || ipKeyGenerator(req, res),
+    keyGenerator: combinedKeyGenerator,
     message: {
         success: false,
         error: "Too many import requests."
@@ -84,7 +93,7 @@ const autosaveLimiter = rateLimit({
     store: createRedisStore('autosave'),
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req, res) => req.user?.id || ipKeyGenerator(req, res),
+    keyGenerator: combinedKeyGenerator,
     message: 'Too many autosave requests.'
 });
 
@@ -102,7 +111,7 @@ const secureActionLimiter = rateLimit({
     store: createRedisStore('secure_action'),
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req, res) => req.user?.id || ipKeyGenerator(req, res),
+    keyGenerator: combinedKeyGenerator,
     message: {
         success: false,
         error: "Too many security-sensitive requests. Please slow down."
@@ -118,7 +127,7 @@ const inviteVerifyLimiter = rateLimit({
     store: createRedisStore('invite_verify'),
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: ipKeyGenerator,
+    keyGenerator: combinedKeyGenerator,
     message: {
         success: false,
         error: "Too many verification attempts. Please try again later."

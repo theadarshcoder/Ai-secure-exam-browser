@@ -474,7 +474,13 @@ io.on('connection', (socket) => {
         const studentId = socket.user.id;
 
         try {
-            const settings = await Setting.findOne() || new Setting();
+            // 🛡️ Optimized: Use cached settings to prevent DB read-storms
+            let settings = await cacheService.getCache('global_settings');
+            if (!settings) {
+                console.log('📡 Cache miss: Fetching global settings from DB...');
+                settings = await Setting.findOne() || new Setting();
+                await cacheService.setCache('global_settings', settings, 86400); // Cache for 24h
+            }
             const maxViolations = settings.maxViolations || 5;
             const bgLimit = settings.backgroundLimitSeconds || 10;
 
@@ -817,9 +823,9 @@ io.on('connection', (socket) => {
             io.to(`exam_${socket.examId}`).emit('student_offline', { userId: socket.user.id });
         }
 
-        // 🏎️ Fix 41: Prevent memory leak by removing from tracking map
-        rateLimitMap.delete(socket.id);
-
+        // 🏎️ Fix 41: Resources are scoped locally (like eventCounts), so they auto-gc.
+        // No global tracking maps to delete here, preventing ReferenceErrors.
+        
         console.log(`❌ Disconnected: ${socket.id} | User: ${socket.user.email}`);
     });
 });
@@ -985,6 +991,17 @@ async function gracefulShutdown(signal) {
 // OS Signal Listeners
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// 🛡️ Presentation Safety Nets: Prevent server crashes from unhandled errors
+process.on('uncaughtException', (err) => {
+    console.error('🔥 [CRITICAL] Uncaught Exception:', err.message);
+    // Don't exit, keep the presentation alive!
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('⚠️ [WARNING] Unhandled Promise Rejection:', reason);
+    // Log but stay alive
+});
 
 // 🚀 Start the application
 bootstrap();

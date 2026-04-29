@@ -200,6 +200,44 @@ const preWarmCache = async () => {
     }
 };
 
+/**
+ * 🚀 Telemetry Buffer (Phase 3 Optimization)
+ * Buffers frequent telemetry pings into a Redis List to prevent DB Write Overload.
+ */
+const TELEMETRY_BUFFER_KEY = 'buffer:telemetry_logs';
+
+const pushTelemetryLog = async (logData) => {
+    const redis = getRedisClient();
+    if (!redis) return null;
+    try {
+        await redis.rpush(TELEMETRY_BUFFER_KEY, JSON.stringify(logData));
+    } catch (err) {
+        console.warn('⚠️ Redis: Failed to buffer telemetry log:', err.message);
+    }
+};
+
+const popAllTelemetryLogs = async () => {
+    const redis = getRedisClient();
+    if (!redis) return [];
+    try {
+        // ⚡ Atomic pop-and-clear using Multi
+        const multi = redis.multi();
+        multi.lrange(TELEMETRY_BUFFER_KEY, 0, -1);
+        multi.del(TELEMETRY_BUFFER_KEY);
+        const results = await multi.exec();
+        
+        const rawLogs = results[0][1];
+        if (!rawLogs || rawLogs.length === 0) return [];
+        
+        return rawLogs.map(str => {
+            try { return JSON.parse(str); } catch (e) { return null; }
+        }).filter(Boolean);
+    } catch (err) {
+        console.warn('⚠️ Redis: Failed to flush telemetry buffer:', err.message);
+        return [];
+    }
+};
+
 module.exports = {
     saveUserSession,
     getUserSession,
@@ -209,6 +247,8 @@ module.exports = {
     clearCache,
     clearPattern,
     preWarmCache,
+    pushTelemetryLog,
+    popAllTelemetryLogs,
     TTL_ACTIVE_SESSION,
     TTL_API_CACHE
 };

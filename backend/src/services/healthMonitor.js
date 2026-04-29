@@ -9,6 +9,21 @@ const lastAlertTimes = {};    // { "examId_123": { network: 0, errors: 0, drop: 
 
 const startHealthMonitor = (io) => {
     console.log('🩺 [Health Monitor] Initialization successful. Monitoring starting...');
+    
+    // 🚀 Phase 3 Optimization: Bulk Flush Telemetry Logs every 30s
+    setInterval(async () => {
+        try {
+            const { popAllTelemetryLogs } = require('./cacheService');
+            const logs = await popAllTelemetryLogs();
+            if (logs && logs.length > 0) {
+                await ErrorLog.insertMany(logs, { ordered: false });
+                console.log(`💾 [DB] Bulk inserted ${logs.length} telemetry logs`);
+            }
+        } catch (err) {
+            console.error('❌ [Telemetry Bulk Insert Failed]:', err.message);
+        }
+    }, 30000);
+
     setInterval(async () => {
         try {
             const now = Date.now();

@@ -44,11 +44,17 @@ const verifyToken = async (req, res, next) => {
 
             if (cachedSession && cachedSession.sessionVersion) {
                 // L2 (Redis): Version-based validation (unified with L3)
-                if (decoded.sessionVersion && cachedSession.sessionVersion !== decoded.sessionVersion) {
-                    throw new Error('SESSION_COLLISION');
+                if (decoded.sessionVersion && cachedSession.sessionVersion > decoded.sessionVersion) {
+                    throw new Error('SESSION_COLLISION'); // Token is older than cache -> revoked!
+                } else if (decoded.sessionVersion && cachedSession.sessionVersion < decoded.sessionVersion) {
+                    // Cache is stale! The token is newer (e.g. recent login). Fall back to DB to confirm.
+                    cachedSession = null; 
+                } else {
+                    permissions = cachedSession.permissions || [];
                 }
-                permissions = cachedSession.permissions || [];
-            } else {
+            } 
+            
+            if (!cachedSession || !cachedSession.sessionVersion) {
                 // L3: Fallback to MongoDB
                 const user = await User.findById(decoded.id).select('permissions sessionVersion');
                 if (!user) throw new Error('USER_NOT_FOUND');
