@@ -34,6 +34,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const sessionRoutes = require('./routes/sessionRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const publicRoutes = require('./routes/publicRoutes');
 const { setupCodeEvaluationWorker } = require('./queues/codeGradingQueue');
 const { setupFrontendEvaluationWorker } = require('./queues/frontendGradingQueue');
 const { setupInviteEmailWorker } = require('./queues/inviteEmailQueue');
@@ -342,6 +343,7 @@ app.use('/api/admin', globalLimiter, adminRoutes);
 app.use('/api/session', verifyToken, telemetryLimiter, sessionRoutes);
 app.use('/api/ai', globalLimiter, aiRoutes);
 app.use('/api/upload', verifyToken, globalLimiter, uploadRoutes);
+app.use('/api/public', globalLimiter, publicRoutes);
 
 // ─── 404 Global Handler ──────────────────────────────────
 app.use((req, res, next) => {
