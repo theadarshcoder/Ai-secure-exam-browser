@@ -1,4 +1,5 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const axios = require('axios');
 
 /**
  * 🤖 AI Question Generator — Powered by Gemini SDK
@@ -72,13 +73,9 @@ exports.generateQuestions = async (req, res, next) => {
         try {
             const prompt = buildPrompt(category, syllabus, mcqCount, shortCount, codingCount, reactCount, totalMarks);
 
-            const response = await fetch('https://agentrouter.org/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${agentRouterKey}`
-                },
-                body: JSON.stringify({
+            const response = await axios.post(
+                'https://agentrouter.org/v1/chat/completions',
+                {
                     model: 'deepseek-v3.1',
                     messages: [
                         {
@@ -92,16 +89,18 @@ exports.generateQuestions = async (req, res, next) => {
                     ],
                     temperature: 0.7,
                     max_tokens: 8192
-                })
-            });
+                },
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${agentRouterKey}`
+                    },
+                    timeout: 60000
+                }
+            );
 
-            if (!response.ok) {
-                const errBody = await response.text();
-                throw new Error(`Agent Router error ${response.status}: ${errBody}`);
-            }
-
-            const data = await response.json();
-            const text = data.choices?.[0]?.message?.content || '';
+            const text = response.data?.choices?.[0]?.message?.content || '';
+            if (!text) throw new Error('Agent Router returned empty response');
 
             console.log(`🤖 [DeepSeek V3 Fallback] Response received (${text.length} chars)`);
 
