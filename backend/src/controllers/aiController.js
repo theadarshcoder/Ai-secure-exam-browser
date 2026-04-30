@@ -12,10 +12,7 @@ exports.generateQuestions = async (req, res, next) => {
     const { category, syllabus, config } = req.body;
 
     if (!syllabus && !category) {
-        return res.status(400).json({
-            success: false,
-            error: 'Please provide syllabus content or a category for question generation.'
-        });
+        return res.status(400).json({ success: false, error: 'Please provide syllabus content or a category for question generation.' });
     }
 
     const mcqCount = Math.min(config?.mcq || 0, 20);
@@ -26,91 +23,104 @@ exports.generateQuestions = async (req, res, next) => {
     const totalMarks = req.body.totalMarks || 100;
 
     if (totalCount === 0) {
-        return res.status(400).json({
-            success: false,
-            error: 'Please specify at least one question type to generate.'
-        });
+        return res.status(400).json({ success: false, error: 'Please specify at least one question type to generate.' });
     }
 
     const prompt = buildPrompt(category, syllabus, mcqCount, shortCount, codingCount, reactCount, totalMarks);
 
-    // ─── PRIMARY: Gemini 1.5 Flash ─────────────────────────
+    // ═══════════════════════════════════════════════════════════
+    // PRIMARY: Gemini 2.0 Flash
+    // ═══════════════════════════════════════════════════════════
     const geminiKey = process.env.GEMINI_API_KEY;
     if (geminiKey) {
         try {
             const genAI = new GoogleGenerativeAI(geminiKey);
-            const model = genAI.getGenerativeModel({ 
+            const model = genAI.getGenerativeModel({
                 model: "gemini-2.0-flash",
                 generationConfig: { temperature: 0.7, topP: 0.95, topK: 40, maxOutputTokens: 8192 }
             });
             const result = await model.generateContent(prompt);
             const text = result.response.text();
-            console.log('✅ [Gemini 2.0 Flash] Response received successfully');
+            console.log('✅ [Gemini 2.0 Flash] Generated successfully');
             return parseAndRespond(text, sanitizeQuestion, res, next, mcqCount, shortCount, codingCount, reactCount);
         } catch (geminiError) {
-            console.warn(`⚠️ Gemini failed: ${geminiError.message} — switching to DeepSeek V3...`);
+            console.warn(`⚠️ Gemini failed: ${geminiError.message} — switching to Groq fallback...`);
         }
     } else {
-        console.warn('⚠️ GEMINI_API_KEY not set — going directly to DeepSeek V3 fallback...');
+        console.warn('⚠️ GEMINI_API_KEY not set — going to Groq fallback...');
     }
 
-    // ─── FALLBACK: DeepSeek V3 via Agent Router ────────────
-    const agentRouterKey = process.env.AGENT_ROUTER_API_KEY;
-    if (!agentRouterKey) {
-        return res.status(503).json({
-            success: false,
-            error: 'AI Service is not configured. Please contact administrator.'
-        });
+    // ═══════════════════════════════════════════════════════════
+    // FALLBACK: Groq — 4-Key Rotation (llama-3.3-70b-versatile)
+    // Keys rotate automatically when rate limit (429) is hit
+    // ═══════════════════════════════════════════════════════════
+    const groqKeys = [
+        process.env.GROQ_API_KEY_1,
+        process.env.GROQ_API_KEY_2,
+        process.env.GROQ_API_KEY_3,
+        process.env.GROQ_API_KEY_4,
+    ].filter(Boolean); // ignore unset keys
+
+    if (groqKeys.length === 0) {
+        return res.status(503).json({ success: false, error: 'AI Service is not configured. Please contact administrator.' });
     }
 
-    try {
-        console.log('🔄 Attempting DeepSeek V3.1 via Agent Router...');
-        const response = await axios.post(
-            'https://agentrouter.org/v1/chat/completions',
-            {
-                model: 'deepseek-v3.1',
-                messages: [
-                    {
-                        role: 'system',
-                        content: 'You are an expert exam question generator. Always respond with a valid JSON array only. No markdown, no explanation.'
-                    },
-                    { role: 'user', content: prompt }
-                ],
-                temperature: 0.7,
-                max_tokens: 8192
-            },
-            {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${agentRouterKey}`
+    let lastError = null;
+    for (let i = 0; i < groqKeys.length; i++) {
+        try {
+            console.log(`🔄 Trying Groq key ${i + 1}/${groqKeys.length}...`);
+            const response = await axios.post(
+                'https://api.groq.com/openai/v1/chat/completions',
+                {
+                    model: 'llama-3.3-70b-versatile',
+                    messages: [
+                        {
+                            role: 'system',
+                            content: 'You are an expert exam question generator. Always respond with a valid JSON array only. No markdown, no explanation outside the array.'
+                        },
+                        { role: 'user', content: prompt }
+                    ],
+                    temperature: 0.7,
+                    max_tokens: 8192
                 },
-                timeout: 60000
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${groqKeys[i]}`
+                    },
+                    timeout: 60000
+                }
+            );
+
+            const text = response.data?.choices?.[0]?.message?.content || '';
+            if (!text) throw new Error('Groq returned empty content');
+
+            console.log(`✅ [Groq Key ${i + 1}] Generated successfully (${text.length} chars)`);
+            return parseAndRespond(text, sanitizeQuestion, res, next, mcqCount, shortCount, codingCount, reactCount);
+
+        } catch (groqError) {
+            const status = groqError.response?.status;
+            const msg = groqError.response?.data?.error?.message || groqError.message;
+            lastError = msg;
+
+            if (status === 429 || status === 401) {
+                // Rate limited / invalid key → try next key
+                console.warn(`⚠️ Groq key ${i + 1} hit limit (${status}) — rotating to next key...`);
+                continue;
             }
-        );
 
-        const rawData = response.data;
-        console.log('🔍 DeepSeek raw response:', JSON.stringify(rawData).substring(0, 500));
-
-        const text = rawData?.choices?.[0]?.message?.content
-            || rawData?.choices?.[0]?.text
-            || rawData?.content
-            || '';
-
-        if (!text) throw new Error(`Agent Router returned empty content. Full response: ${JSON.stringify(rawData).substring(0, 300)}`);
-
-        console.log(`✅ [DeepSeek V3 Fallback] Response received (${text.length} chars)`);
-        return parseAndRespond(text, sanitizeQuestion, res, next, mcqCount, shortCount, codingCount, reactCount);
-
-    } catch (fallbackError) {
-        const detail = fallbackError.response?.data
-            ? JSON.stringify(fallbackError.response.data)
-            : fallbackError.message;
-        console.error(`❌ DeepSeek fallback failed: ${detail}`);
-        return res.status(503).json({
-            success: false,
-            error: `AI Service temporarily unavailable. Please try again. (${detail})`
-        });
+            // Non-rate-limit error → don't waste remaining keys
+            console.error(`❌ Groq key ${i + 1} failed with non-rate error: ${msg}`);
+            break;
+        }
     }
+
+    // All keys exhausted
+    console.error(`❌ All ${groqKeys.length} Groq keys exhausted. Last error: ${lastError}`);
+    return res.status(503).json({
+        success: false,
+        error: `AI generation failed after trying all available keys. Please try again later. (${lastError})`
+    });
 };
 
 
