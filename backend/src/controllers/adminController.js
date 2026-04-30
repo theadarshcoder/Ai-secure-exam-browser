@@ -597,12 +597,3 @@ exports.exportStudentIntelligenceCSV = asyncHandler(async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
     res.status(200).send(csv);
 });
-
-// ═══════════════════════════════════════════════════════════
-// 📧 NEWSLETTER: Fetch All Subscribers
-// ═══════════════════════════════════════════════════════════
-exports.getSubscribers = asyncHandler(async (req, res) => {
-    const Subscription = require('../models/Subscription');
-    const subscribers = await Subscription.find().sort({ createdAt: -1 }).lean();
-    res.json(subscribers);
-});
