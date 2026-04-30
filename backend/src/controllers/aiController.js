@@ -56,62 +56,112 @@ exports.generateQuestions = async (req, res, next) => {
         const result = await model.generateContent(prompt);
         const text = result.response.text();
 
-        // Extract JSON array from response (handle markdown wrapping like ```json ... ```)
-        let cleanedText = text;
-        if (text.includes('```')) {
-            const matches = text.match(/```(?:json)?([\s\S]*?)```/);
-            if (matches && matches[1]) {
-                cleanedText = matches[1].trim();
-            }
+        return parseAndRespond(text, sanitizeQuestion, res, next, mcqCount, shortCount, codingCount, reactCount);
+
+    } catch (geminiError) {
+        console.warn(`⚠️ Gemini failed (${geminiError.message}). Falling back to DeepSeek V3 via Agent Router...`);
+
+        // 🔄 FALLBACK: DeepSeek V3 via Agent Router (OpenAI-compatible API)
+        const agentRouterKey = process.env.AGENT_ROUTER_API_KEY;
+        if (!agentRouterKey) {
+            const err = new Error('AI Engine unavailable. Both Gemini and fallback are not configured.');
+            err.statusCode = 503;
+            return next(err);
         }
 
-        // Second pass: find the first '[' and last ']' if parsing still fails
-        const jsonMatch = cleanedText.match(/\[[\s\S]*\]/);
-        if (!jsonMatch) {
-            console.error('AI Response (no JSON found):', text.substring(0, 500));
-            const parseErr = new Error('AI generated a response but it could not be parsed. Please try again.');
-            parseErr.statusCode = 500;
-            return next(parseErr);
-        }
-
-        let questions;
         try {
-            questions = JSON.parse(jsonMatch[0]);
-        } catch (parseErr) {
-            console.error('JSON Parse Error:', parseErr.message, '\nRaw:', jsonMatch[0].substring(0, 500));
-            const formatErr = new Error('AI response format was invalid. Please try again.');
-            formatErr.statusCode = 500;
-            return next(formatErr);
+            const prompt = buildPrompt(category, syllabus, mcqCount, shortCount, codingCount, reactCount, totalMarks);
+
+            const response = await fetch('https://agentrouter.org/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${agentRouterKey}`
+                },
+                body: JSON.stringify({
+                    model: 'deepseek-v3.1',
+                    messages: [
+                        {
+                            role: 'system',
+                            content: 'You are an expert exam question generator. Always respond with valid JSON arrays only.'
+                        },
+                        {
+                            role: 'user',
+                            content: prompt
+                        }
+                    ],
+                    temperature: 0.7,
+                    max_tokens: 8192
+                })
+            });
+
+            if (!response.ok) {
+                const errBody = await response.text();
+                throw new Error(`Agent Router error ${response.status}: ${errBody}`);
+            }
+
+            const data = await response.json();
+            const text = data.choices?.[0]?.message?.content || '';
+
+            console.log(`🤖 [DeepSeek V3 Fallback] Response received (${text.length} chars)`);
+
+            return parseAndRespond(text, sanitizeQuestion, res, next, mcqCount, shortCount, codingCount, reactCount);
+
+        } catch (fallbackError) {
+            console.error('❌ DeepSeek fallback also failed:', fallbackError.message);
+            const err = new Error('AI service is temporarily unavailable. Please try again in a moment.');
+            err.statusCode = 503;
+            return next(err);
         }
-
-        if (!Array.isArray(questions) || questions.length === 0) {
-            const emptyErr = new Error('AI returned empty results. Try providing more detailed syllabus content.');
-            emptyErr.statusCode = 500;
-            return next(emptyErr);
-        }
-
-        // Sanitize and normalize each question
-        const sanitized = questions.map((q, i) => sanitizeQuestion(q, i)).filter(Boolean);
-
-        console.log(`🤖 AI Generated ${sanitized.length} questions (MCQ: ${sanitized.filter(q => q.type === 'mcq').length}, Short: ${sanitized.filter(q => q.type === 'short').length}, Coding: ${sanitized.filter(q => q.type === 'coding').length}, React: ${sanitized.filter(q => q.type === 'frontend-react').length})`);
-
-        res.json({
-            success: true,
-            questions: sanitized
-        });
-
-    } catch (error) {
-        console.error('AI Generation Error:', error.message);
-
-        if (error.message?.includes('429')) {
-            const limitErr = new Error('AI rate limit reached. Please wait a moment and try again.');
-            limitErr.statusCode = 429;
-            return next(limitErr);
-        }
-
-        next(error);
     }
 };
+
+
+
+// ─── Shared JSON Parser & Responder ───────────────────────
+
+function parseAndRespond(text, sanitizeQuestion, res, next, mcqCount, shortCount, codingCount, reactCount) {
+    let cleanedText = text;
+    if (text.includes('```')) {
+        const matches = text.match(/```(?:json)?([\s\S]*?)```/);
+        if (matches && matches[1]) {
+            cleanedText = matches[1].trim();
+        }
+    }
+
+    const jsonMatch = cleanedText.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+        console.error('AI Response (no JSON found):', text.substring(0, 500));
+        const parseErr = new Error('AI generated a response but it could not be parsed. Please try again.');
+        parseErr.statusCode = 500;
+        return next(parseErr);
+    }
+
+    let questions;
+    try {
+        questions = JSON.parse(jsonMatch[0]);
+    } catch (parseErr) {
+        console.error('JSON Parse Error:', parseErr.message, '\nRaw:', jsonMatch[0].substring(0, 500));
+        const formatErr = new Error('AI response format was invalid. Please try again.');
+        formatErr.statusCode = 500;
+        return next(formatErr);
+    }
+
+    if (!Array.isArray(questions) || questions.length === 0) {
+        const emptyErr = new Error('AI returned empty results. Try providing more detailed syllabus content.');
+        emptyErr.statusCode = 500;
+        return next(emptyErr);
+    }
+
+    const sanitized = questions.map((q, i) => sanitizeQuestion(q, i)).filter(Boolean);
+
+    console.log(`🤖 AI Generated ${sanitized.length} questions (MCQ: ${sanitized.filter(q => q.type === 'mcq').length}, Short: ${sanitized.filter(q => q.type === 'short').length}, Coding: ${sanitized.filter(q => q.type === 'coding').length}, React: ${sanitized.filter(q => q.type === 'frontend-react').length})`);
+
+    return res.json({
+        success: true,
+        questions: sanitized
+    });
+}
 
 
 // ─── Prompt Builder ────────────────────────────────────────
