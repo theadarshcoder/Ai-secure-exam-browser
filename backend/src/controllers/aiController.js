@@ -10,14 +10,6 @@ const axios = require('axios');
  */
 exports.generateQuestions = async (req, res, next) => {
     const { category, syllabus, config } = req.body;
-    const geminiKey = process.env.GEMINI_API_KEY;
-
-    if (!geminiKey) {
-        return res.status(503).json({
-            success: false,
-            error: 'AI Engine not configured. Please add GEMINI_API_KEY to your .env file.'
-        });
-    }
 
     if (!syllabus && !category) {
         return res.status(400).json({
@@ -40,78 +32,77 @@ exports.generateQuestions = async (req, res, next) => {
         });
     }
 
-    try {
-        const genAI = new GoogleGenerativeAI(geminiKey);
-        const model = genAI.getGenerativeModel({ 
-            model: "gemini-1.5-flash",
-            generationConfig: {
-                temperature: 0.7,
-                topP: 0.95,
-                topK: 40,
-                maxOutputTokens: 8192,
-            }
+    const prompt = buildPrompt(category, syllabus, mcqCount, shortCount, codingCount, reactCount, totalMarks);
+
+    // ─── PRIMARY: Gemini 1.5 Flash ─────────────────────────
+    const geminiKey = process.env.GEMINI_API_KEY;
+    if (geminiKey) {
+        try {
+            const genAI = new GoogleGenerativeAI(geminiKey);
+            const model = genAI.getGenerativeModel({ 
+                model: "gemini-1.5-flash",
+                generationConfig: { temperature: 0.7, topP: 0.95, topK: 40, maxOutputTokens: 8192 }
+            });
+            const result = await model.generateContent(prompt);
+            const text = result.response.text();
+            console.log('✅ [Gemini] Response received successfully');
+            return parseAndRespond(text, sanitizeQuestion, res, next, mcqCount, shortCount, codingCount, reactCount);
+        } catch (geminiError) {
+            console.warn(`⚠️ Gemini failed: ${geminiError.message} — switching to DeepSeek V3...`);
+        }
+    } else {
+        console.warn('⚠️ GEMINI_API_KEY not set — going directly to DeepSeek V3 fallback...');
+    }
+
+    // ─── FALLBACK: DeepSeek V3 via Agent Router ────────────
+    const agentRouterKey = process.env.AGENT_ROUTER_API_KEY;
+    if (!agentRouterKey) {
+        return res.status(503).json({
+            success: false,
+            error: 'AI Service is not configured. Please contact administrator.'
         });
+    }
 
-        const prompt = buildPrompt(category, syllabus, mcqCount, shortCount, codingCount, reactCount, totalMarks);
-        
-        const result = await model.generateContent(prompt);
-        const text = result.response.text();
+    try {
+        console.log('🔄 Attempting DeepSeek V3.1 via Agent Router...');
+        const response = await axios.post(
+            'https://agentrouter.org/v1/chat/completions',
+            {
+                model: 'deepseek-v3.1',
+                messages: [
+                    {
+                        role: 'system',
+                        content: 'You are an expert exam question generator. Always respond with a valid JSON array only. No markdown, no explanation.'
+                    },
+                    { role: 'user', content: prompt }
+                ],
+                temperature: 0.7,
+                max_tokens: 8192
+            },
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${agentRouterKey}`
+                },
+                timeout: 60000
+            }
+        );
 
+        const text = response.data?.choices?.[0]?.message?.content || '';
+        if (!text) throw new Error('Agent Router returned empty content');
+
+        console.log(`✅ [DeepSeek V3 Fallback] Response received (${text.length} chars)`);
         return parseAndRespond(text, sanitizeQuestion, res, next, mcqCount, shortCount, codingCount, reactCount);
 
-    } catch (geminiError) {
-        console.warn(`⚠️ Gemini failed (${geminiError.message}). Falling back to DeepSeek V3 via Agent Router...`);
-
-        // 🔄 FALLBACK: DeepSeek V3 via Agent Router (OpenAI-compatible API)
-        const agentRouterKey = process.env.AGENT_ROUTER_API_KEY;
-        if (!agentRouterKey) {
-            const err = new Error('AI Engine unavailable. Both Gemini and fallback are not configured.');
-            err.statusCode = 503;
-            return next(err);
-        }
-
-        try {
-            const prompt = buildPrompt(category, syllabus, mcqCount, shortCount, codingCount, reactCount, totalMarks);
-
-            const response = await axios.post(
-                'https://agentrouter.org/v1/chat/completions',
-                {
-                    model: 'deepseek-v3.1',
-                    messages: [
-                        {
-                            role: 'system',
-                            content: 'You are an expert exam question generator. Always respond with valid JSON arrays only.'
-                        },
-                        {
-                            role: 'user',
-                            content: prompt
-                        }
-                    ],
-                    temperature: 0.7,
-                    max_tokens: 8192
-                },
-                {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${agentRouterKey}`
-                    },
-                    timeout: 60000
-                }
-            );
-
-            const text = response.data?.choices?.[0]?.message?.content || '';
-            if (!text) throw new Error('Agent Router returned empty response');
-
-            console.log(`🤖 [DeepSeek V3 Fallback] Response received (${text.length} chars)`);
-
-            return parseAndRespond(text, sanitizeQuestion, res, next, mcqCount, shortCount, codingCount, reactCount);
-
-        } catch (fallbackError) {
-            console.error('❌ DeepSeek fallback also failed:', fallbackError.message);
-            const err = new Error('AI service is temporarily unavailable. Please try again in a moment.');
-            err.statusCode = 503;
-            return next(err);
-        }
+    } catch (fallbackError) {
+        const detail = fallbackError.response?.data
+            ? JSON.stringify(fallbackError.response.data)
+            : fallbackError.message;
+        console.error(`❌ DeepSeek fallback failed: ${detail}`);
+        return res.status(503).json({
+            success: false,
+            error: `AI Service temporarily unavailable. Please try again. (${detail})`
+        });
     }
 };
 
