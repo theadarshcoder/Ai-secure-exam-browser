@@ -40,12 +40,12 @@ exports.generateQuestions = async (req, res, next) => {
         try {
             const genAI = new GoogleGenerativeAI(geminiKey);
             const model = genAI.getGenerativeModel({ 
-                model: "gemini-1.5-flash",
+                model: "gemini-2.0-flash",
                 generationConfig: { temperature: 0.7, topP: 0.95, topK: 40, maxOutputTokens: 8192 }
             });
             const result = await model.generateContent(prompt);
             const text = result.response.text();
-            console.log('✅ [Gemini] Response received successfully');
+            console.log('✅ [Gemini 2.0 Flash] Response received successfully');
             return parseAndRespond(text, sanitizeQuestion, res, next, mcqCount, shortCount, codingCount, reactCount);
         } catch (geminiError) {
             console.warn(`⚠️ Gemini failed: ${geminiError.message} — switching to DeepSeek V3...`);
@@ -88,8 +88,15 @@ exports.generateQuestions = async (req, res, next) => {
             }
         );
 
-        const text = response.data?.choices?.[0]?.message?.content || '';
-        if (!text) throw new Error('Agent Router returned empty content');
+        const rawData = response.data;
+        console.log('🔍 DeepSeek raw response:', JSON.stringify(rawData).substring(0, 500));
+
+        const text = rawData?.choices?.[0]?.message?.content
+            || rawData?.choices?.[0]?.text
+            || rawData?.content
+            || '';
+
+        if (!text) throw new Error(`Agent Router returned empty content. Full response: ${JSON.stringify(rawData).substring(0, 300)}`);
 
         console.log(`✅ [DeepSeek V3 Fallback] Response received (${text.length} chars)`);
         return parseAndRespond(text, sanitizeQuestion, res, next, mcqCount, shortCount, codingCount, reactCount);
