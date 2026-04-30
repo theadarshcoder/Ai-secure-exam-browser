@@ -68,16 +68,16 @@ const StudentIntelligenceDashboard = () => {
             window.scrollTo(0, 0);
             
             // Allow time for any lazy-loaded elements or animations to settle
-            await new Promise(r => setTimeout(r, 500));
+            await new Promise(r => setTimeout(r, 800)); // Increased wait time
 
             const canvas = await html2canvas(element, {
-                scale: 1.2, // Slightly reduced scale for better memory safety on mobile/low-end devices
+                scale: 1.5, // Increased scale for better quality
                 useCORS: true,
-                allowTaint: false,
-                logging: true, // Enabled logging temporarily to help user debug if it still fails
+                allowTaint: true, // Allow tainted canvases if needed
+                logging: false, 
                 backgroundColor: '#0a0c10', 
                 scrollX: 0,
-                scrollY: -window.scrollY,
+                scrollY: 0, // Reset scrollY
                 windowWidth: element.scrollWidth,
                 windowHeight: element.scrollHeight,
                 onclone: (clonedDoc) => {
@@ -89,14 +89,11 @@ const StudentIntelligenceDashboard = () => {
                     const pdfHeader = clonedDoc.querySelector('.pdf-only-header');
                     if (pdfHeader) pdfHeader.style.display = 'block';
                     
-                    // Remove backdrop-filter as it's unsupported by html2canvas and causes failures
-                    const blurryElems = clonedDoc.querySelectorAll('*');
-                    blurryElems.forEach(el => {
-                        const style = window.getComputedStyle(el);
-                        if (style.backdropFilter && style.backdropFilter !== 'none') {
-                            el.style.backdropFilter = 'none';
-                            el.style.backgroundColor = 'rgba(20, 22, 28, 0.95)'; // Fallback solid background
-                        }
+                    // Force solid background for glassmorphism elements which canvas often fails at
+                    const glassElems = clonedDoc.querySelectorAll('.bg-surface, .bg-surface-hover');
+                    glassElems.forEach(el => {
+                        el.style.backdropFilter = 'none';
+                        el.style.backgroundColor = '#14161c'; 
                     });
 
                     // Adjust spacing for PDF
@@ -109,8 +106,8 @@ const StudentIntelligenceDashboard = () => {
                 throw new Error("Canvas generation failed or returned empty.");
             }
 
-            const imgData = canvas.toDataURL('image/jpeg', 0.8); 
-            const pdf = new jsPDF('p', 'mm', 'a4', true); // compress: true
+            const imgData = canvas.toDataURL('image/jpeg', 0.95); 
+            const pdf = new jsPDF('p', 'mm', 'a4', true); 
             const pageWidth = pdf.internal.pageSize.getWidth();
             const pageHeight = pdf.internal.pageSize.getHeight();
             
@@ -136,13 +133,41 @@ const StudentIntelligenceDashboard = () => {
             pdf.save(`VISION_INTEL_${report.student.info.name.toUpperCase().replace(/\s+/g, '_')}.pdf`);
             toast.success("Intelligence Dossier Exported.", { id: loadingToast });
         } catch (error) {
-            console.error("PDF Export Failure Technical Details:", {
-                message: error.message,
-                stack: error.stack,
-                reportExists: !!report,
-                refExists: !!dashboardRef.current
+            console.error("PDF Export Failure:", error);
+            toast.error("PDF Export Failed. Try 'Export CSV' for a reliable data backup.", { id: loadingToast });
+        }
+    };
+
+    const handleDownloadCSV = async () => {
+        const loadingToast = toast.loading("Generating Backend Report...");
+        try {
+            const token = sessionStorage.getItem('vision_token');
+            const baseUrl = window.location.hostname === 'localhost' 
+                ? (import.meta.env.VITE_API_URL || 'http://localhost:5001')
+                : 'https://vision-live.onrender.com';
+            
+            const response = await fetch(`${baseUrl}/api/admin/export/intelligence/${studentId}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
             });
-            toast.error("Export Failed. Please check browser permissions or try a different browser.", { id: loadingToast });
+
+            if (!response.ok) throw new Error("Failed to generate report on server.");
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `VISION_REPORT_${report.student.info.name.toUpperCase().replace(/\s+/g, '_')}_${Date.now()}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            
+            toast.success("CSV Report Downloaded.", { id: loadingToast });
+        } catch (error) {
+            console.error("CSV Export Failure:", error);
+            toast.error("Backend Export Failed.", { id: loadingToast });
         }
     };
 
@@ -211,13 +236,19 @@ const StudentIntelligenceDashboard = () => {
                     <ChevronLeft size={18} /> Back
                 </button>
                 
-                <div className="flex items-center gap-3 w-full md:w-auto">
+                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
                     <ThemeToggle />
+                    <button 
+                        onClick={handleDownloadCSV}
+                        className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-surface border border-main hover:bg-surface-hover text-secondary font-semibold rounded-xl shadow-sm transition-all active:scale-95"
+                    >
+                        <Download size={16} /> Export CSV
+                    </button>
                     <button 
                         onClick={handleDownloadPDF}
                         className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-primary-500 hover:bg-primary-600 text-white font-semibold rounded-xl shadow-lg shadow-primary-500/20 transition-all active:scale-95"
                     >
-                        <Download size={18} /> Download Intelligence Report
+                        <ShieldAlert size={16} /> Download Intelligence PDF
                     </button>
                 </div>
             </div>

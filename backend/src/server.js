@@ -493,14 +493,16 @@ io.on('connection', (socket) => {
 
             // Mapping raw violation types to standardized ones
             if (type === 'TAB_HIDDEN' || type === VIOLATION_TYPES.TAB_SWITCH) {
+                // Standardize all background events as TAB_SWITCH for the violation log
+                updatePayload.$push.violations.type = VIOLATION_TYPES.TAB_SWITCH;
+                updatePayload.$push.violations.severity = 'low';
+                updatePayload.$push.violations.details = details || `Background duration: ${duration}s`;
+                updatePayload.$inc.tabSwitchCount = 1;
+
                 if (duration > bgLimit) {
                     shouldBlock = true;
                     blockReason = `Background limit exceeded (${duration}s > ${bgLimit}s)`;
-                } else {
-                    updatePayload.$push.violations.type = VIOLATION_TYPES.TAB_SWITCH;
-                    updatePayload.$push.violations.severity = 'low';
-                    updatePayload.$push.violations.details = details || `Background duration: ${duration}s`;
-                    updatePayload.$inc.tabSwitchCount = 1;
+                    updatePayload.$push.violations.severity = 'high'; // Escalate severity if limit exceeded
                 }
             } else if (type === 'CHEATING_FLAG' || type === VIOLATION_TYPES.SUSPICIOUS_ACTIVITY) {
                 updatePayload.$push.violations.type = VIOLATION_TYPES.SUSPICIOUS_ACTIVITY;

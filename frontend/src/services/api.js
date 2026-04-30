@@ -499,4 +499,14 @@ export const getStudentReport = async (studentId, page = 1, limit = 10) => {
     }
 };
 
+// Newsletter / Subscribers
+export const getSubscribers = async () => {
+    try {
+        const response = await api.get('/api/admin/newsletter/subscribers');
+        return response.data;
+    } catch (error) {
+        throw getErrorMessage(error);
+    }
+};
+
 export default api;

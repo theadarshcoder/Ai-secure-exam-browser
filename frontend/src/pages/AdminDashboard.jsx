@@ -123,7 +123,7 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
     if (sessionData?.questions) {
       const initial = {};
       sessionData.questions.forEach(q => {
-        if (q.type === 'short' || q.status === 'pending_review') {
+        if ((q.type === 'short' || q.status === 'pending_review') && q.type !== 'mcq') {
           initial[q.questionId || q.id] = {
             marksObtained: q.aiSuggestedMarks ?? q.marksObtained ?? 0,
             mentorFeedback: q.mentorFeedback || ''
@@ -209,7 +209,9 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
             sessionData.questions.map((q, i) => {
               const qId = q.questionId || q.id;
               const isShort = q.type === 'short';
-              const isEvaluating = isShort || q.status === 'pending_review';
+              const isCoding = q.type === 'coding';
+              // 🛡️ MCQ questions are NEVER manually evaluatable
+              const isEvaluating = (isShort || isCoding || q.status === 'pending_review') && q.type !== 'mcq';
 
               return (
                 <div key={i} className={`rounded-[2rem] border p-8 transition-all ${
@@ -468,6 +470,10 @@ export default function AdminDashboard() {
   const [liveSessions, setLiveSessions] = useState([]);
   const [liveSearchQuery, setLiveSearchQuery] = useState('');
 
+  // Newsletter Subscribers
+  const [subscribers, setSubscribers] = useState([]);
+  const [newsLoading, setNewsLoading] = useState(false);
+
   // Evaluation Modal state
   const [showEvalModal, setShowEvalModal] = useState(false);
   const [evalSessionData, setEvalSessionData] = useState(null);
@@ -532,6 +538,15 @@ export default function AdminDashboard() {
       toast.error(`VIOLATION: ${displayName} - ${data.type}`, { icon: '🚨' });
       const newNotif = { ...data, id: Date.now(), type: 'violation', unread: true, timestamp: new Date() };
       setNotifications(prev => [newNotif, ...prev]);
+
+      // 🛡️ Real-time eKYC Identity Board Sync
+      if (data.type === 'IDENTITY_VIOLATION') {
+        setCandidates(prev => prev.map(c => 
+          (c.email === data.studentEmail || c.email === data.studentId)
+            ? { ...c, isVerified: false, verificationIssue: data.message }
+            : c
+        ));
+      }
     });
 
     // ✅ Fix: Add ACK Received listener
@@ -653,6 +668,14 @@ export default function AdminDashboard() {
           } else if (tab === 'Candidates') {
               const res = await getCandidates(candidateSearch).catch(() => []);
               setCandidates(res || []);
+          } else if (tab === 'Newsletter') {
+              setNewsLoading(true);
+              try {
+                  const res = await getSubscribers();
+                  setSubscribers(res || []);
+              } finally {
+                  setNewsLoading(false);
+              }
           } else if (tab === 'LiveMonitoring') {
               const res = await getLiveSessions();
               if (res) {
@@ -1008,6 +1031,7 @@ export default function AdminDashboard() {
     { id: 'Exams', label: 'Exam Library', icon: FileText, access: ['admin', 'super_mentor'], section: 'Management' },
     { id: 'Results', label: 'Results & Reports', icon: BarChart3, access: ['admin', 'super_mentor'], section: 'Intelligence & Oversight' },
     { id: 'Academics', label: 'Academic Insights', icon: TrendingUp, access: ['admin', 'super_mentor', 'mentor'], section: 'Intelligence & Oversight' },
+    { id: 'Newsletter', label: 'Newsletter', icon: Bell, access: ['admin'], section: 'Intelligence & Oversight' },
     { id: 'Settings', label: 'System Settings', icon: Settings, access: ['admin'], section: 'Platform' },
   ];
 
@@ -1754,6 +1778,45 @@ export default function AdminDashboard() {
   );
 };
 
+  const renderNewsletter = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-primary tracking-tight">Newsletter Subscribers</h2>
+          <p className="text-[12px] text-muted font-medium mt-0.5">Manage users who signed up via "Stay in the loop"</p>
+        </div>
+        <button 
+          onClick={() => fetchDataForTab('Newsletter')}
+          className="w-10 h-10 flex items-center justify-center border border-main rounded-xl bg-surface text-muted hover:text-primary transition-all active:scale-95 shadow-sm"
+        >
+          <RefreshCw size={16} className={newsLoading ? 'animate-spin' : ''} />
+        </button>
+      </div>
+
+      <DataTable 
+        headers={['DATE', 'EMAIL', 'MESSAGE', 'STATUS']}
+        loading={newsLoading}
+        data={subscribers}
+        renderRow={(sub) => (
+          <tr key={sub._id} className="border-b border-main/50 hover:bg-surface-hover/30 transition-colors">
+            <td className="px-5 py-4 text-[12px] text-muted font-medium">
+              {new Date(sub.createdAt).toLocaleDateString()}
+            </td>
+            <td className="px-5 py-4 text-[13px] font-semibold text-primary">
+              {sub.email}
+            </td>
+            <td className="px-5 py-4 text-[12px] text-muted max-w-xs truncate">
+              {sub.message || <span className="opacity-30 italic text-[10px]">No message</span>}
+            </td>
+            <td className="px-5 py-4">
+              <Badge color="emerald">Active</Badge>
+            </td>
+          </tr>
+        )}
+      />
+    </div>
+  );
+
   const renderResults = () => (
     <div className="space-y-6 ">
       <div className="flex items-center justify-between py-4 relative overflow-hidden">
@@ -2357,6 +2420,7 @@ export default function AdminDashboard() {
       case 'Exams': return renderExams();
       case 'Results': return renderResults();
       case 'Academics': return renderAcademics();
+      case 'Newsletter': return renderNewsletter();
       case 'Settings': return renderSettings();
       default: return null;
     }

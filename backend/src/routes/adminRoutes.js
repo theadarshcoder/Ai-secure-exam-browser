@@ -72,5 +72,9 @@ router.post('/ai-scan', verifyToken, checkRole(['admin', 'super_mentor']), admin
 
 // Student Intelligence Report
 router.get('/students/:studentId/report', verifyToken, checkRole(['admin', 'super_mentor', 'mentor']), studentIntelligenceController.getStudentIntelligence);
+router.get('/export/intelligence/:studentId', verifyToken, checkRole(['admin', 'super_mentor', 'mentor']), adminController.exportStudentIntelligenceCSV);
+
+// Newsletter / Subscriptions
+router.get('/newsletter/subscribers', verifyToken, checkRole(['admin']), adminController.getSubscribers);
 
 module.exports = router;

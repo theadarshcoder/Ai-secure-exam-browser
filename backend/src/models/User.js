@@ -17,6 +17,7 @@ const userSchema = new mongoose.Schema({
     profilePicture: { type: String, default: null },
     idCardUrl: { type: String, default: null },
     isVerified: { type: Boolean, default: false },
+    verificationIssue: { type: String, default: null },
     sessionVersion: { type: Number, default: 1 }
 }, { timestamps: true });
 

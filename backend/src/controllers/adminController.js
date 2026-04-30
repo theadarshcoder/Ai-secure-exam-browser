@@ -450,7 +450,10 @@ exports.getCandidates = asyncHandler(async (req, res) => {
 });
 
 exports.verifyCandidate = asyncHandler(async (req, res) => {
-    const user = await User.findByIdAndUpdate(req.params.userId, { isVerified: true }, { new: true }).select('name email isVerified');
+    const user = await User.findByIdAndUpdate(req.params.userId, { 
+        isVerified: true,
+        verificationIssue: null 
+    }, { new: true }).select('name email isVerified verificationIssue');
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json({ success: true, user });
 });
@@ -548,4 +551,58 @@ exports.extendExamTime = asyncHandler(async (req, res) => {
     const io = req.app.get('io'); 
     io.to(`exam_${examId}`).emit('time_extended', { extraSeconds, extraMinutes, serverSyncTime: Date.now() });
     res.status(200).json({ success: true, message: `Time extended for ${result.modifiedCount} students.` });
+});
+
+// ═══════════════════════════════════════════════════════════
+// 📊 EXPORT: Student Intelligence Report (CSV)
+// ═══════════════════════════════════════════════════════════
+exports.exportStudentIntelligenceCSV = asyncHandler(async (req, res) => {
+    const { studentId } = req.params;
+    
+    const student = await User.findById(studentId).select('name email');
+    if (!student) {
+        res.status(404);
+        throw new Error('Student not found');
+    }
+
+    const sessions = await ExamSession.find({ student: studentId })
+        .populate('exam', 'title category')
+        .sort({ submittedAt: -1 })
+        .lean();
+
+    if (!sessions || sessions.length === 0) {
+        res.status(404);
+        throw new Error('No exam data found for this student to export.');
+    }
+
+    // CSV Header
+    let csv = "Exam Title,Category,Status,Score (%),Tab Switches,Violations,Date\n";
+
+    // CSV Rows
+    sessions.forEach(s => {
+        const title = (s.exam?.title || 'Unknown').replace(/,/g, '');
+        const category = (s.exam?.category || 'N/A').replace(/,/g, '');
+        const status = s.status || 'N/A';
+        const score = s.percentage || 0;
+        const tabSwitches = s.tabSwitchCount || 0;
+        const violations = s.violations?.length || 0;
+        const date = s.submittedAt ? new Date(s.submittedAt).toLocaleDateString() : 'N/A';
+
+        csv += `${title},${category},${status},${score},${tabSwitches},${violations},${date}\n`;
+    });
+
+    const fileName = `Vision_Report_${student.name.replace(/\s+/g, '_')}_${Date.now()}.csv`;
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+    res.status(200).send(csv);
+});
+
+// ═══════════════════════════════════════════════════════════
+// 📧 NEWSLETTER: Fetch All Subscribers
+// ═══════════════════════════════════════════════════════════
+exports.getSubscribers = asyncHandler(async (req, res) => {
+    const Subscription = require('../models/Subscription');
+    const subscribers = await Subscription.find().sort({ createdAt: -1 }).lean();
+    res.json(subscribers);
 });

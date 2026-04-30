@@ -1425,57 +1425,44 @@ exports.getSessionDetail = asyncHandler(async (req, res) => {
     }
 
     // Fetch all answers for this session (Bug Fix: Relational Join)
-    const savedAnswers = await ExamAnswer.find({ sessionId: session._id });
+    const sessionAnswers = await ExamAnswer.find({ sessionId: session._id });
 
     // Build detailed question view
     const questionsWithResults = exam.questions.map((q, index) => {
-        const qId = q._id.toString();
-        const savedAnswer = savedAnswers.find(a => a.questionId === qId);
-        const result = savedAnswer?.result || {};
+        const savedAnswer = sessionAnswers.find(a => a.questionId === q._id.toString());
+        const isMCQ = q.type === 'mcq';
 
-        const detail = {
-            questionId: qId,
+        const result = {
+            questionId: q._id,
             index,
+            status: savedAnswer?.status || (isMCQ ? 'not_answered' : 'pending_review'),
+            marksObtained: savedAnswer?.marksObtained || 0,
+            maxMarks: q.marks || 0,
             type: q.type,
             questionText: q.questionText,
-            marks: q.marks,
-            studentAnswer: savedAnswer?.code ? { code: savedAnswer.code, answer: savedAnswer.answer } : savedAnswer?.answer,
-            marksObtained: savedAnswer?.marksObtained || 0,
-            maxMarks: savedAnswer?.maxMarks || q.marks || 0,
-            status: savedAnswer?.status || 'pending_review',
+            answer: savedAnswer?.answer || (isMCQ ? null : ''),
+            code: savedAnswer?.code || '',
+            aiResult: savedAnswer?.result?.aiEvaluation || null,
+            aiSuggestedMarks: savedAnswer?.result?.aiScore || null,
+            mentorFeedback: savedAnswer?.result?.mentorFeedback || ''
         };
 
         if (q.type === 'mcq') {
-            detail.options = q.options;
-            detail.correctOption = q.correctOption;
-            detail.studentChoice = result.studentChoice;
-            detail.correctChoice = result.correctChoice;
+            result.options = q.options;
+            result.correctOption = q.correctOption;
+            result.studentChoice = savedAnswer?.result?.studentChoice;
         }
 
         if (q.type === 'coding') {
-            detail.language = q.language;
-            detail.testCaseResults = result.testCaseResults || [];
-            detail.totalTestCases = (q.testCases || []).length;
-            detail.passedTestCases = (result.testCaseResults || []).filter(t => t.passed).length;
+            result.language = q.language;
+            result.testCaseResults = savedAnswer?.result?.testCaseResults || [];
         }
 
         if (q.type === 'short') {
-            detail.expectedAnswer = q.expectedAnswer;
-            detail.maxWords = q.maxWords;
-            detail.aiSuggestedMarks = result.aiSuggestedMarks;
-            detail.aiConfidence = result.aiConfidence || null;
-            detail.aiReasoning = result.aiReasoning;
-            detail.mentorFeedback = result.mentorFeedback || '';
+            result.expectedAnswer = q.expectedAnswer;
         }
 
-        if (q.type === 'frontend-react') {
-            detail.testCaseResults = result.testCaseResults || [];
-            detail.totalTestCases = (q.frontendTestCases || []).length;
-            detail.passedTestCases = (result.testCaseResults || []).filter(t => t.passed).length;
-            detail.files = savedAnswer?.answer?.files || {};
-        }
-
-        return detail;
+        return result;
     });
 
     res.json({
@@ -1518,7 +1505,18 @@ exports.evaluateSession = asyncHandler(async (req, res) => {
 
     if (!grades || !Array.isArray(grades)) {
         res.status(400);
-        throw new Error('grades array is required');
+        throw new Error('Invalid evaluation data. Grades are required.');
+    }
+
+    // 🛡️ Integrity Check: Filter out manual marks for MCQ questions
+    const mcqGrades = grades.filter(g => {
+        const q = exam.questions.id(g.questionId);
+        return q && q.type === 'mcq';
+    });
+
+    if (mcqGrades.length > 0) {
+        res.status(400);
+        throw new Error('Integrity Violation: MCQ questions cannot be manually graded. They must be auto-evaluated.');
     }
 
     const session = await ExamSession.findById(sessionId).populate('exam');
@@ -1582,6 +1580,20 @@ exports.evaluateSession = asyncHandler(async (req, res) => {
     session.passed = passed;
     session.status = 'submitted';
     session.requiresManualGrading = false;
+
+    // 🛡️ Legacy Cleanup: Remove any violations missing the required 'type' field
+    if (session.violations && session.violations.length > 0) {
+        const originalCount = session.violations.length;
+        session.violations = session.violations.filter(v => v && v.type);
+        if (session.violations.length !== originalCount) {
+            console.warn(`[Cleanup] Removed ${originalCount - session.violations.length} malformed violations from session ${session._id}`);
+        }
+    }
+
+    // 📋 Blocked Session Handling: Add a note if evaluating a blocked student
+    if (session.status === 'blocked' || session.isBlocked) {
+        session.evaluationNote = 'Evaluated after block - results may be subject to further review';
+    }
 
     await session.save();
 

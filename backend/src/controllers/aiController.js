@@ -1,7 +1,7 @@
-const axios = require('axios');
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 /**
- * 🤖 AI Question Generator — Powered by Gemini
+ * 🤖 AI Question Generator — Powered by Gemini SDK
  * Generates MCQ, Short Answer, and Coding questions from syllabus/topics
  * 
  * POST /api/ai/generate
@@ -40,21 +40,33 @@ exports.generateQuestions = async (req, res, next) => {
     }
 
     try {
-        const prompt = buildPrompt(category, syllabus, mcqCount, shortCount, codingCount, reactCount, totalMarks);
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
-
-        const response = await axios.post(url, {
-            contents: [{ parts: [{ text: prompt }] }],
+        const genAI = new GoogleGenerativeAI(geminiKey);
+        const model = genAI.getGenerativeModel({ 
+            model: "gemini-1.5-flash",
             generationConfig: {
                 temperature: 0.7,
-                maxOutputTokens: 8192
+                topP: 0.95,
+                topK: 40,
+                maxOutputTokens: 8192,
             }
-        }, { timeout: 60000 });
+        });
 
-        const text = response.data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const prompt = buildPrompt(category, syllabus, mcqCount, shortCount, codingCount, reactCount, totalMarks);
+        
+        const result = await model.generateContent(prompt);
+        const text = result.response.text();
 
-        // Extract JSON array from response (handle markdown wrapping)
-        const jsonMatch = text.match(/\[[\s\S]*\]/);
+        // Extract JSON array from response (handle markdown wrapping like ```json ... ```)
+        let cleanedText = text;
+        if (text.includes('```')) {
+            const matches = text.match(/```(?:json)?([\s\S]*?)```/);
+            if (matches && matches[1]) {
+                cleanedText = matches[1].trim();
+            }
+        }
+
+        // Second pass: find the first '[' and last ']' if parsing still fails
+        const jsonMatch = cleanedText.match(/\[[\s\S]*\]/);
         if (!jsonMatch) {
             console.error('AI Response (no JSON found):', text.substring(0, 500));
             const parseErr = new Error('AI generated a response but it could not be parsed. Please try again.');
@@ -89,15 +101,14 @@ exports.generateQuestions = async (req, res, next) => {
         });
 
     } catch (error) {
-        console.error('AI Generation Error:', error.response?.data?.error || error.response?.data || error.message);
+        console.error('AI Generation Error:', error.message);
 
-        if (error.response?.status === 429) {
+        if (error.message?.includes('429')) {
             const limitErr = new Error('AI rate limit reached. Please wait a moment and try again.');
             limitErr.statusCode = 429;
             return next(limitErr);
         }
 
-        // Pass to central error handler for Intelligence Logging
         next(error);
     }
 };
