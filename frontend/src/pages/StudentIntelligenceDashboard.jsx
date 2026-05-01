@@ -16,7 +16,8 @@ import {
     Brain,
     Target,
     Zap,
-    AlertOctagon
+    AlertOctagon,
+    ShieldCheck
 } from 'lucide-react';
 import { 
     LineChart, 
@@ -68,16 +69,16 @@ const StudentIntelligenceDashboard = () => {
             window.scrollTo(0, 0);
             
             // Allow time for any lazy-loaded elements or animations to settle
-            await new Promise(r => setTimeout(r, 800)); // Increased wait time
+            await new Promise(r => setTimeout(r, 500));
 
             const canvas = await html2canvas(element, {
-                scale: 1.5, // Increased scale for better quality
+                scale: 1.2, // Slightly reduced scale for better memory safety on mobile/low-end devices
                 useCORS: true,
-                allowTaint: true, // Allow tainted canvases if needed
-                logging: false, 
+                allowTaint: false,
+                logging: true, // Enabled logging temporarily to help user debug if it still fails
                 backgroundColor: '#0a0c10', 
                 scrollX: 0,
-                scrollY: 0, // Reset scrollY
+                scrollY: -window.scrollY,
                 windowWidth: element.scrollWidth,
                 windowHeight: element.scrollHeight,
                 onclone: (clonedDoc) => {
@@ -89,11 +90,14 @@ const StudentIntelligenceDashboard = () => {
                     const pdfHeader = clonedDoc.querySelector('.pdf-only-header');
                     if (pdfHeader) pdfHeader.style.display = 'block';
                     
-                    // Force solid background for glassmorphism elements which canvas often fails at
-                    const glassElems = clonedDoc.querySelectorAll('.bg-surface, .bg-surface-hover');
-                    glassElems.forEach(el => {
-                        el.style.backdropFilter = 'none';
-                        el.style.backgroundColor = '#14161c'; 
+                    // Remove backdrop-filter as it's unsupported by html2canvas and causes failures
+                    const blurryElems = clonedDoc.querySelectorAll('*');
+                    blurryElems.forEach(el => {
+                        const style = window.getComputedStyle(el);
+                        if (style.backdropFilter && style.backdropFilter !== 'none') {
+                            el.style.backdropFilter = 'none';
+                            el.style.backgroundColor = 'rgba(20, 22, 28, 0.95)'; // Fallback solid background
+                        }
                     });
 
                     // Adjust spacing for PDF
@@ -106,8 +110,8 @@ const StudentIntelligenceDashboard = () => {
                 throw new Error("Canvas generation failed or returned empty.");
             }
 
-            const imgData = canvas.toDataURL('image/jpeg', 0.95); 
-            const pdf = new jsPDF('p', 'mm', 'a4', true); 
+            const imgData = canvas.toDataURL('image/jpeg', 0.8); 
+            const pdf = new jsPDF('p', 'mm', 'a4', true); // compress: true
             const pageWidth = pdf.internal.pageSize.getWidth();
             const pageHeight = pdf.internal.pageSize.getHeight();
             
@@ -133,41 +137,13 @@ const StudentIntelligenceDashboard = () => {
             pdf.save(`VISION_INTEL_${report.student.info.name.toUpperCase().replace(/\s+/g, '_')}.pdf`);
             toast.success("Intelligence Dossier Exported.", { id: loadingToast });
         } catch (error) {
-            console.error("PDF Export Failure:", error);
-            toast.error("PDF Export Failed. Try 'Export CSV' for a reliable data backup.", { id: loadingToast });
-        }
-    };
-
-    const handleDownloadCSV = async () => {
-        const loadingToast = toast.loading("Generating Backend Report...");
-        try {
-            const token = sessionStorage.getItem('vision_token');
-            const baseUrl = window.location.hostname === 'localhost' 
-                ? (import.meta.env.VITE_API_URL || 'http://localhost:5001')
-                : 'https://vision-live.onrender.com';
-            
-            const response = await fetch(`${baseUrl}/api/admin/export/intelligence/${studentId}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+            console.error("PDF Export Failure Technical Details:", {
+                message: error.message,
+                stack: error.stack,
+                reportExists: !!report,
+                refExists: !!dashboardRef.current
             });
-
-            if (!response.ok) throw new Error("Failed to generate report on server.");
-
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `VISION_REPORT_${report.student.info.name.toUpperCase().replace(/\s+/g, '_')}_${Date.now()}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-            
-            toast.success("CSV Report Downloaded.", { id: loadingToast });
-        } catch (error) {
-            console.error("CSV Export Failure:", error);
-            toast.error("Backend Export Failed.", { id: loadingToast });
+            toast.error("Export Failed. Please check browser permissions or try a different browser.", { id: loadingToast });
         }
     };
 
@@ -228,143 +204,138 @@ const StudentIntelligenceDashboard = () => {
                 </div>
             </div>
             {/* 1. TOP NAVIGATION & ACTION BAR */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 no-print">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-16 gap-4 no-print">
                 <button 
                     onClick={() => navigate(-1)}
-                    className="flex items-center gap-2 px-4 py-2 text-secondary bg-surface border border-main rounded-xl hover:bg-surface-hover transition shadow-sm font-medium"
+                    className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-muted hover:text-primary transition-colors active:scale-95"
                 >
-                    <ChevronLeft size={18} /> Back
+                    <ChevronLeft size={16} strokeWidth={3} /> Back to Hub
                 </button>
                 
-                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                <div className="flex items-center gap-5 w-full md:w-auto">
                     <ThemeToggle />
                     <button 
-                        onClick={handleDownloadCSV}
-                        className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-surface border border-main hover:bg-surface-hover text-secondary font-semibold rounded-xl shadow-sm transition-all active:scale-95"
-                    >
-                        <Download size={16} /> Export CSV
-                    </button>
-                    <button 
                         onClick={handleDownloadPDF}
-                        className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-primary-500 hover:bg-primary-600 text-white font-semibold rounded-xl shadow-lg shadow-primary-500/20 transition-all active:scale-95"
+                        className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-primary-500 hover:bg-primary-600 text-white font-black text-[10px] uppercase tracking-[0.2em] rounded-xl shadow-lg shadow-primary-500/20 transition-all active:scale-95"
                     >
-                        <ShieldAlert size={16} /> Download Intelligence PDF
+                        <Download size={14} strokeWidth={3} /> Download Report
                     </button>
                 </div>
             </div>
 
-            {/* 2. STUDENT IDENTITY CARD */}
-            <div className="bg-surface p-5 rounded-2xl border border-main mb-6 flex flex-col md:flex-row items-center gap-5">
-                <div className="relative shrink-0">
-                    <div className="w-14 h-14 bg-surface-hover border border-main rounded-xl flex justify-center items-center text-xl font-bold text-muted overflow-hidden">
-                        {student.info.profilePicture ? (
-                            <img 
-                                src={student.info.profilePicture} 
-                                alt="" 
-                                className="w-full h-full object-cover" 
-                                crossOrigin="anonymous"
-                            />
-                        ) : (
-                            student.info.name.charAt(0).toUpperCase()
-                        )}
-                    </div>
-                    {student.info.isVerified && (
-                        <div className="absolute -bottom-1.5 -right-1.5 bg-emerald-500 text-white p-0.5 rounded-full border-2 border-surface shadow-sm">
-                            <Award size={10} />
+            {/* 2. UNIFIED OVERVIEW HEADER */}
+            <div className="mb-20">
+                {/* Header row */}
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-12">
+                    <div className="flex items-center gap-6">
+                        <div className="relative shrink-0">
+                            <div className="w-16 h-16 rounded-full flex justify-center items-center text-3xl font-black text-primary overflow-hidden">
+                                {student.info.profilePicture ? (
+                                    <img src={student.info.profilePicture} alt="" className="w-full h-full object-cover" crossOrigin="anonymous"/>
+                                ) : (
+                                    student.info.name.charAt(0).toUpperCase()
+                                )}
+                            </div>
+                            {student.info.isVerified && (
+                                <div className="absolute -bottom-1 -right-1 text-emerald-500 bg-page rounded-full p-0.5">
+                                    <Award size={18} strokeWidth={3} />
+                                </div>
+                            )}
                         </div>
-                    )}
-                </div>
-                
-                <div className="flex-1 text-center md:text-left">
-                    <h1 className="text-xl font-bold text-primary tracking-tight">{student.info.name}</h1>
-                    <div className="flex flex-wrap justify-center md:justify-start gap-3 text-muted text-[12px] mt-1.5">
-                        <span className="flex items-center gap-1.5"><Mail size={12} /> {student.info.email}</span>
-                        <span className="flex items-center gap-1 font-mono bg-surface-hover px-2 py-0.5 rounded text-[10px] border border-main">UID: {student.info._id.slice(-8)}</span>
+                        
+                        <div>
+                            <h1 className="text-4xl font-black text-primary tracking-tighter uppercase">{student.info.name}</h1>
+                            <div className="flex flex-wrap items-center gap-5 text-muted text-[10px] font-black uppercase tracking-widest mt-1.5 opacity-80">
+                                <span className="flex items-center gap-1.5"><Mail size={14} /> {student.info.email}</span>
+                                <span className="flex items-center gap-1.5"><User size={14} /> UID: {student.info._id.slice(-8)}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col items-start md:items-end gap-1.5">
+                        <span className="text-[9px] font-black text-muted uppercase tracking-[0.3em]">Risk Level</span>
+                        <div className={`font-black text-[13px] uppercase tracking-widest flex items-center gap-2 ${
+                            intelligence.riskLevel === 'High' ? 'text-red-500' : 
+                            intelligence.riskLevel === 'Medium' ? 'text-amber-600' : 
+                            'text-emerald-500'
+                        }`}>
+                            <div className={`w-2 h-2 rounded-full ${
+                                intelligence.riskLevel === 'High' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]' : 
+                                intelligence.riskLevel === 'Medium' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]'
+                            }`} />
+                            {intelligence.riskLevel} Risk
+                        </div>
                     </div>
                 </div>
 
-                <div className="flex flex-col items-center md:items-end gap-1.5">
-                    <span className="text-[10px] font-semibold text-muted uppercase tracking-widest">Risk Level</span>
-                    <div className={`px-3 py-1.5 rounded-lg font-semibold text-[11px] flex items-center gap-2 border ${
-                        intelligence.riskLevel === 'High' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 
-                        intelligence.riskLevel === 'Medium' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' : 
-                        'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
-                    }`}>
-                        <div className={`w-1.5 h-1.5 rounded-full ${
-                            intelligence.riskLevel === 'High' ? 'bg-red-500' : 
-                            intelligence.riskLevel === 'Medium' ? 'bg-amber-500' : 'bg-emerald-500'
-                        }`} />
-                        {intelligence.riskLevel} Risk
-                    </div>
-                </div>
-            </div>
-
-            {/* 3. PERFORMANCE GRID & IDENTITY STATUS */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div className={`md:col-span-3 grid grid-cols-2 lg:grid-cols-4 gap-4`}>
+                {/* Stats row */}
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-10">
                     <StatCard 
                         title="Exams Taken" 
                         value={student.overview.totalExams} 
-                        icon={<Calendar size={15} />}
+                        icon={<Calendar size={18} />}
                         sub="Lifetime attempts"
                     />
                     <StatCard 
                         title="Avg Score" 
                         value={`${student.overview.avgPercentage}%`} 
-                        icon={<Award size={15} />}
+                        icon={<Award size={18} />}
                         sub="Overall accuracy"
                     />
                     <StatCard 
                         title="Success Rate" 
                         value={`${student.overview.passRate}%`} 
-                        icon={<TrendingUp size={15} />}
+                        icon={<TrendingUp size={18} />}
                         sub="Pass percentage"
                     />
                     <StatCard 
                         title="Risk Score" 
                         value={intelligence.riskScore} 
-                        icon={<AlertTriangle size={15} />}
+                        icon={<AlertTriangle size={18} />}
                         sub="Behavioral index"
                     />
+                    
+                    {/* Identity Alert Area */}
+                    <div className="flex flex-col">
+                        {!student.info.isVerified && student.info.verificationIssue ? (
+                            <div className="flex flex-col animate-pulse">
+                                <div className="flex items-center gap-2 text-red-500 mb-1.5">
+                                    <ShieldAlert size={16} strokeWidth={3} />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Identity Alert</span>
+                                </div>
+                                <p className="text-xl font-black text-red-600 leading-tight uppercase tracking-tight">{student.info.verificationIssue}</p>
+                                <p className="text-[9px] text-red-500/70 mt-1 uppercase font-bold tracking-widest">AI Flagged Fraud Pattern</p>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col">
+                                <div className="flex items-center gap-2 text-emerald-500 mb-1.5">
+                                    <ShieldCheck size={16} strokeWidth={3} />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Trust Status</span>
+                                </div>
+                                <p className="text-xl font-black text-emerald-600 leading-tight uppercase tracking-tight">Identity Verified</p>
+                                <p className="text-[9px] text-emerald-500 mt-1 uppercase font-bold tracking-widest">Biometric Match Confirmed</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
-                
-                {/* Identity Fraud Alert Card */}
-                {!student.info.isVerified && (student.info.verificationIssue ?? null) ? (
-                    <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-5 flex flex-col justify-center animate-pulse">
-                        <div className="flex items-center gap-2 text-red-500 mb-2">
-                            <ShieldAlert size={18} strokeWidth={3} />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Identity Alert</span>
-                        </div>
-                        <p className="text-[12px] font-black text-red-600 leading-tight">{student.info.verificationIssue}</p>
-                        <p className="text-[9px] text-red-500/70 mt-1 uppercase font-bold tracking-tighter">AI Flagged Fraud Pattern</p>
-                    </div>
-                ) : (
-                    <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-5 flex flex-col justify-center">
-                        <div className="flex items-center gap-2 text-emerald-500 mb-2">
-                            <ShieldAlert size={18} strokeWidth={2.5} />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Trust Status</span>
-                        </div>
-                        <p className="text-[12px] font-black text-emerald-600 leading-tight">Identity Verified</p>
-                        <p className="text-[9px] text-emerald-500/70 mt-1 uppercase font-bold tracking-tighter">Biometric Match Confirmed</p>
-                    </div>
-                )}
             </div>
 
             {/* 4. MAIN ANALYTICS SECTION */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-16 mb-20">
                 {/* Performance Trend Chart */}
-                <div className="lg:col-span-2 bg-surface p-6 rounded-3xl shadow-sm border border-main">
+                <div className="lg:col-span-2">
                     <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h2 className="text-xl font-extrabold text-primary flex items-center gap-2">
+                            <h2 className="text-xl font-black text-primary flex items-center gap-2.5 uppercase tracking-tighter">
                                 <TrendingUp size={22} className="text-primary-500" /> Performance Trend
                             </h2>
-                            <p className="text-xs text-muted mt-1 font-medium">Score progression over last {chartData.length} exams</p>
+                            <p className="text-[10px] text-muted mt-1.5 font-bold uppercase tracking-widest opacity-70">Score progression over last {chartData.length} exams</p>
                         </div>
-                        <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                            insights.improvementTrend === 'increasing' ? 'bg-emerald-500/10 text-emerald-500' :
-                            insights.improvementTrend === 'declining' ? 'bg-red-500/10 text-red-500' : 'bg-surface-hover text-muted'
+                        <div className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-2 ${
+                            insights.improvementTrend === 'increasing' ? 'text-emerald-500' :
+                            insights.improvementTrend === 'declining' ? 'text-red-500' : 'text-muted'
                         }`}>
+                            <div className={`w-1.5 h-1.5 rounded-full ${insights.improvementTrend === 'increasing' ? 'bg-emerald-500' : insights.improvementTrend === 'declining' ? 'bg-red-500' : 'bg-muted'}`} />
                             Trend: {insights.improvementTrend}
                         </div>
                     </div>
@@ -418,15 +389,15 @@ const StudentIntelligenceDashboard = () => {
                 </div>
 
                 {/* Behavioral & AI Insights */}
-                <div className="flex flex-col gap-6">
+                <div className="flex flex-col gap-12">
                     {/* Insights Card */}
-                    <div className="bg-surface p-6 rounded-3xl shadow-sm border border-main">
-                        <h2 className="text-lg font-bold text-primary mb-6 flex items-center gap-2">
+                    <div>
+                        <h2 className="text-xl font-black text-primary mb-8 flex items-center gap-2.5 uppercase tracking-tighter">
                             <Brain size={20} className="text-primary-500" /> AI Insights
-                            <span className="text-[10px] bg-primary-500/10 text-primary-500 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter ml-1">BETA</span>
+                            <span className="text-[8px] bg-primary-500/10 text-primary-500 px-2 py-0.5 rounded-full font-black uppercase tracking-[0.2em] ml-1">BETA</span>
                         </h2>
                         
-                        <div className="space-y-4">
+                        <div className="space-y-6">
                             <InsightItem 
                                 icon={<Target className="text-emerald-500" size={16} />}
                                 label="Strongest Category"
@@ -445,30 +416,12 @@ const StudentIntelligenceDashboard = () => {
                                 value={intelligence.cheatingPattern}
                                 sub="Behavioral consistency check"
                             />
-                            
-                             <div className="pt-4 mt-4 border-t border-dashed border-main">
-                                <div className="flex gap-4 items-start opacity-30 grayscale">
-                                    <div className="mt-1 p-2 bg-surface-hover rounded-lg">
-                                        <Target className="text-muted" size={16} />
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <p className="text-[10px] font-bold text-muted uppercase tracking-widest leading-none">Predictive Risk</p>
-                                            <span className="text-[8px] bg-surface-hover text-muted px-1.5 py-0.5 rounded font-black uppercase tracking-tighter">Coming Soon</span>
-                                        </div>
-                                        <p className="text-sm font-black text-muted mt-1">N/A</p>
-                                        <p className="text-[10px] text-muted font-medium">Future performance prediction</p>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                     </div>
 
                     {/* Anomaly Detection */}
-                    <div className={`p-6 rounded-3xl border shadow-lg transition-all ${
-                        insights.anomalyDetection ? 'bg-red-500/10 border-red-500/20 shadow-red-500/5' : 'bg-emerald-500/10 border-emerald-500/20 shadow-emerald-500/5'
-                    }`}>
-                        <h2 className={`text-lg font-black mb-3 flex items-center gap-2 ${
+                    <div>
+                        <h2 className={`text-xl font-black mb-6 flex items-center gap-2.5 uppercase tracking-tighter ${
                             insights.anomalyDetection ? 'text-red-500' : 'text-emerald-500'
                         }`}>
                             {insights.anomalyDetection ? <AlertOctagon size={22} /> : <ShieldAlert size={22} />}
@@ -476,20 +429,16 @@ const StudentIntelligenceDashboard = () => {
                         </h2>
                         
                         {insights.anomalyDetection ? (
-                            <div>
-                                <p className="text-red-600 font-bold text-sm leading-snug">{insights.anomalyDetection.type}</p>
-                                <p className="text-red-500 text-xs mt-1 leading-relaxed">{insights.anomalyDetection.message}</p>
-                                <div className="mt-4 bg-red-500/10 border border-red-500/20 p-2 rounded-xl text-[10px] font-bold text-red-500 uppercase tracking-widest text-center">
-                                    Flagged for Review
-                                </div>
+                            <div className="border-l-2 border-red-500 pl-4 py-1">
+                                <p className="text-red-600 font-black text-sm uppercase tracking-tight">{insights.anomalyDetection.type}</p>
+                                <p className="text-red-500 text-[10px] font-bold mt-1.5 uppercase tracking-widest leading-relaxed opacity-80">{insights.anomalyDetection.message}</p>
+                                <p className="text-[9px] font-black text-red-500 uppercase tracking-widest mt-4">Flagged for Review</p>
                             </div>
                         ) : (
-                            <div>
-                                <p className="text-emerald-600 font-bold text-sm">Behavior Consistent</p>
-                                <p className="text-emerald-500 text-xs mt-1">Performance aligns with historical data and behavioral patterns.</p>
-                                <div className="mt-4 bg-emerald-500/10 border border-emerald-500/20 p-2 rounded-xl text-[10px] font-bold text-emerald-600 uppercase tracking-widest text-center">
-                                    Trusted Identity
-                                </div>
+                            <div className="border-l-2 border-emerald-500 pl-4 py-1">
+                                <p className="text-emerald-600 font-black text-sm uppercase tracking-tight">Behavior Consistent</p>
+                                <p className="text-emerald-500 text-[10px] font-bold mt-1.5 uppercase tracking-widest opacity-80">Performance aligns with historical data.</p>
+                                <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest mt-4">Trusted Identity</p>
                             </div>
                         )}
                     </div>
@@ -497,70 +446,61 @@ const StudentIntelligenceDashboard = () => {
             </div>
 
             {/* 5. TIMELINE & VIOLATION BREAKDOWN */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-16">
                 {/* Timeline Table */}
-                <div className="lg:col-span-3 bg-surface rounded-3xl shadow-sm border border-main overflow-hidden">
-                    <div className="p-6 border-b border-main flex justify-between items-center bg-surface-hover">
-                        <h2 className="text-lg font-extrabold text-primary flex items-center gap-2">
+                <div className="lg:col-span-3">
+                    <div className="flex justify-between items-center mb-8">
+                        <h2 className="text-xl font-black text-primary flex items-center gap-2.5 uppercase tracking-tighter">
                             <Clock size={20} className="text-primary-500" /> Academic Timeline
                         </h2>
                         <div className="flex items-center gap-4">
-                             <span className="text-[10px] font-bold text-muted uppercase tracking-widest">Page {page} of {pagination.pages}</span>
+                             <span className="text-[9px] font-black text-muted uppercase tracking-[0.2em] opacity-80">Page {page} of {pagination.pages}</span>
                         </div>
                     </div>
                     
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
-                                <tr className="text-muted text-[10px] font-bold uppercase tracking-widest border-b border-main">
-                                    <th className="p-5">Exam</th>
-                                    <th className="p-5 text-center">Result</th>
-                                    <th className="p-5 text-center">Score</th>
-                                    <th className="p-5 text-center">Security</th>
-                                    <th className="p-5 text-right">Date</th>
+                                <tr className="text-muted text-[9px] font-black uppercase tracking-[0.3em] border-b border-main">
+                                    <th className="pb-4 pr-4">Exam</th>
+                                    <th className="pb-4 px-4">Result</th>
+                                    <th className="pb-4 px-4">Score</th>
+                                    <th className="pb-4 px-4">Security</th>
+                                    <th className="pb-4 pl-4 text-right">Date</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-main">
                                 {timelineData.length > 0 ? timelineData.map((session) => (
-                                    <tr key={session._id} className="hover:bg-primary-500/5 transition-all group border-b border-main last:border-0">
-                                        <td className="p-6">
+                                    <tr key={session._id} className="group border-b border-main last:border-0 hover:bg-surface-hover/30 transition-colors">
+                                        <td className="py-6 pr-4">
                                             <p className="font-black text-primary group-hover:text-primary-500 transition-colors uppercase tracking-tight text-sm">{session.examTitle}</p>
-                                            <p className="text-[9px] text-muted font-black uppercase tracking-widest mt-1">{session.category}</p>
+                                            <p className="text-[9px] text-muted font-bold uppercase tracking-widest mt-1 opacity-80">{session.category}</p>
                                         </td>
-                                        <td className="p-6 text-center">
-                                            <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${
-                                                session.status === 'flagged' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                                                session.status === 'reviewed' ? 'bg-primary-500/10 text-primary-500 border-primary-500/20' :
-                                                'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                                        <td className="py-6 px-4">
+                                            <span className={`text-[10px] font-black uppercase tracking-widest ${
+                                                session.status === 'flagged' ? 'text-red-500' :
+                                                session.status === 'reviewed' ? 'text-primary-500' :
+                                                'text-emerald-500'
                                             }`}>
                                                 {session.status}
                                             </span>
                                         </td>
-                                        <td className="p-6 text-center">
-                                            <div className={`text-xl font-black tabular-nums ${session.passed ? "text-emerald-500" : "text-primary-500"}`}>
+                                        <td className="py-6 px-4">
+                                            <div className={`text-lg font-black tabular-nums ${session.passed ? "text-emerald-500" : "text-primary-500"}`}>
                                                 {session.percentage}%
                                             </div>
-                                            <p className="text-[8px] font-black text-muted/30 uppercase tracking-[0.2em]">{session.passed ? 'PASSED' : 'FAILED'}</p>
+                                            <p className="text-[8px] font-black text-muted uppercase tracking-[0.2em] mt-0.5 opacity-60">{session.passed ? 'PASSED' : 'FAILED'}</p>
                                         </td>
-                                        <td className="p-6 text-center">
-                                            <div className="flex flex-col items-center gap-2">
-                                                <div className="flex gap-1">
-                                                    {[1, 2, 3].map((i) => (
-                                                        <div key={i} className={`w-4 h-1.5 rounded-full ${
-                                                            session.violations?.length >= (4-i) ? 'bg-primary-500' : 'bg-surface-hover border border-main'
-                                                        }`} />
-                                                    ))}
-                                                </div>
-                                                <span className="text-[9px] font-black text-muted uppercase tracking-widest">{session.tabSwitches} Flags</span>
-                                            </div>
+                                        <td className="py-6 px-4">
+                                            <span className="text-[10px] font-black text-muted uppercase tracking-[0.2em]">{session.tabSwitches} Flags</span>
                                         </td>
-                                        <td className="p-6 text-right font-black text-[10px] text-muted uppercase tracking-widest">
+                                        <td className="py-6 pl-4 text-right font-black text-[10px] text-muted uppercase tracking-widest">
                                             {new Date(session.submittedAt).toLocaleDateString()}
                                         </td>
                                     </tr>
                                 )) : (
                                     <tr>
-                                        <td colSpan="5" className="p-20 text-center text-muted font-black uppercase tracking-widest opacity-20">Intelligence stream empty.</td>
+                                        <td colSpan="5" className="py-12 text-center text-muted font-black uppercase tracking-widest opacity-30">Intelligence stream empty.</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -569,18 +509,18 @@ const StudentIntelligenceDashboard = () => {
                     
                     {/* Pagination */}
                     {pagination.pages > 1 && (
-                        <div className="p-6 flex justify-between items-center bg-surface-hover/50 border-t border-main">
+                        <div className="mt-8 flex justify-between items-center">
                             <button 
                                 disabled={page === 1} 
                                 onClick={() => setPage(page - 1)}
-                                className="px-6 py-2.5 bg-surface border border-main rounded-xl disabled:opacity-30 hover:bg-surface-hover transition text-[10px] font-black uppercase tracking-widest shadow-sm text-primary"
+                                className="text-[10px] font-black uppercase tracking-widest text-primary hover:text-primary-500 transition-colors disabled:opacity-30"
                             >
                                 Previous
                             </button>
                             <button 
                                 disabled={page === pagination.pages} 
                                 onClick={() => setPage(page + 1)}
-                                className="px-6 py-2.5 bg-surface border border-main rounded-xl disabled:opacity-30 hover:bg-surface-hover transition text-[10px] font-black uppercase tracking-widest shadow-sm text-primary"
+                                className="text-[10px] font-black uppercase tracking-widest text-primary hover:text-primary-500 transition-colors disabled:opacity-30"
                             >
                                 Next
                             </button>
@@ -588,9 +528,9 @@ const StudentIntelligenceDashboard = () => {
                     )}
                 </div>
 
-                {/* Violation Breakdown Pie Chart (Simulated with progress bars for simplicity/aesthetics) */}
-                <div className="bg-surface p-6 rounded-3xl shadow-sm border border-main">
-                    <h2 className="text-lg font-extrabold text-primary mb-6 flex items-center gap-2">
+                {/* Violation Breakdown Pie Chart */}
+                <div>
+                    <h2 className="text-xl font-black text-primary mb-8 flex items-center gap-2.5 uppercase tracking-tighter">
                         <AlertTriangle size={20} className="text-rose-500" /> Behavioral Faults
                     </h2>
                     
@@ -598,11 +538,11 @@ const StudentIntelligenceDashboard = () => {
                         {Object.entries(intelligence.violationsBreakdown).length > 0 ? (
                             Object.entries(intelligence.violationsBreakdown).map(([type, count]) => (
                                 <div key={type}>
-                                    <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-2">
-                                        <span className="text-muted opacity-50">{type}</span>
+                                    <div className="flex justify-between text-[9px] font-black uppercase tracking-widest mb-2.5">
+                                        <span className="text-muted opacity-80">{type}</span>
                                         <span className="text-rose-500">{count}</span>
                                     </div>
-                                    <div className="h-2 bg-surface-hover rounded-full overflow-hidden border border-main">
+                                    <div className="h-1 bg-surface-hover rounded-full overflow-hidden">
                                         <div 
                                             className="h-full bg-rose-500 rounded-full transition-all duration-1000 shadow-[0_0_8px_rgba(244,63,94,0.4)]" 
                                             style={{ width: `${Math.min((count / student.overview.totalExams) * 100, 100)}%` }}
@@ -611,21 +551,19 @@ const StudentIntelligenceDashboard = () => {
                                 </div>
                             ))
                         ) : (
-                            <div className="flex flex-col items-center justify-center h-[240px] text-center bg-surface-hover/30 rounded-3xl border border-dashed border-main">
-                                <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500 mb-6 border border-emerald-500/20 shadow-xl">
-                                    <ShieldAlert size={28} strokeWidth={2.5} />
-                                </div>
-                                <p className="text-[11px] font-black text-emerald-500 uppercase tracking-[0.3em]">Pristine Record</p>
-                                <p className="text-[9px] text-muted font-black uppercase tracking-widest mt-2 opacity-30">Zero behavioral violations detected in registry.</p>
+                            <div className="flex flex-col items-start pt-2">
+                                <ShieldAlert size={20} strokeWidth={3} className="text-emerald-500 mb-3" />
+                                <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Pristine Record</p>
+                                <p className="text-[9px] text-muted font-bold uppercase tracking-[0.2em] mt-1.5 opacity-60 leading-relaxed">Zero behavioral violations detected in registry.</p>
                             </div>
                         )}
                     </div>
                     
                     {student.overview.totalTabSwitches > 0 && (
-                        <div className="mt-8 pt-6 border-t border-main">
-                     <div className="flex justify-between text-xs mb-2">
-                                <span className="font-bold text-muted uppercase tracking-widest text-[9px]">Total Tab Switches</span>
-                                <span className="font-black text-primary-500">{student.overview.totalTabSwitches}</span>
+                        <div className="mt-8 pt-8 border-t border-main">
+                             <div className="flex justify-between text-[9px] font-black uppercase tracking-widest mb-2.5">
+                                <span className="text-muted opacity-80">Total Tab Switches</span>
+                                <span className="text-primary-500">{student.overview.totalTabSwitches}</span>
                             </div>
                             <div className="h-1 bg-primary-500/10 rounded-full overflow-hidden">
                                 <div className="h-full bg-primary-500 rounded-full" style={{ width: '100%' }}></div>
@@ -639,25 +577,25 @@ const StudentIntelligenceDashboard = () => {
 };
 
 const StatCard = ({ title, value, icon, sub }) => (
-    <div className="bg-surface p-5 rounded-2xl border border-main hover:border-primary-500/20 hover:shadow-sm transition-all">
-        <div className="flex items-center gap-2 text-muted mb-3">
-            <span className="p-1.5 bg-surface-hover border border-main rounded-lg">{icon}</span>
-            <span className="text-[10px] font-semibold uppercase tracking-widest">{title}</span>
+    <div className="flex flex-col gap-1 w-full">
+        <div className="flex items-center gap-2 text-muted mb-1.5">
+            <span className="text-primary-500/70">{icon}</span>
+            <span className="text-[9px] font-black uppercase tracking-[0.3em]">{title}</span>
         </div>
-        <div className="text-2xl font-bold text-primary tabular-nums">{value}</div>
-        <p className="text-[11px] text-muted mt-1">{sub}</p>
+        <div className="text-3xl font-black text-primary tabular-nums tracking-tighter leading-none">{value}</div>
+        <p className="text-[9px] font-bold text-muted uppercase tracking-widest opacity-60 mt-1">{sub}</p>
     </div>
 );
 
 const InsightItem = ({ icon, label, value, sub }) => (
-    <div className="flex gap-4 items-start group">
-        <div className="mt-1 p-2 bg-surface-hover rounded-lg group-hover:bg-surface group-hover:shadow-md transition-all border border-transparent group-hover:border-main">
+    <div className="flex gap-4 items-start">
+        <div className="mt-0.5 flex-shrink-0">
             {icon}
         </div>
         <div>
-            <p className="text-[10px] font-bold text-muted uppercase tracking-widest leading-none">{label}</p>
-            <p className="text-sm font-black text-primary mt-1">{value}</p>
-            <p className="text-[10px] text-muted font-medium">{sub}</p>
+            <p className="text-[9px] font-black text-muted uppercase tracking-[0.3em] leading-none">{label}</p>
+            <p className="text-sm font-black text-primary mt-2 uppercase tracking-tight">{value}</p>
+            <p className="text-[9px] text-muted font-bold mt-1 uppercase tracking-widest opacity-60">{sub}</p>
         </div>
     </div>
 );

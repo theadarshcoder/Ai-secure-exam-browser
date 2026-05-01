@@ -77,7 +77,7 @@ export default function PremiumSidebar({
       variants={sidebarVariants}
       animate={expanded ? 'expanded' : 'collapsed'}
       initial={false}
-      className="relative shrink-0 flex flex-col z-30 overflow-visible"
+      className="relative shrink-0 flex flex-col h-full z-30 overflow-visible"
       style={{
         background: colors.bg,
         borderRight: `1px solid ${colors.border}`,
@@ -136,18 +136,18 @@ export default function PremiumSidebar({
             width: 36,
             height: 36,
             borderRadius: 10,
-            background: 'var(--accent-primary)',
+            background: 'transparent',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
           }}
         >
-          <VisionLogo className="w-[20px] h-[20px] text-white" />
+          <VisionLogo className="w-[24px] h-[24px] text-primary" />
         </div>
 
         {/* Brand text */}
-        <AnimatePresence>
+        <AnimatePresence initial={false}>
           {expanded && (
             <motion.span
               variants={brandLabelVariants}
@@ -294,7 +294,7 @@ export default function PremiumSidebar({
                   </motion.div>
 
                   {/* Label */}
-                  <AnimatePresence>
+                  <AnimatePresence initial={false}>
                     {expanded && (
                       <motion.span
                         variants={labelVariants}
@@ -413,7 +413,7 @@ export default function PremiumSidebar({
           <div className="flex items-center justify-center flex-shrink-0 group-hover/logout:text-red-500 transition-colors">
             <LogOut size={16} strokeWidth={2.5} />
           </div>
-          <AnimatePresence>
+          <AnimatePresence initial={false}>
             {expanded && (
               <motion.span
                 variants={labelVariants}
