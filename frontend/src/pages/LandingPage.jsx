@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import { ThemeToggle } from '../contexts/ThemeContext';
+import api from '../services/api';
 
 // --- Static Metadata & Configuration ---
 
@@ -1344,11 +1345,29 @@ const CredWhiteFeatures = () => {
 
 const CredTrustFooter = () => {
   const [email, setEmail] = React.useState('');
+  const [message, setMessage] = React.useState('');
   const [subscribed, setSubscribed] = React.useState(false);
+  const [isFocused, setIsFocused] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState('');
 
-  const handleSubscribe = (e) => {
+  const handleSubscribe = async (e) => {
     e.preventDefault();
-    if (email.trim()) { setSubscribed(true); setEmail(''); }
+    if (!email.trim()) return;
+    
+    setLoading(true);
+    setError('');
+    try {
+      await api.post('/api/public/subscribe', { email, message });
+      setSubscribed(true); 
+      setEmail('');
+      setMessage('');
+      setIsFocused(false);
+    } catch (err) {
+      setError(err.response?.data?.error || err.message || 'Failed to subscribe');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const cols = [
@@ -1442,20 +1461,44 @@ const CredTrustFooter = () => {
               <Check size={16} /> You're subscribed!
             </div>
           ) : (
-            <form onSubmit={handleSubscribe} className="flex items-center gap-0 mb-3">
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="Your email here"
-                className="flex-1 bg-transparent border-b border-zinc-700 focus:border-zinc-400 outline-none text-white text-sm py-2 pr-3 placeholder:text-zinc-600 transition-colors"
-              />
-              <button
-                type="submit"
-                className="ml-3 w-9 h-9 rounded-full bg-white text-black flex items-center justify-center hover:bg-zinc-200 transition-colors shrink-0"
-              >
-                <ChevronRight size={16} strokeWidth={2.5} />
-              </button>
+            <form onSubmit={handleSubscribe} className="flex flex-col gap-3 mb-3 relative">
+              <div className="flex items-center gap-0">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  onFocus={() => setIsFocused(true)}
+                  placeholder="Your email here"
+                  className="flex-1 bg-transparent border-b border-zinc-700 focus:border-zinc-400 outline-none text-white text-sm py-2 pr-3 placeholder:text-zinc-600 transition-colors"
+                  required
+                />
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="ml-3 w-9 h-9 rounded-full bg-white text-black flex items-center justify-center hover:bg-zinc-200 transition-colors shrink-0 disabled:opacity-50"
+                >
+                  <ChevronRight size={16} strokeWidth={2.5} />
+                </button>
+              </div>
+              <AnimatePresence>
+                {isFocused && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <textarea
+                      value={message}
+                      onChange={e => setMessage(e.target.value)}
+                      placeholder="Optional message..."
+                      rows={2}
+                      className="w-full mt-2 bg-zinc-900/50 border border-zinc-800 focus:border-zinc-600 rounded-lg outline-none text-white text-sm p-3 placeholder:text-zinc-600 transition-colors resize-none"
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              {error && <p className="text-rose-400 text-xs mt-1">{error}</p>}
             </form>
           )}
 
@@ -1621,8 +1664,104 @@ export default function LandingPage() {
         <CredStatsGrid />
       </div>
       <div id="trust">
+        <AboutVisionSection />
         <CredTrustFooter />
       </div>
     </div>
   );
 }
+
+const AboutVisionSection = () => {
+  const steps = [
+    {
+      title: "Configure & Invite",
+      desc: "Mentors create exams in seconds, set security protocols, and send encrypted magic links to students in bulk.",
+      icon: <QrCode className="w-6 h-6 text-indigo-400" />,
+      color: "from-indigo-500/20 to-transparent",
+      borderColor: "border-indigo-500/20"
+    },
+    {
+      title: "Authenticate & Lock",
+      desc: "Vision uses biometric mapping to verify identity. Once confirmed, the environment locks down—blocking all unauthorized apps.",
+      icon: <LockIcon className="w-6 h-6 text-emerald-400" />,
+      color: "from-emerald-500/20 to-transparent",
+      borderColor: "border-emerald-500/20"
+    },
+    {
+      title: "Monitor & Analyze",
+      desc: "Our AI engine tracks gaze, audio, and network activity. Mentors receive real-time alerts and comprehensive trust reports post-exam.",
+      icon: <Activity className="w-6 h-6 text-rose-400" />,
+      color: "from-rose-500/20 to-transparent",
+      borderColor: "border-rose-500/20"
+    }
+  ];
+
+  return (
+    <section className="bg-[#030303] py-24 px-8 relative overflow-hidden border-t border-white/5">
+      {/* Background Decor */}
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/5 blur-[120px] rounded-full pointer-events-none" />
+      
+      <div className="max-w-7xl mx-auto relative z-10">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-20">
+          <div className="max-w-2xl">
+            <motion.span 
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="text-zinc-500 font-mono text-xs tracking-[0.3em] uppercase mb-4 block"
+            >
+              The Architecture of Trust
+            </motion.span>
+            <motion.h2 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="text-4xl md:text-6xl font-semibold text-white tracking-tight"
+            >
+              How Vision <span className="text-zinc-500 italic">actually</span> works
+            </motion.h2>
+          </div>
+          <motion.p 
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 }}
+            className="text-zinc-400 text-lg max-w-sm font-light leading-relaxed"
+          >
+            A three-phase security pipeline designed to protect integrity without compromising the student experience.
+          </motion.p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {steps.map((step, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.1 + 0.3 }}
+              className={`group relative p-8 rounded-3xl border ${step.borderColor} bg-gradient-to-b ${step.color} backdrop-blur-sm hover:border-white/20 transition-all duration-500`}
+            >
+              <div className="w-12 h-12 rounded-2xl bg-black border border-white/10 flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-500">
+                {step.icon}
+              </div>
+              <h3 className="text-2xl font-semibold text-white mb-4 tracking-tight">{step.title}</h3>
+              <p className="text-zinc-400 font-light leading-relaxed">
+                {step.desc}
+              </p>
+              
+              {/* Step Number Badge */}
+              <div className="absolute top-8 right-8 text-4xl font-bold text-white/[0.03] font-mono select-none">
+                0{i + 1}
+              </div>
+            </motion.div>
+          ))}
+        </div>
+        
+        {/* Connection line for desktop */}
+        <div className="hidden md:block absolute top-[60%] left-[10%] right-[10%] h-px bg-gradient-to-r from-transparent via-white/5 to-transparent z-0" />
+      </div>
+    </section>
+  );
+};

@@ -14,12 +14,12 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://vision-o16g.onrender.com',
+        target: 'https://vision-live.onrender.com',
         changeOrigin: true,
         secure: false,
       },
       '/socket.io': {
-        target: 'https://vision-o16g.onrender.com',
+        target: 'https://vision-live.onrender.com',
         changeOrigin: true,
         secure: false,
         ws: true,

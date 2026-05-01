@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const userSchema = new mongoose.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    password: { type: String, required: true },
+    password: { type: String, required: true, select: false },
     role: { 
         type: String, 
         enum: ['student', 'mentor', 'super_mentor', 'admin'],
@@ -17,6 +17,7 @@ const userSchema = new mongoose.Schema({
     profilePicture: { type: String, default: null },
     idCardUrl: { type: String, default: null },
     isVerified: { type: Boolean, default: false },
+    verificationIssue: { type: String, default: null },
     sessionVersion: { type: Number, default: 1 }
 }, { timestamps: true });
 

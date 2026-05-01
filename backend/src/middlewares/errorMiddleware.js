@@ -66,7 +66,9 @@ const errorHandler = async (err, req, res, next) => {
     const response = {
         status: err.status || 'error',
         code,
-        message: (isProduction && !err.isOperational) ? 'Something went very wrong!' : message,
+        message: (isProduction && !err.isOperational && statusCode >= 500) 
+            ? 'Something went very wrong!' 
+            : message,
         errorId: req.requestId
     };
 

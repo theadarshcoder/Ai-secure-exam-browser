@@ -1,28 +1,18 @@
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 const axios = require('axios');
 
 /**
- * 🤖 AI Question Generator — Powered by Gemini
+ * 🤖 AI Question Generator — Powered by Gemini SDK
  * Generates MCQ, Short Answer, and Coding questions from syllabus/topics
  * 
  * POST /api/ai/generate
  * Body: { category, syllabus, config: { mcq, short, coding } }
  */
-exports.generateQuestions = async (req, res) => {
+exports.generateQuestions = async (req, res, next) => {
     const { category, syllabus, config } = req.body;
-    const geminiKey = process.env.GEMINI_API_KEY;
-
-    if (!geminiKey) {
-        return res.status(503).json({
-            success: false,
-            error: 'AI Engine not configured. Please add GEMINI_API_KEY to your .env file.'
-        });
-    }
 
     if (!syllabus && !category) {
-        return res.status(400).json({
-            success: false,
-            error: 'Please provide syllabus content or a category for question generation.'
-        });
+        return res.status(400).json({ success: false, error: 'Please provide syllabus content or a category for question generation.' });
     }
 
     const mcqCount = Math.min(config?.mcq || 0, 20);
@@ -33,80 +23,152 @@ exports.generateQuestions = async (req, res) => {
     const totalMarks = req.body.totalMarks || 100;
 
     if (totalCount === 0) {
-        return res.status(400).json({
-            success: false,
-            error: 'Please specify at least one question type to generate.'
-        });
+        return res.status(400).json({ success: false, error: 'Please specify at least one question type to generate.' });
     }
 
-    try {
-        const prompt = buildPrompt(category, syllabus, mcqCount, shortCount, codingCount, reactCount, totalMarks);
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
+    const prompt = buildPrompt(category, syllabus, mcqCount, shortCount, codingCount, reactCount, totalMarks);
 
-        const response = await axios.post(url, {
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: {
-                temperature: 0.7,
-                maxOutputTokens: 8192
-            }
-        }, { timeout: 60000 });
-
-        const text = response.data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-        // Extract JSON array from response (handle markdown wrapping)
-        const jsonMatch = text.match(/\[[\s\S]*\]/);
-        if (!jsonMatch) {
-            console.error('AI Response (no JSON found):', text.substring(0, 500));
-            return res.status(500).json({
-                success: false,
-                error: 'AI generated a response but it could not be parsed. Please try again.'
-            });
-        }
-
-        let questions;
+    // ═══════════════════════════════════════════════════════════
+    // PRIMARY: Gemini 2.0 Flash
+    // ═══════════════════════════════════════════════════════════
+    const geminiKey = process.env.GEMINI_API_KEY;
+    if (geminiKey) {
         try {
-            questions = JSON.parse(jsonMatch[0]);
-        } catch (parseErr) {
-            console.error('JSON Parse Error:', parseErr.message, '\nRaw:', jsonMatch[0].substring(0, 500));
-            return res.status(500).json({
-                success: false,
-                error: 'AI response format was invalid. Please try again.'
+            const genAI = new GoogleGenerativeAI(geminiKey);
+            const model = genAI.getGenerativeModel({
+                model: "gemini-2.0-flash",
+                generationConfig: { temperature: 0.7, topP: 0.95, topK: 40, maxOutputTokens: 8192 }
             });
+            const result = await model.generateContent(prompt);
+            const text = result.response.text();
+            console.log('✅ [Gemini 2.0 Flash] Generated successfully');
+            return parseAndRespond(text, sanitizeQuestion, res, next, mcqCount, shortCount, codingCount, reactCount);
+        } catch (geminiError) {
+            console.warn(`⚠️ Gemini failed: ${geminiError.message} — switching to Groq fallback...`);
         }
-
-        if (!Array.isArray(questions) || questions.length === 0) {
-            return res.status(500).json({
-                success: false,
-                error: 'AI returned empty results. Try providing more detailed syllabus content.'
-            });
-        }
-
-        // Sanitize and normalize each question
-        const sanitized = questions.map((q, i) => sanitizeQuestion(q, i)).filter(Boolean);
-
-        console.log(`🤖 AI Generated ${sanitized.length} questions (MCQ: ${sanitized.filter(q => q.type === 'mcq').length}, Short: ${sanitized.filter(q => q.type === 'short').length}, Coding: ${sanitized.filter(q => q.type === 'coding').length}, React: ${sanitized.filter(q => q.type === 'frontend-react').length})`);
-
-        res.json({
-            success: true,
-            questions: sanitized
-        });
-
-    } catch (error) {
-        console.error('AI Generation Error:', error.response?.data?.error || error.response?.data || error.message);
-
-        if (error.response?.status === 429) {
-            return res.status(429).json({
-                success: false,
-                error: 'AI rate limit reached. Please wait a moment and try again.'
-            });
-        }
-
-        res.status(500).json({
-            success: false,
-            error: 'Failed to generate questions. AI service may be temporarily unavailable.'
-        });
+    } else {
+        console.warn('⚠️ GEMINI_API_KEY not set — going to Groq fallback...');
     }
+
+    // ═══════════════════════════════════════════════════════════
+    // FALLBACK: Groq — 4-Key Rotation (llama-3.3-70b-versatile)
+    // Keys rotate automatically when rate limit (429) is hit
+    // ═══════════════════════════════════════════════════════════
+    const groqKeys = [
+        process.env.GROQ_API_KEY_1,
+        process.env.GROQ_API_KEY_2,
+        process.env.GROQ_API_KEY_3,
+        process.env.GROQ_API_KEY_4,
+    ].filter(Boolean); // ignore unset keys
+
+    if (groqKeys.length === 0) {
+        return res.status(503).json({ success: false, error: 'AI Service is not configured. Please contact administrator.' });
+    }
+
+    let lastError = null;
+    for (let i = 0; i < groqKeys.length; i++) {
+        try {
+            console.log(`🔄 Trying Groq key ${i + 1}/${groqKeys.length}...`);
+            const response = await axios.post(
+                'https://api.groq.com/openai/v1/chat/completions',
+                {
+                    model: 'llama-3.3-70b-versatile',
+                    messages: [
+                        {
+                            role: 'system',
+                            content: 'You are an expert exam question generator. Always respond with a valid JSON array only. No markdown, no explanation outside the array.'
+                        },
+                        { role: 'user', content: prompt }
+                    ],
+                    temperature: 0.7,
+                    max_tokens: 8192
+                },
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${groqKeys[i]}`
+                    },
+                    timeout: 60000
+                }
+            );
+
+            const text = response.data?.choices?.[0]?.message?.content || '';
+            if (!text) throw new Error('Groq returned empty content');
+
+            console.log(`✅ [Groq Key ${i + 1}] Generated successfully (${text.length} chars)`);
+            return parseAndRespond(text, sanitizeQuestion, res, next, mcqCount, shortCount, codingCount, reactCount);
+
+        } catch (groqError) {
+            const status = groqError.response?.status;
+            const msg = groqError.response?.data?.error?.message || groqError.message;
+            lastError = msg;
+
+            if (status === 429 || status === 401) {
+                // Rate limited / invalid key → try next key
+                console.warn(`⚠️ Groq key ${i + 1} hit limit (${status}) — rotating to next key...`);
+                continue;
+            }
+
+            // Non-rate-limit error → don't waste remaining keys
+            console.error(`❌ Groq key ${i + 1} failed with non-rate error: ${msg}`);
+            break;
+        }
+    }
+
+    // All keys exhausted
+    console.error(`❌ All ${groqKeys.length} Groq keys exhausted. Last error: ${lastError}`);
+    return res.status(503).json({
+        success: false,
+        error: `AI generation failed after trying all available keys. Please try again later. (${lastError})`
+    });
 };
+
+
+
+// ─── Shared JSON Parser & Responder ───────────────────────
+
+function parseAndRespond(text, sanitizeQuestion, res, next, mcqCount, shortCount, codingCount, reactCount) {
+    let cleanedText = text;
+    if (text.includes('```')) {
+        const matches = text.match(/```(?:json)?([\s\S]*?)```/);
+        if (matches && matches[1]) {
+            cleanedText = matches[1].trim();
+        }
+    }
+
+    const jsonMatch = cleanedText.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+        console.error('AI Response (no JSON found):', text.substring(0, 500));
+        const parseErr = new Error('AI generated a response but it could not be parsed. Please try again.');
+        parseErr.statusCode = 500;
+        return next(parseErr);
+    }
+
+    let questions;
+    try {
+        questions = JSON.parse(jsonMatch[0]);
+    } catch (parseErr) {
+        console.error('JSON Parse Error:', parseErr.message, '\nRaw:', jsonMatch[0].substring(0, 500));
+        const formatErr = new Error('AI response format was invalid. Please try again.');
+        formatErr.statusCode = 500;
+        return next(formatErr);
+    }
+
+    if (!Array.isArray(questions) || questions.length === 0) {
+        const emptyErr = new Error('AI returned empty results. Try providing more detailed syllabus content.');
+        emptyErr.statusCode = 500;
+        return next(emptyErr);
+    }
+
+    const sanitized = questions.map((q, i) => sanitizeQuestion(q, i)).filter(Boolean);
+
+    console.log(`🤖 AI Generated ${sanitized.length} questions (MCQ: ${sanitized.filter(q => q.type === 'mcq').length}, Short: ${sanitized.filter(q => q.type === 'short').length}, Coding: ${sanitized.filter(q => q.type === 'coding').length}, React: ${sanitized.filter(q => q.type === 'frontend-react').length})`);
+
+    return res.json({
+        success: true,
+        questions: sanitized
+    });
+}
 
 
 // ─── Prompt Builder ────────────────────────────────────────

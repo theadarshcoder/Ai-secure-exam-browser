@@ -24,8 +24,7 @@ const ExamInviteSchema = new mongoose.Schema({
     // Hashed invite token (crypto SHA256) — plain token is NEVER stored
     tokenHash: {
         type: String,
-        required: true,
-        index: true
+        required: true
     },
 
     // Token expiry — link invalid after this

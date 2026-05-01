@@ -34,6 +34,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const sessionRoutes = require('./routes/sessionRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const publicRoutes = require('./routes/publicRoutes');
 const { setupCodeEvaluationWorker } = require('./queues/codeGradingQueue');
 const { setupFrontendEvaluationWorker } = require('./queues/frontendGradingQueue');
 const { setupInviteEmailWorker } = require('./queues/inviteEmailQueue');
@@ -176,12 +177,14 @@ const globalLimiter = rateLimit({
     store: createRedisStore('global'),
     keyGenerator: (req) => {
         // Fix 3 (Last-Mile): Use userId for authenticated users to prevent IP-spoofing key exhaustion
-        if (req.user && req.user.id) return `user:${req.user.id}`;
+        if (req.user && req.user.id) {
+            return `user:${req.user.id}`;
+        }
         
         // Use IP + UserAgent hash for anonymous to prevent single-IP-multi-browser attacks
         const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
         const ua = req.headers['user-agent'] || 'no-ua';
-        return require('crypto').createHash('md5').update(`${ip}:${ua}`).digest('hex');
+        return `ip:${require('crypto').createHash('md5').update(`${ip}:${ua}`).digest('hex')}`;
     },
     message: {
         error: 'Too many requests! Please try again in 15 minutes.',
@@ -279,11 +282,11 @@ io.use(async (socket, next) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
         // ⚡ SCALING GUARD: Check Redis first (Cache Hit = 0 DB Hits)
-        const cachedToken = await cacheService.getUserSession(decoded.id);
+        const cachedSession = await cacheService.getUserSession(decoded.id);
 
-        if (cachedToken) {
-            if (cachedToken.token !== token) {
-                console.warn(`🚫 [Socket Auth] Session mismatch for ${decoded.email}. Force disconnecting.`);
+        if (cachedSession && cachedSession.sessionVersion) {
+            if (decoded.sessionVersion && cachedSession.sessionVersion !== decoded.sessionVersion) {
+                console.warn(`🚫 [Socket Auth] Stale session for ${decoded.email}. Force disconnecting.`);
                 return next(new Error('Session terminated! You logged in from another device.'));
             }
             console.log(`📡 [SCALING] Socket Auth: Redis Cache Hit for ${decoded.email}`);
@@ -295,8 +298,13 @@ io.use(async (socket, next) => {
                 console.error(`🚫 [Socket Auth] User not found: ${decoded.id}`);
                 return next(new Error('User account no longer exists.'));
             }
-            // Backfill cache for next time
-            await cacheService.saveUserSession(decoded.id, token, user.permissions || []);
+            // Validate sessionVersion against DB
+            if (decoded.sessionVersion && user.sessionVersion !== decoded.sessionVersion) {
+                console.warn(`🚫 [Socket Auth] Stale session version for ${decoded.email}.`);
+                return next(new Error('Session terminated! You logged in from another device.'));
+            }
+            // Backfill cache with sessionVersion (not token)
+            await cacheService.saveUserSession(decoded.id, user.sessionVersion, user.permissions || []);
         }
 
         // User info socket object mein attach karo
@@ -332,16 +340,19 @@ app.get('/', (req, res) => res.send('<h1>Server & Sockets working perfectly 🔒
 app.use('/api/auth/verify-invite', inviteVerifyLimiter);
 app.use('/api/auth', authLimiter, authRoutes);
 
-// 🛡️ CRITICAL: Apply relaxed limiter to save-progress route specifically 
-// and apply global limiter to other exam routes.
-app.use('/api/exams/save-progress', autoSaveLimiter);
+// 🛡️ CRITICAL: Apply verifyToken BEFORE limiters so req.user is available for keyGenerator
+// This prevents IP-based rate limiting from blocking entire colleges/offices
+app.use('/api/exams/save-progress', verifyToken, autoSaveLimiter);
 
-// Protected routes — Global limiter active
-app.use('/api/exams', globalLimiter, examRoutes);
-app.use('/api/admin', globalLimiter, adminRoutes);
+// Protected routes — Verify Token FIRST, then Global Limiter
+app.use('/api/exams', verifyToken, globalLimiter, examRoutes);
+app.use('/api/admin', verifyToken, globalLimiter, adminRoutes);
 app.use('/api/session', verifyToken, telemetryLimiter, sessionRoutes);
-app.use('/api/ai', globalLimiter, aiRoutes);
+app.use('/api/ai', verifyToken, globalLimiter, aiRoutes);
 app.use('/api/upload', verifyToken, globalLimiter, uploadRoutes);
+
+// Public routes — NO verifyToken, rate limiter falls back to IP
+app.use('/api/public', globalLimiter, publicRoutes);
 
 // ─── 404 Global Handler ──────────────────────────────────
 app.use((req, res, next) => {
@@ -463,7 +474,13 @@ io.on('connection', (socket) => {
         const studentId = socket.user.id;
 
         try {
-            const settings = await Setting.findOne() || new Setting();
+            // 🛡️ Optimized: Use cached settings to prevent DB read-storms
+            let settings = await cacheService.getCache('global_settings');
+            if (!settings) {
+                console.log('📡 Cache miss: Fetching global settings from DB...');
+                settings = await Setting.findOne() || new Setting();
+                await cacheService.setCache('global_settings', settings, 86400); // Cache for 24h
+            }
             const maxViolations = settings.maxViolations || 5;
             const bgLimit = settings.backgroundLimitSeconds || 10;
 
@@ -476,14 +493,16 @@ io.on('connection', (socket) => {
 
             // Mapping raw violation types to standardized ones
             if (type === 'TAB_HIDDEN' || type === VIOLATION_TYPES.TAB_SWITCH) {
+                // Standardize all background events as TAB_SWITCH for the violation log
+                updatePayload.$push.violations.type = VIOLATION_TYPES.TAB_SWITCH;
+                updatePayload.$push.violations.severity = 'low';
+                updatePayload.$push.violations.details = details || `Background duration: ${duration}s`;
+                updatePayload.$inc.tabSwitchCount = 1;
+
                 if (duration > bgLimit) {
                     shouldBlock = true;
                     blockReason = `Background limit exceeded (${duration}s > ${bgLimit}s)`;
-                } else {
-                    updatePayload.$push.violations.type = VIOLATION_TYPES.TAB_SWITCH;
-                    updatePayload.$push.violations.severity = 'low';
-                    updatePayload.$push.violations.details = details || `Background duration: ${duration}s`;
-                    updatePayload.$inc.tabSwitchCount = 1;
+                    updatePayload.$push.violations.severity = 'high'; // Escalate severity if limit exceeded
                 }
             } else if (type === 'CHEATING_FLAG' || type === VIOLATION_TYPES.SUSPICIOUS_ACTIVITY) {
                 updatePayload.$push.violations.type = VIOLATION_TYPES.SUSPICIOUS_ACTIVITY;
@@ -806,9 +825,9 @@ io.on('connection', (socket) => {
             io.to(`exam_${socket.examId}`).emit('student_offline', { userId: socket.user.id });
         }
 
-        // 🏎️ Fix 41: Prevent memory leak by removing from tracking map
-        rateLimitMap.delete(socket.id);
-
+        // 🏎️ Fix 41: Resources are scoped locally (like eventCounts), so they auto-gc.
+        // No global tracking maps to delete here, preventing ReferenceErrors.
+        
         console.log(`❌ Disconnected: ${socket.id} | User: ${socket.user.email}`);
     });
 });
@@ -974,6 +993,17 @@ async function gracefulShutdown(signal) {
 // OS Signal Listeners
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// 🛡️ Presentation Safety Nets: Prevent server crashes from unhandled errors
+process.on('uncaughtException', (err) => {
+    console.error('🔥 [CRITICAL] Uncaught Exception:', err.message);
+    // Don't exit, keep the presentation alive!
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('⚠️ [WARNING] Unhandled Promise Rejection:', reason);
+    // Log but stay alive
+});
 
 // 🚀 Start the application
 bootstrap();

@@ -350,9 +350,9 @@ exports.verifyInvite = asyncHandler(async (req, res) => {
     user.refreshToken = refreshToken;
     await user.save();
 
-    // ⚡ SYNC TO CACHE
+    // ⚡ SYNC TO CACHE (sessionVersion, not token)
     try {
-        await cacheService.saveUserSession(user._id, accessToken, user.permissions || []);
+        await cacheService.saveUserSession(user._id, user.sessionVersion, user.permissions || []);
     } catch (cacheErr) {
         console.warn('🛡️ Cache sync failed during invite (Redis down):', cacheErr.message);
     }

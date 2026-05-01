@@ -180,4 +180,47 @@ Do not share your credentials with anyone.
     }
 };
 
-module.exports = { sendInviteEmail };
+/**
+ * Send a notification to the admin about a new subscriber/contact.
+ * 
+ * @param {Object} params
+ * @param {string} params.email - Subscriber's email
+ * @param {string} params.message - Optional message
+ * @returns {Object} Success or failure status
+ */
+const sendSubscriptionNotification = async ({ email, message }) => {
+    const adminEmail = 'vinitjangirr@gmail.com';
+    
+    const html = `
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background-color:#f4f4f5;font-family:Arial,Helvetica,sans-serif;">
+    <div style="padding: 20px;">
+        <h2 style="color: #10b981;">New Subscription / Contact</h2>
+        <p><strong>Email:</strong> ${email}</p>
+        ${message ? `<p><strong>Message:</strong><br/>${message.replace(/\n/g, '<br/>')}</p>` : '<p><i>No message provided.</i></p>'}
+        <br/>
+        <p style="font-size: 12px; color: #71717a;">Received via Landing Page Stay In The Loop Form</p>
+    </div>
+</body>
+</html>`;
+
+    const text = `New Subscription / Contact\n\nEmail: ${email}\nMessage:\n${message || 'No message provided.'}`;
+
+    try {
+        const info = await transporter.sendMail({
+            from: '"Vision System" <' + process.env.EMAIL_USER + '>',
+            to: adminEmail,
+            subject: `New Contact from ${email}`,
+            html,
+            text
+        });
+        console.log(`📧 [Email] Admin notification sent | MessageId: ${info.messageId}`);
+        return { success: true, id: info.messageId };
+    } catch (error) {
+        console.error(`❌ [Email] Failed to send admin notification:`, error.message);
+        return { success: false, error: error.message };
+    }
+};
+
+module.exports = { sendInviteEmail, sendSubscriptionNotification };

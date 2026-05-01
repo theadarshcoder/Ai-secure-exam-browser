@@ -91,7 +91,7 @@ exports.login = asyncHandler(async (req, res) => {
     let searchEmail = email.trim();
     console.log(`🔑 [LOGIN ATTEMPT] Email: ${searchEmail} | Role: ${requestedRole}`);
 
-    const user = await User.findOne({ email: searchEmail });
+    const user = await User.findOne({ email: searchEmail }).select('+password');
     if (!user) {
         console.warn(`❌ [LOGIN FAILED] User not found: ${searchEmail}`);
         throw new AppError('Invalid Access Identity or Secure Key!', 401, 'AUTH_FAILED');
@@ -129,7 +129,7 @@ exports.login = asyncHandler(async (req, res) => {
                     const forceLoginKey = `force_login_count:${user._id}`;
                     const currentCount = await redisClient.get(forceLoginKey);
                     
-                    if (currentCount && parseInt(currentCount) >= 3) {
+                    if (currentCount && parseInt(currentCount) >= 10) {
                         return res.status(429).json({
                             code: 'FORCE_LOGIN_LIMIT_EXCEEDED',
                             message: 'Security Alert: Too many "Force Login" attempts. Your account has been temporarily restricted. Please contact support.'
@@ -137,7 +137,7 @@ exports.login = asyncHandler(async (req, res) => {
                     }
                     
                     await redisClient.incr(forceLoginKey);
-                    await redisClient.expire(forceLoginKey, 600); // 10 min window
+                    await redisClient.expire(forceLoginKey, 300); // 5 min window
                 }
 
                 console.warn(`[SECURITY] Force Login by ${user.email} during active exam ${activeSession.exam}`);
@@ -200,9 +200,9 @@ exports.login = asyncHandler(async (req, res) => {
         { expiresIn: '1h' } 
     );
 
-    // ⚡ SYNC TO CACHE: Redis handles active session tracking
+    // ⚡ SYNC TO CACHE: Redis stores sessionVersion (not token) for lightweight validation
     try {
-        await cacheService.saveUserSession(user._id, accessToken, user.permissions);
+        await cacheService.saveUserSession(user._id, user.sessionVersion, user.permissions);
     } catch (cacheErr) {
         console.warn('🛡️ Cache sync failed during login (Redis down):', cacheErr.message);
     }
@@ -297,8 +297,8 @@ exports.refresh = asyncHandler(async (req, res) => {
         user.refreshToken = newRefreshToken;
         await user.save();
 
-        // 6. Sync new session to cache
-        await cacheService.saveUserSession(user._id, newAccessToken, user.permissions);
+        // 6. Sync new session version to cache
+        await cacheService.saveUserSession(user._id, user.sessionVersion, user.permissions);
 
         console.log(`🔁 [Auth] Token rotated successfully for user: ${user.email}`);
 

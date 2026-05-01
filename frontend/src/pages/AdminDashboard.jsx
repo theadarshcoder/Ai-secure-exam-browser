@@ -123,7 +123,7 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
     if (sessionData?.questions) {
       const initial = {};
       sessionData.questions.forEach(q => {
-        if (q.type === 'short' || q.status === 'pending_review') {
+        if ((q.type === 'short' || q.status === 'pending_review') && q.type !== 'mcq') {
           initial[q.questionId || q.id] = {
             marksObtained: q.aiSuggestedMarks ?? q.marksObtained ?? 0,
             mentorFeedback: q.mentorFeedback || ''
@@ -209,7 +209,9 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
             sessionData.questions.map((q, i) => {
               const qId = q.questionId || q.id;
               const isShort = q.type === 'short';
-              const isEvaluating = isShort || q.status === 'pending_review';
+              const isCoding = q.type === 'coding';
+              // 🛡️ MCQ questions are NEVER manually evaluatable
+              const isEvaluating = (isShort || isCoding || q.status === 'pending_review') && q.type !== 'mcq';
 
               return (
                 <div key={i} className={`rounded-[2rem] border p-8 transition-all ${
@@ -532,6 +534,15 @@ export default function AdminDashboard() {
       toast.error(`VIOLATION: ${displayName} - ${data.type}`, { icon: '🚨' });
       const newNotif = { ...data, id: Date.now(), type: 'violation', unread: true, timestamp: new Date() };
       setNotifications(prev => [newNotif, ...prev]);
+
+      // 🛡️ Real-time eKYC Identity Board Sync
+      if (data.type === 'IDENTITY_VIOLATION') {
+        setCandidates(prev => prev.map(c => 
+          (c.email === data.studentEmail || c.email === data.studentId)
+            ? { ...c, isVerified: false, verificationIssue: data.message }
+            : c
+        ));
+      }
     });
 
     // ✅ Fix: Add ACK Received listener
@@ -550,7 +561,44 @@ export default function AdminDashboard() {
     const fetchLive = async () => {
       try {
         const res = await getLiveSessions();
-        setLiveSessions(res || []);
+        if (res) {
+          setLiveSessions(res);
+          
+          // Extract unresolved help requests
+          const allHelpReqs = [];
+          res.forEach(session => {
+            if (session.helpRequests && session.helpRequests.length > 0) {
+               session.helpRequests.forEach(req => {
+                  if (!req.resolved) {
+                     allHelpReqs.push({
+                        ...req,
+                        id: req._id || req.id,
+                        type: 'help',
+                        unread: true,
+                        studentName: session.studentName,
+                        studentEmail: session.studentEmail,
+                        examId: session._id || session.examId,
+                     });
+                  }
+               });
+            }
+          });
+
+          if (allHelpReqs.length > 0) {
+             setHelpRequests(prev => {
+                const map = new Map(prev.map(p => [p.id, p]));
+                allHelpReqs.forEach(req => map.set(req.id, req));
+                return Array.from(map.values()).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+             });
+             setNotifications(prev => {
+                const map = new Map(prev.map(p => [p.id, p]));
+                allHelpReqs.forEach(req => map.set(req.id, req));
+                return Array.from(map.values()).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+             });
+          }
+        } else {
+          setLiveSessions([]);
+        }
       } catch (err) {
         console.error("Live sessions fetch failed:", err);
       }
@@ -618,7 +666,42 @@ export default function AdminDashboard() {
               setCandidates(res || []);
           } else if (tab === 'LiveMonitoring') {
               const res = await getLiveSessions();
-              setLiveSessions(res || []);
+              if (res) {
+                  setLiveSessions(res);
+                  const allHelpReqs = [];
+                  res.forEach(session => {
+                    if (session.helpRequests && session.helpRequests.length > 0) {
+                       session.helpRequests.forEach(req => {
+                          if (!req.resolved) {
+                             allHelpReqs.push({
+                                ...req,
+                                id: req._id || req.id,
+                                type: 'help',
+                                unread: true,
+                                studentName: session.studentName,
+                                studentEmail: session.studentEmail,
+                                examId: session._id || session.examId,
+                             });
+                          }
+                       });
+                    }
+                  });
+
+                  if (allHelpReqs.length > 0) {
+                     setHelpRequests(prev => {
+                        const map = new Map(prev.map(p => [p.id, p]));
+                        allHelpReqs.forEach(req => map.set(req.id, req));
+                        return Array.from(map.values()).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+                     });
+                     setNotifications(prev => {
+                        const map = new Map(prev.map(p => [p.id, p]));
+                        allHelpReqs.forEach(req => map.set(req.id, req));
+                        return Array.from(map.values()).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+                     });
+                  }
+              } else {
+                  setLiveSessions([]);
+              }
           } else if (tab === 'Academics') {
               const res = await getStudents().catch(() => ({ students: [] }));
               const studentsData = res?.students || res || [];

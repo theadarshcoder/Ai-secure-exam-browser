@@ -20,6 +20,7 @@
     "@vladmandic/face-api": "^1.7.15",
     "axios": "^1.7.9",
     "date-fns": "^4.1.0",
+    "dompurify": "^3.4.1",
     "framer-motion": "^12.38.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",

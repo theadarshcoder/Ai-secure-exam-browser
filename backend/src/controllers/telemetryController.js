@@ -14,8 +14,10 @@ exports.logError = asyncHandler(async (req, res) => {
         throw new Error('examId, errorType, and message are required.');
     }
 
-    // Capture telemetry
-    const log = new ErrorLog({
+    const { pushTelemetryLog } = require('../services/cacheService');
+
+    // Capture telemetry and format for buffer
+    const logData = {
         userId,
         examId,
         errorType,
@@ -23,11 +25,12 @@ exports.logError = asyncHandler(async (req, res) => {
         userAgent: userAgent || req.get('User-Agent'),
         deviceInfo,
         timestamp: new Date()
-    });
+    };
 
-    await log.save();
+    // ⚡ Fast Push to Redis Buffer instead of direct DB write
+    await pushTelemetryLog(logData);
 
-    console.log(`[TELEMETRY] ${userId} - ${errorType}: ${message.substring(0, 50)}...`);
+    // console.log(`[TELEMETRY] Buffered ${userId} - ${errorType}: ${message.substring(0, 50)}...`);
 
-    res.status(201).json({ success: true, message: 'Telemetry log recorded.' });
+    res.status(201).json({ success: true, message: 'Telemetry log buffered.' });
 });

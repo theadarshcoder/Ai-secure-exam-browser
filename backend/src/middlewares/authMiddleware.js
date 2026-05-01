@@ -18,7 +18,7 @@ const verifyToken = async (req, res, next) => {
         const l1Key = `auth_meta:${decoded.id}`;
         const cachedL1 = l1Cache.get(l1Key);
 
-        if (cachedL1 && cachedL1.token === token) {
+        if (cachedL1 && (!decoded.sessionVersion || cachedL1.sessionVersion === decoded.sessionVersion)) {
             req.user = { ...decoded, permissions: cachedL1.permissions };
             return next();
         }
@@ -26,7 +26,7 @@ const verifyToken = async (req, res, next) => {
         // Request Coalescing: If multiple requests for same user hit, reuse the first promise
         if (inFlightRequests.has(l1Key)) {
             const result = await inFlightRequests.get(l1Key);
-            if (result.token === token) {
+            if (!decoded.sessionVersion || result.sessionVersion === decoded.sessionVersion) {
                 req.user = { ...decoded, permissions: result.permissions };
                 return next();
             }
@@ -34,30 +34,44 @@ const verifyToken = async (req, res, next) => {
 
         const authTask = (async () => {
             let permissions = [];
-            let cachedToken = null;
+            let cachedSession = null;
             
             try {
-                cachedToken = await cacheService.getUserSession(decoded.id);
+                cachedSession = await cacheService.getUserSession(decoded.id);
             } catch (cacheErr) {
                 console.error('🛡️ L2 Cache Service Down:', cacheErr.message);
             }
 
-            if (cachedToken) {
-                if (cachedToken.token !== token) throw new Error('SESSION_COLLISION');
-                permissions = cachedToken.permissions || [];
-            } else {
+            if (cachedSession && cachedSession.sessionVersion) {
+                // L2 (Redis): Version-based validation (unified with L3)
+                if (decoded.sessionVersion && cachedSession.sessionVersion > decoded.sessionVersion) {
+                    throw new Error('SESSION_COLLISION'); // Token is older than cache -> revoked!
+                } else if (decoded.sessionVersion && cachedSession.sessionVersion < decoded.sessionVersion) {
+                    // Cache is stale! The token is newer (e.g. recent login). Fall back to DB to confirm.
+                    cachedSession = null; 
+                } else {
+                    permissions = cachedSession.permissions || [];
+                }
+            } 
+            
+            if (!cachedSession || !cachedSession.sessionVersion) {
                 // L3: Fallback to MongoDB
                 const user = await User.findById(decoded.id).select('permissions sessionVersion');
                 if (!user) throw new Error('USER_NOT_FOUND');
                 
-                // Elite Fix: Session Versioning
+                // Session Versioning check
                 if (decoded.sessionVersion && user.sessionVersion !== decoded.sessionVersion) {
                     throw new Error('STALE_SESSION');
                 }
                 permissions = user.permissions || [];
+
+                // Backfill L2 cache for next request
+                try {
+                    await cacheService.saveUserSession(decoded.id, user.sessionVersion, permissions);
+                } catch (_) { /* non-critical */ }
             }
 
-            const result = { token, permissions };
+            const result = { sessionVersion: decoded.sessionVersion, permissions };
             l1Cache.set(l1Key, result);
             return result;
         })();
