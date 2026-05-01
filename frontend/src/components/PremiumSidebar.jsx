@@ -77,7 +77,7 @@ export default function PremiumSidebar({
       variants={sidebarVariants}
       animate={expanded ? 'expanded' : 'collapsed'}
       initial={false}
-      className="relative shrink-0 flex flex-col z-30 overflow-visible"
+      className="relative shrink-0 flex flex-col h-full z-30 overflow-visible"
       style={{
         background: colors.bg,
         borderRight: `1px solid ${colors.border}`,
@@ -147,7 +147,7 @@ export default function PremiumSidebar({
         </div>
 
         {/* Brand text */}
-        <AnimatePresence>
+        <AnimatePresence initial={false}>
           {expanded && (
             <motion.span
               variants={brandLabelVariants}
@@ -294,7 +294,7 @@ export default function PremiumSidebar({
                   </motion.div>
 
                   {/* Label */}
-                  <AnimatePresence>
+                  <AnimatePresence initial={false}>
                     {expanded && (
                       <motion.span
                         variants={labelVariants}
@@ -413,7 +413,7 @@ export default function PremiumSidebar({
           <div className="flex items-center justify-center flex-shrink-0 group-hover/logout:text-red-500 transition-colors">
             <LogOut size={16} strokeWidth={2.5} />
           </div>
-          <AnimatePresence>
+          <AnimatePresence initial={false}>
             {expanded && (
               <motion.span
                 variants={labelVariants}

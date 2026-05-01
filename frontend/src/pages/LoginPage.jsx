@@ -7,7 +7,7 @@ import {
   Globe, ScrollText, MapPin, AppWindow, AlertTriangle
 } from 'lucide-react';
 // eslint-disable-next-line no-unused-vars
-import { motion, useMotionValue, useSpring } from 'framer-motion';
+import { motion, useMotionValue, useSpring, AnimatePresence } from 'framer-motion';
 import VisionLogo from '../components/VisionLogo';
 
 /* ─────────────── Config & Constants ─────────────── */
@@ -47,63 +47,63 @@ const ROLE_DATA = {
 
 /* ─────────────── Sub-components ─────────────── */
 
-const DiagnosticSidebar = ({ role, activeCount }) => {
-  const data = ROLE_DATA[role];
-  
+const DiagnosticSidebar = ({ role, currentTime }) => {
   return (
     <div className="w-full md:w-[45%] bg-slate-50 p-7 flex flex-col justify-between relative overflow-hidden hidden md:flex h-full border-r border-slate-200">
       <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-slate-100"></div>
       
-      <div className="relative z-10 w-full flex flex-col flex-grow">
-        <div className="flex items-center gap-2.5 mb-8 opacity-90 w-fit">
+      <div className="relative z-10 w-full flex flex-col h-full">
+        <div className="flex items-center gap-2.5 opacity-90 w-fit shrink-0">
           <VisionLogo className="w-8 h-8 text-slate-900" />
           <span className="text-[15px] font-bold tracking-widest text-slate-900 uppercase">VISION</span>
         </div>
 
-        <h2 className="text-2xl font-bold tracking-tight mb-1 text-slate-900">Security Check</h2>
-        <p className="text-slate-500 text-[11px] font-medium leading-relaxed mb-6">Verifying your environment for a safe session.</p>
+        <div className="flex flex-col flex-grow mt-6 mb-8 max-h-full overflow-hidden">
+          <h2 className="text-lg font-bold tracking-tight mb-1 text-slate-900 shrink-0">Terms & Conditions</h2>
+          <p className="text-slate-500 text-[11px] font-medium leading-relaxed mb-6 shrink-0">Please read our service agreements carefully.</p>
 
-        <div className="space-y-3 flex-grow">
-          {data.diagnostics.map((check, idx) => {
-            const isLoaded = activeCount > idx;
-            return (
-              <div key={idx} className={`flex items-center justify-between p-3 rounded-xl border transition-all duration-700 ${isLoaded ? 'bg-white border-emerald-200 shadow-sm' : 'bg-slate-100 border-slate-200 opacity-60'}`}>
-                <div className="flex items-center gap-3">
-                  <div className={`w-7 h-7 shrink-0 rounded-lg flex items-center justify-center border transition-all ${isLoaded ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-slate-100 text-slate-400 border-slate-200'}`}>
-                    {check.icon}
-                  </div>
-                  <span className={`text-[11px] font-bold tracking-wide ${isLoaded ? 'text-slate-800' : 'text-slate-400'}`}>{check.label}</span>
-                </div>
-                {isLoaded ? (
-                  <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-wider font-bold text-emerald-500">
-                    <div className="flex items-end gap-[1px] h-2.5">
-                      <div className="w-[1.5px] bg-emerald-400 rounded-full animate-pulse h-[40%]" />
-                      <div className="w-[1.5px] bg-emerald-400 rounded-full animate-pulse h-[100%]" />
-                      <div className="w-[1.5px] bg-emerald-400 rounded-full animate-pulse h-[60%]" />
-                    </div>
-                    VERIFIED
-                  </div>
-                ) : <span className="text-slate-500 text-[9px] uppercase tracking-widest font-bold">WAIT</span>}
-              </div>
-            );
-          })}
-        </div>
-        
-        <div className="mt-6 w-full bg-slate-50 rounded-xl p-3 border border-slate-200 shadow-sm h-[95px] overflow-hidden">
-          <div className="flex items-center gap-1.5 mb-2 border-b border-slate-200 pb-1.5">
-            <TerminalSquare size={10} className="text-emerald-600" />
-            <span className="text-[8px] uppercase tracking-[0.2em] font-bold text-slate-500">Active Monitors</span>
-          </div>
-          <div className="font-mono text-[9px] space-y-1 text-slate-600 uppercase">
-            <p className="flex items-center gap-1.5 truncate"><span className="text-slate-400">&gt;</span> Security shield: <span className="text-emerald-600 font-bold ml-auto">ACTIVE</span></p>
-            <p className="flex items-center gap-1.5 truncate"><span className="text-slate-400">&gt;</span> Encrypted link: <span className="text-emerald-600 font-bold ml-auto">SECURE</span></p>
-            <p className="flex items-center gap-1.5 truncate"><span className="text-slate-400">&gt;</span> Access status: <span className="text-emerald-600 font-bold ml-auto">READY</span></p>
+          <div className="overflow-y-auto pr-2 custom-scrollbar text-[11.5px] text-slate-600 space-y-4 leading-relaxed">
+            {role === 'student' && (
+              <>
+                <p><strong className="text-slate-800 text-xs">1. Data Privacy & Monitoring</strong><br/>By using the Vision Secure Layer, you consent to continuous identity verification, behavioral analytics, and session recording to ensure academic integrity.</p>
+                <p><strong className="text-slate-800 text-xs">2. Secure Environment</strong><br/>You must maintain a strict, unauthorized-device-free environment. Any detection of virtual machines, screen sharing software, or external displays may result in immediate session termination.</p>
+                <p><strong className="text-slate-800 text-xs">3. System Access</strong><br/>Access is strictly limited to authorized personnel and registered candidates. Attempting to bypass security protocols is a violation of institutional policy.</p>
+                <p><strong className="text-slate-800 text-xs">4. Liability</strong><br/>We are not liable for session interruptions caused by your local network instability or hardware failure.</p>
+              </>
+            )}
+            
+            {role === 'mentor' && (
+              <>
+                <p><strong className="text-slate-800 text-xs">1. Invigilation Ethics</strong><br/>By accessing the mentor portal, you agree to maintain fair, unbiased, and vigilant supervision of all assigned examination sessions.</p>
+                <p><strong className="text-slate-800 text-xs">2. Data Confidentiality</strong><br/>You must not share, capture, or distribute any candidate personal data, session recordings, or examination content outside of this secure environment.</p>
+                <p><strong className="text-slate-800 text-xs">3. System Access</strong><br/>Access is granted solely for active invigilation and candidate support purposes. Unauthorized usage or account sharing is strictly prohibited.</p>
+                <p><strong className="text-slate-800 text-xs">4. Incident Reporting</strong><br/>All suspicious candidate activities, system anomalies, or security breaches must be documented and reported immediately through designated channels.</p>
+              </>
+            )}
+
+            {role === 'admin' && (
+              <>
+                <p><strong className="text-slate-800 text-xs">1. Administrative Responsibility</strong><br/>By accessing the admin portal, you acknowledge your responsibility for maintaining overarching system integrity, security, and user access control.</p>
+                <p><strong className="text-slate-800 text-xs">2. Data Governance</strong><br/>You are authorized to access sensitive institutional data. Unauthorized export, modification, or exposure of this data violates core security policies.</p>
+                <p><strong className="text-slate-800 text-xs">3. Audit & Logging</strong><br/>All administrator actions are continuously logged and audited. Attempting to bypass security protocols or alter audit trails is strictly prohibited.</p>
+                <p><strong className="text-slate-800 text-xs">4. Compliance Enforcement</strong><br/>You are responsible for ensuring that platform operations comply with institutional policies and applicable global data protection regulations.</p>
+              </>
+            )}
           </div>
         </div>
 
-        <div className="mt-4 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border bg-emerald-500/10 border-emerald-500/20 text-emerald-400 text-[9px] font-mono w-fit">
-          <MapPin size={10} />
-          <span>Geofence: <span className="text-white font-bold ml-1">Bengaluru, IN</span> [VERIFIED]</span>
+        <div className="shrink-0 flex flex-col gap-4 mt-auto">
+          <div className="flex items-center gap-1.5 text-[10px] font-mono w-fit text-slate-500">
+            <MapPin size={12} className="text-emerald-500" />
+            <span>Location: <span className="text-slate-800 font-bold ml-1">Bengaluru, IN</span> <span className="text-emerald-600 font-bold ml-1">[VERIFIED]</span></span>
+          </div>
+          
+          <div className="flex items-center justify-between font-mono font-bold text-slate-400 border-t border-slate-200 uppercase w-full pt-4">
+            <span className="text-[11px] tracking-wide">&copy; {new Date().getFullYear()} All Rights Reserved</span>
+            <div className="text-slate-500 tabular-nums text-[12px]">
+              {currentTime}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -111,20 +111,26 @@ const DiagnosticSidebar = ({ role, activeCount }) => {
 };
 
 const RoleSwitcher = ({ currentRole, setRole }) => (
-  <div className={`relative flex p-1 bg-slate-100 border border-slate-200 rounded-xl shadow-inner overflow-hidden ${currentRole === 'student' ? 'mb-4' : 'mb-10'}`}>
-    <div 
-      className="absolute top-1 bottom-1 left-1 w-[calc(33.333%-2px)] bg-white rounded-lg border border-slate-200 shadow-sm transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
-      style={{ transform: `translateX(${currentRole === 'student' ? '0' : currentRole === 'mentor' ? '100%' : '200%'})` }}
-    />
+  <div className="relative flex p-1 bg-slate-100 border border-slate-200 rounded-xl shadow-inner overflow-hidden mb-6">
     {Object.keys(ROLE_DATA).map((r) => (
       <button
         key={r}
         type="button"
-        className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-[10px] uppercase tracking-widest font-bold rounded-lg relative z-10 transition-colors duration-500 ${currentRole === r ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
+        className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-[10px] uppercase tracking-widest font-bold rounded-lg relative transition-colors duration-200 focus:outline-none ${currentRole === r ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
         onClick={() => setRole(r)}
       >
-        {ROLE_DATA[r].icon}
-        {ROLE_DATA[r].label}
+        {currentRole === r && (
+          <motion.div
+            layoutId="login-role-pill"
+            className="absolute inset-0 bg-white rounded-lg border border-slate-200 shadow-sm z-0"
+            initial={false}
+            transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+          />
+        )}
+        <span className="relative z-10 flex items-center gap-2">
+          {ROLE_DATA[r].icon}
+          {ROLE_DATA[r].label}
+        </span>
       </button>
     ))}
   </div>
@@ -150,8 +156,8 @@ const BiometricScanner = ({ progress }) => (
         <User size={30} className={`transition-colors duration-500 ${progress === 100 ? 'text-slate-800' : 'text-slate-400'}`} />
       </div>
     </div>
-    <span className={`text-[10px] uppercase tracking-widest font-bold px-3 py-1 rounded-full border shadow-sm transition-all duration-300 ${progress === 100 ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-slate-500 bg-slate-50 border-slate-200'}`}>
-      {progress === 100 ? <><ShieldCheck size={12} className="inline mr-1 mb-[2px]" /> Identity Verified</> : `Connecting... ${progress}%`}
+    <span className={`text-[10px] uppercase tracking-widest font-bold transition-colors duration-300 flex items-center justify-center h-6 ${progress === 100 ? 'text-emerald-600' : 'text-slate-500'}`}>
+      {progress === 100 ? <><ShieldCheck size={13} strokeWidth={2.5} className="mr-1.5" /> Identity Verified</> : `Connecting... ${progress}%`}
     </span>
   </div>
 );
@@ -211,6 +217,7 @@ const LoginPage = () => {
   const [scanProgress, setScanProgress] = useState(0);
   const [activeDiagnostics, setActiveDiagnostics] = useState(0);
   const [currentTime, setCurrentTime] = useState('');
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -313,31 +320,35 @@ const LoginPage = () => {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[600px] bg-white/5 rounded-full blur-[140px] pointer-events-none z-0" />
 
       <div className="w-full max-w-[1000px] bg-white rounded-[2rem] shadow-2xl border border-slate-200 flex items-stretch overflow-hidden relative z-10 hover:shadow-xl transition-shadow duration-500">
-        <DiagnosticSidebar role={role} activeCount={activeDiagnostics} />
+        <DiagnosticSidebar role={role} currentTime={currentTime} />
 
         <div className="w-full md:w-[55%] bg-white flex flex-col p-7 relative self-stretch">
-          <div className="w-full max-sm mx-auto flex flex-col flex-1 justify-center">
-            <div className={`text-center ${role === 'student' ? 'mb-4' : 'mb-8'}`}>
+          <motion.div layout className="w-full max-sm mx-auto flex flex-col flex-1 justify-center">
+            <motion.div layout className={`text-center ${role === 'student' ? 'mb-4' : 'mb-8'}`}>
               <h1 className="text-2xl font-bold tracking-tight text-slate-900 mb-1">Welcome Back</h1>
               <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Please sign in to continue</p>
-            </div>
+            </motion.div>
 
-            <RoleSwitcher currentRole={role} setRole={(r) => { setRole(r); setError(null); }} />
-            {role === 'student' && <BiometricScanner progress={scanProgress} />}
+            <motion.div layout>
+              <RoleSwitcher currentRole={role} setRole={(r) => { setRole(r); setError(null); }} />
+            </motion.div>
+            
+            <AnimatePresence mode="popLayout">
+              {role === 'student' && (
+                <motion.div 
+                  layout
+                  initial={{ opacity: 0, height: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, height: 'auto', scale: 1 }}
+                  exit={{ opacity: 0, height: 0, scale: 0.9 }}
+                  transition={{ type: 'spring', bounce: 0.2, duration: 0.5 }}
+                  className="overflow-hidden"
+                >
+                  <BiometricScanner progress={scanProgress} />
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-            {error && (
-              <div className="mb-4 flex items-start gap-3.5 p-3.5 bg-rose-50/50 border border-rose-200 rounded-xl relative overflow-hidden group shadow-sm">
-                <div className="w-7 h-7 rounded-full bg-rose-100 flex items-center justify-center shrink-0 border border-rose-200 mt-0.5">
-                  <AlertTriangle size={13} className="text-rose-500 group-hover:scale-110 transition-transform" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-[13px] font-semibold text-rose-900 mb-0.5 leading-snug">Authorization failed</h3>
-                  <p className="text-xs font-normal text-rose-600 leading-relaxed">{error}</p>
-                </div>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className={role === 'student' ? 'space-y-3' : 'space-y-6'}>
+            <motion.form layout onSubmit={handleSubmit} className="transition-all duration-500 space-y-4">
               <div>
                 <label className="block text-[11px] font-bold tracking-widest uppercase text-slate-500 mb-1.5 ml-1">Email Address</label>
                 <div className="relative">
@@ -370,30 +381,38 @@ const LoginPage = () => {
                     required
                   />
                 </div>
+                {error && (
+                  <p className="text-rose-500 text-xs font-medium mt-2 ml-1">
+                    {error}
+                  </p>
+                )}
               </div>
 
-              <div className={role === 'student' ? 'mt-4' : 'mt-10'}>
+              <div className="flex items-start gap-3 mt-4 mb-2">
+                <input 
+                  type="checkbox" 
+                  id="terms" 
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 bg-slate-50 cursor-pointer transition-all"
+                />
+                <label htmlFor="terms" className="text-[11px] text-slate-500 leading-snug cursor-pointer select-none">
+                  I have read and agree to the <span className="font-bold text-slate-700">Terms & Conditions</span>. I understand that my session will be securely monitored.
+                </label>
+              </div>
+
+              <div className={role === 'student' ? 'mt-2' : 'mt-8'}>
                 <button
                   type="submit"
-                  disabled={isAuthenticating}
-                  className="w-full bg-white text-[#0a0c10] hover:bg-slate-200 rounded-[2rem] py-3.5 font-bold text-xs tracking-[0.1em] uppercase transition-all shadow-md active:scale-[0.98] disabled:opacity-50"
+                  disabled={isAuthenticating || !termsAccepted}
+                  className={`w-full bg-white text-[#0a0c10] rounded-[2rem] py-3.5 font-bold text-xs tracking-[0.1em] uppercase transition-all shadow-md active:scale-[0.98] ${!termsAccepted ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:bg-slate-200'}`}
                   style={{ backgroundColor: '#0f172a', color: '#ffffff' }}
                 >
                   {isAuthenticating ? <span className="flex items-center justify-center gap-3"><span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> Signing in...</span> : 'Sign In'}
                 </button>
               </div>
-            </form>
-          </div>
-
-          <div className="mt-auto pt-4 flex items-center justify-between text-[9px] font-mono font-bold text-slate-400 border-t border-slate-100 uppercase">
-            <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1.5"><TerminalSquare size={10} /> Server: Mumbai</span>
-              <span className="flex items-center gap-1.5"><Globe size={10} /> Region: India</span>
-            </div>
-            <div className="bg-slate-100 px-2.5 py-1 rounded border border-slate-200 text-slate-700 tabular-nums">
-              {currentTime}
-            </div>
-          </div>
+            </motion.form>
+          </motion.div>
         </div>
       </div>
     </div>

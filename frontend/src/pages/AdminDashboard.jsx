@@ -9,7 +9,7 @@ import {
   Search, FileUp, UserPlus, Trash2, Eye,
   ShieldCheck, Activity, AlertOctagon,
   ChevronRight, LogOut, Bell, RefreshCw, Edit3,
-  BarChart3, Download, Clock, Check, X, Star, CheckCircle, AlertCircle, Plus, ScanFace, Radio, ShieldAlert, User, EyeOff, MessageCircle, AlertTriangle, OctagonX, TrendingUp, Sparkles
+  BarChart3, Download, Clock, Check, X, Star, CheckCircle, AlertCircle, Plus, ScanFace, Radio, ShieldAlert, User, EyeOff, MessageCircle, AlertTriangle, OctagonX, TrendingUp, Sparkles, Inbox, ChevronDown
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import PremiumSidebar from '../components/PremiumSidebar';
@@ -44,19 +44,22 @@ import api, {
 // UI Utilities (matching MentorDashboard style)
 // ─────────────────────────────────────────────────────────
 
-const Badge = ({ children, color }) => {
+const Badge = ({ children, color, noBox }) => {
   const styles = {
-    zinc:    'bg-surface-hover text-muted border-main',
-    emerald: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-    amber:   'bg-primary-500/10 text-primary-500 border-primary-500/20',
-    red:     'bg-red-500/10 text-red-500 border-red-500/20',
-    indigo:  'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
-    sky:     'bg-sky-500/10 text-sky-400 border-sky-500/20',
-    teal:    'bg-teal-500/10 text-teal-400 border-teal-500/20',
-    rose:    'bg-rose-500/10 text-rose-500 border-rose-500/20',
+    zinc:    noBox ? 'text-muted' : 'bg-surface-hover text-muted border-main',
+    emerald: noBox ? 'text-emerald-500' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+    amber:   noBox ? 'text-primary-500' : 'bg-primary-500/10 text-primary-500 border-primary-500/20',
+    red:     noBox ? 'text-red-500' : 'bg-red-500/10 text-red-500 border-red-500/20',
+    indigo:  noBox ? 'text-indigo-400' : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+    sky:     noBox ? 'text-sky-400' : 'bg-sky-500/10 text-sky-400 border-sky-500/20',
+    teal:    noBox ? 'text-teal-400' : 'bg-teal-500/10 text-teal-400 border-teal-500/20',
+    rose:    noBox ? 'text-rose-500' : 'bg-rose-500/10 text-rose-500 border-rose-500/20',
   };
   return (
-    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black border ${styles[color] || styles.zinc} uppercase tracking-widest font-sans`}>
+    <span 
+      className={`${noBox ? 'text-[13px]' : 'px-2.5 py-1 rounded-lg text-[10px] border'} font-semibold ${styles[color] || styles.zinc} tracking-tight capitalize`}
+      style={{ fontFamily: "'Inter', sans-serif" }}
+    >
       {children}
     </span>
   );
@@ -86,8 +89,8 @@ const DataTable = ({ headers, data, renderRow, loading }) => (
             <tr>
               <td colSpan={headers.length} className="px-8 py-16 text-center">
                  <div className="flex flex-col items-center gap-3">
-                    <div className="w-14 h-14 rounded-xl bg-surface-hover border border-main flex items-center justify-center text-muted/40 shadow-sm">
-                       <FileText size={28} strokeWidth={1.5} />
+                    <div className="w-14 h-14 flex items-center justify-center text-muted/20">
+                       <FileText size={48} strokeWidth={1} />
                     </div>
                     <div>
                        <p className="text-[14px] font-bold text-muted">No Active Records</p>
@@ -1054,11 +1057,11 @@ export default function AdminDashboard() {
         {/* Left Column: Audit Logs */}
         <div className="p-6 rounded-3xl bg-surface border border-main shadow-sm hover:shadow-md transition-shadow flex flex-col h-[500px] relative overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
           <div className="flex items-center justify-between mb-6 shrink-0 relative z-10">
-             <div className="flex items-center gap-4">
-               <div className="w-10 h-10 rounded-xl bg-surface-hover border border-main flex items-center justify-center text-primary-500 shadow-sm"><FileText size={18} strokeWidth={2.2} /></div>
-               <div>
-                 <h4 className="text-lg font-bold text-primary tracking-tight leading-none">Intelligence Logs</h4>
-                 <p className="text-[12px] font-medium text-muted mt-1">Platform-wide operation trail & security events</p>
+             <div className="flex items-center gap-3">
+               <div className="text-emerald-500"><FileText size={24} strokeWidth={2.2} /></div>
+               <div className="mt-1">
+                 <h4 className="text-[13px] font-bold text-primary uppercase tracking-widest leading-none mb-1">Intelligence Logs</h4>
+                 <p className="text-[11px] font-medium text-muted">Platform-wide operation trail & security events</p>
                </div>
              </div>
              <div className="flex items-center gap-3">
@@ -1079,7 +1082,7 @@ export default function AdminDashboard() {
                 <div key={log._id} className="group relative flex flex-col p-4 bg-surface-hover/30 border border-main rounded-2xl hover:border-primary-500/30 transition-all duration-300">
                    <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <Badge color={log.action.includes('DELETE') ? 'red' : 'zinc'}>{log.action}</Badge>
+                        <Badge noBox={true} color={log.action.includes('DELETE') ? 'red' : 'zinc'}>{log.action.replace(/_/g, ' ')}</Badge>
                         <span className="text-[10px] font-medium text-muted opacity-60">{new Date(log.createdAt).toLocaleString()}</span>
                       </div>
                       <button onClick={() => handleDeleteLog(log._id)} className="opacity-0 group-hover:opacity-100 p-1.5 text-muted/40 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-all"><Trash2 size={14} /></button>
@@ -1093,8 +1096,8 @@ export default function AdminDashboard() {
                 </div>
              )) : (
                 <div className="h-full flex flex-col items-center justify-center text-muted/30 gap-4 grayscale">
-                   <Activity size={48} strokeWidth={1} />
-                   <p className="text-[13px] font-semibold tracking-wide">No artifacts recorded</p>
+                   <Inbox size={48} strokeWidth={1} />
+                   <p className="text-[13px] font-semibold tracking-wide">Nothing has happened yet</p>
                 </div>
              )}
           </div>
@@ -1103,14 +1106,14 @@ export default function AdminDashboard() {
         {/* Right Column: Student Activity */}
         <div className="p-6 rounded-3xl bg-surface border border-main shadow-sm hover:shadow-md transition-shadow flex flex-col h-[500px] relative overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
            <div className="flex items-center justify-between mb-6 shrink-0 relative z-10">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-500 shadow-sm"><AlertCircle size={18} strokeWidth={2.2} /></div>
-                <div>
-                  <h4 className="text-lg font-bold text-primary tracking-tight leading-none">Active Signals</h4>
-                  <p className="text-[12px] font-medium text-muted mt-1">Real-time candidate telemetry</p>
+              <div className="flex items-center gap-3">
+                <div className="text-primary-500"><AlertCircle size={24} strokeWidth={2.2} /></div>
+                <div className="mt-1">
+                  <h4 className="text-[13px] font-bold text-primary uppercase tracking-widest leading-none mb-1">Active Signals</h4>
+                  <p className="text-[11px] font-medium text-muted">Real-time candidate telemetry</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20">
+              <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
                 <span className="text-[10px] font-bold text-emerald-600 tracking-wider">LIVE</span>
               </div>
@@ -1119,8 +1122,8 @@ export default function AdminDashboard() {
            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4 relative z-10">
               {helpRequests.length === 0 && notifications.filter(n => n.type === 'violation' || n.type === 'IDENTITY_VIOLATION').length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-muted/30 gap-4 grayscale">
-                   <Radio size={48} strokeWidth={1} />
-                   <p className="text-[13px] font-semibold tracking-wide">Standing by for signals</p>
+                   <Sparkles size={48} strokeWidth={1} />
+                   <p className="text-[13px] font-semibold tracking-wide">Everything is quiet</p>
                 </div>
               ) : (
                 <>
@@ -1188,7 +1191,7 @@ export default function AdminDashboard() {
                <button 
                 key={f.id}
                 onClick={() => setUserRoleFilter(f.id)}
-                className={`px-5 py-2 rounded-lg text-[12px] font-semibold transition-all ${userRoleFilter === f.id ? 'bg-surface text-primary shadow-sm border border-main' : 'text-muted hover:text-primary hover:bg-surface-hover'}`}
+                className={`px-5 py-2 rounded-lg text-[12px] font-semibold transition-colors focus:outline-none ${userRoleFilter === f.id ? 'bg-slate-100 text-primary shadow-sm' : 'text-muted hover:text-primary hover:bg-slate-50'}`}
               >
                 {f.label}
               </button>
@@ -1290,8 +1293,8 @@ export default function AdminDashboard() {
             </td>
             <td className={`px-6 py-4 text-[13px] font-medium ${isSelected ? 'text-primary/80' : 'text-secondary'}`}>{user.email}</td>
             <td className="px-6 py-4">
-               <Badge color={user.role === 'admin' ? 'indigo' : user.role === 'super_mentor' ? 'sky' : user.role === 'mentor' ? 'teal' : 'zinc'}>
-                 {user.role}
+               <Badge noBox={true} color={user.role === 'admin' ? 'indigo' : user.role === 'super_mentor' ? 'sky' : user.role === 'mentor' ? 'teal' : 'zinc'}>
+                 {user.role.replace('_', ' ')}
                </Badge>
              </td>
              <td className={`px-6 py-4 text-[12px] font-medium ${isSelected ? 'text-primary/80' : 'text-secondary'}`}>{new Date(user.createdAt).toLocaleDateString()}</td>
@@ -1310,8 +1313,7 @@ export default function AdminDashboard() {
         {/* Add User Modal */}
         {showAddUserModal && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-50 flex items-center justify-center p-6">
-            <div className="bg-surface p-10 rounded-[2.5rem] shadow-2xl w-full max-w-lg border border-main animate-in zoom-in-95 duration-300 relative overflow-hidden font-sans">
-               <div className="absolute top-0 left-0 w-full h-1 bg-primary-500/10" />
+            <div className="bg-surface p-10 rounded-[2.5rem] shadow-2xl w-full max-w-lg border border-main animate-in zoom-in-95 duration-300 relative overflow-visible font-sans">
                <div className="mb-8">
                  <h3 className="text-2xl font-bold text-primary tracking-tight">Add New Member</h3>
                  <p className="text-xs text-muted mt-1 font-medium">Create a new account for your institution's portal.</p>
@@ -1330,26 +1332,42 @@ export default function AdminDashboard() {
                   </div>
                   <div>
                       <label className="block text-[11px] font-bold text-muted uppercase tracking-widest mb-2.5 ml-1">Password</label>
-                      <input required type="password" placeholder="Create a strong password" value={newUser.password} onChange={e=>setNewUser({...newUser, password: e.target.value})} className="w-full px-5 py-3.5 bg-surface-hover border border-main text-[13px] font-semibold text-primary rounded-2xl focus:outline-none focus:border-primary-500/50 transition-all placeholder:text-muted/30" />
+                      <input required type="password" placeholder="Create a strong password" value={newUser.password} onChange={e=>setNewUser({...newUser, password: e.target.value})} className="w-full px-5 py-3.5 bg-surface-hover border border-main text-[13px] font-semibold text-primary rounded-2xl focus:outline-none focus:border-primary-500/50 transition-colors placeholder:text-muted/30" />
                   </div>
                   <div>
-                      <label className="block text-[11px] font-bold text-muted uppercase tracking-widest mb-2.5 ml-1">Assign Role</label>
-                      <div className="relative">
-                        <select value={newUser.role} onChange={e=>setNewUser({...newUser, role: e.target.value})} className="w-full px-5 py-3.5 bg-surface-hover border border-main text-[12px] font-bold text-primary uppercase tracking-wider rounded-2xl focus:outline-none focus:border-primary-500/50 transition-all appearance-none cursor-pointer">
-                           <option value="student">Student / Candidate</option>
-                           <option value="mentor">Mentor / Proctor</option>
-                           <option value="super_mentor">Superintendent</option>
-                           <option value="admin">System Administrator</option>
-                        </select>
-                        <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-muted">
-                          <ChevronRight size={14} className="rotate-90" />
-                        </div>
+                      <label className="block text-[11px] font-bold text-muted uppercase tracking-widest mb-3.5 ml-1">Assign Role</label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          { id: 'student', label: 'Student', icon: ScanFace, desc: 'Exam candidate' },
+                          { id: 'mentor', label: 'Mentor', icon: Users, desc: 'Exam proctor' },
+                          { id: 'super_mentor', label: 'Superintendent', icon: Star, desc: 'Org manager' },
+                          { id: 'admin', label: 'System Admin', icon: ShieldCheck, desc: 'Full control' }
+                        ].map(r => (
+                          <button
+                            key={r.id}
+                            type="button"
+                            onClick={() => setNewUser({...newUser, role: r.id})}
+                            className={`flex flex-col items-start p-4 rounded-2xl border transition-all text-left group/role ${
+                              newUser.role === r.id 
+                                ? 'bg-primary-500/[0.03] border-primary-500 shadow-[0_0_20px_rgba(255,59,0,0.05)]' 
+                                : 'bg-surface-hover/30 border-main hover:border-primary-500/30'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 mb-1.5">
+                              <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${newUser.role === r.id ? 'bg-primary-500 text-white' : 'bg-surface-hover text-muted group-hover/role:text-primary-500'}`}>
+                                <r.icon size={14} strokeWidth={2.5} />
+                              </div>
+                              <span className={`text-[11px] font-black uppercase tracking-widest ${newUser.role === r.id ? 'text-primary' : 'text-muted'}`}>{r.label}</span>
+                            </div>
+                            <p className="text-[10px] text-muted font-bold opacity-40 leading-tight ml-0.5">{r.desc}</p>
+                          </button>
+                        ))}
                       </div>
                   </div>
-                  <div className="flex items-center justify-end gap-3 pt-8 border-t border-main mt-4">
+                  <div className="flex items-center justify-end gap-3 pt-4 mt-4">
                      <button type="button" onClick={() => setShowAddUserModal(false)} className="px-6 py-3 text-[11px] font-bold text-muted uppercase tracking-widest hover:text-primary transition-all active:scale-95">Cancel</button>
-                     <button type="submit" className="px-8 py-3.5 bg-primary-500 text-white text-[11px] font-bold uppercase tracking-widest hover:bg-primary-600 rounded-2xl transition-all shadow-xl shadow-primary-500/10 active:scale-95 flex items-center gap-2.5">
-                       Create Member <Check size={16} strokeWidth={3} />
+                     <button type="submit" className="px-5 py-2.5 bg-primary-500 text-white text-[11px] font-bold uppercase tracking-widest hover:bg-primary-600 rounded-xl transition-all shadow-xl shadow-primary-500/10 active:scale-95 flex items-center gap-2">
+                       Create Member <Check size={14} strokeWidth={3} />
                      </button>
                   </div>
                </form>
@@ -1362,14 +1380,13 @@ export default function AdminDashboard() {
   const renderCandidatesOld = () => (
     <div className="space-y-10 ">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 bg-surface p-10 rounded-[2.5rem] border border-main shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-1 bg-primary-500/10" />
         <div className="flex items-center gap-8">
-           <div className="w-14 h-14 rounded-2xl bg-surface-hover border border-main flex items-center justify-center text-primary-500 shadow-xl">
+           <div className="w-10 h-10 flex items-center justify-center text-primary-500">
              <ScanFace size={28} strokeWidth={2.5} />
            </div>
            <div>
-             <h2 className="text-2xl font-bold text-primary">Identity Registry</h2>
-             <p className="text-sm text-muted mt-1">E-KYC Verification & Biometric Status</p>
+             <h2 className="text-xl font-bold text-primary">Identity Registry</h2>
+             <p className="text-[11px] text-muted mt-1">E-KYC Verification & Biometric Status</p>
            </div>
         </div>
         <div className="flex items-center gap-4">
@@ -2256,9 +2273,9 @@ export default function AdminDashboard() {
                 className="pl-11 pr-4 py-3 bg-surface border border-main rounded-2xl text-[13px] font-medium text-primary focus:outline-none focus:border-primary-500 w-[300px] transition-all shadow-sm placeholder:text-muted/50"
               />
             </div>
-            <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500/10 text-emerald-500 rounded-xl border border-emerald-500/20 shadow-sm">
+            <div className="flex items-center gap-2 ml-2">
               <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-              <span className="text-[11px] font-bold uppercase tracking-widest">{liveSessions.length} Online Now</span>
+              <span className="text-[11px] font-bold uppercase tracking-widest text-emerald-600">{liveSessions.length} Online Now</span>
             </div>
           </div>
         </div>

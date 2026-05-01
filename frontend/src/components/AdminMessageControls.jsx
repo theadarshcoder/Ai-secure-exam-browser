@@ -18,13 +18,23 @@ const AdminMessageControls = ({ examId, activeStudents = [], mode = 'full' }) =>
     const [isSending, setIsSending] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [isSeverityDropdownOpen, setIsSeverityDropdownOpen] = useState(false);
+    const [isMsgTypeDropdownOpen, setIsMsgTypeDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
+    const severityDropdownRef = useRef(null);
+    const msgTypeDropdownRef = useRef(null);
 
-    // Close dropdown when clicking outside
+    // Close dropdowns when clicking outside
     useEffect(() => {
         const handleClickOutside = (e) => {
             if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
                 setIsDropdownOpen(false);
+            }
+            if (severityDropdownRef.current && !severityDropdownRef.current.contains(e.target)) {
+                setIsSeverityDropdownOpen(false);
+            }
+            if (msgTypeDropdownRef.current && !msgTypeDropdownRef.current.contains(e.target)) {
+                setIsMsgTypeDropdownOpen(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -137,10 +147,10 @@ const AdminMessageControls = ({ examId, activeStudents = [], mode = 'full' }) =>
         <div className="bg-surface border border-main rounded-[2rem] shadow-sm overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
             {/* Header */}
             <div className="px-6 py-5 bg-surface-hover/30 border-b border-main flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-500 shadow-sm">
-                    <Radio size={18} strokeWidth={2.2} />
+                <div className="flex items-center text-primary-500 pl-1">
+                    <Radio size={22} strokeWidth={2.5} />
                 </div>
-                <div>
+                <div className="mt-1">
                     <h3 className="text-[13px] font-bold text-primary uppercase tracking-widest leading-none mb-1">Send Exam Alert</h3>
                     <p className="text-[11px] text-muted font-medium">Broadcast or direct message to students</p>
                 </div>
@@ -149,33 +159,38 @@ const AdminMessageControls = ({ examId, activeStudents = [], mode = 'full' }) =>
             <div className="p-6 space-y-5">
                 {/* Message Type + Target */}
                 <div className="flex flex-col sm:flex-row gap-3">
-                    <div className="flex gap-2 w-fit">
+                    <div className="relative" ref={msgTypeDropdownRef}>
                         <button
-                            onClick={() => setMsgType('broadcast')}
-                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all border ${
-                                msgType === 'broadcast' 
-                                    ? 'bg-surface text-primary border-main shadow-sm' 
-                                    : 'bg-surface-hover/20 text-muted border-main/50 hover:border-main hover:bg-surface-hover hover:text-primary'
-                            }`}
+                            onClick={() => setIsMsgTypeDropdownOpen(!isMsgTypeDropdownOpen)}
+                            className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border border-main bg-surface hover:border-primary-500/30 transition-all text-left"
                         >
-                            <Radio size={14} /> Broadcast
+                            <span className="text-[11px] font-bold uppercase tracking-widest text-primary mt-0.5">
+                                {msgType === 'broadcast' ? 'Broadcast' : 'Direct'}
+                            </span>
+                            <ChevronDown size={14} className={`text-muted transition-transform duration-200 ${isMsgTypeDropdownOpen ? 'rotate-180' : ''}`} />
                         </button>
-                        {activeStudents.length > 0 && (
-                            <button
-                                onClick={() => setMsgType('direct')}
-                                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all border ${
-                                    msgType === 'direct' 
-                                        ? 'bg-surface text-primary border-main shadow-sm' 
-                                        : 'bg-surface-hover/20 text-muted border-main/50 hover:border-main hover:bg-surface-hover hover:text-primary'
-                                }`}
-                            >
-                                <MessageSquare size={14} /> Direct
-                            </button>
+
+                        {isMsgTypeDropdownOpen && (
+                            <div className="absolute top-full mt-2 left-0 min-w-[120px] bg-surface border border-main rounded-xl shadow-xl overflow-hidden z-20 py-1">
+                                {[{ id: 'broadcast', label: 'Broadcast' }, { id: 'direct', label: 'Direct' }]
+                                    .sort((a, b) => (a.id === msgType ? -1 : b.id === msgType ? 1 : 0))
+                                    .map((type) => (
+                                        <button
+                                            key={type.id}
+                                            onClick={() => { setMsgType(type.id); setIsMsgTypeDropdownOpen(false); }}
+                                            className={`w-full text-left px-4 py-2 text-[11px] font-bold uppercase tracking-widest transition-colors hover:bg-surface-hover ${
+                                                msgType === type.id ? 'bg-surface-hover/50 text-primary' : 'text-muted hover:text-primary'
+                                            }`}
+                                        >
+                                            {type.label}
+                                        </button>
+                                    ))}
+                            </div>
                         )}
                     </div>
 
-                    {msgType === 'direct' && activeStudents.length > 0 && (
-                        <div className="relative flex-1 min-w-[220px]" ref={dropdownRef}>
+                    {msgType === 'direct' && (
+                        <div className="relative w-full sm:w-[280px]" ref={dropdownRef}>
                             {/* Inline search trigger */}
                             <div
                                 onClick={() => { setIsDropdownOpen(true); }}
@@ -231,7 +246,9 @@ const AdminMessageControls = ({ examId, activeStudents = [], mode = 'full' }) =>
                                             </li>
                                         )) : (
                                             <li className="px-4 py-6 text-center text-[11px] text-muted">
-                                                No students found for &ldquo;{searchQuery}&rdquo;
+                                                {searchQuery.trim() 
+                                                    ? `No matches for "${searchQuery}"` 
+                                                    : "No active candidates in this exam."}
                                             </li>
                                         )}
                                     </ul>
@@ -253,30 +270,70 @@ const AdminMessageControls = ({ examId, activeStudents = [], mode = 'full' }) =>
                 {/* Severity + Send */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pt-2">
                     <div className="flex flex-wrap items-center gap-3">
-                        {SEVERITY_OPTIONS.map(opt => {
-                            const Icon = opt.icon;
-                            // Customize dark mode friendly colors for the severity badges
-                            const severityStyles = {
-                                info: 'text-blue-500 border-blue-500/20 bg-blue-500/10',
-                                warning: 'text-amber-500 border-amber-500/20 bg-amber-500/10',
-                                critical: 'text-red-500 border-red-500/20 bg-red-500/10'
-                            };
-                            
-                            return (
-                                <button
-                                    key={opt.value}
-                                    onClick={() => setSeverity(opt.value)}
-                                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest border transition-all active:scale-95 ${
-                                        severity === opt.value
-                                            ? `${severityStyles[opt.value]} shadow-sm`
-                                            : 'bg-surface text-muted border-main hover:border-primary-500/30 hover:text-primary'
-                                    }`}
-                                >
-                                    <Icon size={14} strokeWidth={2.5} />
-                                    {opt.label}
-                                </button>
-                            );
-                        })}
+                    <div className="relative" ref={severityDropdownRef}>
+                        <button
+                            onClick={() => setIsSeverityDropdownOpen(!isSeverityDropdownOpen)}
+                            className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border border-main bg-surface hover:border-primary-500/30 transition-all text-left"
+                        >
+                            <div className="flex items-center gap-2">
+                                {React.createElement(
+                                    SEVERITY_OPTIONS.find(s => s.value === severity)?.icon || Info,
+                                    { 
+                                        size: 16, 
+                                        strokeWidth: 2.5, 
+                                        className: {
+                                            info: 'text-blue-500',
+                                            warning: 'text-amber-500',
+                                            critical: 'text-red-500'
+                                        }[severity]
+                                    }
+                                )}
+                                <span className={`text-[11px] font-bold uppercase tracking-widest mt-0.5 ${
+                                    {
+                                        info: 'text-blue-500',
+                                        warning: 'text-amber-500',
+                                        critical: 'text-red-500'
+                                    }[severity]
+                                }`}>
+                                    {SEVERITY_OPTIONS.find(s => s.value === severity)?.label}
+                                </span>
+                            </div>
+                            <ChevronDown size={14} className={`text-muted transition-transform duration-200 ${isSeverityDropdownOpen ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        {isSeverityDropdownOpen && (
+                            <div className="absolute bottom-full left-0 mb-2 w-full bg-surface border border-main rounded-xl shadow-xl overflow-hidden z-20 py-1">
+                                {[...SEVERITY_OPTIONS]
+                                    .sort((a, b) => (a.value === severity ? -1 : b.value === severity ? 1 : 0))
+                                    .map(opt => {
+                                    const Icon = opt.icon;
+                                    const severityStyles = {
+                                        info: 'text-blue-500',
+                                        warning: 'text-amber-500',
+                                        critical: 'text-red-500'
+                                    };
+                                    
+                                    return (
+                                        <button
+                                            key={opt.value}
+                                            onClick={() => {
+                                                setSeverity(opt.value);
+                                                setIsSeverityDropdownOpen(false);
+                                            }}
+                                            className={`w-full flex items-center gap-2 px-4 py-2.5 text-[11px] font-bold uppercase tracking-widest transition-colors hover:bg-surface-hover ${
+                                                severity === opt.value
+                                                    ? `${severityStyles[opt.value]} bg-surface-hover/50`
+                                                    : 'text-muted hover:text-primary'
+                                            }`}
+                                        >
+                                            <Icon size={16} strokeWidth={2.5} />
+                                            <span className="mt-0.5">{opt.label}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
                     </div>
 
                     <button

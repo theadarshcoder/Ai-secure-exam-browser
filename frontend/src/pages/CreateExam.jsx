@@ -75,7 +75,7 @@ import {
   Upload, FilePlus, FileSpreadsheet, Lock,
   LayoutDashboard, Users, BarChart3, Settings, Bell,
   ChevronRight, LogOut, Eye, Edit3, Star, RefreshCw,
-  Download, UploadCloud, Link, Calendar, ScanFace, LayoutList, PlusCircle, TrendingUp, ArrowRight
+  Download, UploadCloud, Link, Calendar, ScanFace, LayoutList, PlusCircle, TrendingUp, ArrowRight, Radio
 } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -89,7 +89,7 @@ import CSVHelper from '../components/CSVHelper';
 // AI Suggestions are now fetched from the backend live engine.
 
 const typeLabels = { mcq: 'MCQ', short: 'Short Answer', coding: 'Coding', 'frontend-react': 'React Lab' };
-const typeColors = { mcq: '#3b82f6', short: '#8b5cf6', coding: '#10b981', 'frontend-react': '#6366f1' };
+const typeColors = { mcq: '#3b82f6', short: '#8b5cf6', coding: '#84cc16', 'frontend-react': '#6366f1' };
 const typeIcons = { mcq: <ListChecks size={13} />, short: <AlignLeft size={13} />, coding: <Code size={13} />, 'frontend-react': <LayoutDashboard size={13} /> };
 
 // --- Styles ---
@@ -137,9 +137,11 @@ function StepperInput({ value, onChange, min = 0, max = 999, step = 1, icon: Ico
 
   return (
     <div className={`relative flex items-center bg-surface border h-11 rounded-xl transition-all duration-300 shadow-sm ${isFocused ? 'border-primary-500 ring-2 ring-primary-500/10' : 'border-main hover:border-primary-500/30'}`}>
-      <div className="w-10 flex items-center justify-center shrink-0">
-        {Icon && <Icon size={14} className={`text-muted ${isFocused ? 'text-primary-500' : ''}`} />}
-      </div>
+      {Icon && (
+        <div className="w-10 flex items-center justify-center shrink-0">
+          <Icon size={14} className={`text-muted ${isFocused ? 'text-primary-500' : ''}`} />
+        </div>
+      )}
       <input
         type="text"
         inputMode="decimal"
@@ -176,7 +178,7 @@ const CustomDatePicker = ({ selected, onChange }) => {
         <div className={`shrink-0 p-1.5 rounded-lg transition-colors ${value ? 'bg-primary-500/20 text-primary-500' : 'bg-surface-hover text-muted group-hover:text-primary-500 group-hover:bg-primary-500/10'}`}>
           {value && value.includes(':') ? <Clock size={14} /> : <Calendar size={14} />}
         </div>
-        <span className={`text-sm font-bold tracking-tight truncate ${value ? 'text-primary' : 'text-muted'}`}>
+        <span className={`text-sm font-bold tracking-tight ${value ? 'text-primary' : 'text-muted'}`}>
           {value || 'Set Schedule'}
         </span>
       </div>
@@ -194,36 +196,18 @@ const CustomDatePicker = ({ selected, onChange }) => {
   return (
     <DatePicker
       selected={selected ? new Date(selected) : null}
-      onChange={(date) => {
-        if (date) {
-          const now = new Date();
-          // If selected time is in the past (like default midnight), jump to current time
-          if (date.getTime() < now.getTime()) {
-            onChange(now);
-          } else {
-            onChange(date);
-          }
-        } else {
-          onChange(null);
-        }
-      }}
+      onChange={(date) => onChange(date)}
       showTimeSelect
-      minDate={new Date()}
-      filterTime={(time) => {
-        const currentDate = new Date();
-        const selectedDate = new Date(selected || new Date());
-        if (selectedDate.toDateString() === currentDate.toDateString()) {
-          return time.getTime() > currentDate.getTime();
-        }
-        return true;
-      }}
-      todayButton="Select Today"
+      timeIntervals={15}
+      timeFormat="h:mm aa"
       timeCaption="Time"
+      minDate={new Date(new Date().setHours(0,0,0,0))}
+      todayButton="Select Today"
       dateFormat="yyyy MMM d - h:mm aa"
       customInput={<CustomInput />}
       wrapperClassName="w-full"
       portalId="root"
-      popperClassName="!z-[200] shadow-2xl rounded-2xl border border-main bg-surface overflow-hidden"
+      popperClassName="!z-[200] shadow-2xl rounded-2xl border border-main bg-surface"
     />
   );
 };
@@ -626,13 +610,16 @@ export default function CreateExam() {
 
   const navItems = isAdmin ? [
     { id: 'Overview', label: 'Overview', icon: LayoutDashboard },
+    { id: 'LiveMonitoring', label: 'Live Monitoring', icon: Radio },
     { id: 'Users', label: 'User Management', icon: Users },
     { id: 'Candidates', label: 'Candidates', icon: ScanFace },
     { id: 'Exams', label: 'Exam Library', icon: FileText },
     { id: 'Results', label: 'Results & Reports', icon: BarChart3 },
+    { id: 'Academics', label: 'Academic Insights', icon: TrendingUp },
     { id: 'Settings', label: 'System Settings', icon: Settings },
   ] : [
     { id: 'Overview', label: 'Overview', icon: LayoutDashboard },
+    { id: 'LiveMonitoring', label: 'Live Monitoring', icon: Radio },
     { id: 'Exam Management', label: 'Exam Library', icon: FileText },
     { id: 'Results & Reports', label: 'Results & Reports', icon: BarChart3 },
     { id: 'Academics', label: 'Student Analytics', icon: TrendingUp },
@@ -1335,7 +1322,7 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
               <AnimatePresence>
                 {toasts.map(t => {
                   const isError = t.type === 'error';
-                  const accentColor = isError ? '#ef4444' : '#10b981';
+                  const accentColor = isError ? '#ef4444' : '#84cc16';
                   return (
                     <motion.div 
                       key={t.id}
@@ -1382,23 +1369,23 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
             <AnimatePresence>
               {showRestorePrompt && (
                 <motion.div 
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="mb-8 p-6 bg-primary-500/10 border border-primary-500/30 rounded-[2rem] flex items-center justify-between shadow-2xl shadow-primary-500/10 backdrop-blur-xl"
+                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                  className="fixed bottom-8 right-8 z-[100] w-[340px] p-4 bg-surface border border-main rounded-2xl shadow-2xl shadow-black/5 flex flex-col gap-3"
                 >
-                  <div className="flex items-center gap-5">
-                    <div className="w-12 h-12 bg-primary-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary-500/20">
-                      <RefreshCw size={24} className="animate-spin-slow" />
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 bg-primary-500/10 rounded-xl flex items-center justify-center text-primary-500 shrink-0">
+                      <RefreshCw size={14} className="animate-spin-slow" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-primary">Unsaved Draft Detected</h3>
-                      <p className="text-[11px] text-muted font-medium mt-1">We found a draft from your previous session. Would you like to restore it?</p>
+                      <h3 className="text-[11px] font-black text-primary uppercase tracking-widest mt-0.5">Unsaved Draft</h3>
+                      <p className="text-[10px] text-muted font-bold opacity-60 mt-1 leading-relaxed pr-2">A previous session draft was found. Restore it?</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <button onClick={discardUnsaved} className="px-5 py-2 text-[10px] font-black uppercase tracking-widest text-muted hover:text-red-500 transition-colors">Discard</button>
-                    <button onClick={restoreUnsaved} className="px-6 py-2 bg-primary-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-lg shadow-primary-500/20 active:scale-95">Restore Draft</button>
+                  <div className="flex items-center justify-end gap-2 pt-3 mt-1 border-t border-main">
+                    <button onClick={discardUnsaved} className="px-4 py-2 text-[9px] font-black uppercase tracking-widest text-muted hover:text-red-500 transition-colors">Discard</button>
+                    <button onClick={restoreUnsaved} className="px-5 py-2 bg-primary-500 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-lg shadow-primary-500/20 active:scale-95">Restore</button>
                   </div>
                 </motion.div>
               )}
@@ -1424,11 +1411,10 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
               {/* Left Column: Build Flow */}
               <div className="flex-1 space-y-12 min-w-0 pb-32">
                 
-                {/* Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â SECTION 1: Details Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â */}
+                {/* ---------------- SECTION 1: Details ---------------- */}
                 <section className="bg-surface rounded-[32px] border border-main p-10 shadow-2xl relative overflow-hidden group/params">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-primary-500/10 group-hover/params:bg-primary-500/20 transition-all" />
                   <div className="mb-10 flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-primary-500/10 flex items-center justify-center text-primary-500 shadow-lg shadow-primary-500/5">
+                    <div className="w-12 h-12 rounded-2xl bg-surface-hover border border-main flex items-center justify-center text-primary shadow-sm">
                       <Settings size={22} strokeWidth={2.5} />
                     </div>
                     <div>
@@ -1458,7 +1444,7 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mt-10 pt-10 border-t border-main">
-                    <div>
+                    <div className="flex flex-col justify-between h-full">
                       <label className={LABEL_BASE}>
                         Exam Duration (Time)
                         {exam.status !== 'draft' && exam.id && (
@@ -1469,19 +1455,19 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                       </label>
                       <StepperInput value={exam.duration} onChange={v => setExam({...exam, duration: v})} icon={Clock} unit="min" step={5} max={300} />
                     </div>
-                    <div>
+                    <div className="flex flex-col justify-between h-full">
                       <label className={LABEL_BASE}>Total Marks</label>
                       <StepperInput value={exam.totalMarks} onChange={v => setExam({...exam, totalMarks: v})} step={5} max={1000} />
                     </div>
-                    <div>
+                    <div className="flex flex-col justify-between h-full">
                       <label className={LABEL_BASE}>Passing</label>
                       <StepperInput value={exam.passingMarks} onChange={v => setExam({...exam, passingMarks: v})} step={5} max={exam.totalMarks} />
                     </div>
-                    <div>
+                    <div className="flex flex-col justify-between h-full">
                       <label className={LABEL_BASE}>Negative Marks</label>
                       <StepperInput value={exam.negativeMarks} onChange={v => setExam({...exam, negativeMarks: v})} icon={Minus} step={0.25} min={0} max={10} />
                     </div>
-                    <div className="xl:col-span-2">
+                    <div className="xl:col-span-2 flex flex-col justify-between h-full">
                       <label className={LABEL_BASE}>Schedule</label>
                       <CustomDatePicker 
                         selected={exam.scheduledDate} 
@@ -1491,11 +1477,11 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                   </div>
                 </section>
 
-                {/* Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â SECTION 2: AI Engine Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â */}
+                {/* ---------------- SECTION 2: AI Engine ---------------- */}
                 <section className="bg-surface rounded-2xl border border-main p-4 shadow-sm relative overflow-hidden">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-primary-500/10 flex items-center justify-center text-primary-500">
+                      <div className="w-8 h-8 rounded-lg bg-surface-hover border border-main flex items-center justify-center text-primary">
                         <Sparkles size={15} strokeWidth={2.5} />
                       </div>
                       <div>
@@ -1503,7 +1489,7 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                         <p className="text-[11px] text-muted mt-0.5">Create questions automatically from your materials</p>
                       </div>
                     </div>
-                    <button onClick={() => setShowAI(!showAI)} className="px-3 py-1.5 bg-surface-hover hover:bg-primary-500/10 border border-main rounded-lg text-[9px] font-bold uppercase text-muted hover:text-primary transition-all active:scale-95 tracking-widest">
+                    <button onClick={() => setShowAI(!showAI)} className="px-3 py-1.5 bg-surface-hover hover:bg-surface border border-main rounded-lg text-[9px] font-bold uppercase text-muted hover:text-primary transition-all active:scale-95 tracking-widest shadow-sm">
                       {showAI ? 'Collapse' : 'Expand AI'}
                     </button>
                   </div>
@@ -1658,7 +1644,7 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                 <section className="space-y-6">
                   <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-primary-500/10 flex items-center justify-center text-primary-500">
+                      <div className="w-12 h-12 rounded-2xl bg-surface-hover border border-main flex items-center justify-center text-primary">
                         <LayoutList size={22} strokeWidth={2.5} />
                       </div>
                       <div>
@@ -1674,10 +1660,10 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                       const count = questions.filter(q => q.type === type).length;
                       const isActive = activeQTab === type;
                       return (
-                        <button key={type} onClick={() => setActiveQTab(type)} className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-[10px] font-bold uppercase tracking-widest transition-all ${isActive ? 'bg-surface border-primary-500 text-primary ring-1 ring-primary-500/10' : 'bg-surface border-main text-muted hover:text-primary hover:border-primary-500/30'}`}>
-                          <span className={isActive ? 'text-primary-500' : 'text-muted/50'}>{typeIcons[type]}</span>
+                        <button key={type} onClick={() => setActiveQTab(type)} className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-[10px] font-bold uppercase tracking-widest transition-colors ${isActive ? 'bg-slate-100 text-primary shadow-sm border-transparent' : 'bg-surface border-main text-muted hover:text-primary hover:bg-slate-50'}`}>
+                          <span className={isActive ? 'text-primary' : 'text-muted/50'}>{typeIcons[type]}</span>
                           <span>{typeLabels[type]}</span>
-                          {count > 0 && <span className={`text-[9px] min-w-[18px] text-center px-1 py-0.5 rounded font-bold ${isActive ? 'bg-primary-500 text-white' : 'bg-surface-hover text-muted border border-main'}`}>{count}</span>}
+                          {count > 0 && <span className={`text-[9px] min-w-[18px] text-center px-1 py-0.5 rounded font-bold ${isActive ? 'bg-slate-200 text-primary' : 'bg-surface-hover text-muted border border-main'}`}>{count}</span>}
                         </button>
                       );
                     })}
@@ -1834,7 +1820,7 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                           {Object.entries(typeLabels).map(([type, label]) => (
                             <div key={type} className="flex items-center justify-between group/row">
                                <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 rounded-lg bg-surface-hover border border-main flex items-center justify-center text-muted group-hover/row:text-primary-500 group-hover/row:bg-primary-500/10 transition-all">
+                                  <div className="flex items-center justify-center text-muted group-hover/row:text-primary-500 transition-colors">
                                     {typeIcons[type]}
                                   </div>
                                   <span className="text-[12px] font-bold text-primary">{label}</span>
@@ -1937,7 +1923,7 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                       </div>
                       <div className="flex items-center justify-between px-2">
                          <span className="text-xs text-muted font-medium tracking-tight">Encryption</span>
-                         <span className="text-[10px] font-bold text-primary-500 uppercase">AES-256 Encrypted</span>
+                         <span className="text-[10px] font-black text-primary opacity-80 uppercase tracking-widest">AES-256 Encrypted</span>
                       </div>
                       <div className="h-px bg-main mx-2" />
                       <div className="p-4 bg-surface-hover rounded-2xl space-y-1">
@@ -1952,7 +1938,7 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
         </div>
       </main>
 
-      {/* Ã°Å¸â€â€” URL-Based Import Modal (Source Link) */}
+      {/* 🔗 URL-Based Import Modal (Source Link) */}
       {showLinkModal && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 backdrop-blur-sm bg-black/40 animate-in fade-in duration-200">
           <div className="bg-surface rounded-2xl p-6 w-full max-w-md shadow-xl border border-main animate-in zoom-in-95 duration-200">
@@ -2021,7 +2007,7 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
         </div>
       )}
 
-      {/* Ã°Å¸Â§Âª Preview & Validation Sidebar Workspace */}
+      {/* 🧪 Preview & Validation Sidebar Workspace */}
       {showPreviewModal && previewQuestion && (
         <div className="fixed inset-0 z-[160] flex items-center justify-center p-6 backdrop-blur-md bg-black/90 animate-in fade-in duration-300">
           <div className="bg-surface rounded-[40px] w-full max-w-5xl max-h-[92vh] overflow-hidden shadow-2xl border border-main flex flex-col animate-in zoom-in-95 duration-500 relative">
