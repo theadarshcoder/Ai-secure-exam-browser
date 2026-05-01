@@ -7,13 +7,11 @@ const examAnswerSchema = new mongoose.Schema({
     sessionId: { 
         type: mongoose.Schema.Types.ObjectId, 
         ref: 'ExamSession', 
-        required: true,
-        index: true 
+        required: true
     },
     questionId: { 
-        type: String, // String ID from the Exam model's questions array
-        required: true,
-        index: true 
+        type: String,
+        required: true
     },
     
     // Student's response

@@ -439,7 +439,9 @@ export default function SessionMonitor() {
           }));
           
           // Update violations if available
-          if (session.violations) {
+          let historicalLogs = [];
+          
+          if (session.violations && Array.isArray(session.violations)) {
             const mappedViolations = session.violations.map(v => {
                const act = ACTIVITY_TYPES.find(a => 
                 (a.type && a.type.toLowerCase() === v.type.toLowerCase()) || 
@@ -451,8 +453,32 @@ export default function SessionMonitor() {
                  timestamp: v.timestamp,
                  detail: v.details
                };
-            }).reverse();
-            setActivityLogs(prev => [...mappedViolations, ...prev].slice(0, 50));
+            });
+            historicalLogs = [...historicalLogs, ...mappedViolations];
+          }
+          
+          if (session.helpRequests && Array.isArray(session.helpRequests)) {
+             const mappedHelp = session.helpRequests.map(h => ({
+                 id: h._id || `help-${Date.now()}-${Math.random()}`,
+                 type: 'help',
+                 icon: MessageSquare,
+                 label: 'Student Help Requested',
+                 color: 'text-emerald-400',
+                 bg: 'bg-emerald-500/10',
+                 severity: 'high',
+                 timestamp: h.timestamp,
+                 detail: h.message || 'Needs intervention'
+             }));
+             historicalLogs = [...historicalLogs, ...mappedHelp];
+          }
+
+          if (historicalLogs.length > 0) {
+             historicalLogs.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+             setActivityLogs(prev => {
+                const map = new Map(prev.map(p => [p.id, p]));
+                historicalLogs.forEach(log => map.set(log.id, log));
+                return Array.from(map.values()).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 50);
+             });
           }
         }
       } catch (err) {
@@ -535,6 +561,7 @@ export default function SessionMonitor() {
             socketService.socket.off('student_need_help');
             socketService.socket.off('mentor_alert');
             socketService.socket.off('receive_admin_message');
+            socketService.disconnect(); // Fix: Prevent memory leaks from ghost connections
         }
     };
   }, [sessionData.id, sessionData.email, sessionData.examId]);

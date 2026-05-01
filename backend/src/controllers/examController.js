@@ -94,6 +94,9 @@ exports.createExam = asyncHandler(async (req, res) => {
 
     await exam.save();
 
+    // Clear mentor exams cache
+    await clearPattern(`mentor_exams_*`);
+
     res.status(201).json({
         message: 'Exam Created!',
         id: exam._id,
@@ -216,6 +219,9 @@ exports.updateExam = asyncHandler(async (req, res) => {
         }
     }
 
+    // Clear mentor exams cache
+    await clearPattern(`mentor_exams_*`);
+
     res.json({ message: 'Exam updated successfully', exam });
 });
 
@@ -267,6 +273,9 @@ exports.deleteExam = asyncHandler(async (req, res) => {
     }
 
     await Exam.findByIdAndDelete(examId);
+
+    // Clear mentor exams cache
+    await clearPattern(`mentor_exams_*`);
 
     res.json({ message: 'Exam deleted successfully' });
 });
@@ -326,76 +335,56 @@ exports.getActiveExams = asyncHandler(async (req, res) => {
 });
 
 // ─────────────── GET /api/exams/mentor-list ───────────────
-// Mentors see exams THEY created + submission stats
+// Mentors see exams THEY created
 exports.getMentorExams = asyncHandler(async (req, res) => {
     const mongoose = require('mongoose');
     
     // Admins and super mentors see all exams; regular mentors see their own
     const matchStage = (req.user.role === 'admin' || req.user.role === 'super_mentor')
         ? {}
-        : { creator: new mongoose.Types.ObjectId(req.user.id) };
+        : { creator: req.user.id }; // Simplified string ID for find()
 
-    const stats = await Exam.aggregate([
-        { $match: matchStage },
-        { $sort: { createdAt: -1 } },
-        {
-            $lookup: {
-                from: 'users',
-                localField: 'creator',
-                foreignField: '_id',
-                as: 'creatorInfo'
-            }
-        },
-        {
-            $unwind: {
-                path: '$creatorInfo',
-                preserveNullAndEmptyArrays: true
-            }
-        },
-        {
-            $lookup: {
-                from: 'examsessions',
-                localField: '_id',
-                foreignField: 'exam',
-                as: 'sessions'
-            }
-        },
-        {
-            $project: {
-                id: '$_id',
-                name: '$title',
-                category: '$category',
-                status: { $cond: [{ $eq: ['$status', 'published'] }, 'live', 'draft'] },
-                time: '$scheduledDate',
-                questionsCount: { $size: '$questions' },
-                duration: '$duration',
-                totalMarks: '$totalMarks',
-                students: { $size: '$sessions' },
-                submitted: {
-                    $size: {
-                        $filter: {
-                            input: '$sessions',
-                            as: 's',
-                            cond: { $eq: ['$$s.status', 'submitted'] }
-                        }
-                    }
-                },
-                flags: {
-                    $size: {
-                        $filter: {
-                            input: '$sessions',
-                            as: 's',
-                            cond: { $gt: [{ $size: { $ifNull: ['$$s.violations', []] } }, 0] }
-                        }
-                    }
-                },
-                creatorName: { $ifNull: ['$creatorInfo.name', 'Unknown System'] },
-                resultsPublished: '$resultsPublished'
-            }
+    // 1. Try Cache
+    const redisClient = getRedisClient();
+    const cacheKey = `mentor_exams_${req.user.id}_${req.user.role}`;
+    if (redisClient) {
+        try {
+            const cached = await redisClient.get(cacheKey);
+            if (cached) return res.json(JSON.parse(cached));
+        } catch (e) {
+            console.error('Redis cache read error:', e.message);
         }
-    ]);
+    }
 
-    res.json(stats);
+    // 2. Fetch from DB without heavy aggregations
+    const exams = await Exam.find(matchStage)
+        .populate('creator', 'name')
+        .sort({ createdAt: -1 })
+        .lean();
+
+    const formattedExams = exams.map(exam => ({
+        id: exam._id,
+        name: exam.title,
+        category: exam.category,
+        status: exam.status === 'published' ? 'live' : 'draft',
+        time: exam.scheduledDate,
+        questionsCount: exam.questions ? exam.questions.length : 0,
+        duration: exam.duration,
+        totalMarks: exam.totalMarks,
+        creatorName: exam.creator ? exam.creator.name : 'Unknown System',
+        resultsPublished: exam.resultsPublished
+    }));
+
+    // 3. Set Cache
+    if (redisClient) {
+        try {
+            await redisClient.set(cacheKey, JSON.stringify(formattedExams), 'EX', 60); // 60s TTL
+        } catch (e) {
+            console.error('Redis cache write error:', e.message);
+        }
+    }
+
+    res.json(formattedExams);
 });
 
 // ─────────────── GET /api/exams/:id ───────────────
@@ -711,6 +700,12 @@ exports.saveProgress = asyncHandler(async (req, res) => {
     if (!session) {
         res.status(404);
         throw new Error('Session not found. Please start the exam first.');
+    }
+
+    // 🛡️ Strict State Validation (Replay Attack Prevention)
+    if (session.status !== 'in_progress') {
+        res.status(403);
+        throw new Error(`Cannot save progress. Exam is not in progress. (Status: ${session.status})`);
     }
 
     // 🛡️ Fix 8 & 1: Server-Side Time Authority & Auto-Submission
@@ -1165,15 +1160,23 @@ exports.submitExam = asyncHandler(async (req, res) => {
         throw new Error(`This exam cannot be submitted. Status: ${session.status}`);
     }
 
-    // ⏱️ Fix: Timer Validation (Compare startTime + duration)
+    // ⏱️ Fix: Server-Side Timer Validation (Strict 30-sec Grace)
     const currentTime = Date.now();
     const startTime = new Date(session.startedAt).getTime();
     const durationMs = exam.duration * 60 * 1000;
-    const bufferMs = 60000; // 60 seconds buffer for network lag
+    const GRACE_MS = 30000; // 30 seconds max buffer for network lag
 
-    if (currentTime > (startTime + durationMs + bufferMs)) {
-        res.status(400);
-        throw new Error('Exam time has expired. Submission rejected.');
+    let isLateSubmission = false;
+    if (currentTime > (startTime + durationMs + GRACE_MS)) {
+        isLateSubmission = true;
+        console.warn(`🚫 [Security] Late submission detected for ${studentId}. Overtime payload rejected.`);
+        
+        session.violations.push({
+            type: 'Time Manipulation',
+            severity: 'critical',
+            details: 'Exam submitted after strict server deadline. Overtime answers were rejected.',
+            timestamp: new Date()
+        });
     }
 
     // 🚀 Redis Final Merge Logic
@@ -1186,12 +1189,19 @@ exports.submitExam = asyncHandler(async (req, res) => {
             if (cachedData && cachedData.answers) {
                 try {
                     const redisAnswers = JSON.parse(cachedData.answers);
-                    if (redisAnswers && typeof redisAnswers === 'object') {
+                    if (isLateSubmission) {
+                        // 🛡️ Discard late payload, use only what was previously auto-saved
+                        finalAnswers = redisAnswers || {};
+                    } else if (redisAnswers && typeof redisAnswers === 'object') {
+                        // Normal merge
                         finalAnswers = { ...redisAnswers, ...finalAnswers };
                     }
                 } catch (parseErr) {
                     console.error('⚠️ Redis Answers parse failed in submitExam:', parseErr.message);
                 }
+            } else if (isLateSubmission) {
+                // Late submission and no Redis backup = zero answers accepted
+                finalAnswers = {};
             }
             await redisClient.del(cacheKey); // Clean up hash
         } catch (redisErr) {
@@ -1302,14 +1312,65 @@ exports.submitExam = asyncHandler(async (req, res) => {
         await ExamAnswer.bulkWrite(answerBulkOps);
     }
 
-    // ─── Calculate Score & Update Session ──────────────
-    const totalMarks = Number(exam.totalMarks) || 1;
-    const finalStatus = hasShortAnswers ? 'pending_review' : 'submitted';
-    const percentage = Math.round((autoScore / totalMarks) * 100) || 0;
+    // ─── Calculate Score ──────────────────────
+    const totalMarksVal = Number(exam.totalMarks) || 1;
+    const percentage = Math.round((autoScore / totalMarksVal) * 100) || 0;
     const passed = percentage >= (Number(exam.passingMarks) || 40);
 
+    // ─── 🛡️ Zero-Trust Behavioral Anomaly Detection ────────
+    const timeTakenSeconds = Math.round((Date.now() - new Date(session.startedAt).getTime()) / 1000);
+    const totalQuestions = exam.questions ? exam.questions.length : 0;
+    
+    // 1. Speed Anomaly: Adaptive check (is it impossibly fast?)
+    let speedAnomalyFlag = false;
+    if (totalQuestions > 0 && (timeTakenSeconds / totalQuestions) < 5) {
+        speedAnomalyFlag = true;
+    }
+
+    // 2. Telemetry Health (Missing data = Tampering)
+    const heartbeatInterval = 30; // expected every 30s
+    const expectedHeartbeats = Math.max(1, Math.floor(timeTakenSeconds / heartbeatInterval));
+    const actualHeartbeats = session.heartbeatCount || 0;
+    const telemetryRatio = actualHeartbeats / expectedHeartbeats;
+    
+    let missingTelemetryScore = 0;
+    if (telemetryRatio < 0.1) missingTelemetryScore = 20; // Critical missing data
+    else if (telemetryRatio < 0.3) missingTelemetryScore = 10; // Highly suspicious
+    
+    // Check Max Gap (e.g., disconnected for 5+ mins)
+    if ((session.maxHeartbeatGap || 0) > 300000) {
+        missingTelemetryScore += 10;
+    }
+
+    // 3. Suspicious Perfection
+    let perfectScoreAnomaly = false;
+    if (percentage > 95 && speedAnomalyFlag && (session.violations.length === 0 || telemetryRatio < 0.5)) {
+        perfectScoreAnomaly = true;
+    }
+
+    // 4. Central Risk Score Calculation (Overrides incremental frontend calculations)
+    const riskScoreRaw = 
+        (session.tabSwitchCount * 2) +
+        (session.violations.length * 5) +
+        missingTelemetryScore +
+        (speedAnomalyFlag ? 20 : 0) +
+        (perfectScoreAnomaly ? 15 : 0);
+
+    const riskScore = Math.min(riskScoreRaw, 100);
+    
+    let riskLevel = 'LOW';
+    if (riskScore >= 60) riskLevel = 'CRITICAL';
+    else if (riskScore >= 30) riskLevel = 'HIGH';
+    else if (riskScore >= 10) riskLevel = 'MEDIUM';
+
+    session.riskScore = riskScore;
+    session.riskLevel = riskLevel;
+
+    // ─── Update Session Status ──────────────
+    const finalStatus = hasShortAnswers ? 'pending_review' : (isLateSubmission ? 'auto_submitted' : 'submitted');
+
     session.score = Number(autoScore) || 0;
-    session.totalMarks = Number(totalMarks) || 1;
+    session.totalMarks = Number(totalMarksVal) || 1;
     session.percentage = Number(percentage) || 0;
     session.passed = hasShortAnswers ? false : passed;
     session.status = finalStatus;
@@ -1364,57 +1425,44 @@ exports.getSessionDetail = asyncHandler(async (req, res) => {
     }
 
     // Fetch all answers for this session (Bug Fix: Relational Join)
-    const savedAnswers = await ExamAnswer.find({ sessionId: session._id });
+    const sessionAnswers = await ExamAnswer.find({ sessionId: session._id });
 
     // Build detailed question view
     const questionsWithResults = exam.questions.map((q, index) => {
-        const qId = q._id.toString();
-        const savedAnswer = savedAnswers.find(a => a.questionId === qId);
-        const result = savedAnswer?.result || {};
+        const savedAnswer = sessionAnswers.find(a => a.questionId === q._id.toString());
+        const isMCQ = q.type === 'mcq';
 
-        const detail = {
-            questionId: qId,
+        const result = {
+            questionId: q._id,
             index,
+            status: savedAnswer?.status || (isMCQ ? 'not_answered' : 'pending_review'),
+            marksObtained: savedAnswer?.marksObtained || 0,
+            maxMarks: q.marks || 0,
             type: q.type,
             questionText: q.questionText,
-            marks: q.marks,
-            studentAnswer: savedAnswer?.code ? { code: savedAnswer.code, answer: savedAnswer.answer } : savedAnswer?.answer,
-            marksObtained: savedAnswer?.marksObtained || 0,
-            maxMarks: savedAnswer?.maxMarks || q.marks || 0,
-            status: savedAnswer?.status || 'pending_review',
+            answer: savedAnswer?.answer || (isMCQ ? null : ''),
+            code: savedAnswer?.code || '',
+            aiResult: savedAnswer?.result?.aiEvaluation || null,
+            aiSuggestedMarks: savedAnswer?.result?.aiScore || null,
+            mentorFeedback: savedAnswer?.result?.mentorFeedback || ''
         };
 
         if (q.type === 'mcq') {
-            detail.options = q.options;
-            detail.correctOption = q.correctOption;
-            detail.studentChoice = result.studentChoice;
-            detail.correctChoice = result.correctChoice;
+            result.options = q.options;
+            result.correctOption = q.correctOption;
+            result.studentChoice = savedAnswer?.result?.studentChoice;
         }
 
         if (q.type === 'coding') {
-            detail.language = q.language;
-            detail.testCaseResults = result.testCaseResults || [];
-            detail.totalTestCases = (q.testCases || []).length;
-            detail.passedTestCases = (result.testCaseResults || []).filter(t => t.passed).length;
+            result.language = q.language;
+            result.testCaseResults = savedAnswer?.result?.testCaseResults || [];
         }
 
         if (q.type === 'short') {
-            detail.expectedAnswer = q.expectedAnswer;
-            detail.maxWords = q.maxWords;
-            detail.aiSuggestedMarks = result.aiSuggestedMarks;
-            detail.aiConfidence = result.aiConfidence || null;
-            detail.aiReasoning = result.aiReasoning;
-            detail.mentorFeedback = result.mentorFeedback || '';
+            result.expectedAnswer = q.expectedAnswer;
         }
 
-        if (q.type === 'frontend-react') {
-            detail.testCaseResults = result.testCaseResults || [];
-            detail.totalTestCases = (q.frontendTestCases || []).length;
-            detail.passedTestCases = (result.testCaseResults || []).filter(t => t.passed).length;
-            detail.files = savedAnswer?.answer?.files || {};
-        }
-
-        return detail;
+        return result;
     });
 
     res.json({
@@ -1438,7 +1486,8 @@ exports.getSessionDetail = asyncHandler(async (req, res) => {
         passed: session.passed,
         status: session.status,
         requiresManualGrading: session.requiresManualGrading,
-        violations: session.violations.length,
+        violations: session.violations || [],
+        helpRequests: session.helpRequests || [],
         tabSwitches: session.tabSwitchCount,
         startedAt: session.startedAt,
         submittedAt: session.submittedAt,
@@ -1456,7 +1505,18 @@ exports.evaluateSession = asyncHandler(async (req, res) => {
 
     if (!grades || !Array.isArray(grades)) {
         res.status(400);
-        throw new Error('grades array is required');
+        throw new Error('Invalid evaluation data. Grades are required.');
+    }
+
+    // 🛡️ Integrity Check: Filter out manual marks for MCQ questions
+    const mcqGrades = grades.filter(g => {
+        const q = exam.questions.id(g.questionId);
+        return q && q.type === 'mcq';
+    });
+
+    if (mcqGrades.length > 0) {
+        res.status(400);
+        throw new Error('Integrity Violation: MCQ questions cannot be manually graded. They must be auto-evaluated.');
     }
 
     const session = await ExamSession.findById(sessionId).populate('exam');
@@ -1521,6 +1581,20 @@ exports.evaluateSession = asyncHandler(async (req, res) => {
     session.status = 'submitted';
     session.requiresManualGrading = false;
 
+    // 🛡️ Legacy Cleanup: Remove any violations missing the required 'type' field
+    if (session.violations && session.violations.length > 0) {
+        const originalCount = session.violations.length;
+        session.violations = session.violations.filter(v => v && v.type);
+        if (session.violations.length !== originalCount) {
+            console.warn(`[Cleanup] Removed ${originalCount - session.violations.length} malformed violations from session ${session._id}`);
+        }
+    }
+
+    // 📋 Blocked Session Handling: Add a note if evaluating a blocked student
+    if (session.status === 'blocked' || session.isBlocked) {
+        session.evaluationNote = 'Evaluated after block - results may be subject to further review';
+    }
+
     await session.save();
 
     res.json({
@@ -1538,58 +1612,72 @@ exports.evaluateSession = asyncHandler(async (req, res) => {
 exports.logIncident = asyncHandler(async (req, res) => {
     const { examId, type, severity, details } = req.body;
     const studentId = req.user.id;
+    const now = new Date();
 
-    const update = {
-        $push: { 
-            violations: {
-                $each: [{
-                    type: type || 'Unknown',
-                    severity: severity || 'medium',
-                    details: details || '',
-                    timestamp: new Date()
-                }],
-                $slice: -100 // Bug 8: Cap violation list to prevent DoS attacks
-            }
-        }
-    };
-
-    if (type === 'Tab Switch') {
-        update.$inc = { tabSwitchCount: 1 };
+    const session = await ExamSession.findOne({ exam: examId, student: studentId });
+    
+    if (!session) {
+        res.status(404);
+        throw new Error('Exam session not found.');
     }
 
-    // 🏎️ Fix 40: Move compute to write-time (Incremental Risk Score)
+    // 🛡️ Strict State Validation (Replay Attack Prevention)
+    if (session.status !== 'in_progress') {
+        res.status(403);
+        throw new Error('Cannot log incidents. Exam is not in progress.');
+    }
+
+    // 🛡️ Server-Side Sliding Window Debounce (Spam Prevention)
+    // Ignore identical violations occurring within 2 seconds
+    const lastIncident = session.violations && session.violations.length > 0 
+        ? session.violations[session.violations.length - 1] 
+        : null;
+
+    if (lastIncident && lastIncident.type === type) {
+        const timeDiff = now - new Date(lastIncident.timestamp);
+        if (timeDiff < 2000) {
+            return res.json({ 
+                message: 'Incident ignored (debounced)', 
+                violationCount: session.violations.length,
+                tabSwitches: session.tabSwitchCount,
+                status: session.status
+            });
+        }
+    }
+
+    // Add new violation
+    session.violations.push({
+        type: type || 'Unknown',
+        severity: severity || 'medium',
+        details: details || '',
+        timestamp: now
+    });
+
+    // Cap violation list to prevent memory bloat / DoS attacks
+    if (session.violations.length > 100) {
+        session.violations = session.violations.slice(-100);
+    }
+
+    if (type === 'Tab Switch') {
+        session.tabSwitchCount += 1;
+    }
+
+    // 🏎️ Incremental Risk Score Calculation
     const riskDeltas = {
         'Tab Switch': 2,
         'Environment Tampering': 10,
         'Security Breach': 15,
         'Invalid Data': 5
     };
-    const delta = riskDeltas[type] || 3; // Default 3 for generic violations
+    const delta = riskDeltas[type] || 3;
     
-    const session = await ExamSession.findOneAndUpdate(
-        { exam: examId, student: studentId },
-        { 
-            ...update,
-            $inc: { 
-                ...(update.$inc || {}), 
-                riskScore: delta 
-            } 
-        },
-        { upsert: true, new: true }
-    );
+    session.riskScore = Math.min((session.riskScore || 0) + delta, 100);
 
-    // Cap riskScore at 100
-    if (session.riskScore > 100) {
-        session.riskScore = 100;
-        await session.save();
-    }
-
-    // 🛡️ Fix 2: Cheating Protection Enforcement
+    // 🛡️ Cheating Protection Enforcement
     const globalSettings = await Setting.findOne() || { maxTabSwitches: 5 };
     if (session.tabSwitchCount >= globalSettings.maxTabSwitches && session.status === 'in_progress') {
         session.status = 'blocked';
         session.blockReason = 'Excessive tab switching detected by system proctor';
-        await session.save();
 
         const io = req.app.get('io');
         if (io) {
@@ -1598,6 +1686,8 @@ exports.logIncident = asyncHandler(async (req, res) => {
             });
         }
     }
+
+    await session.save();
 
     res.json({ 
         message: 'Incident logged', 
@@ -2016,13 +2106,28 @@ exports.requestHelp = asyncHandler(async (req, res) => {
 
     const user = await User.findById(req.user.id).select('name email');
     const userName = user?.name || req.user.email;
+    const examId = req.body.examId;
     const supportMessage = {
         studentName: userName,
         studentEmail: user?.email || req.user.email,
         studentId: req.user.id,
         message: msg,
-        timestamp: new Date()
+        timestamp: new Date(),
+        examId: examId
     };
+
+    if (examId) {
+        const session = await ExamSession.findOne({ exam: examId, student: req.user.id });
+        if (session) {
+            session.helpRequests.push({
+                message: msg,
+                timestamp: supportMessage.timestamp
+            });
+            await session.save();
+            // Attach the DB id to the message for frontend mapping
+            supportMessage.id = session.helpRequests[session.helpRequests.length - 1]._id;
+        }
+    }
 
 
     const io = req.app.get('io');
@@ -2031,7 +2136,6 @@ exports.requestHelp = asyncHandler(async (req, res) => {
         io.to('role_mentor').to('role_admin').emit('student_need_help', supportMessage);
         
         // 🛡️ Fix Bug 5: Scoped alert for specific exam room
-        const examId = req.body.examId;
         if (examId) {
             io.to(`exam_monitor_${examId}`).emit('student_need_help', supportMessage);
         }
@@ -2307,6 +2411,24 @@ exports.heartbeat = asyncHandler(async (req, res) => {
         throw new Error('Active session not found');
     }
 
+    // 🛡️ Strict State Validation (Replay Attack Prevention)
+    if (session.status !== 'in_progress') {
+        res.status(403);
+        throw new Error('Heartbeat ignored. Exam is not in progress.');
+    }
+
+    const now = new Date();
+
+    // ─── Zero-Trust Telemetry Tracking ───────────
+    if (session.lastHeartbeat) {
+        const gapMs = now - new Date(session.lastHeartbeat);
+        if (gapMs > (session.maxHeartbeatGap || 0)) {
+            session.maxHeartbeatGap = gapMs;
+        }
+    }
+    session.lastHeartbeat = now;
+    session.heartbeatCount = (session.heartbeatCount || 0) + 1;
+
     // 2. Update Verification Timestamp
     const fingerprint = {
         userAgent: req.headers['user-agent'],
@@ -2316,26 +2438,25 @@ exports.heartbeat = asyncHandler(async (req, res) => {
     };
 
     if (session.secureMeta) {
-        session.secureMeta.verifiedAt = new Date();
-        await session.save();
+        session.secureMeta.verifiedAt = now;
     }
 
     // Fix 8: Time validation in heartbeat
     const exam = await Exam.findById(examId);
     if (exam && session.startedAt) {
-        const now = Date.now();
         const started = new Date(session.startedAt).getTime();
         const durationMs = exam.duration * 60 * 1000;
-        const serverRemainingTime = Math.max(0, Math.floor((started + durationMs - now) / 1000));
+        const serverRemainingTime = Math.max(0, Math.floor((started + durationMs - now.getTime()) / 1000));
         
         if (serverRemainingTime <= 0) {
             session.status = 'auto_submitted';
-            session.submittedAt = new Date();
+            session.submittedAt = now;
             await session.save();
             return res.json({ success: false, code: 'EXAM_EXPIRED', status: 'auto_submitted' });
         }
         session.remainingTimeSeconds = serverRemainingTime;
     }
+    await session.save();
 
     // Baseline Check in Heartbeat with Tolerance
     const [baseUA, basePlatform, baseWidth, baseHeight] = (session.secureMeta.baselineFingerprint || "").split('|');

@@ -4,7 +4,7 @@ require('dotenv').config();
 const connectDB = async () => {
     try {
         await mongoose.connect(process.env.MONGODB_URI, {
-            maxPoolSize: 100, // 🏎️ Fix 20: Increased for 50k concurrent users
+            maxPoolSize: 10, // 🏎️ Fix: Reduced to 10 to prevent connection pool exhaustion on Atlas free tier
             serverSelectionTimeoutMS: 5000,
         });
         console.log('✅ MongoDB Connected');

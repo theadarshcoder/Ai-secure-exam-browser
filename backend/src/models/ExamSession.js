@@ -14,7 +14,7 @@ const helpRequestSchema = new mongoose.Schema({
 // ─── Violation Schema ────────────────────────────────────
 // Record of each individual proctoring/cheating violation
 const violationSchema = new mongoose.Schema({
-    type: { type: String, required: true },       // 'Tab Switch', 'Face Not Detected', etc.
+    type: { type: String, required: true, default: 'Unknown' },       // 'Tab Switch', 'Face Not Detected', etc.
     severity: {
         type: String,
         enum: ['low', 'medium', 'high', 'critical'],
@@ -113,6 +113,19 @@ const examSessionSchema = new mongoose.Schema({
     blockReason: { type: String, default: '' },
     // 🏎️ Fix 40: Pre-calculated Risk Score (Save CPU during monitoring)
     riskScore: { type: Number, default: 0 },
+    riskLevel: { 
+        type: String, 
+        enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'],
+        default: 'LOW'
+    },
+
+    // 🆕 Admin evaluation note (especially for blocked students)
+    evaluationNote: { type: String, default: '' },
+    
+    // ─── 🛡️ Zero-Trust Telemetry Tracking ────────────
+    lastHeartbeat: { type: Date },
+    heartbeatCount: { type: Number, default: 0 },
+    maxHeartbeatGap: { type: Number, default: 0 }, // Largest gap between heartbeats in ms
     
     // 🏎️ Fix 9: Monotonic sequence for ordering
     lastSeq: { type: Number, default: 0 },

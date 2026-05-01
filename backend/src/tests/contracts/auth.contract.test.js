@@ -89,7 +89,7 @@ describe('🔐 Auth Contract & Integrity Tests', () => {
         expect(refresh2.body.message).toContain('Session compromised');
 
         // Verify user in DB has no refresh token and bumped version
-        const user = await User.findOne({ email: testUser.email });
+        const user = await User.findOne({ email: testUser.email }).select('+password');
         expect(user.refreshToken).toBeNull();
         expect(user.sessionVersion).toBeGreaterThan(loginRes.body.user.sessionVersion || 0);
     });

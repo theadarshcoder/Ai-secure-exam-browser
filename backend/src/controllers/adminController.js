@@ -7,7 +7,7 @@ const Setting = require('../models/Setting');
 const { asyncHandler } = require('../middlewares/errorMiddleware');
 const axios = require('axios');
 const mongoose = require('mongoose');
-const { getCache, setCache, TTL_API_CACHE } = require('../services/cacheService');
+const { getCache, setCache, clearCache, TTL_API_CACHE } = require('../services/cacheService');
 
 // ═══════════════════════════════════════════════════════════
 // Fetch all exam results and sessions for Admin/Mentor Dashboard
@@ -78,7 +78,8 @@ exports.getLiveSessions = asyncHandler(async (req, res) => {
         isBlocked: s.isBlocked,
         violationCount: s.violationCount || 0,
         startedAt: s.startedAt,
-        risk: s.violationCount > 5 ? 'High' : s.violationCount > 2 ? 'Medium' : 'Low'
+        risk: s.violationCount > 5 ? 'High' : s.violationCount > 2 ? 'Medium' : 'Low',
+        helpRequests: s.helpRequests || []
     }));
 
     res.json(formatted);
@@ -387,6 +388,10 @@ exports.saveSettings = asyncHandler(async (req, res) => {
     } else {
         setting = await Setting.create(req.body);
     }
+    
+    // 🛡️ Invalidate Cache so the next rule-engine check picks up new settings
+    await clearCache('global_settings');
+
     res.json({ message: 'Settings saved successfully', settings: setting });
 });
 
@@ -394,11 +399,22 @@ exports.saveSettings = asyncHandler(async (req, res) => {
 // Candidate Identity Verification (eKYC)
 // ═══════════════════════════════════════════════════════════
 exports.getCandidates = asyncHandler(async (req, res) => {
-    const search = req.query.search || '';
+    const { search, role } = req.query;
     const page = parseInt(req.query.page) || 1;
     let limit = parseInt(req.query.limit) || 20;
     limit = Math.min(limit, 100); // 🛡️ Fix 18: Security limit
     const skip = (page - 1) * limit;
+
+    const query = {};
+
+    if (role) query.role = role;
+
+    if (search) {
+        query.$or = [
+            { name: { $regex: search, $options: 'i' } },
+            { email: { $regex: search, $options: 'i' } }
+        ];
+    }
 
     const candidates = await User.find(query)
         .select('name email profilePicture idCardUrl isVerified verificationIssue createdAt')
@@ -408,22 +424,36 @@ exports.getCandidates = asyncHandler(async (req, res) => {
         .lean();
 
     const total = await User.countDocuments(query);
+    
+    // Maintain enrichment logic for active sessions (eKYC feature)
     const studentIds = candidates.map(c => c._id);
     const LIVE_THRESHOLD = new Date(Date.now() - 3 * 60 * 1000);
     const activeSessions = await ExamSession.find({ student: { $in: studentIds }, status: 'in_progress', updatedAt: { $gte: LIVE_THRESHOLD } }).populate('exam', 'title').lean();
+    
     const sessionMap = {};
     activeSessions.forEach(s => { sessionMap[s.student.toString()] = s; });
-    const enriched = candidates.map(c => ({ ...c, isLive: !!sessionMap[c._id.toString()], currentExam: sessionMap[c._id.toString()]?.exam?.title || null }));
+    
+    const enriched = candidates.map(c => ({ 
+        ...c, 
+        isLive: !!sessionMap[c._id.toString()], 
+        currentExam: sessionMap[c._id.toString()]?.exam?.title || null 
+    }));
+    
     res.json({
-        candidates: enriched,
-        total,
-        page,
-        pages: Math.ceil(total / limit)
+        data: enriched,
+        pagination: {
+            total,
+            page,
+            pages: Math.ceil(total / limit)
+        }
     });
 });
 
 exports.verifyCandidate = asyncHandler(async (req, res) => {
-    const user = await User.findByIdAndUpdate(req.params.userId, { isVerified: true }, { new: true }).select('name email isVerified');
+    const user = await User.findByIdAndUpdate(req.params.userId, { 
+        isVerified: true,
+        verificationIssue: null 
+    }, { new: true }).select('name email isVerified verificationIssue');
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json({ success: true, user });
 });
@@ -521,4 +551,49 @@ exports.extendExamTime = asyncHandler(async (req, res) => {
     const io = req.app.get('io'); 
     io.to(`exam_${examId}`).emit('time_extended', { extraSeconds, extraMinutes, serverSyncTime: Date.now() });
     res.status(200).json({ success: true, message: `Time extended for ${result.modifiedCount} students.` });
+});
+
+// ═══════════════════════════════════════════════════════════
+// 📊 EXPORT: Student Intelligence Report (CSV)
+// ═══════════════════════════════════════════════════════════
+exports.exportStudentIntelligenceCSV = asyncHandler(async (req, res) => {
+    const { studentId } = req.params;
+    
+    const student = await User.findById(studentId).select('name email');
+    if (!student) {
+        res.status(404);
+        throw new Error('Student not found');
+    }
+
+    const sessions = await ExamSession.find({ student: studentId })
+        .populate('exam', 'title category')
+        .sort({ submittedAt: -1 })
+        .lean();
+
+    if (!sessions || sessions.length === 0) {
+        res.status(404);
+        throw new Error('No exam data found for this student to export.');
+    }
+
+    // CSV Header
+    let csv = "Exam Title,Category,Status,Score (%),Tab Switches,Violations,Date\n";
+
+    // CSV Rows
+    sessions.forEach(s => {
+        const title = (s.exam?.title || 'Unknown').replace(/,/g, '');
+        const category = (s.exam?.category || 'N/A').replace(/,/g, '');
+        const status = s.status || 'N/A';
+        const score = s.percentage || 0;
+        const tabSwitches = s.tabSwitchCount || 0;
+        const violations = s.violations?.length || 0;
+        const date = s.submittedAt ? new Date(s.submittedAt).toLocaleDateString() : 'N/A';
+
+        csv += `${title},${category},${status},${score},${tabSwitches},${violations},${date}\n`;
+    });
+
+    const fileName = `Vision_Report_${student.name.replace(/\s+/g, '_')}_${Date.now()}.csv`;
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+    res.status(200).send(csv);
 });

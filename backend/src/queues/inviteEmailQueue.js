@@ -31,8 +31,9 @@ const addBulkInviteJobs = async (jobs) => {
         opts: {
             attempts: 5,
             backoff: { type: 'exponential', delay: 2000 },
+            timeout: 10000, // 10s explicit timeout per email
             removeOnComplete: true,  // Auto cleanup from Redis memory
-            removeOnFail: false      // Keep failed jobs for debugging
+            removeOnFail: { count: 200 } // Keep last 200 failed jobs for debugging (DLQ)
         }
     }));
 

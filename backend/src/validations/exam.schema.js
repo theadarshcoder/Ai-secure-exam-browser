@@ -13,31 +13,34 @@ const startExamSchema = z.object({
 const saveProgressSchema = z.object({
     body: z.object({
         examId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid Exam ID format"),
-        answers: z.array(z.object({
-            questionId: z.string(),
-            answer: z.any(), // Can be string, number, or array depending on Q type
-            type: z.enum(['mcq', 'short-answer', 'coding', 'frontend-react']),
-            timeSpent: z.number().nonnegative().optional()
-        })),
-        currentQuestionIndex: z.number().nonnegative().optional(),
-        timeRemaining: z.number().nonnegative().optional(),
-        isAutoSave: z.boolean().optional()
-    }).strict()
+        answers: z.record(z.any()).optional(),
+        currentQuestionIndex: z.number().int().nonnegative().optional(),
+        questionStates: z.record(z.any()).optional(),
+        remainingTimeSeconds: z.number().int().nonnegative().optional(),
+        lastUpdated: z.number().optional(),
+        seq: z.number().optional()
+    })
 });
 
 const submitExamSchema = z.object({
     body: z.object({
         examId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid Exam ID format"),
-        finalAnswers: z.array(z.any()).optional() // Optional if already autosaved
-    }).strict()
+        answers: z.record(z.any()).optional(), // Changed from finalAnswers to answers to match frontend
+        lastUpdated: z.number().optional()
+    }) // Removed .strict() to resolve "Unrecognized key(s)" error
 });
 
 const incidentSchema = z.object({
     body: z.object({
+        examId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid Exam ID format"),
         type: z.string().min(1),
         details: z.string().optional(),
-        severity: z.enum(['low', 'medium', 'high', 'critical']).optional()
-    }).strict()
+        severity: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+        studentId: z.string().optional(),
+        studentName: z.string().optional(),
+        id: z.string().optional(),
+        timestamp: z.string().optional()
+    })
 });
 
 module.exports = {

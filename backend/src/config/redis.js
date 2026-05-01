@@ -3,7 +3,11 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
-const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+const redisUrl = process.env.REDIS_URL;
+
+if (!redisUrl) {
+    throw new Error("❌ REDIS_URL is required for this system (Core Dependency for Sessions, Queues, and State)");
+}
 
 let redisInstance = null;
 
@@ -32,6 +36,7 @@ const getRedisConnection = () => {
 
         redisInstance.on('error', (err) => {
             console.error('❌ Redis connection error:', err.message);
+            process.exit(1); // 🔴 CRASH ON FAILURE (Hard Dependency)
         });
     }
     return redisInstance;

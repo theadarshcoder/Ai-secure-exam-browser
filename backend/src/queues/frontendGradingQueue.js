@@ -24,8 +24,9 @@ const addFrontendEvaluationJob = async (jobData) => {
     console.log(`[Queue] Adding Frontend job for Student: ${validatedData.studentId}, Question: ${validatedData.questionId}`);
     const job = await frontendEvaluationQueue.add('evaluate-ui', validatedData, {
         attempts: 1, // No retries for frontend grading to avoid infinite loops hanging the queue
+        timeout: 60000, // 60 seconds explicit timeout
         removeOnComplete: true,
-        removeOnFail: false
+        removeOnFail: { count: 100 } // Dead-letter queue limit
     });
     return job;
 };
