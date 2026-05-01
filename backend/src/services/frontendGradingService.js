@@ -107,7 +107,7 @@ exports.evaluateFrontendCode = async (codeFiles, testCases) => {
                 if (!testPassed) allPassed = false;
             }
         } catch (err) {
-            throw new Error(`DOM Execution Error: ${err.message}`);
+            throw new Error(`DOM Execution Error: ${err.message}`, { cause: err });
         } finally {
             // Cleanup globals
             delete global.window;

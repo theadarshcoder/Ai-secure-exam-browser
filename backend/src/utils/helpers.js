@@ -113,7 +113,7 @@ const parseLeetCode = async (url) => {
             testCases: testCases
         };
     } catch (error) {
-        throw new Error(`LeetCode Scraping Failed: ${error.message}`);
+        throw new Error(`LeetCode Scraping Failed: ${error.message}`, { cause: error });
     }
 };
 
@@ -170,7 +170,7 @@ const parseCodeChef = async (url) => {
             testCases: [{ input: "", expectedOutput: "", isHidden: false }]
         };
     } catch (error) {
-        throw new Error(error.message || `CodeChef Scraping Failed.`);
+        throw new Error(error.message || `CodeChef Scraping Failed.`, { cause: error });
     }
 };
 

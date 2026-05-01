@@ -212,13 +212,13 @@ exports.deleteMentor = asyncHandler(async (req, res) => {
 exports.getSystemHealth = asyncHandler(async (req, res) => {
     const dbStatus = mongoose.connection.readyState === 1 ? 'healthy' : 'degraded';
     const judge0Url = process.env.JUDGE0_API_URL || 'https://ce.judge0.com';
-    let judge0Status = 'unknown';
+    let judge0Status;
     try {
         const start = Date.now();
         await axios.get(`${judge0Url}/health`, { timeout: 3000 });
         const latency = Date.now() - start;
         judge0Status = latency < 1000 ? 'healthy' : 'high-latency';
-    } catch (e) {
+    } catch {
         judge0Status = 'unreachable';
     }
 

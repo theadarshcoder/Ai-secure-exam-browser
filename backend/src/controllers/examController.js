@@ -2227,7 +2227,7 @@ exports.importQuestions = asyncHandler(async (req, res) => {
     } catch (err) {
         console.error("Import failed:", err);
         res.status(500);
-        throw new Error("Failed to process imported questions.");
+        throw new Error("Failed to process imported questions.", { cause: err });
     }
 });
 
@@ -2311,7 +2311,7 @@ exports.importQuestionFromLink = asyncHandler(async (req, res) => {
     } catch (scrapingError) {
         console.error(`[${platform.toUpperCase()}] Scraping Error:`, scrapingError.message);
         res.status(422);
-        throw new Error(`Failed to extract problem details. The platform might be blocking requests or the URL is invalid.`);
+        throw new Error(`Failed to extract problem details. The platform might be blocking requests or the URL is invalid.`, { cause: scrapingError });
     }
 });
 

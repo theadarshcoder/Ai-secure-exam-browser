@@ -12,7 +12,7 @@ const mongoSanitize = require('express-mongo-sanitize');
 const connectDB = require('./config/db.js');
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
-const { verifyToken, checkRole } = require('./middlewares/authMiddleware');
+const { verifyToken } = require('./middlewares/authMiddleware');
 const User = require('./models/User');
 const Exam = require('./models/Exam');
 const ExamSession = require('./models/ExamSession');
@@ -23,7 +23,7 @@ const cacheService = require('./services/cacheService');
 const morgan = require('morgan');
 const validateEnv = require('./utils/envValidator');
 const { startHealthMonitor, incrementDisconnect } = require('./services/healthMonitor');
-let isHealthMonitorStarted = false; // 🛡️ Phase 2: Guard against duplicate intervals
+
 const { VIOLATION_TYPES, SESSION_STATUS } = require('./utils/constants');
 const { LRUCache } = require('lru-cache');
 
