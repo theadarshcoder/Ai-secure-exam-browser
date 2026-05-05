@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import PremiumSidebar from '../components/PremiumSidebar';
+import SlidingTabBar from '../components/SlidingTabBar';
 import { ThemeToggle } from '../contexts/ThemeContext';
 import BouncingDotLoader from '../components/BouncingDotLoader';
 import FloatingPillMenu from '../components/FloatingPillMenu';
@@ -438,6 +439,10 @@ const EvaluationModal = ({ sessionData, onClose, onGradeSubmit, submitStatus }) 
         {/* Footer */}
         {hasPendingReview && (
           <div className="px-10 py-6 border-t border-main bg-surface-hover/50 flex items-center justify-end gap-5">
+            <button onClick={handleSaveDraft} disabled={isSaving || saveStatus !== 'idle'} className="w-full h-9 bg-surface border border-main hover:bg-surface-hover text-muted hover:text-primary rounded-lg font-black text-[10px] uppercase tracking-[0.15em] flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-sm">
+              <AnimatedStatusIcon status={saveStatus} icon={<Save size={14} />} size={14} />
+              {saveStatus === 'loading' ? 'Saving...' : saveStatus === 'success' ? 'Saved' : 'Save as Draft'}
+            </button>
             <button onClick={onClose} className="px-8 py-3 text-[10px] font-black text-muted uppercase tracking-[0.2em] hover:bg-surface-hover rounded-2xl border border-transparent hover:border-main transition-all active:scale-95">
               Abort
             </button>
@@ -472,6 +477,7 @@ export default function MentorDashboard() {
   const [activity, setActivity] = useState([]);
   const [students, setStudents] = useState([]);
   const [exams, setExams] = useState([]);
+  const [examFilter, setExamFilter] = useState('ALL');
   const [results, setResults] = useState([]);
   const [resultFilter, setResultFilter] = useState('ALL');
   const [selectedResults, setSelectedResults] = useState(new Set());
@@ -1211,101 +1217,123 @@ export default function MentorDashboard() {
     );
   };
 
+  const renderExamLibrary = () => {
+    const filteredExams = exams.filter(e => {
+      if (examFilter === 'ALL') return true;
+      return e.status?.toUpperCase() === examFilter;
+    });
 
-  const renderExamLibrary = () => (
-    <div className="space-y-8 ">
-      <div className="flex items-center justify-between bg-surface p-6 rounded-3xl shadow-sm relative overflow-hidden" style={{ border: '1px solid #1f1f1f' }}>
-         <div className="relative z-10">
-           <h2 className="text-xl font-bold text-primary tracking-tight leading-none">Exam Library</h2>
-           <p className="text-[12px] text-muted font-medium mt-1">Global assessment library management</p>
-         </div>
-         <button 
-           onClick={() => navigate('/mentor/create-exam')}
-           className="relative z-10 flex items-center gap-2 bg-primary-500 text-white px-6 py-3 rounded-xl text-[13px] font-semibold hover:bg-primary-600 transition-all active:scale-95 shadow-lg shadow-primary-500/20"
-         >
-            <Plus size={16} strokeWidth={2.5} /> Create Exam
-         </button>
-      </div>
-
-      <DataTable 
-        loading={loading}
-        headers={['Exam Title', 'Category', 'Duration', 'Questions', 'Status', 'Actions']}
-        data={exams}
-        renderRow={(exam) => (
-          <tr key={exam.id || exam._id} className="hover:bg-surface-hover/50 transition-colors group/row last:border-0">
-            <td className="px-6 py-4">
-              <div className="flex flex-col">
-                <span className="font-semibold text-[14px] text-primary group-hover/row:text-primary-500 transition-colors">{exam.name || exam.title}</span>
-                <span className="text-[12px] font-medium text-muted mt-0.5 opacity-60">ID: {exam.id || exam._id}</span>
+    return (
+      <div className="space-y-8 ">
+        <div className="flex items-center justify-between bg-surface p-6 rounded-3xl shadow-sm relative overflow-hidden" style={{ border: '1px solid #1f1f1f' }}>
+           <div className="flex items-center gap-12">
+              <div className="relative z-10">
+                <h2 className="text-xl font-bold text-primary tracking-tight leading-none">Exam Library</h2>
+                <p className="text-[12px] text-muted font-medium mt-1">Global assessment library management</p>
               </div>
-            </td>
-            <td className="px-6 py-4 text-[13px] font-medium text-muted">{exam.category || 'Standard'}</td>
-            <td className="px-6 py-4 text-[13px] text-primary font-medium">{exam.duration || '—'} min</td>
-            <td className="px-6 py-4 text-[13px] text-primary font-medium">{exam.questionsCount || 0} qs</td>
-            <td className="px-6 py-4">
-               <StatusBadge status={exam.status || 'draft'} />
-            </td>
-            <td className="px-6 py-4">
-               <div className="flex items-center gap-4">
-                  <button 
-                    onClick={() => navigate(`/mentor/exam/${exam.id || exam._id}/monitoring`)}
-                    className="w-8 h-8 flex items-center justify-center text-muted/50 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-all active:scale-95"
-                    title="Live Monitoring"
-                  >
-                    <Radio size={16} strokeWidth={2} className={exam.status === 'published' || exam.status === 'active' ? 'animate-pulse text-emerald-500' : ''} /> 
-                  </button>
-                  <button 
-                    onClick={() => handleTogglePublishResults(exam.id || exam._id, exam.resultsPublished)} 
-                    className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all active:scale-95 ${exam.resultsPublished ? 'text-emerald-500 bg-emerald-500/10' : 'text-muted/50 hover:text-emerald-500 hover:bg-emerald-500/10'}`}
-                    title={exam.resultsPublished ? "Results visible to students" : "Results hidden from students"}
-                  >
-                    {exam.resultsPublished ? <CheckCircle size={16} strokeWidth={2} /> : <EyeOff size={16} strokeWidth={2} />} 
-                  </button>
-                  <button 
-                    onClick={() => navigate(`/mentor/create-exam?id=${exam.id || exam._id}&view=true`)}
-                    className="w-8 h-8 flex items-center justify-center text-muted/50 hover:text-primary-500 hover:bg-primary-500/10 rounded-lg transition-all active:scale-95"
-                    title="View Details"
-                  >
-                    <Eye size={16} strokeWidth={2} /> 
-                  </button>
-                  <button 
-                    onClick={() => navigate(`/mentor/create-exam?id=${exam.id || exam._id}`)}
-                    className="w-8 h-8 flex items-center justify-center text-muted/50 hover:text-amber-500 hover:bg-amber-500/10 rounded-lg transition-all active:scale-95"
-                    title="Edit Exam"
-                  >
-                    <Edit3 size={16} strokeWidth={2} /> 
-                  </button>
-                  <button 
-                    onClick={() => handleDeleteExam(exam.id || exam._id)}
-                    className="w-8 h-8 flex items-center justify-center text-muted/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all active:scale-95"
-                    title="Delete Exam"
-                  >
-                    <Trash2 size={16} strokeWidth={2} /> 
-                  </button>
-               </div>
-            </td>
-          </tr>
-        )}
-      />
-    </div>
-  );
+
+              <SlidingTabBar
+                layoutId="mentor-exam-filter"
+                active={examFilter}
+                onChange={setExamFilter}
+                tabs={[
+                  { id: 'ALL', label: 'All' },
+                  { id: 'PUBLISHED', label: 'Published' },
+                  { id: 'DRAFT', label: 'Draft' },
+                ]}
+              />
+           </div>
+           <button 
+             onClick={() => navigate('/mentor/create-exam')}
+             className="relative z-10 flex items-center gap-2 bg-primary-500 text-white px-6 py-3 rounded-xl text-[13px] font-semibold hover:bg-primary-600 transition-all active:scale-95 shadow-lg shadow-primary-500/20"
+           >
+              <Plus size={16} strokeWidth={2.5} /> Create Exam
+           </button>
+        </div>
+
+        <DataTable 
+          loading={loading}
+          headers={['Exam Title', 'Category', 'Duration', 'Questions', 'Status', 'Actions']}
+          data={filteredExams}
+          renderRow={(exam) => (
+            <tr key={exam.id || exam._id} className="hover:bg-surface-hover/50 transition-colors group/row last:border-0">
+              <td className="px-6 py-4">
+                <div className="flex flex-col">
+                  <span className="font-semibold text-[14px] text-primary group-hover/row:text-primary-500 transition-colors">{exam.name || exam.title}</span>
+                  <span className="text-[12px] font-medium text-muted mt-0.5 opacity-60">ID: {exam.id || exam._id}</span>
+                </div>
+              </td>
+              <td className="px-6 py-4 text-[13px] font-medium text-muted">{exam.category || 'Standard'}</td>
+              <td className="px-6 py-4 text-[13px] text-primary font-medium">{exam.duration || '—'} min</td>
+              <td className="px-6 py-4 text-[13px] text-primary font-medium">{exam.questionsCount || 0} qs</td>
+              <td className="px-6 py-4">
+                 <StatusBadge status={exam.status || 'draft'} />
+              </td>
+              <td className="px-6 py-4">
+                 <div className="flex items-center gap-4">
+                    <button 
+                      onClick={() => navigate(`/mentor/exam/${exam.id || exam._id}/monitoring`)}
+                      className="w-8 h-8 flex items-center justify-center text-muted/50 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-all active:scale-95"
+                      title="Live Monitoring"
+                    >
+                      <Radio size={16} strokeWidth={2} className={exam.status === 'published' || exam.status === 'active' ? 'animate-pulse text-emerald-500' : ''} /> 
+                    </button>
+                    <button 
+                      onClick={() => handleTogglePublishResults(exam.id || exam._id, exam.resultsPublished)} 
+                      className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all active:scale-95 ${exam.resultsPublished ? 'text-emerald-500 bg-emerald-500/10' : 'text-muted/50 hover:text-emerald-500 hover:bg-emerald-500/10'}`}
+                      title={exam.resultsPublished ? "Results visible to students" : "Results hidden from students"}
+                    >
+                      {exam.resultsPublished ? <CheckCircle size={16} strokeWidth={2} /> : <EyeOff size={16} strokeWidth={2} />} 
+                    </button>
+                    <button 
+                      onClick={() => navigate(`/mentor/create-exam?id=${exam.id || exam._id}&view=true`)}
+                      className="w-8 h-8 flex items-center justify-center text-muted/50 hover:text-primary-500 hover:bg-primary-500/10 rounded-lg transition-all active:scale-95"
+                      title="View Details"
+                    >
+                      <Eye size={16} strokeWidth={2} /> 
+                    </button>
+                    <button 
+                      onClick={() => navigate(`/mentor/create-exam?id=${exam.id || exam._id}`)}
+                      className="w-8 h-8 flex items-center justify-center text-muted/50 hover:text-amber-500 hover:bg-amber-500/10 rounded-lg transition-all active:scale-95"
+                      title="Edit Exam"
+                    >
+                      <Edit3 size={16} strokeWidth={2} /> 
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteExam(exam.id || exam._id)}
+                      className="w-8 h-8 flex items-center justify-center text-muted/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all active:scale-95"
+                      title="Delete Exam"
+                    >
+                      <Trash2 size={16} strokeWidth={2} /> 
+                    </button>
+                 </div>
+              </td>
+            </tr>
+          )}
+        />
+      </div>
+    );
+  };
 
   const renderResults = () => (
     <div className="space-y-6 ">
       <div className="flex items-center justify-between py-4 relative overflow-hidden">
-         <div className="flex items-center gap-8">
+         <div className="flex items-center gap-4">
             <h2 className="text-xl font-bold text-primary tracking-tight">System-Wide Results & Reports</h2>
             
-          <div className="hidden lg:flex bg-surface-hover/50 p-1 rounded-xl border border-main">
-              {['ALL', 'PENDING', 'AUTO_SUBMITTED', 'IN_PROGRESS', 'EVALUATED / PAST'].map(f => (
-                <button 
-                  key={f}
-                  onClick={() => setResultFilter(f)}
-                  className={`px-6 py-2 rounded-lg text-[10px] font-bold tracking-wider transition-all ${resultFilter === f ? 'bg-surface text-primary shadow-sm border border-main' : 'text-muted hover:text-primary'}`}
-                >
-                  {f}
-                </button>
-              ))}
+          <div className="hidden lg:flex">
+              <SlidingTabBar
+                layoutId="mentor-results-filter"
+                active={resultFilter}
+                onChange={setResultFilter}
+                tabs={[
+                  { id: 'ALL', label: 'All' },
+                  { id: 'PENDING', label: 'Pending' },
+                  { id: 'AUTO_SUBMITTED', label: 'Auto Submitted' },
+                  { id: 'IN_PROGRESS', label: 'In Progress' },
+                  { id: 'EVALUATED / PAST', label: 'Evaluated / Past' }
+                ]}
+              />
             </div>
          </div>
          <div className="flex items-center gap-3">
@@ -1325,16 +1353,19 @@ export default function MentorDashboard() {
       </div>
 
       {/* Mobile filter bar */}
-      <div className="lg:hidden flex bg-surface-hover/50 p-1 rounded-xl border border-main w-full overflow-x-auto scroll-thin mb-8">
-        {['ALL', 'PENDING', 'AUTO_SUBMITTED', 'IN_PROGRESS', 'EVALUATED / PAST'].map(f => (
-          <button 
-            key={f}
-            onClick={() => setResultFilter(f)}
-            className={`px-6 py-2 rounded-lg text-[10px] font-bold tracking-wider transition-all whitespace-nowrap ${resultFilter === f ? 'bg-surface text-primary shadow-sm border border-main' : 'text-muted hover:text-primary'}`}
-          >
-            {f}
-          </button>
-        ))}
+      <div className="lg:hidden flex w-full overflow-x-auto scroll-thin mb-8">
+        <SlidingTabBar
+          layoutId="mentor-results-filter-mobile"
+          active={resultFilter}
+          onChange={setResultFilter}
+          tabs={[
+            { id: 'ALL', label: 'All' },
+            { id: 'PENDING', label: 'Pending' },
+            { id: 'AUTO_SUBMITTED', label: 'Auto Submitted' },
+            { id: 'IN_PROGRESS', label: 'In Progress' },
+            { id: 'EVALUATED / PAST', label: 'Evaluated / Past' }
+          ]}
+        />
       </div>
 
       <DataTable 

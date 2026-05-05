@@ -2,8 +2,8 @@ const mongoose = require('mongoose');
 
 // Ek naya schema test cases ke liye
 const testCaseSchema = new mongoose.Schema({
-    input: { type: String, required: true },
-    expectedOutput: { type: String, required: true },
+    input: { type: String, default: '' },
+    expectedOutput: { type: String, default: '' },
     isHidden: { type: Boolean, default: false } // True = Student ko input nahi dikhega
 });
 
@@ -13,7 +13,8 @@ const questionSchema = new mongoose.Schema({
         enum: ['mcq', 'short', 'coding', 'frontend-react'], 
         required: true 
     },
-    questionText: { type: String, required: true },
+    title: { type: String, default: '' },
+    questionText: { type: String, default: '' },
     marks: { type: Number, default: 5 },
 
     // MCQ fields

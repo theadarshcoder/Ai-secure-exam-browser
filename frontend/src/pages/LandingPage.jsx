@@ -138,7 +138,6 @@ const HybridNavbar = () => {
     { label: 'Security', section: 'security' },
     { label: 'Features', section: 'features' },
     { label: 'Platform', section: 'stats'    },
-    { label: 'About',    section: 'trust'    },
   ];
 
   // Track scroll position for pill morph
@@ -1614,7 +1613,7 @@ const CyclingPillHeadline = () => {
           </AnimatePresence>
         </div>
       </div>
-      <p className="mt-4 text-zinc-400 text-lg md:text-xl max-w-xl leading-relaxed">
+      <p className="mt-4 text-zinc-400 text-lg md:text-xl max-w-3xl leading-relaxed">
         Vision protects the real effort: <strong className="text-zinc-200 font-medium">The Person, The Process, and The Place</strong>
       </p>
     </section>
@@ -1664,104 +1663,10 @@ export default function LandingPage() {
         <CredStatsGrid />
       </div>
       <div id="trust">
-        <AboutVisionSection />
         <CredTrustFooter />
       </div>
     </div>
   );
 }
 
-const AboutVisionSection = () => {
-  const steps = [
-    {
-      title: "Configure & Invite",
-      desc: "Mentors create exams in seconds, set security protocols, and send encrypted magic links to students in bulk.",
-      icon: <QrCode className="w-6 h-6 text-indigo-400" />,
-      color: "from-indigo-500/20 to-transparent",
-      borderColor: "border-indigo-500/20"
-    },
-    {
-      title: "Authenticate & Lock",
-      desc: "Vision uses biometric mapping to verify identity. Once confirmed, the environment locks down—blocking all unauthorized apps.",
-      icon: <LockIcon className="w-6 h-6 text-emerald-400" />,
-      color: "from-emerald-500/20 to-transparent",
-      borderColor: "border-emerald-500/20"
-    },
-    {
-      title: "Monitor & Analyze",
-      desc: "Our AI engine tracks gaze, audio, and network activity. Mentors receive real-time alerts and comprehensive trust reports post-exam.",
-      icon: <Activity className="w-6 h-6 text-rose-400" />,
-      color: "from-rose-500/20 to-transparent",
-      borderColor: "border-rose-500/20"
-    }
-  ];
 
-  return (
-    <section className="bg-[#030303] py-24 px-8 relative overflow-hidden border-t border-white/5">
-      {/* Background Decor */}
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/5 blur-[120px] rounded-full pointer-events-none" />
-      
-      <div className="max-w-7xl mx-auto relative z-10">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-20">
-          <div className="max-w-2xl">
-            <motion.span 
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              className="text-zinc-500 font-mono text-xs tracking-[0.3em] uppercase mb-4 block"
-            >
-              The Architecture of Trust
-            </motion.span>
-            <motion.h2 
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 }}
-              className="text-4xl md:text-6xl font-semibold text-white tracking-tight"
-            >
-              How Vision <span className="text-zinc-500 italic">actually</span> works
-            </motion.h2>
-          </div>
-          <motion.p 
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
-            className="text-zinc-400 text-lg max-w-sm font-light leading-relaxed"
-          >
-            A three-phase security pipeline designed to protect integrity without compromising the student experience.
-          </motion.p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {steps.map((step, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.1 + 0.3 }}
-              className={`group relative p-8 rounded-3xl border ${step.borderColor} bg-gradient-to-b ${step.color} backdrop-blur-sm hover:border-white/20 transition-all duration-500`}
-            >
-              <div className="w-12 h-12 rounded-2xl bg-black border border-white/10 flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-500">
-                {step.icon}
-              </div>
-              <h3 className="text-2xl font-semibold text-white mb-4 tracking-tight">{step.title}</h3>
-              <p className="text-zinc-400 font-light leading-relaxed">
-                {step.desc}
-              </p>
-              
-              {/* Step Number Badge */}
-              <div className="absolute top-8 right-8 text-4xl font-bold text-white/[0.03] font-mono select-none">
-                0{i + 1}
-              </div>
-            </motion.div>
-          ))}
-        </div>
-        
-        {/* Connection line for desktop */}
-        <div className="hidden md:block absolute top-[60%] left-[10%] right-[10%] h-px bg-gradient-to-r from-transparent via-white/5 to-transparent z-0" />
-      </div>
-    </section>
-  );
-};

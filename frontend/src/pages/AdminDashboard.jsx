@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import PremiumSidebar from '../components/PremiumSidebar';
+import SlidingTabBar from '../components/SlidingTabBar';
 import ToggleSwitch from '../components/ToggleSwitch';
 import { ThemeToggle } from '../contexts/ThemeContext';
 import BouncingDotLoader from '../components/BouncingDotLoader';
@@ -466,6 +467,7 @@ export default function AdminDashboard() {
   const [userRoleFilter, setUserRoleFilter] = useState('ALL');
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [exams, setExams] = useState([]);
+  const [examFilter, setExamFilter] = useState('ALL');
   const [adminResults, setAdminResults] = useState([]);
   const [resultFilter, setResultFilter] = useState('ALL');
   
@@ -1058,16 +1060,16 @@ export default function AdminDashboard() {
         <div className="p-6 rounded-3xl bg-surface border border-main shadow-sm hover:shadow-md transition-shadow flex flex-col h-[500px] relative overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
           <div className="flex items-center justify-between mb-6 shrink-0 relative z-10">
              <div className="flex items-center gap-3">
-               <div className="text-emerald-500"><FileText size={24} strokeWidth={2.2} /></div>
-               <div className="mt-1">
-                 <h4 className="text-[13px] font-bold text-primary uppercase tracking-widest leading-none mb-1">Intelligence Logs</h4>
+               <div className="text-white"><FileText size={24} strokeWidth={2.2} /></div>
+               <div>
+                 <div className="text-[13px] font-bold text-primary uppercase tracking-widest leading-none mb-1">Intelligence Logs</div>
                  <p className="text-[11px] font-medium text-muted">Platform-wide operation trail & security events</p>
                </div>
              </div>
              <div className="flex items-center gap-3">
                 <button 
                   onClick={() => setContentTab('Results')} 
-                  className="text-[10px] font-black text-primary-500 hover:text-primary uppercase tracking-widest transition-all mr-4 bg-primary-500/5 px-3 py-1.5 rounded-lg border border-primary-500/10 shadow-sm"
+                  className="text-[10px] font-black text-primary hover:text-muted uppercase tracking-widest transition-all mr-4 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10 shadow-sm"
                 >
                   View All Reports
                 </button>
@@ -1107,15 +1109,15 @@ export default function AdminDashboard() {
         <div className="p-6 rounded-3xl bg-surface border border-main shadow-sm hover:shadow-md transition-shadow flex flex-col h-[500px] relative overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
            <div className="flex items-center justify-between mb-6 shrink-0 relative z-10">
               <div className="flex items-center gap-3">
-                <div className="text-primary-500"><AlertCircle size={24} strokeWidth={2.2} /></div>
-                <div className="mt-1">
-                  <h4 className="text-[13px] font-bold text-primary uppercase tracking-widest leading-none mb-1">Active Signals</h4>
+                <div className="text-white"><AlertCircle size={24} strokeWidth={2.2} /></div>
+                <div>
+                  <div className="text-[13px] font-bold text-primary uppercase tracking-widest leading-none mb-1">Active Signals</div>
                   <p className="text-[11px] font-medium text-muted">Real-time candidate telemetry</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                <span className="text-[10px] font-bold text-emerald-600 tracking-wider">LIVE</span>
+                <div className="w-1.5 h-1.5 rounded-full bg-white/60 animate-ping" />
+                <span className="text-[10px] font-bold text-white/60 tracking-wider">LIVE</span>
               </div>
            </div>
            
@@ -1181,21 +1183,18 @@ export default function AdminDashboard() {
               className="pl-11 pr-4 py-3 bg-surface border border-main rounded-2xl text-[13px] font-medium text-primary focus:outline-none focus:border-primary-500 w-[280px] transition-all placeholder:text-muted/40 shadow-inner"
             />
           </div>
-          <div className="hidden lg:flex bg-surface p-1 rounded-xl border border-main shadow-sm">
-            {[
-              { id: 'ALL', label: 'All' },
-              { id: 'student', label: 'Students' },
-              { id: 'mentor', label: 'Mentors' },
-              { id: 'admin', label: 'Admins' }
-            ].map(f => (
-               <button 
-                key={f.id}
-                onClick={() => setUserRoleFilter(f.id)}
-                className={`px-5 py-2 rounded-lg text-[12px] font-semibold transition-colors focus:outline-none ${userRoleFilter === f.id ? 'bg-slate-100 text-primary shadow-sm' : 'text-muted hover:text-primary hover:bg-slate-50'}`}
-              >
-                {f.label}
-              </button>
-            ))}
+          <div className="hidden lg:flex">
+            <SlidingTabBar
+              layoutId="admin-user-role-filter"
+              active={userRoleFilter}
+              onChange={setUserRoleFilter}
+              tabs={[
+                { id: 'ALL', label: 'All' },
+                { id: 'student', label: 'Students' },
+                { id: 'mentor', label: 'Mentors' },
+                { id: 'admin', label: 'Admins' },
+              ]}
+            />
           </div>
         </div>
         <div className="flex items-center gap-4">
@@ -1219,21 +1218,18 @@ export default function AdminDashboard() {
       </div>
 
       {/* Mobile filter bar */}
-      <div className="lg:hidden flex bg-slate-100 p-1 rounded-lg w-full overflow-x-auto scroll-thin mb-4">
-        {[
-          { id: 'ALL', label: 'ALL' },
-          { id: 'student', label: 'STUDENTS' },
-          { id: 'mentor', label: 'MENTORS' },
-          { id: 'admin', label: 'ADMINS' }
-        ].map(f => (
-          <button 
-            key={f.id}
-            onClick={() => setUserRoleFilter(f.id)}
-            className={`px-4 py-1.5 rounded-md text-[10px] font-bold tracking-widest uppercase transition-all whitespace-nowrap ${userRoleFilter === f.id ? 'bg-white text-primary-500 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            {f.label}
-          </button>
-        ))}
+      <div className="lg:hidden flex w-full overflow-x-auto mb-4">
+        <SlidingTabBar
+          layoutId="admin-user-role-filter-mobile"
+          active={userRoleFilter}
+          onChange={setUserRoleFilter}
+          tabs={[
+            { id: 'ALL', label: 'All' },
+            { id: 'student', label: 'Students' },
+            { id: 'mentor', label: 'Mentors' },
+            { id: 'admin', label: 'Admins' },
+          ]}
+        />
       </div>
 
 
@@ -1312,31 +1308,31 @@ export default function AdminDashboard() {
 
         {/* Add User Modal */}
         {showAddUserModal && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-50 flex items-center justify-center p-6">
-            <div className="bg-surface p-10 rounded-[2.5rem] shadow-2xl w-full max-w-lg border border-main animate-in zoom-in-95 duration-300 relative overflow-visible font-sans">
-               <div className="mb-8">
-                 <h3 className="text-2xl font-bold text-primary tracking-tight">Add New Member</h3>
-                 <p className="text-xs text-muted mt-1 font-medium">Create a new account for your institution's portal.</p>
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+            <div className="bg-surface p-7 rounded-2xl shadow-2xl w-full max-w-lg border border-main animate-in zoom-in-95 duration-200 relative font-sans">
+               <div className="mb-5">
+                 <h3 className="text-xl font-bold text-primary tracking-tight">Add New Member</h3>
+                 <p className="text-xs text-muted mt-1">Create a new account for your institution's portal.</p>
                </div>
                
-               <form onSubmit={handleCreateUser} className="space-y-6">
-                  <div className="grid grid-cols-2 gap-5">
+               <form onSubmit={handleCreateUser} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-[11px] font-bold text-muted uppercase tracking-widest mb-2.5 ml-1">Full Name</label>
-                        <input required type="text" placeholder="John Doe" value={newUser.name} onChange={e=>setNewUser({...newUser, name: e.target.value})} className="w-full px-5 py-3.5 bg-surface-hover border border-main text-[13px] font-semibold text-primary rounded-2xl focus:outline-none focus:border-primary-500/50 transition-all placeholder:text-muted/30" />
+                        <label className="block text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5 ml-0.5">Full Name</label>
+                        <input required type="text" placeholder="John Doe" value={newUser.name} onChange={e=>setNewUser({...newUser, name: e.target.value})} className="w-full px-4 py-2.5 bg-surface-hover border border-main text-[13px] text-primary rounded-xl focus:outline-none focus:border-primary-500/50 transition-all placeholder:text-muted/30" />
                     </div>
                     <div>
-                        <label className="block text-[11px] font-bold text-muted uppercase tracking-widest mb-2.5 ml-1">Email Address</label>
-                        <input required type="email" placeholder="john@example.com" value={newUser.email} onChange={e=>setNewUser({...newUser, email: e.target.value})} className="w-full px-5 py-3.5 bg-surface-hover border border-main text-[13px] font-semibold text-primary rounded-2xl focus:outline-none focus:border-primary-500/50 transition-all placeholder:text-muted/30" />
+                        <label className="block text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5 ml-0.5">Email Address</label>
+                        <input required type="email" placeholder="john@example.com" value={newUser.email} onChange={e=>setNewUser({...newUser, email: e.target.value})} className="w-full px-4 py-2.5 bg-surface-hover border border-main text-[13px] text-primary rounded-xl focus:outline-none focus:border-primary-500/50 transition-all placeholder:text-muted/30" />
                     </div>
                   </div>
                   <div>
-                      <label className="block text-[11px] font-bold text-muted uppercase tracking-widest mb-2.5 ml-1">Password</label>
-                      <input required type="password" placeholder="Create a strong password" value={newUser.password} onChange={e=>setNewUser({...newUser, password: e.target.value})} className="w-full px-5 py-3.5 bg-surface-hover border border-main text-[13px] font-semibold text-primary rounded-2xl focus:outline-none focus:border-primary-500/50 transition-colors placeholder:text-muted/30" />
+                      <label className="block text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5 ml-0.5">Password</label>
+                      <input required type="password" placeholder="Create a strong password" value={newUser.password} onChange={e=>setNewUser({...newUser, password: e.target.value})} className="w-full px-4 py-2.5 bg-surface-hover border border-main text-[13px] text-primary rounded-xl focus:outline-none focus:border-primary-500/50 transition-colors placeholder:text-muted/30" />
                   </div>
                   <div>
-                      <label className="block text-[11px] font-bold text-muted uppercase tracking-widest mb-3.5 ml-1">Assign Role</label>
-                      <div className="grid grid-cols-2 gap-3">
+                      <label className="block text-[11px] font-semibold text-muted uppercase tracking-wider mb-2 ml-0.5">Assign Role</label>
+                      <div className="grid grid-cols-2 gap-2">
                         {[
                           { id: 'student', label: 'Student', icon: ScanFace, desc: 'Exam candidate' },
                           { id: 'mentor', label: 'Mentor', icon: Users, desc: 'Exam proctor' },
@@ -1347,27 +1343,27 @@ export default function AdminDashboard() {
                             key={r.id}
                             type="button"
                             onClick={() => setNewUser({...newUser, role: r.id})}
-                            className={`flex flex-col items-start p-4 rounded-2xl border transition-all text-left group/role ${
+                            className={`flex flex-col items-start p-3 rounded-xl border transition-all text-left group/role ${
                               newUser.role === r.id 
-                                ? 'bg-primary-500/[0.03] border-primary-500 shadow-[0_0_20px_rgba(255,59,0,0.05)]' 
+                                ? 'bg-primary-500/[0.03] border-primary-500' 
                                 : 'bg-surface-hover/30 border-main hover:border-primary-500/30'
                             }`}
                           >
-                            <div className="flex items-center gap-2.5 mb-1.5">
-                              <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${newUser.role === r.id ? 'bg-primary-500 text-white' : 'bg-surface-hover text-muted group-hover/role:text-primary-500'}`}>
-                                <r.icon size={14} strokeWidth={2.5} />
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${newUser.role === r.id ? 'bg-primary-500 text-white' : 'bg-surface-hover text-muted group-hover/role:text-primary-500'}`}>
+                                <r.icon size={13} strokeWidth={2.5} />
                               </div>
-                              <span className={`text-[11px] font-black uppercase tracking-widest ${newUser.role === r.id ? 'text-primary' : 'text-muted'}`}>{r.label}</span>
+                              <span className={`text-[11px] font-bold uppercase tracking-wide ${newUser.role === r.id ? 'text-primary' : 'text-muted'}`}>{r.label}</span>
                             </div>
-                            <p className="text-[10px] text-muted font-bold opacity-40 leading-tight ml-0.5">{r.desc}</p>
+                            <p className="text-[10px] text-muted opacity-50 leading-tight ml-0.5">{r.desc}</p>
                           </button>
                         ))}
                       </div>
                   </div>
-                  <div className="flex items-center justify-end gap-3 pt-4 mt-4">
-                     <button type="button" onClick={() => setShowAddUserModal(false)} className="px-6 py-3 text-[11px] font-bold text-muted uppercase tracking-widest hover:text-primary transition-all active:scale-95">Cancel</button>
-                     <button type="submit" className="px-5 py-2.5 bg-primary-500 text-white text-[11px] font-bold uppercase tracking-widest hover:bg-primary-600 rounded-xl transition-all shadow-xl shadow-primary-500/10 active:scale-95 flex items-center gap-2">
-                       Create Member <Check size={14} strokeWidth={3} />
+                  <div className="flex items-center justify-end gap-3 pt-2">
+                     <button type="button" onClick={() => setShowAddUserModal(false)} className="px-5 py-2 text-[12px] font-medium text-muted hover:text-primary transition-all">Cancel</button>
+                     <button type="submit" className="px-5 py-2 bg-primary-500 text-white text-[12px] font-semibold hover:bg-primary-600 rounded-xl transition-all flex items-center gap-2">
+                       Create Member <Check size={13} strokeWidth={2.5} />
                      </button>
                   </div>
                </form>
@@ -1489,99 +1485,119 @@ export default function AdminDashboard() {
     </div>
   );
 
-  const renderExams = () => (
-    <div className="space-y-8 ">
-      <div className="flex items-center justify-between bg-surface p-6 rounded-3xl border border-main shadow-sm relative overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
-        <div className="relative z-10">
-          <h2 className="text-xl font-bold text-primary tracking-tight leading-none">Exam Library</h2>
-          <p className="text-[12px] text-muted font-medium mt-1">Global assessment library orchestration</p>
-        </div>
-        <button 
-          onClick={() => navigate('/mentor/create-exam?returnTo=/admin')}
-          className="relative z-10 flex items-center gap-2 px-6 py-3 bg-primary-500 text-white text-[13px] font-semibold hover:bg-primary-600 transition-all rounded-xl shadow-lg shadow-primary-500/20 active:scale-95"
-        >
-          <Plus size={16} strokeWidth={2.5} /> Create Exam
-        </button>
-      </div>
-      <DataTable 
-        loading={loading}
-        headers={['Exam Title', 'Created By', 'Category', 'Duration', 'Questions', 'Status', 'Actions']}
-        data={exams}
-        renderRow={(exam) => (
-          <tr key={exam.id || exam._id} className="hover:bg-surface-hover/50 transition-colors group/row last:border-0">
-            <td className="px-6 py-4">
-              <div className="flex flex-col">
-                <span className="font-semibold text-[14px] text-primary group-hover/row:text-primary-500 transition-colors">{exam.name || exam.title}</span>
-                <span className="text-[11px] font-medium text-muted mt-0.5 opacity-60">ID: {exam.id || exam._id}</span>
-              </div>
-            </td>
-            <td className="px-6 py-4 text-[13px] font-medium text-muted">{exam.creatorName || exam.creator?.name || 'Unknown'}</td>
-            <td className="px-6 py-4 text-[13px] font-medium text-muted">{exam.category || 'Standard'}</td>
-            <td className="px-6 py-4 text-[13px] text-primary font-medium">{exam.duration || '—'} min</td>
-            <td className="px-6 py-4 text-[13px] text-primary font-medium">{exam.questionsCount || 0} qs</td>
-            <td className="px-6 py-4">
-               {(() => {
-                 const now = new Date();
-                 const startDateStr = exam.time || exam.scheduledDate;
-                 const start = startDateStr ? new Date(startDateStr) : null;
-                 const end = start ? new Date(start.getTime() + (exam.duration || 60) * 60 * 1000) : null;
+  const renderExams = () => {
+    const filteredExams = exams.filter(e => {
+      if (examFilter === 'ALL') return true;
+      return e.status?.toUpperCase() === examFilter;
+    });
 
-                 if (exam.status === 'draft') return <Badge color="amber">Draft</Badge>;
-                 if (start && now < start) return <Badge color="zinc">Upcoming</Badge>;
-                 if (end && now > end && startDateStr) return <Badge color="zinc">Expired</Badge>;
-                 
-                 return (
-                   <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[11px] font-semibold border bg-emerald-500/10 text-emerald-500 border-emerald-500/20 tracking-wide">
-                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,1)]" />
-                     Live Active
-                   </span>
-                 );
-               })()}
-            </td>
-            <td className="px-6 py-4">
-              <div className="flex items-center gap-4">
-                <button 
-                  onClick={() => navigate(`/mentor/exam/${exam.id || exam._id}/monitoring`)}
-                  className="w-8 h-8 flex items-center justify-center text-muted/50 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-all active:scale-95"
-                  title="Live Monitoring"
-                >
-                  <Radio size={16} strokeWidth={2} className={exam.status === 'published' || exam.status === 'active' ? 'animate-pulse text-emerald-500' : ''} /> 
-                </button>
-                <button 
-                  onClick={() => handleTogglePublishResults(exam.id || exam._id, exam.resultsPublished)} 
-                  className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all active:scale-95 ${exam.resultsPublished ? 'text-emerald-500 bg-emerald-500/10' : 'text-muted/50 hover:text-emerald-500 hover:bg-emerald-500/10'}`}
-                  title={exam.resultsPublished ? "Results Published" : "Results Hidden"}
-                >
-                  {exam.resultsPublished ? <CheckCircle size={16} strokeWidth={2} /> : <EyeOff size={16} strokeWidth={2} />} 
-                </button>
-                <button 
-                  onClick={() => navigate(`/mentor/create-exam?id=${exam.id || exam._id}&view=true&returnTo=/admin`)} 
-                  className="w-8 h-8 flex items-center justify-center text-muted/50 hover:text-primary-500 hover:bg-primary-500/10 rounded-lg transition-all active:scale-95"
-                  title="View Exam"
-                >
-                  <Eye size={16} strokeWidth={2} />
-                </button>
-                <button 
-                  onClick={() => navigate(`/mentor/create-exam?id=${exam.id || exam._id}&returnTo=/admin`)} 
-                  className="w-8 h-8 flex items-center justify-center text-muted/50 hover:text-amber-500 hover:bg-amber-500/10 rounded-lg transition-all active:scale-95"
-                  title="Edit Exam"
-                >
-                  <Edit3 size={16} strokeWidth={2} />
-                </button>
-                <button 
-                  onClick={() => handleDeleteExam(exam.id || exam._id)} 
-                  className="w-8 h-8 flex items-center justify-center text-muted/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all active:scale-95"
-                  title="Delete Exam"
-                >
-                  <Trash2 size={16} strokeWidth={2} />
-                </button>
+    return (
+      <div className="space-y-8 ">
+        <div className="flex items-center justify-between bg-surface p-6 rounded-3xl border border-main shadow-sm relative overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
+           <div className="flex items-center gap-12">
+              <div className="relative z-10">
+                <h2 className="text-xl font-bold text-primary tracking-tight leading-none">Exam Library</h2>
+                <p className="text-[12px] text-muted font-medium mt-1">Global assessment library orchestration</p>
               </div>
-            </td>
-          </tr>
-        )}
-      />
-    </div>
-  );
+
+              <SlidingTabBar
+                layoutId="admin-exam-filter"
+                active={examFilter}
+                onChange={setExamFilter}
+                tabs={[
+                  { id: 'ALL', label: 'All' },
+                  { id: 'PUBLISHED', label: 'Published' },
+                  { id: 'DRAFT', label: 'Draft' },
+                ]}
+              />
+           </div>
+           <button 
+             onClick={() => navigate('/mentor/create-exam?returnTo=/admin')}
+             className="relative z-10 flex items-center gap-2 px-6 py-3 bg-primary-500 text-white text-[13px] font-semibold hover:bg-primary-600 transition-all rounded-xl shadow-lg shadow-primary-500/20 active:scale-95"
+           >
+             <Plus size={16} strokeWidth={2.5} /> Create Exam
+           </button>
+        </div>
+        <DataTable 
+          loading={loading}
+          headers={['Exam Title', 'Created By', 'Category', 'Duration', 'Questions', 'Status', 'Actions']}
+          data={filteredExams}
+          renderRow={(exam) => (
+            <tr key={exam.id || exam._id} className="hover:bg-surface-hover/50 transition-colors group/row last:border-0">
+              <td className="px-6 py-4">
+                <div className="flex flex-col">
+                  <span className="font-semibold text-[14px] text-primary group-hover/row:text-primary-500 transition-colors">{exam.name || exam.title}</span>
+                  <span className="text-[11px] font-medium text-muted mt-0.5 opacity-60">ID: {exam.id || exam._id}</span>
+                </div>
+              </td>
+              <td className="px-6 py-4 text-[13px] font-medium text-muted">{exam.creatorName || exam.creator?.name || 'Unknown'}</td>
+              <td className="px-6 py-4 text-[13px] font-medium text-muted">{exam.category || 'Standard'}</td>
+              <td className="px-6 py-4 text-[13px] text-primary font-medium">{exam.duration || '—'} min</td>
+              <td className="px-6 py-4 text-[13px] text-primary font-medium">{exam.questionsCount || 0} qs</td>
+              <td className="px-6 py-4">
+                 {(() => {
+                   const now = new Date();
+                   const startDateStr = exam.time || exam.scheduledDate;
+                   const start = startDateStr ? new Date(startDateStr) : null;
+                   const end = start ? new Date(start.getTime() + (exam.duration || 60) * 60 * 1000) : null;
+
+                   if (exam.status === 'draft') return <Badge color="amber">Draft</Badge>;
+                   if (start && now < start) return <Badge color="zinc">Upcoming</Badge>;
+                   if (end && now > end && startDateStr) return <Badge color="zinc">Expired</Badge>;
+                   
+                   return (
+                     <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[11px] font-semibold border bg-emerald-500/10 text-emerald-500 border-emerald-500/20 tracking-wide">
+                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,1)]" />
+                       Live Active
+                     </span>
+                   );
+                 })()}
+              </td>
+              <td className="px-6 py-4">
+                <div className="flex items-center gap-4">
+                  <button 
+                    onClick={() => navigate(`/mentor/exam/${exam.id || exam._id}/monitoring`)}
+                    className="w-8 h-8 flex items-center justify-center text-muted/50 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-all active:scale-95"
+                    title="Live Monitoring"
+                  >
+                    <Radio size={16} strokeWidth={2} className={exam.status === 'published' || exam.status === 'active' ? 'animate-pulse text-emerald-500' : ''} /> 
+                  </button>
+                  <button 
+                    onClick={() => handleTogglePublishResults(exam.id || exam._id, exam.resultsPublished)} 
+                    className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all active:scale-95 ${exam.resultsPublished ? 'text-emerald-500 bg-emerald-500/10' : 'text-muted/50 hover:text-emerald-500 hover:bg-emerald-500/10'}`}
+                    title={exam.resultsPublished ? "Results Published" : "Results Hidden"}
+                  >
+                    {exam.resultsPublished ? <CheckCircle size={16} strokeWidth={2} /> : <EyeOff size={16} strokeWidth={2} />} 
+                  </button>
+                  <button 
+                    onClick={() => navigate(`/mentor/create-exam?id=${exam.id || exam._id}&view=true&returnTo=/admin`)} 
+                    className="w-8 h-8 flex items-center justify-center text-muted/50 hover:text-primary-500 hover:bg-primary-500/10 rounded-lg transition-all active:scale-95"
+                    title="View Exam"
+                  >
+                    <Eye size={16} strokeWidth={2} /> 
+                  </button>
+                  <button 
+                    onClick={() => navigate(`/mentor/create-exam?id=${exam.id || exam._id}&returnTo=/admin`)}
+                    className="w-8 h-8 flex items-center justify-center text-muted/50 hover:text-amber-500 hover:bg-amber-500/10 rounded-lg transition-all active:scale-95"
+                    title="Edit Exam"
+                  >
+                    <Edit3 size={16} strokeWidth={2} /> 
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteExam(exam.id || exam._id)} 
+                    className="w-8 h-8 flex items-center justify-center text-muted/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all active:scale-95"
+                    title="Delete Exam"
+                  >
+                    <Trash2 size={16} strokeWidth={2} /> 
+                  </button>
+                </div>
+              </td>
+            </tr>
+          )}
+        />
+      </div>
+    );
+  };
 
   const renderSettings = () => (
     <div className="max-w-4xl mx-auto pb-32 ">
@@ -1782,19 +1798,22 @@ export default function AdminDashboard() {
   const renderResults = () => (
     <div className="space-y-6 ">
       <div className="flex items-center justify-between py-4 relative overflow-hidden">
-         <div className="flex items-center gap-8">
+         <div className="flex items-center gap-4">
             <h2 className="text-xl font-bold text-primary tracking-tight">System-Wide Results & Reports</h2>
             
-            <div className="hidden lg:flex bg-surface-hover/50 p-1 rounded-xl border border-main">
-              {['ALL', 'PENDING', 'AUTO_SUBMITTED', 'IN_PROGRESS', 'EVALUATED / PAST'].map(f => (
-                <button 
-                  key={f}
-                  onClick={() => setResultFilter(f)}
-                  className={`px-6 py-2 rounded-lg text-[10px] font-bold tracking-wider transition-all ${resultFilter === f ? 'bg-surface text-primary shadow-sm border border-main' : 'text-muted hover:text-primary'}`}
-                >
-                  {f}
-                </button>
-              ))}
+            <div className="hidden lg:flex">
+              <SlidingTabBar
+                layoutId="admin-results-filter"
+                active={resultFilter}
+                onChange={setResultFilter}
+                tabs={[
+                  { id: 'ALL', label: 'All' },
+                  { id: 'PENDING', label: 'Pending' },
+                  { id: 'AUTO_SUBMITTED', label: 'Auto Submitted' },
+                  { id: 'IN_PROGRESS', label: 'In Progress' },
+                  { id: 'EVALUATED / PAST', label: 'Evaluated / Past' }
+                ]}
+              />
             </div>
          </div>
          <div className="flex items-center gap-3">
@@ -1813,16 +1832,19 @@ export default function AdminDashboard() {
          </div>
       </div>
       {/* Mobile filter bar */}
-      <div className="lg:hidden flex bg-surface-hover/50 p-1 rounded-xl border border-main w-full overflow-x-auto scroll-thin mb-8">
-        {['ALL', 'PENDING', 'AUTO_SUBMITTED', 'IN_PROGRESS', 'EVALUATED / PAST'].map(f => (
-          <button 
-            key={f}
-            onClick={() => setResultFilter(f)}
-            className={`px-6 py-2 rounded-lg text-[10px] font-bold tracking-wider transition-all whitespace-nowrap ${resultFilter === f ? 'bg-surface text-primary shadow-sm border border-main' : 'text-muted hover:text-primary'}`}
-          >
-            {f}
-          </button>
-        ))}
+      <div className="lg:hidden flex w-full overflow-x-auto scroll-thin mb-8">
+        <SlidingTabBar
+          layoutId="admin-results-filter-mobile"
+          active={resultFilter}
+          onChange={setResultFilter}
+          tabs={[
+            { id: 'ALL', label: 'All' },
+            { id: 'PENDING', label: 'Pending' },
+            { id: 'AUTO_SUBMITTED', label: 'Auto Submitted' },
+            { id: 'IN_PROGRESS', label: 'In Progress' },
+            { id: 'EVALUATED / PAST', label: 'Evaluated / Past' }
+          ]}
+        />
       </div>
 
       <DataTable 
@@ -2048,21 +2070,18 @@ export default function AdminDashboard() {
 
       {/* Filters & Search */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50 p-1.5 rounded-xl border border-slate-200/60">
-        <div className="flex items-center bg-white p-1 rounded-lg shadow-sm border border-slate-200/50 overflow-x-auto">
-          {[
-            { id: 'ALL', label: 'All' },
-            { id: 'PENDING', label: 'Pending' },
-            { id: 'VERIFIED', label: 'Verified' },
-            { id: 'ISSUES', label: 'Issues' }
-          ].map(f => (
-            <button 
-              key={f.id}
-              onClick={() => setCandidateFilter(f.id)}
-              className={`px-4 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap ${candidateFilter === f.id ? 'bg-slate-100 text-slate-900 shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
-            >
-              {f.label}
-            </button>
-          ))}
+        <div className="flex items-center overflow-x-auto">
+            <SlidingTabBar
+              layoutId="admin-candidate-filter"
+              active={candidateFilter}
+              onChange={setCandidateFilter}
+              tabs={[
+                { id: 'ALL', label: 'All' },
+                { id: 'PENDING', label: 'Pending' },
+                { id: 'VERIFIED', label: 'Verified' },
+                { id: 'ISSUES', label: 'Issues' },
+              ]}
+            />
         </div>
 
         <div className="relative shrink-0 w-full sm:w-auto">
@@ -2518,15 +2537,11 @@ export default function AdminDashboard() {
             style={{ left: sidebarExpanded ? 220 : 76 }}
           >
             <div className="max-w-6xl w-full mx-auto flex justify-end items-center gap-6">
-               <div className="flex flex-col items-end">
-                  <p className="text-[9px] font-bold text-muted uppercase tracking-wider mb-0.5 opacity-60">Security Info</p>
-                  <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Engine v2.4.0 Active</p>
-               </div>
                <button 
                  onClick={handleSaveSettings} 
                  className="px-8 py-2.5 bg-emerald-500 text-white text-[10px] font-bold hover:bg-emerald-600 transition-all rounded-xl shadow-lg shadow-emerald-500/20 active:scale-95 flex items-center gap-2 uppercase tracking-widest"
                >
-                  <ShieldCheck size={14} strokeWidth={2.5} /> Publish Exam
+                  <ShieldCheck size={14} strokeWidth={2.5} /> Save Settings
                </button>
             </div>
           </div>
@@ -2553,16 +2568,36 @@ export default function AdminDashboard() {
 
       {/* Confirm Modal */}
       {confirmModal.show && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-          <div className="bg-surface rounded-[2.5rem] p-10 shadow-2xl w-full max-w-sm border border-main animate-in zoom-in-95 duration-200">
-            <div className="w-16 h-16 rounded-[1.5rem] bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto mb-8 shadow-xl shadow-amber-500/10">
-              <AlertOctagon size={32} className="text-amber-500" strokeWidth={2.5} />
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-main)', borderRadius: 16, padding: '28px 28px 24px', width: '100%', maxWidth: 380, boxShadow: '0 20px 60px rgba(0,0,0,0.15)', animation: 'fadeIn 0.15s ease' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <AlertOctagon size={18} style={{ color: '#f59e0b' }} strokeWidth={2} />
+              </div>
+              <div>
+                <p style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text-primary)', fontFamily: "'Inter', sans-serif", lineHeight: 1.3 }}>Confirm Action</p>
+                <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2, fontFamily: "'Inter', sans-serif" }}>This action cannot be undone</p>
+              </div>
             </div>
-            <h3 className="text-sm font-black text-primary text-center uppercase tracking-[0.2em] mb-3">Settings</h3>
-            <p className="text-[11px] text-muted text-center mb-10 font-black uppercase tracking-widest leading-relaxed opacity-60">{confirmModal.msg}</p>
-            <div className="flex items-center gap-4">
-              <button onClick={closeConfirm} className="flex-1 h-14 rounded-2xl border border-main text-[10px] font-black text-muted uppercase tracking-widest hover:bg-main transition-all active:scale-95">Cancel</button>
-              <button onClick={() => { confirmModal.onConfirm?.(); closeConfirm(); }} className="flex-1 h-14 rounded-2xl bg-primary-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-xl shadow-primary-500/20 active:scale-95">Authorize</button>
+
+            {/* Message */}
+            <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 24, paddingLeft: 2, fontFamily: "'Inter', sans-serif", fontWeight: 400 }}>{confirmModal.msg}</p>
+
+            {/* Actions */}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={closeConfirm}
+                style={{ flex: 1, height: 38, borderRadius: 10, border: '1px solid var(--border-main)', background: 'var(--bg-surface)', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500, letterSpacing: '-0.01em', cursor: 'pointer', transition: 'all 0.15s', fontFamily: "'Inter', sans-serif" }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-surface-hover)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-surface)'}
+              >Cancel</button>
+              <button
+                onClick={() => { confirmModal.onConfirm?.(); closeConfirm(); }}
+                style={{ flex: 1, height: 38, borderRadius: 10, border: 'none', background: '#ef4444', color: '#fff', fontSize: 13, fontWeight: 600, letterSpacing: '-0.01em', cursor: 'pointer', transition: 'all 0.15s', fontFamily: "'Inter', sans-serif" }}
+                onMouseEnter={e => e.currentTarget.style.background = '#dc2626'}
+                onMouseLeave={e => e.currentTarget.style.background = '#ef4444'}
+              >Confirm</button>
             </div>
           </div>
         </div>
