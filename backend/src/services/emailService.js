@@ -172,10 +172,21 @@ Do not share your credentials with anyone.
             text
         });
 
-        console.log(`📧 [Email] Sent to ${to} | MessageId: ${info.messageId}`);
+        console.log('📧 [Email Service] SUCCESS:', {
+            to,
+            examName,
+            messageId: info.messageId,
+            response: info.response
+        });
         return { success: true, id: info.messageId };
     } catch (error) {
-        console.error(`❌ [Email] Failed to send to ${to}:`, error.message);
+        console.error('❌ [Email Service] FAILED:', {
+            to,
+            examName,
+            error: error.message,
+            code: error.code,
+            command: error.command
+        });
         return { success: false, error: error.message };
     }
 };

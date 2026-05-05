@@ -82,11 +82,18 @@ const setupInviteEmailWorker = () => {
 
 
     worker.on('completed', (job) => {
-        console.log(`✅ [Invite Worker] Job ${job.id} completed for ${job.data.email}`);
+        console.log(`✅ [Invite Worker] Job ${job.id} COMPLETED:`, {
+            email: job.data.email,
+            examName: job.data.examName,
+            inviteId: job.data.inviteId
+        });
     });
 
     worker.on('failed', (job, err) => {
-        console.error(`❌ [Invite Worker] Job ${job.id} failed (attempt ${job.attemptsMade}): ${err.message}`);
+        console.error(`❌ [Invite Worker] Job ${job.id} FAILED (Attempt ${job.attemptsMade + 1}/${job.opts.attempts}):`, {
+            email: job?.data?.email,
+            error: err.message
+        });
     });
 
     console.log('📨 [Invite Worker] Email worker initialized and ready.');

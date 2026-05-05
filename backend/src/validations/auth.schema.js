@@ -31,7 +31,8 @@ const refreshSchema = z.object({
 
 const inviteVerifySchema = z.object({
     body: z.object({
-        token: z.string().min(1, "Invitation token is required")
+        token: z.string().min(1, "Invitation token is required"),
+        deviceId: z.string().optional()
     }).strict()
 });
 

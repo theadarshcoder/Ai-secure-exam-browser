@@ -195,14 +195,9 @@ const QuestionPalette = React.memo(
   },
 );
 
-const ProctoringSidebar = React.memo(
-  ({
-    cameraActive,
-    videoRef,
-    faceActive,
-    confidence,
-    camError,
     onRetryCamera,
+    modelsLoaded,
+    isAIInitializing,
   }) => (
     <div className="flex flex-col items-center w-full gap-2">
       <div className="relative group w-full">
@@ -222,16 +217,25 @@ const ProctoringSidebar = React.memo(
               <div className="absolute inset-0 z-[5]" />
             </>
           ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-surface-hover">
-              <CameraOff size={24} className="text-muted opacity-20" />
-              <span className="text-[9px] font-bold text-muted uppercase tracking-widest">
-                Feed Disabled
+            <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-surface-hover">
+              <div className="relative">
+                <CameraOff size={24} className="text-muted opacity-20" />
+                {!camError && (
+                   <motion.div 
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                    className="absolute -inset-2 border-2 border-t-indigo-500 border-transparent rounded-full"
+                  />
+                )}
+              </div>
+              <span className="text-[9px] font-bold text-muted uppercase tracking-[0.2em] animate-pulse">
+                {camError ? "Feed Disabled" : "Initializing Secure Feed..."}
               </span>
             </div>
           )}
           <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2 py-1 bg-black/60 backdrop-blur-md rounded-lg text-[8px] font-bold text-white uppercase tracking-widest border border-white/10 z-10">
-            <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
-            Live
+            <div className={`w-1.5 h-1.5 rounded-full ${modelsLoaded ? 'bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)]'}`} />
+            {modelsLoaded ? 'Live Proxy' : isAIInitializing ? 'Syncing AI...' : 'Wait...'}
           </div>
         </div>
       </div>
@@ -1009,7 +1013,38 @@ const { examId } = useParams();
     return () => clearInterval(heartbeatInterval);
   }, [examId]);
 
-  const [questions, setQuestions] = useState([]); // Will store shuffled list
+  const [rawQuestions, setRawQuestions] = useState([]);
+  const [shuffleSeed, setShuffleSeed] = useState(null);
+  const [isInitializing, setIsInitializing] = useState(true);
+
+  const questions = useMemo(() => {
+    if (!rawQuestions.length || !shuffleSeed) return [];
+    const getRNG = (salt) => generateSeed(shuffleSeed + salt);
+
+    const processed = rawQuestions.map((q) => {
+      const questionId = q.id || q._id;
+      const processedQ = { ...q, originalId: questionId };
+      if (
+        processedQ.type === "mcq" &&
+        processedQ.options &&
+        Array.isArray(processedQ.options)
+      ) {
+        const optionsWithIndex = processedQ.options.map((optText, optIndex) => ({
+          text: optText,
+          originalIndex: optIndex,
+        }));
+        processedQ.displayOptions = seededShuffle(
+          optionsWithIndex,
+          getRNG(questionId),
+        );
+      } else if (processedQ.type === "mcq") {
+        processedQ.displayOptions = [];
+      }
+      return processedQ;
+    });
+
+    return seededShuffle(processed, getRNG("main_questions"));
+  }, [rawQuestions, shuffleSeed]);
   const [secondsLeft, setSecondsLeft] = useState(TOTAL_SECONDS);
   const [endTime, setEndTime] = useState(null);
   const [cameraActive, setCameraActive] = useState(false); // false until stream is confirmed active
@@ -1058,6 +1093,8 @@ const { examId } = useParams();
   const [headerAlert, setHeaderAlert] = useState(null);
   const [helpCooldown, setHelpCooldown] = useState(0); 
   const [aiModel, setAiModel] = useState(null); // 🧠 AI Proctoring Model
+  const [isAIInitializing, setIsAIInitializing] = useState(false);
+  const initEndTime = useRef(Date.now() + 5000); // 🛡️ Anchor for violation grace period
 
   // Layout state
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
@@ -1439,31 +1476,7 @@ const { examId } = useParams();
     captureAndUploadSnapshot,
   ]);
 
-  // 🧠 AI Proctoring: Load Model & Detection Loop
-  useEffect(() => {
-    let isMounted = true;
-    
-    const loadModel = async () => {
-      try {
-        if (!window.cocoSsd) {
-          console.warn("AI: COCO-SSD script not loaded yet...");
-          return;
-        }
-        console.log("🧠 AI: Initializing Object Detection Model...");
-        const model = await window.cocoSsd.load();
-        if (isMounted) {
-          setAiModel(model);
-          setModelsLoaded(true);
-          console.log("🚀 AI: Proctoring Engine Active (COCO-SSD)");
-        }
-      } catch (err) {
-        console.error("❌ AI: Failed to load detection model:", err.message);
-      }
-    };
-
-    loadModel();
-    return () => { isMounted = false; };
-  }, []);
+  // 🧠 AI Proctoring: Load Model & Detection Loop (REMOVED: Moved to handleSecureEntry)
 
   const runAIDetection = useCallback(async () => {
     if (!aiModel || !videoRef.current || submitted || terminated || isBlocked) return;
@@ -1567,6 +1580,12 @@ const { examId } = useParams();
     // Bug 8: Tab Switch Incident Logging (Backend Authoritative)
     const handleVisibilityChange = () => {
       if (submitted || terminated) return;
+
+      // 🛡️ Fix: Deterministic Grace Period check
+      if (Date.now() < initEndTime.current) {
+        console.log("🛡️ Grace Period: Ignoring potential ghost violation");
+        return;
+      }
 
       if (document.hidden) {
         bgHiddenTimeRef.current = Date.now();
@@ -1829,41 +1848,8 @@ const { examId } = useParams();
         setSessionId(sessionProgress.sessionId);
 
         if (data.questions && data.questions.length > 0) {
-          const mainSeedStr = examId + sessionProgress.sessionId;
-          const getRNG = (salt) => generateSeed(mainSeedStr + salt);
-
-          const processedQuestions = data.questions.map((q) => {
-            const questionId = q.id || q._id;
-            const processedQ = { ...q, originalId: questionId };
-
-            if (
-              processedQ.type === "mcq" &&
-              processedQ.options &&
-              Array.isArray(processedQ.options)
-            ) {
-              const optionsWithIndex = processedQ.options.map(
-                (optText, optIndex) => ({
-                  text: optText,
-                  originalIndex: optIndex,
-                }),
-              );
-              processedQ.displayOptions = seededShuffle(
-                optionsWithIndex,
-                getRNG(questionId),
-              );
-            } else if (processedQ.type === "mcq") {
-              // Handle MCQ with missing options gracefully
-              processedQ.displayOptions = [];
-              console.warn(`MCQ Question ${questionId} has no options!`);
-            }
-            return processedQ;
-          });
-
-          const finalShuffledQuestions = seededShuffle(
-            processedQuestions,
-            getRNG("main_questions"),
-          );
-          setQuestions(finalShuffledQuestions);
+          setRawQuestions(data.questions);
+          setShuffleSeed(examId + sessionProgress.sessionId);
 
           // Restore Progress
           let restoredTime =
@@ -1986,42 +1972,36 @@ const { examId } = useParams();
     }
   }, [examId, navigate]);
 
-  // 📷 Camera & AI Setup
+  // 📷 Camera & AI Setup (Refactored to be Deterministic)
   const initCamera = useCallback(async () => {
     try {
       const s = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
+        video: { width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: false,
       });
+      
       setStream(s);
       if (videoRef.current) videoRef.current.srcObject = s;
-      setCamError(false); // Clear any prior error
-      setCameraActive(true); // ✅ Only set active AFTER stream is confirmed
+      
+      // 🛡️ Wait for video to actually start playing
+      await new Promise((resolve) => {
+        if (videoRef.current) {
+          videoRef.current.onloadedmetadata = () => {
+            videoRef.current.play().then(resolve);
+          };
+        } else resolve();
+      });
 
-/* 
-      const MODEL_URL =
-        "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
-      await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-      setModelsLoaded(true);
-*/
-
+      setCamError(false);
+      setCameraActive(true);
       return s;
     } catch (err) {
       console.warn("Camera/Mic permission denied");
-      setCameraActive(false); // ❌ Keep disabled — show placeholder, not black video
-      setCamError(true); // Show the error banner with Retry button
-      // Log to telemetry
-      api
-        .post("/telemetry/log", {
-          errorType: "CAMERA_DENIED",
-          severity: "high",
-          message: `Exam Cockpit camera access failed: ${err.message}`,
-          metadata: { examId, errorName: err.name },
-        })
-        .catch(() => {});
+      setCameraActive(false);
+      setCamError(true);
       throw err;
     }
-  }, []);
+  }, [examId]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -2236,15 +2216,58 @@ const { examId } = useParams();
 
   const handleSecureEntry = async () => {
     if (!document.documentElement.requestFullscreen) return;
+    
     try {
+      // 1. Enter Fullscreen (The mandatory first step)
       if (exam?.settings?.forceFullscreen !== false) {
         await document.documentElement.requestFullscreen();
+        
+        // 🛡️ Await actual fullscreen confirmation from the browser
+        await new Promise((resolve) => {
+          const handler = () => {
+            if (document.fullscreenElement) {
+              document.removeEventListener("fullscreenchange", handler);
+              resolve();
+            }
+          };
+          document.addEventListener("fullscreenchange", handler);
+          // Safety timeout
+          setTimeout(resolve, 2000);
+        });
         setIsFullscreen(true);
       }
+
+      // 2. Start Camera (Only after UI is stable in fullscreen)
       if (exam?.settings?.enableWebcam !== false) {
         await initCamera();
       }
+
+      // 3. Clear interaction overlay
       setNeedsInteraction(false);
+      
+      // 4. Start session-start grace period (3 seconds)
+      setIsInitializing(true);
+      initEndTime.current = Date.now() + 3000;
+      setTimeout(() => setIsInitializing(false), 3000);
+
+      // 5. Defer AI Model Loading (Yield thread first)
+      setTimeout(async () => {
+        if (!window.cocoSsd || aiModel) return;
+        setIsAIInitializing(true);
+        try {
+          // Yield to let UI breathe
+          await new Promise(r => setTimeout(r, 100)); 
+          const model = await window.cocoSsd.load();
+          setAiModel(model);
+          setModelsLoaded(true);
+          console.log("🚀 AI: Background Engine Activated");
+        } catch (err) {
+          console.error("AI load failed", err);
+        } finally {
+          setIsAIInitializing(false);
+        }
+      }, 1000);
+
     } catch (err) {
       console.error("Secure entry failed:", err);
       toast.error("Security initialization failed. Please try again.");
@@ -2462,13 +2485,9 @@ const { examId } = useParams();
               navigateTo={navigateTo}
             />
             <div className="px-3 pb-3 pt-5 border-t border-main flex justify-center">
-              <ProctoringSidebar
-                cameraActive={cameraActive}
-                videoRef={videoRef}
-                faceActive={false}
-                confidence={0}
-                camError={camError}
                 onRetryCamera={initCamera}
+                modelsLoaded={modelsLoaded}
+                isAIInitializing={isAIInitializing}
               />
             </div>
             <div className="h-[92px] border-t border-main shrink-0 mt-auto flex flex-col bg-surface">
@@ -2541,22 +2560,29 @@ const { examId } = useParams();
                       <ChevronsLeftRight size={14} className="m-[3px]" />
                     </div>
                   </div>
-                  <CodingEnvironment
-                    question={q}
-                    answer={answers[currentQuestionId]}
-                    onCodeChange={onCodeChange}
-                    selectedLanguage={selectedLanguage}
-                    setSelectedLanguage={handleSetLanguage}
-                    isLangDropdownOpen={isLangDropdownOpen}
-                    setIsLangDropdownOpen={setIsLangDropdownOpen}
-                    editorHeight={editorHeight}
-                    setEditorHeight={setEditorHeight}
-                    isExecuting={isExecuting}
-                    executionResult={executionResult}
-                    activeTab={activeTab}
-                    setActiveTab={setActiveTab}
-                    onMouseDown={onMouseDown}
-                  />
+                  {!isInitializing ? (
+                    <CodingEnvironment
+                      question={q}
+                      answer={answers[currentQuestionId]}
+                      onCodeChange={onCodeChange}
+                      selectedLanguage={selectedLanguage}
+                      setSelectedLanguage={handleSetLanguage}
+                      isLangDropdownOpen={isLangDropdownOpen}
+                      setIsLangDropdownOpen={setIsLangDropdownOpen}
+                      editorHeight={editorHeight}
+                      setEditorHeight={setEditorHeight}
+                      isExecuting={isExecuting}
+                      executionResult={executionResult}
+                      activeTab={activeTab}
+                      setActiveTab={setActiveTab}
+                      onMouseDown={onMouseDown}
+                    />
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center bg-surface-hover border-l border-main">
+                      <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mb-4 opacity-40" />
+                      <span className="text-[10px] font-bold text-muted uppercase tracking-[0.2em] animate-pulse">Initializing Editor...</span>
+                    </div>
+                  )}
                 </div>
               ) : q?.type?.toLowerCase() === "frontend-react" ? (
                 <div className="flex-1 flex min-h-0 overflow-hidden">
@@ -2565,15 +2591,22 @@ const { examId } = useParams();
                     index={currentQ}
                     markedForReview={markedForReview}
                   />
-                  <FrontendReactEnvironment
-                    question={q}
-                    answer={answers[currentQuestionId]}
-                    onCodeChange={onCodeChange}
-                    isExecuting={isExecuting}
-                    executionResult={executionResult}
-                    activeTab={activeTab}
-                    setActiveTab={setActiveTab}
-                  />
+                  {!isInitializing ? (
+                    <FrontendReactEnvironment
+                      question={q}
+                      answer={answers[currentQuestionId]}
+                      onCodeChange={onCodeChange}
+                      isExecuting={isExecuting}
+                      executionResult={executionResult}
+                      activeTab={activeTab}
+                      setActiveTab={setActiveTab}
+                    />
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center bg-surface-hover border-l border-main">
+                      <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mb-4 opacity-40" />
+                      <span className="text-[10px] font-bold text-muted uppercase tracking-[0.2em] animate-pulse">Initializing UI Environment...</span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center bg-page px-4 py-6 overflow-y-auto">

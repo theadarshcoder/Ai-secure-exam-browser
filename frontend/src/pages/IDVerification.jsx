@@ -130,7 +130,7 @@ export default function IDVerification() {
     setError(null);
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: 1280, height: 720 },
+        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false,
       });
       setStream(mediaStream);
@@ -179,32 +179,50 @@ export default function IDVerification() {
     }
   }, [stream, step, error, capturedPhoto]);
 
-  // Face Detection Loop
+  // Face Detection Loop (Throttled to 200ms to prevent main thread choking)
   useEffect(() => {
     if (!stream || !modelsLoaded || step !== 1 || capturedPhoto) return;
-    let frameId;
-    const loop = async () => {
+    
+    let intervalId;
+    const runDetection = async () => {
       if (videoRef.current?.readyState === 4) {
-        const det = await faceapi.detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 }));
-        if (det) {
-          const v = videoRef.current, c = v.parentElement;
-          const s = Math.max(c.clientWidth / v.videoWidth, c.clientHeight / v.videoHeight);
-          const ox = (c.clientWidth  - v.videoWidth  * s) / 2;
-          const oy = (c.clientHeight - v.videoHeight * s) / 2;
-          const b = det.box;
-          setFaceBox({
-            x: c.clientWidth - (b.x * s + b.width * s + ox) - b.width * s * 0.15,
-            y: b.y * s + oy - b.height * s * 0.3,
-            width:  b.width  * s * 1.3,
-            height: b.height * s * 1.5
-          });
-        } else setFaceBox(null);
+        try {
+          const det = await faceapi.detectSingleFace(
+            videoRef.current, 
+            new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 })
+          );
+          
+          if (det) {
+            const v = videoRef.current, c = v.parentElement;
+            const s = Math.max(c.clientWidth / v.videoWidth, c.clientHeight / v.videoHeight);
+            const ox = (c.clientWidth  - v.videoWidth  * s) / 2;
+            const oy = (c.clientHeight - v.videoHeight * s) / 2;
+            const b = det.box;
+            setFaceBox({
+              x: c.clientWidth - (b.x * s + b.width * s + ox) - b.width * s * 0.15,
+              y: b.y * s + oy - b.height * s * 0.3,
+              width:  b.width  * s * 1.3,
+              height: b.height * s * 1.5
+            });
+          } else {
+            setFaceBox(null);
+          }
+        } catch (err) {
+          console.warn('Detection error:', err);
+        }
       }
-      frameId = requestAnimationFrame(loop);
     };
-    loop();
-    return () => cancelAnimationFrame(frameId);
-  }, [stream, modelsLoaded, step]);
+
+    // Defer start slightly to let video stabilize
+    const timerId = setTimeout(() => {
+      intervalId = setInterval(runDetection, 200);
+    }, 500);
+
+    return () => {
+      clearTimeout(timerId);
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [stream, modelsLoaded, step, capturedPhoto]);
 
   const capture = () => {
     setIsProcessing(true);
@@ -304,7 +322,12 @@ export default function IDVerification() {
                       disablePictureInPicture disableRemotePlayback
                       className={`absolute inset-0 w-full h-full object-cover transition-all duration-700 ${isProcessing ? 'opacity-30 blur-xl' : 'opacity-100'} ${step === 1 ? 'scale-x-[-1]' : ''}`}
                     />
-                  ) : null}
+                  ) : (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950">
+                      <Loader2 className="w-8 h-8 text-indigo-400 animate-spin mb-4" />
+                      <span className="text-[10px] font-bold text-indigo-400/60 uppercase tracking-[0.3em]">Connecting to Camera</span>
+                    </div>
+                  )}
 
                   {/* Refined Identity Guides */}
                   <div className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center overflow-hidden">

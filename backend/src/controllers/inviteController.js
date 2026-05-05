@@ -30,6 +30,21 @@ const isValidEmail = (email) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 };
 
+// ─── Helper: Get correct frontend URL dynamically ───────────
+const getFrontendUrl = (req) => {
+    const origin = req.headers.origin;
+    const allowed = process.env.FRONTEND_URL?.split(',').map(u => u.trim()) || [];
+    
+    // If the request origin matches one of our allowed URLs, use it!
+    if (origin && allowed.includes(origin)) {
+        return origin;
+    }
+    
+    // Fallback: Pick the first non-localhost URL if available
+    const nonLocal = allowed.find(url => !url.includes('localhost'));
+    return nonLocal || allowed[0] || 'http://localhost:5173';
+};
+
 // ═══════════════════════════════════════════════════════════
 //  POST /api/exams/:examId/bulk-invite
 //  Admin/Mentor uploads CSV → creates users → sends invites
@@ -168,7 +183,7 @@ exports.bulkInvite = asyncHandler(async (req, res) => {
     }).select('email');
     const alreadyInvitedEmails = new Set(existingInvites.map(i => i.email));
 
-    const FRONTEND_URL = process.env.FRONTEND_URL?.split(',')[0]?.trim() || 'http://localhost:5173';
+    const FRONTEND_URL = getFrontendUrl(req);
     const TOKEN_EXPIRY_HOURS = 72; // 3 days
     const expiresAt = new Date(Date.now() + TOKEN_EXPIRY_HOURS * 60 * 60 * 1000);
 
@@ -297,11 +312,10 @@ exports.verifyInvite = asyncHandler(async (req, res) => {
         throw new Error(GENERIC_ERROR);
     }
 
-    // ─── Device Fingerprinting (Fix #1: Improved with IP) ──────
+    // ─── Device Fingerprinting (Fix: Removed IP to avoid dynamic IP lockout) ──
     const userAgent = req.headers['user-agent'] || 'unknown';
-    const userIP = req.ip || req.headers['x-forwarded-for'] || 'unknown';
     const secureFingerprint = crypto.createHash('sha256')
-        .update(`${userAgent}-${userIP}-${deviceId || 'no-device'}`)
+        .update(`${userAgent}-${deviceId || 'no-device'}`)
         .digest('hex');
 
     // ─── Tab Reuse / Session Lock (Fix #5) ───────────────
@@ -444,7 +458,7 @@ exports.resendInvite = asyncHandler(async (req, res) => {
     }
 
     // ─── Token Rotation: Generate NEW token, invalidate old one ───
-    const FRONTEND_URL = process.env.FRONTEND_URL?.split(',')[0]?.trim() || 'http://localhost:5173';
+    const FRONTEND_URL = getFrontendUrl(req);
     const TOKEN_EXPIRY_HOURS = 72;
     const newPlainToken = crypto.randomBytes(32).toString('hex');
     const newTokenHash = hashToken(newPlainToken);
