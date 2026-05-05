@@ -2477,7 +2477,8 @@ exports.exitExam = asyncHandler(async (req, res) => {
         throw new Error('Active session not found');
     }
 
-    if (session.status !== 'in_progress') {
+    // Allow exit from 'in_progress' OR 'blocked' (supervisor force-exit with password)
+    if (session.status !== 'in_progress' && session.status !== 'blocked') {
         res.status(400);
         throw new Error(`Cannot exit. Exam is not in progress. Status: ${session.status}`);
     }

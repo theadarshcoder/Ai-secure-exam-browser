@@ -369,7 +369,7 @@ const ExitModal = React.memo(
   ({ isOpen, onClose, onExit, password, setPassword, error }) => (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-md flex items-center justify-center p-6">
+        <div className="fixed inset-0 z-[500] bg-black/80 backdrop-blur-md flex items-center justify-center p-6">
           <motion.div
             initial={{ scale: 0.95, y: 10, opacity: 0 }}
             animate={{ scale: 1, y: 0, opacity: 1 }}
@@ -2934,7 +2934,7 @@ const { examId } = useParams();
       />
       <ExitModal
         isOpen={showExitPrompt}
-        onClose={() => setShowExitPrompt(false)}
+        onClose={() => { setShowExitPrompt(false); setExitError(""); setExitPassword(""); }}
         password={exitPassword}
         setPassword={setExitPassword}
         error={exitError}
