@@ -5,14 +5,19 @@
 
 const nodemailer = require('nodemailer');
 
-// Set up transporter with Gmail credentials from .env
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
+// 🛡️ Dynamically get transporter to ensure fresh process.env is read
+const getTransporter = () => {
+    if (!process.env.EMAIL_PASS) {
+        throw new Error('EMAIL_PASS environment variable is missing or empty.');
     }
-});
+    return nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+        }
+    });
+};
 
 /**
  * Send an exam invite email to a student.
@@ -164,6 +169,7 @@ Do not share your credentials with anyone.
 — Vision Exam Platform`;
 
     try {
+        const transporter = getTransporter();
         const info = await transporter.sendMail({
             from: '"Vision Exam Platform" <' + process.env.EMAIL_USER + '>',
             to: to,
