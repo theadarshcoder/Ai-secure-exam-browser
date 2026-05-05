@@ -69,8 +69,7 @@ const examSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-    
-    scheduledDate: { type: Date, default: Date.now }
+    scheduledDate: { type: Date, default: null }
 }, { timestamps: true });
 
 // ─── INDEXES ─────────────────────────────────────────────

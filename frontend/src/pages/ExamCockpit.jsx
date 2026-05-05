@@ -195,6 +195,11 @@ const QuestionPalette = React.memo(
   },
 );
 
+const CameraMonitor = React.memo(
+  ({
+    cameraActive,
+    videoRef,
+    camError,
     onRetryCamera,
     modelsLoaded,
     isAIInitializing,
@@ -2527,6 +2532,10 @@ const { examId } = useParams();
               navigateTo={navigateTo}
             />
             <div className="px-3 pb-3 pt-5 border-t border-main flex justify-center">
+              <CameraMonitor
+                cameraActive={cameraActive}
+                videoRef={videoRef}
+                camError={camError}
                 onRetryCamera={initCamera}
                 modelsLoaded={modelsLoaded}
                 isAIInitializing={isAIInitializing}

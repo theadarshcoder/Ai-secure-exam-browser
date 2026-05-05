@@ -672,7 +672,26 @@ exports.startExam = asyncHandler(async (req, res) => {
     exam.questions.forEach((_, idx) => { initialStates[String(idx)] = 'not_visited'; });
 
     const crypto = require('crypto');
-    const computedEndTime = new Date(Date.now() + exam.duration * 60 * 1000);
+    let computedEndTime = new Date(Date.now() + exam.duration * 60 * 1000);
+    let initialRemainingSeconds = exam.duration * 60;
+    
+    // 🛡️ Strict Global Deadline Enforcement
+    if (exam.scheduledDate) {
+        const strictDeadlineMs = new Date(exam.scheduledDate).getTime() + (exam.duration * 60 * 1000);
+        const nowMs = Date.now();
+        
+        // If the scheduled exam window has already fully passed
+        if (nowMs >= strictDeadlineMs) {
+            res.status(400);
+            throw new Error('This exam has expired and is no longer available.');
+        }
+
+        // Cap the student's end time to the global strict deadline
+        if (computedEndTime.getTime() > strictDeadlineMs) {
+            computedEndTime = new Date(strictDeadlineMs);
+            initialRemainingSeconds = Math.max(0, Math.floor((strictDeadlineMs - nowMs) / 1000));
+        }
+    }
     
     const newSession = new ExamSession({
         exam: examId,
@@ -683,7 +702,7 @@ exports.startExam = asyncHandler(async (req, res) => {
         endTime: computedEndTime,
         currentQuestionIndex: 0,
         questionStates: initialStates,
-        remainingTimeSeconds: exam.duration * 60,
+        remainingTimeSeconds: initialRemainingSeconds,
         answers: {},
         resumeCount: 0,
         secureMeta: {
