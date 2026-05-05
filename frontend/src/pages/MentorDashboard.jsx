@@ -468,7 +468,13 @@ const EvaluationModal = ({ sessionData, onClose, onGradeSubmit, submitStatus }) 
 
 export default function MentorDashboard() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState(new URLSearchParams(location.search).get('tab') || 'Overview');
+  const [activeTab, setActiveTab] = useState(() => {
+    return new URLSearchParams(location.search).get('tab') || sessionStorage.getItem('mentor_dashboard_tab') || 'Overview';
+  });
+
+  useEffect(() => {
+    sessionStorage.setItem('mentor_dashboard_tab', activeTab);
+  }, [activeTab]);
   const [userName] = useState(sessionStorage.getItem('vision_name') || 'Mentor');
   
   // Live data states

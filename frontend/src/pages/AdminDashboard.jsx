@@ -186,15 +186,15 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
         {/* Header */}
         <div className="flex items-center justify-between px-8 py-6 border-b border-main bg-surface-hover/50 font-sans">
           <div>
-            <h3 className="text-base font-black text-primary uppercase tracking-[0.2em]">{sessionData.exam?.title || 'Exam Report'} — Intelligence Detail</h3>
-            <p className="text-[10px] text-muted mt-1 uppercase font-black tracking-widest">
-              Subject: <span className="text-primary">{sessionData.student?.name || 'Unknown'}</span> — {sessionData.student?.email || 'N/A'}
+            <h3 className="text-base font-bold text-primary uppercase tracking-tight">{sessionData.exam?.title || 'Exam Report'} — Intelligence Detail</h3>
+            <p className="text-[10px] text-muted mt-1 uppercase font-semibold tracking-wide">
+              Subject: <span className="text-primary font-bold">{sessionData.student?.name || 'Unknown'}</span> — {sessionData.student?.email || 'N/A'}
             </p>
           </div>
           <div className="flex items-center gap-8">
             <div className="text-right">
-              <p className="text-2xl font-black text-primary tabular-nums leading-none">{sessionData.score ?? 0}/{sessionData.totalMarks ?? 0}</p>
-              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#22c55e] mt-1">{sessionData.percentage ?? 0}% — {sessionData.passed ? 'PROTOCOL PASSED' : 'PROTOCOL FAILED'}</p>
+              <p className="text-2xl font-bold text-primary tabular-nums leading-none tracking-tight">{sessionData.score ?? 0}/{sessionData.totalMarks ?? 0}</p>
+              <p className="text-[9px] font-bold uppercase tracking-wide text-[#22c55e] mt-1">{sessionData.percentage ?? 0}% — {sessionData.passed ? 'PROTOCOL PASSED' : 'PROTOCOL FAILED'}</p>
             </div>
             <button onClick={onClose} className="p-2.5 hover:bg-surface-hover rounded-2xl transition-all active:scale-95 border border-transparent hover:border-main text-muted hover:text-primary">
               <X size={20} />
@@ -243,22 +243,22 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
                     </div>
                     <div className="flex items-center gap-3">
                       {isEvaluating ? (
-                        <div className="flex items-center gap-3 bg-surface px-4 py-2 rounded-2xl border border-main shadow-sm">
-                          <span className="text-[9px] font-black text-muted uppercase tracking-[0.2em]">Award:</span>
+                        <div className="flex items-center gap-1.5 bg-surface px-3 py-1.5 rounded-2xl border border-main shadow-sm">
+                          <span className="text-[9px] font-bold text-muted uppercase tracking-wide">Award:</span>
                           <input 
                             type="number" 
                             max={q.maxMarks || q.marks} 
                             min="0"
                             value={localGrades[qId]?.marksObtained ?? q.marksObtained ?? 0}
                             onChange={(e) => handleGradeChange(qId, 'marksObtained', e.target.value)}
-                            className="w-12 bg-transparent text-center text-sm font-black text-primary focus:outline-none"
+                            className="w-10 bg-transparent text-center text-sm font-bold text-primary focus:outline-none"
                           />
-                          <span className="text-muted/30 font-black">/</span>
-                          <span className="text-sm font-black text-muted">{q.maxMarks || q.marks || 0}</span>
+                          <span className="text-muted/30 font-bold">/</span>
+                          <span className="text-sm font-bold text-muted ml-0.5">{q.maxMarks || q.marks || 0}</span>
                         </div>
                       ) : (
-                        <span className="text-sm font-black text-primary tabular-nums bg-surface px-4 py-2 rounded-2xl border border-main shadow-sm">
-                          {q.marksObtained ?? 0} <span className="text-muted/30 font-black mx-1">/</span> {q.maxMarks || q.marks || 0}
+                        <span className="text-sm font-bold text-primary tabular-nums bg-surface px-4 py-2 rounded-2xl border border-main shadow-sm">
+                          {q.marksObtained ?? 0} <span className="text-muted/30 font-bold mx-0.5">/</span> {q.maxMarks || q.marks || 0}
                         </span>
                       )}
                     </div>
@@ -420,12 +420,10 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
 
         {/* Footer */}
         <div className="px-10 py-6 border-t border-main bg-surface-hover/50 flex items-center justify-end gap-5">
-           <p className="text-[9px] font-black text-muted mr-auto flex items-center gap-3 uppercase tracking-widest">
-             <ShieldCheck size={16} className="text-emerald-500" /> Node Verified — Integrity Hash Match
-           </p>
+
            <button 
              onClick={onClose}
-             className="px-8 py-3 text-muted text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-surface-hover border border-transparent hover:border-main transition-all active:scale-95"
+             className="px-8 py-3 text-muted text-[10px] font-bold uppercase tracking-[0.2em] rounded-2xl hover:bg-surface-hover border border-transparent hover:border-main transition-all active:scale-95"
            >
              Close
            </button>
@@ -449,7 +447,13 @@ export default function AdminDashboard() {
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
-  const [activeTab, setActiveTab] = useState(new URLSearchParams(location.search).get('tab') || 'Overview');
+  const [activeTab, setActiveTab] = useState(() => {
+    return new URLSearchParams(location.search).get('tab') || sessionStorage.getItem('admin_dashboard_tab') || 'Overview';
+  });
+
+  useEffect(() => {
+    sessionStorage.setItem('admin_dashboard_tab', activeTab);
+  }, [activeTab]);
   
   const [userName] = useState(sessionStorage.getItem('vision_name') || 'Administrator');
   const [userRole] = useState(sessionStorage.getItem('vision_role') || 'admin');

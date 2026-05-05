@@ -1677,6 +1677,14 @@ export default function CreateExam() {
                   {/* Questions for active tab */}
                   {(() => {
                     const filtered = questions.filter(q => q.type === activeQTab);
+                    
+                    const typeOrder = ['mcq', 'short', 'coding', 'frontend-react'];
+                    let startIndex = 0;
+                    for (const t of typeOrder) {
+                      if (t === activeQTab) break;
+                      startIndex += questions.filter(q => q.type === t).length;
+                    }
+
                     if (filtered.length === 0) return (
                       <div className="py-12 border border-dashed border-main rounded-2xl flex flex-col items-center justify-center gap-4 bg-surface/30">
                         <div className="w-12 h-12 rounded-xl bg-surface-hover flex items-center justify-center text-muted" style={{ border: '1px solid #1f1f1f' }}>
@@ -1696,7 +1704,7 @@ export default function CreateExam() {
                               <div className="flex items-center justify-between px-8 py-5">
                                 <div className="flex items-center gap-5 min-w-0 flex-1">
                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all duration-500 ${expandedQ === q.id ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20' : 'bg-surface-hover text-muted group-hover/q:text-slate-900 border border-main'}`}>
-                                      <span className="text-[10px] font-bold uppercase">{i + 1}</span>
+                                      <span className="text-[10px] font-bold uppercase">{startIndex + i + 1}</span>
                                    </div>
                                     <textarea 
                                       value={q.type === 'coding' || q.type === 'frontend-react' ? (q.title || '') : q.questionText} 
