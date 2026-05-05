@@ -1000,20 +1000,29 @@ const { examId } = useParams();
   const [sessionId, setSessionId] = useState(null);
 
   // 💓 HEARTBEAT SYSTEM (V4 Hardened)
+  const heartbeatFailCountRef = useRef(0);
   useEffect(() => {
     if (!examId) return;
 
     const heartbeatInterval = setInterval(async () => {
+      // Don't send heartbeat until exam data is actually loaded
+      if (!examLoadedRef.current) return;
+
       try {
         await api.post('/exams/heartbeat', { examId: examId });
+        heartbeatFailCountRef.current = 0; // Reset on success
         console.log('💓 Heartbeat sent & verified');
       } catch (err) {
-        console.error('❌ Heartbeat failure:', err);
-        if (err.response?.status === 403) {
+        heartbeatFailCountRef.current += 1;
+        console.error(`❌ Heartbeat failure #${heartbeatFailCountRef.current}:`, err);
+
+        // Only terminate on 403 (admin block) AND after 2 consecutive failures
+        // to avoid false triggers from a single network blip
+        if (err.response?.status === 403 && heartbeatFailCountRef.current >= 2) {
           toast.error('Security Breach: Secure environment lost.', { duration: 5000 });
-          // Force logout or block UI
           setTerminated({ reason: "Environment verification failed." });
         }
+        // Do NOT terminate on network errors (no response), just log
       }
     }, 30000); // 30 Seconds
 
@@ -1946,9 +1955,14 @@ const { examId } = useParams();
         console.error("Fetch exam failed:", err);
         toast.dismiss("exam-init");
 
-        // If it's a 403/401, don't retry, just kick them out
+        // If it's a 401/403, only kick them out if exam hasn't loaded yet
+        // If already in exam, a transient 401 could be token expiry mid-session - don't kill the exam
         if (err.response?.status === 401 || err.response?.status === 403) {
-          toast.error("Session expired. Redirection to portal.");
+          if (examLoadedRef.current) {
+            console.warn("Got 401/403 during background re-fetch but exam is active. Ignoring.");
+            return;
+          }
+          toast.error("Session expired. Please login again.");
           navigate("/student");
           return;
         }
