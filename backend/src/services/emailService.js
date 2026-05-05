@@ -11,7 +11,9 @@ const getTransporter = () => {
         throw new Error('EMAIL_PASS environment variable is missing or empty.');
     }
     return nodemailer.createTransport({
-        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false, // UPGRADE to TLS via STARTTLS (Bypasses Port 465 blocks on Render)
         auth: {
             user: process.env.EMAIL_USER,
             pass: process.env.EMAIL_PASS
