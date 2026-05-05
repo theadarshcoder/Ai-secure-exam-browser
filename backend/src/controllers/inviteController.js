@@ -112,7 +112,8 @@ exports.bulkInvite = asyncHandler(async (req, res) => {
     // ─── 4. Check Existing Users & Create New Ones ───────
     const emails = validStudents.map(s => s.email);
     const existingUsers = await User.find({ email: { $in: emails } }).select('_id email name');
-    const existingEmailMap = new Map(existingUsers.map(u => [u.email, u]));
+    // 🛡️ Robustness Fix: Ensure keys are lowercase even if legacy data is messy
+    const existingEmailMap = new Map(existingUsers.map(u => [(u.email || '').toLowerCase().trim(), u]));
 
     // Pre-hash password with shared salt for batch performance
     const salt = await bcrypt.genSalt(10);
@@ -180,8 +181,29 @@ exports.bulkInvite = asyncHandler(async (req, res) => {
     const existingInvites = await ExamInvite.find({
         exam: examId,
         email: { $in: emails }
-    }).select('email');
-    const alreadyInvitedEmails = new Set(existingInvites.map(i => i.email));
+    });
+
+    // 🛡️ Smart Retry Logic: Identify invites that are already successful vs those that are "stale" (failed/pending)
+    const alreadySuccessfulEmails = new Set();
+    const staleInviteIds = [];
+
+    for (const inv of existingInvites) {
+        const email = (inv.email || '').toLowerCase().trim();
+        if (['sent', 'opened', 'exam_started', 'completed'].includes(inv.status)) {
+            alreadySuccessfulEmails.add(email);
+        } else {
+            // Failed or stuck in pending — we'll delete and re-create a fresh one
+            staleInviteIds.push(inv._id);
+        }
+    }
+
+    // 🧹 Cleanup stale invites so we can bulk insert fresh ones without unique index collisions
+    if (staleInviteIds.length > 0) {
+        await ExamInvite.deleteMany({ _id: { $in: staleInviteIds } });
+        console.log(`🧹 [Bulk Invite] Cleaned up ${staleInviteIds.length} stale invites for re-inviting.`);
+    }
+
+    const alreadyInvitedEmails = alreadySuccessfulEmails;
 
     const FRONTEND_URL = getFrontendUrl(req);
     const TOKEN_EXPIRY_HOURS = 72; // 3 days
@@ -239,16 +261,23 @@ exports.bulkInvite = asyncHandler(async (req, res) => {
     }
 
     // Map invite IDs to email jobs
-    const inviteEmailMap = new Map(createdInvites.map(inv => [inv.email, inv._id.toString()]));
-    const finalEmailJobs = emailJobsData.map(job => ({
-        inviteId: inviteEmailMap.get(job._tempEmail),
-        email: job.email,
-        studentName: job.studentName,
-        password: job.password,
-        examName: job.examName,
-        verifyLink: job.verifyLink,
-        expiresAt: job.expiresAt
-    })).filter(job => job.inviteId); // Only jobs with valid invite IDs
+    // 🛡️ Robustness Fix: Ensure keys are lowercase for matching
+    const inviteEmailMap = new Map(createdInvites.map(inv => [(inv.email || '').toLowerCase().trim(), inv._id.toString()]));
+    
+    const finalEmailJobs = emailJobsData.map(job => {
+        const inviteId = inviteEmailMap.get(job._tempEmail);
+        if (!inviteId) return null;
+
+        return {
+            inviteId,
+            email: job.email,
+            studentName: job.studentName,
+            password: job.password,
+            examName: job.examName,
+            verifyLink: job.verifyLink,
+            expiresAt: job.expiresAt
+        };
+    }).filter(job => job !== null);
 
     // ─── 6. Queue All Emails (Edge Case Fix #3: addBulk) ─
     if (finalEmailJobs.length > 0) {
