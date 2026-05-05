@@ -198,7 +198,7 @@ const CustomDatePicker = ({ selected, onChange }) => {
       selected={selected ? new Date(selected) : null}
       onChange={(date) => onChange(date)}
       showTimeSelect
-      timeIntervals={15}
+      timeIntervals={5}
       timeFormat="h:mm aa"
       timeCaption="Time"
       minDate={new Date(new Date().setHours(0,0,0,0))}
@@ -207,7 +207,7 @@ const CustomDatePicker = ({ selected, onChange }) => {
       customInput={<CustomInput />}
       wrapperClassName="w-full"
       portalId="root"
-      popperClassName="!z-[200] shadow-2xl rounded-2xl border border-main bg-surface"
+      popperClassName="!z-[200] shadow-2xl"
     />
   );
 };
@@ -252,7 +252,7 @@ const McqEditor = ({ question, updateQ }) => {
               options[oi] = e.target.value;
               updateQ(question.id, { options });
             }} 
-            className={`flex-1 px-5 py-3 border rounded-2xl text-[14px] font-medium text-primary outline-none transition-all shadow-sm ${question.correctOption === oi ? 'border-primary-500 ring-4 ring-primary-500/5 bg-primary-500/5 font-bold' : 'border-main focus:border-primary-500/30 focus:ring-4 focus:ring-primary-500/5 bg-surface-hover placeholder:text-muted/30'}`} 
+            className={`flex-1 px-4 py-2 border rounded-xl text-[13px] font-medium text-primary outline-none transition-all shadow-sm ${question.correctOption === oi ? 'border-primary-500 ring-4 ring-primary-500/5 bg-primary-500/5 font-bold' : 'border-main focus:border-primary-500/30 focus:ring-4 focus:ring-primary-500/5 bg-surface-hover placeholder:text-muted/30'}`} 
             placeholder={`Option ${String.fromCharCode(65 + oi)}...`}
           />
 
@@ -1159,9 +1159,10 @@ export default function CreateExam() {
     const tpl = {
       mcq: { type: 'mcq', questionText: '', options: ['', '', '', ''], correctOption: 0, marks: 1 },
       short: { type: 'short', questionText: '', expectedAnswer: '', maxWords: 150, marks: 2 },
-      coding: { type: 'coding', questionText: '', language: 'javascript', initialCode: '', testCases: [{ input: '', expectedOutput: '' }], marks: 5 },
+      coding: { type: 'coding', title: '', questionText: '', language: 'javascript', initialCode: '', testCases: [{ input: '', expectedOutput: '' }], marks: 5 },
       'frontend-react': { 
         type: 'frontend-react', 
+        title: '',
         questionText: '', 
         marks: 10,
         frontendTemplate: {
@@ -1173,9 +1174,11 @@ export default function CreateExam() {
     };
     
     const newQs = [];
-    const now = Date.now();
     for (let i = 0; i < count; i++) {
-      newQs.push({ ...tpl[type], id: now + i });
+      const newId = Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 9);
+      const qCopy = JSON.parse(JSON.stringify(tpl[type]));
+      qCopy.id = newId;
+      newQs.push(qCopy);
     }
     
     setQuestions(p => [...p, ...newQs]);
@@ -1188,7 +1191,8 @@ export default function CreateExam() {
   const dupQ = (id) => {
     const o = questions.find(q => q.id === id);
     if (!o) return;
-    const d = { ...JSON.parse(JSON.stringify(o)), id: Date.now() };
+    const newId = Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 9);
+    const d = { ...JSON.parse(JSON.stringify(o)), id: newId };
     const i = questions.findIndex(q => q.id === id);
     setQuestions(p => { const n = [...p]; n.splice(i + 1, 0, d); return n; });
   };
@@ -1279,12 +1283,13 @@ export default function CreateExam() {
 
 
   const acceptSuggestion = (suggestion) => {
-    const q = { ...suggestion, id: Date.now(), accepted: undefined };
+    const newId = Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 9);
+    const q = { ...suggestion, id: newId, accepted: undefined };
     setQuestions(p => [...p, q]);
     setAiSuggestions(s => s.filter(x => x.id !== suggestion.id));
   };
   const acceptAll = () => {
-const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1000, accepted: undefined }));
+    const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 9), accepted: undefined }));
     setQuestions(p => [...p, ...newQs]);
     setAiSuggestions([]);
   };
@@ -1591,10 +1596,10 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                                          {s.type === 'mcq' && s.options && (
                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                                              {s.options.map((opt, oi) => (
-                                               <div key={oi} className={`text-[10px] px-2.5 py-1.5 rounded-lg border flex items-center gap-2 ${s.correctOption === oi ? 'bg-primary-500/10 border-primary-500/30 text-primary' : 'bg-surface-hover/50 border-main text-muted'}`}>
+                                               <div key={oi} className={`text-[10px] px-2.5 py-1.5 rounded-lg border flex items-center gap-2 ${s.correctOption === oi ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-500' : 'bg-surface-hover/50 border-main text-muted'}`}>
                                                  <span className="font-black opacity-40">{String.fromCharCode(65 + oi)}</span>
                                                  <span className="truncate">{opt}</span>
-                                                 {s.correctOption === oi && <Check size={10} className="ml-auto text-primary-500" />}
+                                                 {s.correctOption === oi && <Check size={10} className="ml-auto text-indigo-500" />}
                                                </div>
                                              ))}
                                            </div>
@@ -1625,7 +1630,7 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                                          )}
                                        </div>
 
-                                       <button onClick={() => acceptSuggestion(s)} className="text-[10px] font-black uppercase text-emerald-500 hover:text-emerald-400 tracking-widest flex items-center gap-2 group/add">
+                                       <button onClick={() => acceptSuggestion(s)} className="text-[10px] font-black uppercase text-indigo-500 hover:text-indigo-400 tracking-widest flex items-center gap-2 group/add">
                                          Add Question
                                          <ArrowRight size={12} className="group-hover/add:translate-x-1 transition-transform" />
                                        </button>
@@ -1687,32 +1692,41 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                       <div className="space-y-3">
                         {filtered.map((q, i) => (
                           <React.Fragment key={q.id}>
-                            <div className={`group/q bg-surface border rounded-[2.5rem] transition-all duration-500 ${expandedQ === q.id ? 'ring-1 border-primary-500/50 shadow-2xl shadow-primary-500/5 scale-[1.005]' : 'border-main hover:border-primary-500/30'}`}>
-                              <div className="flex items-center justify-between px-10 py-8">
-                                <div className="flex items-center gap-6 min-w-0 flex-1">
-                                   <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-all duration-500 ${expandedQ === q.id ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/20' : 'bg-surface-hover text-muted group-hover/q:text-primary-500 border border-main'}`}>
-                                      <span className="text-xs font-black uppercase">{i + 1}</span>
+                            <div className={`group/q bg-surface border rounded-3xl transition-all duration-500 ${expandedQ === q.id ? 'ring-1 border-indigo-500/50 shadow-2xl shadow-indigo-500/5 scale-[1.005]' : 'border-main hover:border-indigo-500/30'}`}>
+                              <div className="flex items-center justify-between px-8 py-5">
+                                <div className="flex items-center gap-5 min-w-0 flex-1">
+                                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all duration-500 ${expandedQ === q.id ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20' : 'bg-surface-hover text-muted group-hover/q:text-slate-900 border border-main'}`}>
+                                      <span className="text-[10px] font-bold uppercase">{i + 1}</span>
                                    </div>
                                     <textarea 
-                                      value={q.questionText} 
-                                      onChange={e => updateQ(q.id, { questionText: e.target.value })} 
-                                      placeholder="Question summary..." 
+                                      value={q.type === 'coding' || q.type === 'frontend-react' ? (q.title || '') : q.questionText} 
+                                      onChange={e => {
+                                         const field = (q.type === 'coding' || q.type === 'frontend-react') ? 'title' : 'questionText';
+                                         updateQ(q.id, { [field]: e.target.value });
+                                         e.target.style.height = 'auto';
+                                         e.target.style.height = e.target.scrollHeight + 'px';
+                                      }}
+                                      onFocus={e => {
+                                         e.target.style.height = 'auto';
+                                         e.target.style.height = e.target.scrollHeight + 'px';
+                                      }}
+                                      placeholder={q.type === 'coding' || q.type === 'frontend-react' ? "Problem title (e.g., Two Sum)..." : "Enter question here..."} 
                                       rows={1}
-                                      className="bg-transparent border-none text-[15px] font-bold text-primary placeholder:text-muted/20 focus:ring-0 w-full p-0 outline-none resize-none overflow-hidden min-h-[24px] leading-tight py-1" 
+                                      className="bg-transparent border-none text-[14px] font-bold text-primary placeholder:text-muted/20 focus:ring-0 w-full p-0 outline-none resize-none overflow-hidden min-h-[20px] leading-tight py-1" 
                                     />
-                                   <div className="bg-surface-hover/50 px-4 py-2 rounded-xl shrink-0 border border-main group-hover/q:border-primary-500/20 transition-all">
-                                      <span className="text-[10px] font-black text-muted tabular-nums uppercase tracking-widest group-hover/q:text-primary-500 transition-colors">{q.marks} pts</span>
+                                   <div className="bg-surface-hover/50 px-3 py-1.5 rounded-lg shrink-0 border border-main group-hover/q:border-slate-900/20 transition-all">
+                                      <span className="text-[9px] font-bold text-muted tabular-nums uppercase tracking-widest group-hover/q:text-slate-900 transition-colors">{q.marks} pts</span>
                                    </div>
                                 </div>
                                 <div className="flex items-center gap-2 ml-6">
-                                   <button onClick={() => setExpandedQ(expandedQ === q.id ? null : q.id)} className={`w-11 h-11 flex items-center justify-center rounded-2xl transition-all ${expandedQ === q.id ? 'bg-primary-500/10 text-primary-500 border border-primary-500/20' : 'text-muted/40 hover:text-primary-500 hover:bg-surface-hover border border-transparent hover:border-main'}`}>
-                                     {expandedQ === q.id ? <ChevronUp size={18} strokeWidth={3} /> : <ChevronDown size={18} strokeWidth={3} />}
+                                   <button onClick={() => setExpandedQ(expandedQ === q.id ? null : q.id)} className={`w-9 h-9 flex items-center justify-center rounded-xl transition-all ${expandedQ === q.id ? 'bg-slate-900/10 text-slate-900 border border-slate-900/20' : 'text-muted/40 hover:text-slate-900 hover:bg-surface-hover border border-transparent hover:border-main'}`}>
+                                     {expandedQ === q.id ? <ChevronUp size={16} strokeWidth={3} /> : <ChevronDown size={16} strokeWidth={3} />}
                                    </button>
-                                   <button onClick={() => dupQ(q.id)} className="w-11 h-11 flex items-center justify-center rounded-2xl text-muted/30 hover:text-primary-500 hover:bg-primary-500/10 transition-all opacity-0 group-hover/q:opacity-100 border border-transparent hover:border-main">
-                                     <Copy size={16} />
+                                   <button onClick={() => dupQ(q.id)} className="w-9 h-9 flex items-center justify-center rounded-xl text-muted/30 hover:text-slate-900 hover:bg-slate-900/10 transition-all opacity-0 group-hover/q:opacity-100 border border-transparent hover:border-main">
+                                     <Copy size={14} />
                                    </button>
-                                   <button onClick={() => removeQ(q.id)} className="w-11 h-11 flex items-center justify-center rounded-2xl text-muted/30 hover:text-red-500 hover:bg-red-500/10 transition-all opacity-0 group-hover/q:opacity-100 border border-transparent hover:border-main">
-                                     <Trash2 size={16} />
+                                   <button onClick={() => removeQ(q.id)} className="w-9 h-9 flex items-center justify-center rounded-xl text-muted/30 hover:text-red-500 hover:bg-red-500/10 transition-all opacity-0 group-hover/q:opacity-100 border border-transparent hover:border-main">
+                                     <Trash2 size={14} />
                                    </button>
                                 </div>
                               </div>
@@ -1721,37 +1735,24 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                             {expandedQ === q.id && (
                               <div className="border-t border-main animate-in slide-in-from-top-2 duration-300 bg-surface rounded-b-2xl overflow-hidden border-x border-b">
                                  {/* Section 1: Universal Settings Strip */}
-                                 <div className="bg-surface-hover border-b border-main px-8 py-4 flex items-center gap-8">
-                                    <div className="flex items-center gap-4">
-                                       <span className="text-[10px] font-black text-muted uppercase tracking-widest">Points</span>
+                                 <div className="bg-surface-hover/30 border-b border-main px-8 py-3 flex items-center gap-8">
+                                    <div className="flex items-center gap-3">
+                                       <span className="text-[9px] font-bold text-muted uppercase tracking-widest">Points</span>
                                        <input 
                                          type="number" 
                                          value={q.marks} 
                                          onChange={e => updateQ(q.id, { marks: parseInt(e.target.value) || 0 })}
-                                         className="w-24 h-10 bg-surface border border-main rounded-xl px-4 text-sm font-black text-primary focus:ring-primary-500 focus:border-primary-500 outline-none transition-all tabular-nums"
+                                         className="w-20 h-8 bg-surface border border-main rounded-lg px-3 text-xs font-bold text-primary focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all tabular-nums"
                                        />
-                                    </div>
-                                    
-                                    <div className="flex items-center gap-4">
-                                       <span className="text-[10px] font-black text-muted uppercase tracking-widest">Threat Level</span>
-                                       <select 
-                                         value={q.difficulty || 'Medium'} 
-                                         onChange={e => updateQ(q.id, { difficulty: e.target.value })}
-                                         className="h-10 bg-surface border border-main rounded-xl px-4 text-[11px] font-black uppercase text-primary focus:ring-primary-500 focus:border-primary-500 outline-none transition-all cursor-pointer tracking-widest"
-                                       >
-                                         <option value="Easy">Routine</option>
-                                         <option value="Medium">Standard</option>
-                                         <option value="Hard">Critical</option>
-                                       </select>
                                     </div>
 
                                     {q.type === 'coding' && (
-                                       <div className="flex items-center gap-4 ml-auto">
-                                          <span className="text-[10px] font-black text-muted uppercase tracking-widest">AI Generated</span>
+                                       <div className="flex items-center gap-3 ml-auto">
+                                          <span className="text-[9px] font-bold text-muted uppercase tracking-widest">AI Generated</span>
                                           <select 
                                             value={q.language || 'javascript'} 
                                             onChange={e => updateQ(q.id, { language: e.target.value })}
-                                            className="h-10 bg-surface border border-main rounded-xl px-4 text-[11px] font-black uppercase text-primary focus:ring-primary-500 focus:border-primary-500 outline-none transition-all cursor-pointer tracking-widest"
+                                            className="h-8 bg-surface border border-main rounded-lg px-3 text-[10px] font-bold uppercase text-primary focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all cursor-pointer tracking-widest"
                                           >
                                             <option value="javascript">JavaScript (V8)</option>
                                             <option value="python">Python (3.x)</option>
@@ -1763,31 +1764,33 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                                  </div>
 
                                  {/* Section 2: Problem Statement Editor (LeetCode Style) */}
-                                 <div className="px-8 py-8 border-b border-main bg-surface-hover/20">
-                                    <div className="flex items-center justify-between mb-4">
-                                       <label className="text-[10px] font-black text-muted uppercase tracking-[0.2em] flex items-center gap-2">
-                                          <div className="w-1.5 h-1.5 rounded-full bg-primary-500 shadow-[0_0_8px_rgba(255,59,0,0.5)]" />
-                                          Problem Statement
-                                       </label>
-                                       <div className="flex items-center gap-3">
-                                          <span className="text-[9px] font-bold text-muted uppercase tracking-widest bg-main px-2 py-1 rounded-lg border border-main">Markdown Enabled</span>
-                                       </div>
-                                    </div>
-                                    <textarea 
-                                       value={q.questionText}
-                                       onChange={e => {
-                                          updateQ(q.id, { questionText: e.target.value });
-                                          e.target.style.height = 'auto';
-                                          e.target.style.height = e.target.scrollHeight + 'px';
-                                       }}
-                                       onFocus={(e) => {
-                                          e.target.style.height = 'auto';
-                                          e.target.style.height = e.target.scrollHeight + 'px';
-                                       }}
-                                       placeholder="### Problem Description\nEnter detailed problem statement here...\n\n### Examples\nInput: ...\nOutput: ...\n\n### Constraints\n- Complexity: O(n)\n- Memory: 256MB"
-                                       className="w-full bg-surface border border-main rounded-[2rem] p-8 text-[15px] leading-relaxed text-primary placeholder:text-muted/20 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/5 transition-all outline-none min-h-[180px] resize-none overflow-hidden shadow-inner"
-                                    />
-                                 </div>
+                                 {(q.type === 'coding' || q.type === 'frontend-react') && (
+                                   <div className="px-8 py-8 border-b border-main bg-surface-hover/20">
+                                      <div className="flex items-center justify-between mb-4">
+                                         <label className="text-[10px] font-bold text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
+                                            Problem Statement
+                                         </label>
+                                         <div className="flex items-center gap-3">
+                                            <span className="text-[9px] font-bold text-muted uppercase tracking-widest bg-main px-2 py-1 rounded-lg border border-main">Markdown Enabled</span>
+                                         </div>
+                                      </div>
+                                      <textarea 
+                                         value={q.questionText}
+                                         onChange={e => {
+                                            updateQ(q.id, { questionText: e.target.value });
+                                            e.target.style.height = 'auto';
+                                            e.target.style.height = e.target.scrollHeight + 'px';
+                                         }}
+                                         onFocus={(e) => {
+                                            e.target.style.height = 'auto';
+                                            e.target.style.height = e.target.scrollHeight + 'px';
+                                         }}
+                                         placeholder="### Problem Description\nEnter detailed problem statement here...\n\n### Examples\nInput: ...\nOutput: ...\n\n### Constraints\n- Complexity: O(n)\n- Memory: 256MB"
+                                         className="w-full bg-surface border border-main rounded-2xl p-6 text-[14px] leading-relaxed text-primary placeholder:text-muted/20 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 transition-all outline-none min-h-[140px] resize-none overflow-hidden shadow-inner"
+                                      />
+                                   </div>
+                                 )}
 
                                  {/* Section 3: Dynamic Type-Specific Area */}
                                  <div className="px-6 py-4">
@@ -1807,130 +1810,126 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
               </div>
 
               {/* Right Column: Actions / Summary */}
-              <aside className="w-full lg:w-80 space-y-8 lg:sticky lg:top-10 shrink-0 pb-10">
-                
-                {/* Master Actions */}
-                <div className="bg-surface border border-main rounded-2xl p-6 space-y-4 shadow-sm relative overflow-hidden group/actions">
-                  
-                  
-                  <div className="space-y-4">
-                    <p className="text-sm font-bold text-primary mb-4">Add Content</p>
-                    <div className="space-y-6">
-                       <div className="space-y-4">
-                          {Object.entries(typeLabels).map(([type, label]) => (
-                            <div key={type} className="flex items-center justify-between group/row">
-                               <div className="flex items-center gap-3">
-                                  <div className="flex items-center justify-center text-muted group-hover/row:text-primary-500 transition-colors">
-                                    {typeIcons[type]}
-                                  </div>
-                                  <span className="text-[12px] font-bold text-primary">{label}</span>
-                               </div>
-                               <div className="flex items-center bg-surface-hover rounded-lg h-8 w-14 border border-main focus-within:border-primary-500/30 transition-all overflow-hidden">
-                                  <input 
-                                    type="number" 
-                                    min="0" 
-                                    max="50"
-                                    value={counts[type] || ''}
-                                    placeholder="0"
-                                    onChange={e => {
-                                      const val = e.target.value;
-                                      setCounts(prev => ({ ...prev, [type]: val === '' ? 0 : Math.max(0, Math.min(50, parseInt(val) || 0)) }));
-                                    }}
-                                    className="w-full bg-transparent border-none text-[12px] font-bold text-primary focus:ring-0 p-0 text-center outline-none shadow-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                  />
-                               </div>
-                            </div>
-                          ))}
-                       </div>
-                       
-                       <button 
-                         onClick={() => {
-                            let totalAdded = 0;
-                            Object.entries(counts).forEach(([type, count]) => {
-                               if (count > 0) {
-                                  addQ(type, count);
-                                  totalAdded += count;
-                                }
-                            });
-                            if (totalAdded > 0) {
-                               addToast(`Successfully added ${totalAdded} new questions!`, 'success');
-                               // Reset all to 0 except the first one maybe? Or reset all to 0.
-                               setCounts({ mcq: 0, short: 0, coding: 0, 'frontend-react': 0 });
-                            }
-                         }}
-                         className="w-full h-10 mt-4 bg-surface hover:bg-surface-hover text-primary rounded-xl font-medium text-sm transition-all border border-main flex items-center justify-center gap-2 shadow-sm"
-                       >
-                          <Plus size={16} />
-                          Implement Selection
-                       </button>
+              <aside className="w-full lg:w-72 lg:sticky lg:top-10 shrink-0 pb-10">
+                <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-main)', borderRadius: 16, padding: '20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+                  {/* Add Content */}
+                  <div>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Add Content</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {Object.entries(typeLabels).map(([type, label]) => (
+                        <div key={type} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 2px', borderRadius: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center' }}>
+                              {React.cloneElement(typeIcons[type], { size: 16, strokeWidth: 1.8 })}
+                            </span>
+                            <span style={{ fontSize: 14, fontWeight: 450, letterSpacing: '-0.01em', color: 'var(--text-primary)', fontFamily: "'Inter', sans-serif" }}>{label}</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <button
+                              onClick={() => setCounts(prev => ({ ...prev, [type]: Math.max(0, (prev[type] || 0) - 1) }))}
+                              style={{ width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: '1px solid var(--border-main)', background: 'var(--bg-surface)', color: 'var(--text-secondary)', cursor: 'pointer', flexShrink: 0, transition: 'all 0.15s' }}
+                              onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-primary)'; e.currentTarget.style.borderColor = 'var(--accent-primary)'; }}
+                              onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--border-main)'; }}
+                            >
+                              <Minus size={11} strokeWidth={2.5} />
+                            </button>
+                            <input
+                              type="number" min="0" max="50"
+                              value={counts[type] === 0 ? '' : counts[type]}
+                              placeholder="0"
+                              onChange={e => {
+                                const val = e.target.value;
+                                setCounts(prev => ({ ...prev, [type]: val === '' ? 0 : Math.max(0, Math.min(50, parseInt(val) || 0)) }));
+                              }}
+                              style={{ width: 26, textAlign: 'center', fontSize: 13, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text-primary)', background: 'transparent', border: 'none', outline: 'none', padding: 0, fontFamily: "'Inter', sans-serif" }}
+                              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                            <button
+                              onClick={() => setCounts(prev => ({ ...prev, [type]: Math.min(50, (prev[type] || 0) + 1) }))}
+                              style={{ width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: '1px solid var(--border-main)', background: 'var(--bg-surface)', color: 'var(--text-secondary)', cursor: 'pointer', flexShrink: 0, transition: 'all 0.15s' }}
+                              onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-primary)'; e.currentTarget.style.borderColor = 'var(--accent-primary)'; }}
+                              onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--border-main)'; }}
+                            >
+                              <Plus size={11} strokeWidth={2.5} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => {
+                        let totalAdded = 0;
+                        Object.entries(counts).forEach(([type, count]) => {
+                          if (count > 0) { addQ(type, count); totalAdded += count; }
+                        });
+                        if (totalAdded > 0) {
+                          addToast(`Successfully added ${totalAdded} new questions!`, 'success');
+                          setCounts({ mcq: 0, short: 0, coding: 0, 'frontend-react': 0 });
+                        }
+                      }}
+                      style={{ width: '100%', height: 34, marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 8, border: '1px solid var(--border-main)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 13, fontWeight: 500, letterSpacing: '-0.01em', cursor: 'pointer', transition: 'all 0.15s', fontFamily: "'Inter', sans-serif" }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-surface-hover)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-surface)'}
+                    >
+                      <Plus size={14} strokeWidth={2} />
+                      Implement Selection
+                    </button>
+                  </div>
+
+                  {/* Divider */}
+                  <div style={{ height: 1, background: 'var(--border-main)' }} />
+
+                  {/* File Import Hidden Input */}
+                  <input type="file" id="direct-import-file" accept=".csv,.json" className="hidden" onChange={handleDirectImport} />
+
+                  {/* Import Row */}
+                  <div>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Import</p>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        onClick={() => document.getElementById('direct-import-file').click()}
+                        style={{ flex: 1, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 8, border: '1px solid var(--border-main)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 13, fontWeight: 450, letterSpacing: '-0.01em', cursor: 'pointer', transition: 'all 0.15s', fontFamily: "'Inter', sans-serif" }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-surface-hover)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-surface)'}
+                      >
+                        <UploadCloud size={14} strokeWidth={1.8} />
+                        File
+                      </button>
+                      <CSVHelper example="mcq, What is React?, 5, Library, Framework, Tool, OS, 1" />
+                      <button
+                        onClick={() => setShowLinkModal(true)}
+                        style={{ flex: 1, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 8, border: '1px solid var(--border-main)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 13, fontWeight: 450, letterSpacing: '-0.01em', cursor: 'pointer', transition: 'all 0.15s', fontFamily: "'Inter', sans-serif" }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-surface-hover)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-surface)'}
+                      >
+                        <Link size={14} strokeWidth={1.8} />
+                        URL Link
+                      </button>
                     </div>
                   </div>
 
-                  
+                  {/* Divider */}
+                  <div style={{ height: 1, background: 'var(--border-main)' }} />
 
-                  {/* File Import Hidden Input */}
-                  <input 
-                    type="file" 
-                    id="direct-import-file" 
-                    accept=".csv,.json" 
-                    className="hidden" 
-                    onChange={handleDirectImport} 
-                  />
-
-                  <div className="space-y-4 pt-2">
-                    {/* Naye Import / Export Buttons */}
-                    <div className="flex flex-col gap-2 pt-2 border-t border-main">
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => document.getElementById('direct-import-file').click()} 
-                          className="flex-1 h-10 bg-surface border border-main hover:bg-surface-hover text-primary rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition-all shadow-sm"
-                        >
-                          <UploadCloud size={16} />
-                          File
-                        </button>
-                        <CSVHelper 
-                          example="mcq, What is React?, 5, Library, Framework, Tool, OS, 1"
-                        />
-                        <button 
-                          onClick={() => setShowLinkModal(true)} 
-                          className="flex-1 h-10 bg-surface border border-main hover:bg-surface-hover text-primary rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition-all shadow-sm"
-                        >
-                          <Link size={16} />
-                          URL Link
-                        </button>
-                      </div>
-                    </div>
-
-                    <button onClick={handlePublish} disabled={isPublishing || questions.length === 0 || publishStatus !== 'idle'} className="w-full h-9 bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white rounded-lg font-black text-[10px] uppercase tracking-[0.15em] shadow-md shadow-primary-500/20 flex items-center justify-center gap-1.5 transition-all active:scale-95">
+                  {/* Publish + Draft */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <button onClick={handlePublish} disabled={isPublishing || questions.length === 0 || publishStatus !== 'idle'}
+                      style={{ width: '100%', height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 10, border: 'none', background: 'var(--accent-primary)', color: '#fff', fontSize: 13, fontWeight: 600, letterSpacing: '-0.01em', cursor: 'pointer', transition: 'all 0.15s', opacity: (isPublishing || questions.length === 0 || publishStatus !== 'idle') ? 0.5 : 1, fontFamily: "'Inter', sans-serif" }}
+                    >
                       <AnimatedStatusIcon status={publishStatus} icon={<Send size={14} />} size={14} />
                       {publishStatus === 'loading' ? 'Publishing...' : publishStatus === 'success' ? 'Published' : 'Publish Exam'}
                     </button>
-                    <button onClick={handleSaveDraft} disabled={isSaving || saveStatus !== 'idle'} className="w-full h-9 bg-surface border border-main hover:bg-surface-hover text-muted hover:text-primary rounded-lg font-black text-[10px] uppercase tracking-[0.15em] flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-sm">
+                    <button onClick={handleSaveDraft} disabled={isSaving || saveStatus !== 'idle'}
+                      style={{ width: '100%', height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 10, border: '1px solid var(--border-main)', background: 'var(--bg-surface)', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 450, letterSpacing: '-0.01em', cursor: 'pointer', transition: 'all 0.15s', opacity: (isSaving || saveStatus !== 'idle') ? 0.5 : 1, fontFamily: "'Inter', sans-serif" }}
+                      onMouseEnter={e => e.currentTarget.style.color = 'var(--text-primary)'}
+                      onMouseLeave={e => e.currentTarget.style.color = 'var(--text-secondary)'}
+                    >
                       <AnimatedStatusIcon status={saveStatus} icon={<Save size={14} />} size={14} />
-                      {saveStatus === 'loading' ? 'Saving...' : saveStatus === 'success' ? 'Saved' : 'Save Progress'}
+                      {saveStatus === 'loading' ? 'Saving...' : saveStatus === 'success' ? 'Saved' : 'Save as Draft'}
                     </button>
                   </div>
-                </div>
 
-
-                {/* Status Card */}
-                <div className="bg-surface border border-main rounded-[32px] p-6 space-y-5">
-                   <h3 className="text-[10px] font-black text-muted uppercase tracking-widest px-2">Exam Status</h3>
-                   <div className="space-y-4">
-                      <div className="flex items-center justify-between px-2">
-                         <span className="text-xs text-muted font-medium tracking-tight">Platform</span>
-                         <span className="text-[10px] font-bold text-primary bg-surface-hover px-2 py-0.5 rounded border border-main uppercase tracking-tighter">VISION</span>
-                      </div>
-                      <div className="flex items-center justify-between px-2">
-                         <span className="text-xs text-muted font-medium tracking-tight">Encryption</span>
-                         <span className="text-[10px] font-black text-primary opacity-80 uppercase tracking-widest">AES-256 Encrypted</span>
-                      </div>
-                      <div className="h-px bg-main mx-2" />
-                      <div className="p-4 bg-surface-hover rounded-2xl space-y-1">
-                         <p className="text-[9px] font-black text-secondary uppercase leading-none">Exam ID</p>
-                         <p className="text-[11px] font-mono text-muted truncate tracking-tight">{editId || 'Auto-generated on publish'}</p>
-                      </div>
-                   </div>
                 </div>
               </aside>
             </div>
@@ -2015,7 +2014,7 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
             {/* Header Area */}
             <div className="p-10 border-b border-main flex justify-between items-center bg-surface-hover/30">
               <div className="flex items-center gap-6">
-                <div className="w-16 h-16 rounded-[2rem] bg-primary-500/10 flex items-center justify-center text-primary-500 shadow-xl shadow-primary-500/5">
+                <div className="w-16 h-16 rounded-[2rem] bg-indigo-500/10 flex items-center justify-center text-indigo-500 shadow-xl shadow-indigo-500/5">
                    <Sparkles size={28} strokeWidth={2.5} className="animate-pulse" />
                 </div>
                 <div>
@@ -2023,9 +2022,9 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                     Fetching <span className="text-muted font-black">Problem</span>
                   </h3>
                   <div className="flex gap-4 mt-3">
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-xl bg-surface border border-main text-muted shadow-sm">Channel: <span className="text-primary-500">{previewQuestion.source}</span></span>
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-xl bg-surface border border-main text-muted shadow-sm">Level: <span className="text-primary-500">{previewQuestion.difficulty}</span></span>
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-xl bg-surface border border-main text-muted shadow-sm">Credit: <span className="text-primary-500">{previewQuestion.marks} PTS</span></span>
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-xl bg-surface border border-main text-muted shadow-sm">Channel: <span className="text-indigo-500">{previewQuestion.source}</span></span>
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-xl bg-surface border border-main text-muted shadow-sm">Level: <span className="text-indigo-500">{previewQuestion.difficulty}</span></span>
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-xl bg-surface border border-main text-muted shadow-sm">Credit: <span className="text-indigo-500">{previewQuestion.marks} PTS</span></span>
                   </div>
                 </div>
               </div>
@@ -2041,16 +2040,16 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
             <div className="flex-1 overflow-y-auto p-12 custom-scrollbar space-y-12 bg-page/30">
               
               {/* Alert Message */}
-              <div className="bg-primary-500/[0.03] border border-primary-500/10 p-8 rounded-[2.5rem] flex items-start gap-6 relative overflow-hidden group/warning">
-                  <div className="absolute top-0 right-0 p-6 opacity-[0.03] group-hover/warning:scale-110 transition-transform text-primary-500">
+              <div className="bg-indigo-500/[0.03] border border-indigo-500/10 p-8 rounded-[2.5rem] flex items-start gap-6 relative overflow-hidden group/warning">
+                  <div className="absolute top-0 right-0 p-6 opacity-[0.03] group-hover/warning:scale-110 transition-transform text-indigo-500">
                     <AlertCircle size={120} />
                   </div>
-                  <div className="w-14 h-14 rounded-2xl bg-primary-500 text-white flex items-center justify-center shadow-2xl shadow-primary-500/30 shrink-0">
+                  <div className="w-14 h-14 rounded-2xl bg-indigo-500 text-white flex items-center justify-center shadow-2xl shadow-indigo-500/30 shrink-0">
                       <AlertCircle size={28} strokeWidth={3} />
                   </div>
                   <div className="min-w-0">
                       <h4 className="text-[11px] font-black text-primary uppercase tracking-[0.3em] mb-2 flex items-center gap-3">
-                        Attention <div className="w-2 h-2 rounded-full bg-primary-500 animate-ping" />
+                        Attention <div className="w-2 h-2 rounded-full bg-indigo-500 animate-ping" />
                       </h4>
                       <p className="text-[13px] text-muted font-bold leading-relaxed">
                           Vision Engine has successfully normalized the problem structure. However, <span className="text-primary underline decoration-primary/30 underline-offset-8">test case synchronization requires mentor validation</span>. Please review the I/O mapping before final implementation.
@@ -2066,7 +2065,7 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                     value={previewQuestion.questionText} 
                     onChange={e => setPreviewQuestion({...previewQuestion, questionText: e.target.value})}
                     placeholder="Problem text..."
-                    className={INPUT_BASE + " h-[450px] resize-none font-mono text-sm p-8 leading-relaxed bg-surface-hover/30 border-main focus:border-primary-500/50 shadow-inner"} 
+                    className={INPUT_BASE + " h-[450px] resize-none font-mono text-sm p-8 leading-relaxed bg-surface-hover/30 border-main focus:border-indigo-500/50 shadow-inner"} 
                   />
                 </div>
 
@@ -2077,7 +2076,7 @@ const newQs = aiSuggestions.map(s => ({ ...s, id: Date.now() + Math.random() * 1
                       <label className={LABEL_BASE}>Test Cases</label>
                       <button 
                         onClick={() => setPreviewQuestion({...previewQuestion, testCases: [...previewQuestion.testCases, { input: '', expectedOutput: '', isHidden: false }] })} 
-                        className="text-[10px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2 px-3 py-1.5 rounded-lg border border-emerald-500/10 hover:bg-emerald-500/5 transition-all"
+                        className="text-[10px] font-black text-indigo-500 uppercase tracking-widest flex items-center gap-2 px-3 py-1.5 rounded-lg border border-indigo-500/10 hover:bg-indigo-500/5 transition-all"
                       >
                         <Plus size={12} strokeWidth={3} /> Inject Hidden Case
                       </button>

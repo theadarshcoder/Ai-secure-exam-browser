@@ -36,11 +36,7 @@ exports.createExam = asyncHandler(async (req, res) => {
         throw new Error('Exam duration must be between 5 and 300 minutes.');
     }
 
-    // Filter out completely empty questions from drafts to avoid mongoose crashes
     let validQuestions = questions || [];
-    if (isDraft) {
-        validQuestions = validQuestions.filter(q => q && q.questionText && q.questionText.trim() !== '');
-    }
 
     if (!isDraft && (!validQuestions || validQuestions.length === 0)) {
         res.status(400);
@@ -61,6 +57,37 @@ exports.createExam = asyncHandler(async (req, res) => {
             res.status(400);
             throw new Error(`Invalid question type: ${q.type || 'missing'}. Allowed types: ${allowedTypes.join(', ')}`);
         }
+
+        // Strict validation for Published Exams
+        if (!isDraft) {
+            if (!q.questionText || q.questionText.trim() === '') {
+                res.status(400);
+                throw new Error('All questions must have content before publishing.');
+            }
+            if (q.type === 'mcq') {
+                if (!q.options || q.options.length < 2) {
+                    res.status(400);
+                    throw new Error('MCQ questions must have at least 2 options.');
+                }
+                if (q.correctOption === undefined || q.correctOption === null) {
+                    res.status(400);
+                    throw new Error('Please select a correct option for all MCQs.');
+                }
+            }
+            if (q.type === 'coding') {
+                if (!q.testCases || q.testCases.length === 0) {
+                    res.status(400);
+                    throw new Error('Coding questions must have at least one test case.');
+                }
+                for (const tc of q.testCases) {
+                    if (!tc.input || !tc.expectedOutput) {
+                        res.status(400);
+                        throw new Error('All coding test cases must have input and expected output.');
+                    }
+                }
+            }
+        }
+
         if (Number(q.marks) <= 0) {
             res.status(400);
             throw new Error('Question marks must be greater than 0.');
@@ -145,9 +172,6 @@ exports.updateExam = asyncHandler(async (req, res) => {
     }
 
     let validQuestions = questions || [];
-    if (isDraft) {
-        validQuestions = validQuestions.filter(q => q && q.questionText && q.questionText.trim() !== '');
-    }
 
     if (!isDraft && (!validQuestions || validQuestions.length === 0)) {
         res.status(400);
@@ -168,6 +192,37 @@ exports.updateExam = asyncHandler(async (req, res) => {
             res.status(400);
             throw new Error(`Invalid question type: ${q.type || 'missing'}. Allowed types: ${allowedTypes.join(', ')}`);
         }
+
+        // Strict validation for Published Exams
+        if (!isDraft) {
+            if (!q.questionText || q.questionText.trim() === '') {
+                res.status(400);
+                throw new Error('All questions must have content before publishing.');
+            }
+            if (q.type === 'mcq') {
+                if (!q.options || q.options.length < 2) {
+                    res.status(400);
+                    throw new Error('MCQ questions must have at least 2 options.');
+                }
+                if (q.correctOption === undefined || q.correctOption === null) {
+                    res.status(400);
+                    throw new Error('Please select a correct option for all MCQs.');
+                }
+            }
+            if (q.type === 'coding') {
+                if (!q.testCases || q.testCases.length === 0) {
+                    res.status(400);
+                    throw new Error('Coding questions must have at least one test case.');
+                }
+                for (const tc of q.testCases) {
+                    if (!tc.input || !tc.expectedOutput) {
+                        res.status(400);
+                        throw new Error('All coding test cases must have input and expected output.');
+                    }
+                }
+            }
+        }
+
         if (Number(q.marks) <= 0) {
             res.status(400);
             throw new Error('Question marks must be greater than 0.');

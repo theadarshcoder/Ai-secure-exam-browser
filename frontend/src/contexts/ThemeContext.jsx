@@ -2,13 +2,13 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Sun, Moon } from 'lucide-react';
 
 /* ─── Context ─── */
-const ThemeContext = createContext({ theme: 'dark', toggleTheme: () => { } });
+const ThemeContext = createContext({ theme: 'light', toggleTheme: () => { } });
 export const useTheme = () => useContext(ThemeContext);
 
 /* ─── Provider ─── */
 export const ThemeProvider = ({ children }) => {
   const [theme, setTheme] = useState(() => {
-    try { return localStorage.getItem('vision_theme') || 'dark'; } catch { return 'dark'; }
+    try { return localStorage.getItem('vision_theme') || 'light'; } catch { return 'light'; }
   });
 
   useEffect(() => {

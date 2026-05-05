@@ -27,6 +27,22 @@
   --color-emerald-800: #3f6212;
   --color-emerald-900: #365314;
 
+  /* Overriding OKLCH defaults with HEX for html2canvas PDF Export compatibility */
+  --color-red-100: #fee2e2;
+  --color-red-400: #f87171;
+  --color-red-500: #ef4444;
+  --color-red-600: #dc2626;
+  
+  --color-amber-100: #fef3c7;
+  --color-amber-400: #fbbf24;
+  --color-amber-500: #f59e0b;
+  --color-amber-600: #d97706;
+
+  --color-indigo-100: #e0e7ff;
+  --color-indigo-400: #818cf8;
+  --color-indigo-500: #6366f1;
+  --color-indigo-600: #4f46e5;
+
   --font-sans: "Outfit", system-ui, sans-serif;
 }
 
@@ -97,6 +113,7 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    -webkit-user-select: none; /* Safari */
     user-select: none;
   }
 
@@ -104,6 +121,29 @@
   select option {
     background-color: var(--bg-surface);
     color: var(--text-primary);
+  }
+
+  /* Remove default browser focus rings (black box/border) */
+  select:focus, input:focus, button:focus, textarea:focus, select:focus-visible, button:focus-visible {
+    outline: none !important;
+  }
+
+  /* Prevent layout shift when changing font weight */
+  .prevent-layout-shift {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .prevent-layout-shift::after {
+    display: block;
+    content: attr(data-text);
+    font-weight: 600; /* Must match the heaviest font-weight used (semibold = 600) */
+    height: 0;
+    visibility: hidden;
+    overflow: hidden;
+    user-select: none;
+    pointer-events: none;
   }
 
   #root {
@@ -211,18 +251,12 @@
   border: 1px solid var(--border-main) !important;
   border-radius: 1.5rem !important;
   font-family: var(--font-sans) !important;
-  display: inline-flex !important;
-  flex-wrap: wrap !important;
-  width: fit-content !important;
-  gap: 0 !important;
-  justify-content: flex-start !important;
+  display: inline-block !important;
 }
 
 .react-datepicker__month-container {
-  float: none !important;
+  float: left !important;
   margin: 0 !important;
-  width: fit-content !important;
-  min-width: 220px !important;
 }
 
 .react-datepicker__header {
@@ -255,9 +289,21 @@
 .react-datepicker__day--selected,
 .react-datepicker__day--keyboard-selected {
   background-color: var(--text-primary) !important;
-  color: var(--bg-surface) !important;
+  color: var(--bg-page) !important;
   font-weight: 900 !important;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-theme="light"] .react-datepicker__day--selected,
+[data-theme="light"] .react-datepicker__day--keyboard-selected {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .react-datepicker__day--selected,
+[data-theme="dark"] .react-datepicker__day--keyboard-selected {
+  background-color: #ffffff !important;
+  color: #09090b !important;
 }
 
 .react-datepicker__day--today {
@@ -273,10 +319,11 @@
 }
 
 .react-datepicker__time-container {
-  border-left: none !important;
+  border-left: 1px solid var(--border-main) !important;
   background-color: var(--bg-surface) !important;
   width: 85px !important;
   margin: 0 !important;
+  float: left !important;
 }
 
 .react-datepicker__time {
@@ -288,7 +335,7 @@
 }
 
 .react-datepicker__time-list-item {
-  color: #ffffff !important;
+  color: var(--text-primary) !important;
   transition: all 0.2s !important;
   font-size: 0.8rem !important;
   padding: 0.5rem 0.25rem !important;
@@ -309,12 +356,22 @@
 
 .react-datepicker__time-list-item--selected {
   background-color: var(--text-primary) !important;
-  color: var(--bg-surface) !important;
+  color: var(--bg-page) !important;
   font-weight: 900 !important;
   order: -1 !important;
   position: sticky !important;
   top: 0 !important;
   z-index: 10 !important;
+}
+
+[data-theme="light"] .react-datepicker__time-list-item--selected {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .react-datepicker__time-list-item--selected {
+  background-color: #ffffff !important;
+  color: #09090b !important;
 }
 
 .react-datepicker__navigation-icon::before {
@@ -332,7 +389,10 @@
   padding: 1rem !important;
   text-align: center !important;
   width: 100% !important;
-  flex-basis: 100% !important;
+  clear: both !important;
+  display: block !important;
+  border-bottom-left-radius: 1.5rem !important;
+  border-bottom-right-radius: 1.5rem !important;
 }
 
 

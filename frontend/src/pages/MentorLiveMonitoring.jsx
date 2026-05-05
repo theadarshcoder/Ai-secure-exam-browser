@@ -172,12 +172,12 @@ export default function MentorLiveMonitoring() {
         <div className="flex items-center gap-6">
           <button 
             onClick={() => navigate(-1)}
-            className="w-12 h-12 rounded-2xl bg-surface border border-main flex items-center justify-center text-muted hover:text-primary transition-all shadow-lg"
+            className="p-2 -ml-2 flex items-center justify-center text-muted hover:text-primary transition-all"
           >
-            <ChevronLeft size={20} />
+            <ChevronLeft size={24} />
           </button>
           <div>
-            <h1 className="text-3xl font-black text-primary tracking-tighter uppercase italic flex items-center gap-3">
+            <h1 className="text-3xl font-semibold text-primary tracking-tight flex items-center gap-3" style={{ fontFamily: "'Inter', sans-serif" }}>
               Live Monitoring <Activity className="text-emerald-500 animate-pulse" />
             </h1>
             <p className="text-sm font-medium text-muted">Real-time proctoring & risk analysis grid</p>
@@ -202,41 +202,41 @@ export default function MentorLiveMonitoring() {
       </header>
 
       {/* ── Stats Bar ── */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-        <div className="bg-surface border border-main rounded-3xl p-6 flex items-center gap-5 shadow-sm">
-          <div className="w-14 h-14 rounded-2xl bg-primary-500/10 text-primary-500 flex items-center justify-center">
-            <Users size={24} />
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-10" style={{ fontFamily: "'Inter', sans-serif" }}>
+        <div className="bg-surface border border-main rounded-2xl p-4 flex items-center gap-4 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-primary-500/10 text-primary-500 flex items-center justify-center">
+            <Users size={18} />
           </div>
           <div>
-            <p className="text-[10px] font-black text-muted uppercase tracking-[0.15em]">Total Registered</p>
-            <p className="text-2xl font-black text-primary tabular-nums">{sessions.length}</p>
+            <p className="text-[9px] font-bold text-muted uppercase tracking-wider">Total Registered</p>
+            <p className="text-xl font-bold text-primary tabular-nums">{sessions.length}</p>
           </div>
         </div>
-        <div className="bg-surface border border-main rounded-3xl p-6 flex items-center gap-5 shadow-sm">
-          <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-            <Activity size={24} />
+        <div className="bg-surface border border-main rounded-2xl p-4 flex items-center gap-4 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+            <Activity size={18} />
           </div>
           <div>
-            <p className="text-[10px] font-black text-muted uppercase tracking-[0.15em]">Live Now</p>
-            <p className="text-2xl font-black text-primary tabular-nums">{stats.active}</p>
+            <p className="text-[9px] font-bold text-muted uppercase tracking-wider">Live Now</p>
+            <p className="text-xl font-bold text-primary tabular-nums">{stats.active}</p>
           </div>
         </div>
-        <div className="bg-surface border border-main rounded-3xl p-6 flex items-center gap-5 shadow-sm border-amber-500/20 bg-amber-500/5">
-          <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
-            <AlertTriangle size={24} />
+        <div className="bg-surface border border-main rounded-2xl p-4 flex items-center gap-4 shadow-sm border-amber-500/20 bg-amber-500/5">
+          <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+            <AlertTriangle size={18} />
           </div>
           <div>
-            <p className="text-[10px] font-black text-amber-900/60 uppercase tracking-[0.15em]">Suspicious</p>
-            <p className="text-2xl font-black text-amber-900 tabular-nums">{stats.flagged}</p>
+            <p className="text-[9px] font-bold text-amber-900/60 uppercase tracking-wider">Suspicious</p>
+            <p className="text-xl font-bold text-amber-900 tabular-nums">{stats.flagged}</p>
           </div>
         </div>
-        <div className="bg-surface border border-main rounded-3xl p-6 flex items-center gap-5 shadow-sm border-red-500/20 bg-red-500/5">
-          <div className="w-14 h-14 rounded-2xl bg-red-500/10 text-red-500 flex items-center justify-center">
-            <ShieldAlert size={24} />
+        <div className="bg-surface border border-main rounded-2xl p-4 flex items-center gap-4 shadow-sm border-red-500/20 bg-red-500/5">
+          <div className="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center">
+            <ShieldAlert size={18} />
           </div>
           <div>
-            <p className="text-[10px] font-black text-red-900/60 uppercase tracking-[0.15em]">Critical Risk</p>
-            <p className="text-2xl font-black text-red-900 tabular-nums">{stats.critical}</p>
+            <p className="text-[9px] font-bold text-red-900/60 uppercase tracking-wider">Critical Risk</p>
+            <p className="text-xl font-bold text-red-900 tabular-nums">{stats.critical}</p>
           </div>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
 import VisionLogo from './VisionLogo';
@@ -36,6 +36,19 @@ export default function PremiumSidebar({
     else setInternalExpanded(!internalExpanded);
   };
   const [hoveredId, setHoveredId] = useState(null);
+  
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const profileMenuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
+        setShowProfileMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Dynamic Colors based on Slash.com / Modern SaaS aesthetics
   const colors = {
@@ -218,8 +231,8 @@ export default function PremiumSidebar({
                     style={{
                       position: 'absolute',
                       left: expanded ? 8 : 4,
-                       top: '15%',
-                       bottom: '15%',
+                       top: '25%',
+                       bottom: '25%',
                        width: 3,
                        borderRadius: 3,
                        background: 'var(--border-main)',
@@ -236,8 +249,8 @@ export default function PremiumSidebar({
                     style={{
                       position: 'absolute',
                       left: expanded ? 8 : 4,
-                       top: '15%',
-                       bottom: '15%',
+                       top: '25%',
+                       bottom: '25%',
                        width: 3,
                        borderRadius: 3,
                        background: 'var(--accent-primary)',
@@ -255,8 +268,8 @@ export default function PremiumSidebar({
                     width: '100%',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 8,
-                    padding: expanded ? '6px 12px' : '10px 0',
+                    gap: 6,
+                    padding: expanded ? '8px 12px' : '8px 0',
                     justifyContent: expanded ? 'flex-start' : 'center',
                     borderRadius: 8,
                     border: 'none',
@@ -302,10 +315,9 @@ export default function PremiumSidebar({
                         animate="show"
                         exit="hide"
                         style={{
-                          fontSize: 14,
-                          fontWeight: isActive ? 600 : 450,
+                          fontSize: 13,
+                          fontWeight: isActive ? 600 : 500,
                           color: isActive ? colors.textActive : colors.textDefault,
-                          letterSpacing: '-0.01em',
                           whiteSpace: 'nowrap',
                           flex: 1,
                           textAlign: 'left',
@@ -351,19 +363,56 @@ export default function PremiumSidebar({
       </nav>
 
       {/* ── Bottom: User + Logout ── */}
-      {/* ── Bottom: User + Logout ── */}
       <div
+        ref={profileMenuRef}
+        className="relative"
         style={{
           padding: expanded ? '12px 12px 16px' : '12px 8px 16px',
-           borderTop: '1px solid var(--border-main)',
-           display: 'flex',
-           flexDirection: 'column',
-           gap: 6,
-         }}
+          borderTop: '1px solid var(--border-main)',
+        }}
        >
+         {/* Floating Logout Popover */}
+         <AnimatePresence>
+           {showProfileMenu && (
+             <motion.div 
+               initial={{ opacity: 0, scale: 0.95, y: 8 }}
+               animate={{ opacity: 1, scale: 1, y: 0 }}
+               exit={{ opacity: 0, scale: 0.95, y: 8 }}
+               transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+               className="absolute bottom-[calc(100%+4px)] left-2 right-2 z-50 origin-bottom"
+             >
+               <button 
+                 onClick={onLogout}
+                 className="w-full flex items-center px-3 py-2.5 bg-surface border border-main rounded-xl shadow-lg hover:border-red-500/30 hover:bg-red-500/5 group/btn transition-all active:scale-95 overflow-hidden"
+                 style={{ justifyContent: expanded ? 'flex-start' : 'center' }}
+               >
+                 <div className="flex items-center gap-2.5">
+                   <div className="w-6 h-6 rounded-md bg-red-500/10 flex items-center justify-center group-hover/btn:bg-red-500/20 transition-colors shrink-0">
+                     <LogOut size={13} className="text-red-500" strokeWidth={2.5} />
+                   </div>
+                   <AnimatePresence>
+                     {expanded && (
+                       <motion.span 
+                         variants={labelVariants}
+                         initial="hide"
+                         animate="show"
+                         exit="hide"
+                         className="text-[10px] font-black uppercase tracking-widest text-primary group-hover/btn:text-red-500 transition-colors whitespace-nowrap"
+                       >
+                         Sign Out
+                       </motion.span>
+                     )}
+                   </AnimatePresence>
+                 </div>
+               </button>
+             </motion.div>
+           )}
+         </AnimatePresence>
+
          {/* User info */}
          <div 
-           className="flex items-center gap-3 cursor-pointer group rounded-xl transition-all hover:bg-white/5" 
+           onClick={() => setShowProfileMenu(!showProfileMenu)}
+           className={`flex items-center gap-3 cursor-pointer rounded-xl transition-all hover:bg-surface border border-transparent hover:border-main hover:shadow-sm ${showProfileMenu ? 'bg-surface border-main shadow-sm' : ''}`} 
            style={{ padding: expanded ? '8px' : '8px 0', justifyContent: expanded ? 'flex-start' : 'center' }}
          >
            <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black uppercase text-[11px] shadow-sm transition-all shrink-0 bg-surface border border-main text-primary">
@@ -388,46 +437,7 @@ export default function PremiumSidebar({
              )}
            </AnimatePresence>
          </div>
-
-        {/* Logout */}
-        <motion.button
-          onClick={onLogout}
-          whileHover={{ background: isDark ? 'rgba(239, 68, 68, 0.1)' : 'var(--bg-surface-hover)' }}
-          whileTap={{ scale: 0.96 }}
-          className="group/logout"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            padding: expanded ? '8px 10px' : '8px 0',
-            justifyContent: expanded ? 'flex-start' : 'center',
-            borderRadius: 10,
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            color: colors.itemDefault,
-            width: '100%',
-            overflow: 'hidden',
-          }}
-        >
-          <div className="flex items-center justify-center flex-shrink-0 group-hover/logout:text-red-500 transition-colors">
-            <LogOut size={16} strokeWidth={2.5} />
-          </div>
-          <AnimatePresence initial={false}>
-            {expanded && (
-              <motion.span
-                variants={labelVariants}
-                initial="hide"
-                animate="show"
-                exit="hide"
-                className="text-[10px] font-black uppercase tracking-widest text-muted group-hover/logout:text-red-600 transition-colors whitespace-nowrap"
-              >
-                Log Out
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </motion.button>
-      </div>
+       </div>
     </motion.aside>
   );
 }
