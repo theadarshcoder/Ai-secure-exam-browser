@@ -82,6 +82,8 @@ const examSessionSchema = new mongoose.Schema({
     
     // ─── Timing ──────────────────────────────────────
     startedAt: { type: Date, default: Date.now },
+    endTime: { type: Date }, // Absolute deadline
+    pausedAt: { type: Date }, // When the session was paused
     submittedAt: { type: Date },
     
     // ─── Proctoring Data ─────────────────────────────
@@ -96,6 +98,7 @@ const examSessionSchema = new mongoose.Schema({
     
     // Session Status ──────────────────────────────
     // in_progress:    Exam currently being taken
+    // paused:         Exam paused (exited securely with password)
     // submitted:      Exam fully graded and finalized
     // pending_review: Auto-graded but short answers need mentor evaluation
     // flagged:        System-flagged due to suspicious activity (multiple violations)
@@ -104,7 +107,7 @@ const examSessionSchema = new mongoose.Schema({
     // auto_submitted: Submitted automatically upon timer expiration
     status: { 
         type: String, 
-        enum: ['in_progress', 'submitted', 'pending_review', 'flagged', 'blocked', 'reviewed', 'auto_submitted'],
+        enum: ['in_progress', 'paused', 'submitted', 'pending_review', 'flagged', 'blocked', 'reviewed', 'auto_submitted'],
         default: 'in_progress' 
     },
     
@@ -150,6 +153,9 @@ examSessionSchema.index({ status: 1 });
 // 🏎️ Fix 30: Critical performance indexes for live exams
 // Prevents full collection scans during time extensions and room broadcasts
 examSessionSchema.index({ exam: 1, status: 1 });
+
+// Index for cron auto-submit query optimization
+examSessionSchema.index({ status: 1, endTime: 1 });
 
 // unique session per student per exam (already exists but re-ensuring)
 examSessionSchema.index({ student: 1, exam: 1 }, { unique: true });

@@ -172,6 +172,16 @@ export const runCodingQuestion = async (examId, questionId, sourceCode, language
   }
 };
 
+// Secure Exit via Password
+export const exitExam = async (examId, exitPassword) => {
+  try {
+    const response = await api.post('/api/exams/exit', { examId, exitPassword });
+    return response.data;
+  } catch (error) {
+    throw getErrorMessage(error);
+  }
+};
+
 // ─────────────────────────────────────────────────────────
 // User Management APIs
 // ─────────────────────────────────────────────────────────

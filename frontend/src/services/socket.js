@@ -121,6 +121,18 @@ class SocketService {
     }
   }
 
+  onForceAutoSubmit(callback) {
+    if (this.socket) {
+      this.socket.on('force_auto_submit', callback);
+    }
+  }
+
+  offForceAutoSubmit(callback) {
+    if (this.socket) {
+      this.socket.off('force_auto_submit', callback);
+    }
+  }
+
   // --- 🛡️ PROCTORING EMITS ---
 
   emitViolationReport(type, duration, examId) {

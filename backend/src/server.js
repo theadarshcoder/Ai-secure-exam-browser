@@ -39,6 +39,7 @@ const { setupCodeEvaluationWorker } = require('./queues/codeGradingQueue');
 const { setupFrontendEvaluationWorker } = require('./queues/frontendGradingQueue');
 const { setupInviteEmailWorker } = require('./queues/inviteEmailQueue');
 const { startIntelligenceWorker } = require('./queues/intelligenceWorker');
+const { startAutoSubmitWorker } = require('./queues/autoSubmitWorker');
 const { inviteVerifyLimiter } = require('./middlewares/rateLimiter');
 const traceMiddleware = require('./middlewares/traceMiddleware');
 
@@ -920,7 +921,8 @@ async function bootstrap() {
         workers.push(setupFrontendEvaluationWorker(io));
         workers.push(setupInviteEmailWorker());
         workers.push(startIntelligenceWorker());
-        console.log('✅ [BOOT] Background Workers Initialized (4/4)');
+        workers.push(await startAutoSubmitWorker(io));
+        console.log('✅ [BOOT] Background Workers Initialized (5/5)');
 
         await cacheService.preWarmCache();
         console.log('✅ [BOOT] Performance Cache Pre-warmed');

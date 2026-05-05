@@ -14,6 +14,8 @@ const { getCache, setCache, clearCache, clearPattern, TTL_API_CACHE } = require(
 const Setting = require('../models/Setting');
 const { verifySecureRequest } = require('../utils/securityUtils');
 const { VIOLATION_TYPES, SESSION_STATUS } = require('../utils/constants');
+const { processSubmission } = require('../services/submissionService');
+const AuditLog = require('../models/AuditLog');
 
 // ─────────────── POST /api/exams/create ───────────────
 // Mentor/Admin creates a new exam and saves it to MongoDB
@@ -538,6 +540,26 @@ exports.startExam = asyncHandler(async (req, res) => {
     }
 
     if (session) {
+        // 🛡️ HARD BLOCK: Check absolute endTime
+        const currentTime = Date.now();
+        const endTimeMs = session.endTime ? new Date(session.endTime).getTime() : new Date(session.startedAt).getTime() + (session.exam.duration * 60 * 1000 || 0);
+        
+        if (currentTime > endTimeMs) {
+            // Trigger auto-submit instead of resuming
+            if (session.status !== 'submitted' && session.status !== 'auto_submitted') {
+                const { processSubmission } = require('../services/submissionService');
+                const examObj = await Exam.findById(examId);
+                await processSubmission(session, examObj, {}, true);
+            }
+            res.status(403);
+            throw new Error('Exam time has expired. Your session has been auto-submitted.');
+        }
+
+        // Handle paused to in_progress transition
+        if (session.status === 'paused') {
+            session.status = 'in_progress';
+        }
+
         session.resumeCount += 1;
         session.lastSavedAt = new Date();
         await session.save();
@@ -545,7 +567,9 @@ exports.startExam = asyncHandler(async (req, res) => {
         const redisClient = getRedisClient();
         let liveAnswers = session.answers;
         let liveQuestionStates = session.questionStates;
-        let liveRemainingTime = session.remainingTimeSeconds;
+        
+        // Use absolute endTime for remaining time
+        let liveRemainingTime = Math.max(0, Math.floor((endTimeMs - currentTime) / 1000));
         let liveIndex = session.currentQuestionIndex;
 
         if (redisClient) {
@@ -583,7 +607,7 @@ exports.startExam = asyncHandler(async (req, res) => {
             return safe;
         });
 
-        return res.json({ message: 'Exam session resumed!', sessionId: session._id, startedAt: session.startedAt, isResumed: true, resumeCount: session.resumeCount, currentQuestionIndex: liveIndex, answers: liveAnswers, questionStates: liveQuestionStates, remainingTimeSeconds: liveRemainingTime, status: session.status, exam: { ...exam._doc, questions: safeQuestions, settings: globalSettings } });
+        return res.json({ message: 'Exam session resumed!', sessionId: session._id, startedAt: session.startedAt, endTime: session.endTime, isResumed: true, resumeCount: session.resumeCount, currentQuestionIndex: liveIndex, answers: liveAnswers, questionStates: liveQuestionStates, remainingTimeSeconds: liveRemainingTime, status: session.status, exam: { ...exam._doc, questions: safeQuestions, settings: globalSettings } });
     }
 
     const exam = await Exam.findById(examId);
@@ -593,12 +617,15 @@ exports.startExam = asyncHandler(async (req, res) => {
     exam.questions.forEach((_, idx) => { initialStates[String(idx)] = 'not_visited'; });
 
     const crypto = require('crypto');
+    const computedEndTime = new Date(Date.now() + exam.duration * 60 * 1000);
+    
     const newSession = new ExamSession({
         exam: examId,
         student: studentId,
         status: 'in_progress',
         totalMarks: exam.totalMarks,
         startedAt: new Date(),
+        endTime: computedEndTime,
         currentQuestionIndex: 0,
         questionStates: initialStates,
         remainingTimeSeconds: exam.duration * 60,
@@ -665,6 +692,7 @@ exports.startExam = asyncHandler(async (req, res) => {
         message: 'Exam session started! Best of luck!', 
         sessionId: session._id,
         startedAt: session.startedAt,
+        endTime: session.endTime,
         isResumed: false,
         remainingTimeSeconds: session.remainingTimeSeconds,
         currentQuestionIndex: 0,
@@ -703,16 +731,15 @@ exports.saveProgress = asyncHandler(async (req, res) => {
     }
 
     // 🛡️ Strict State Validation (Replay Attack Prevention)
-    if (session.status !== 'in_progress') {
+    if (session.status !== 'in_progress' && session.status !== 'paused' && session.status !== 'flagged') {
         res.status(403);
         throw new Error(`Cannot save progress. Exam is not in progress. (Status: ${session.status})`);
     }
 
     // 🛡️ Fix 8 & 1: Server-Side Time Authority & Auto-Submission
     const now = Date.now();
-    const started = new Date(session.startedAt).getTime();
-    const durationMs = exam.duration * 60 * 1000;
-    const serverRemainingTime = Math.max(0, Math.floor((started + durationMs - now) / 1000));
+    const endTimeMs = session.endTime ? new Date(session.endTime).getTime() : new Date(session.startedAt).getTime() + (exam.duration * 60 * 1000);
+    const serverRemainingTime = Math.max(0, Math.floor((endTimeMs - now) / 1000));
 
     if (serverRemainingTime <= 0) {
         // 🛡️ Fix 8 & 1: Auto-submit logic
@@ -826,7 +853,7 @@ exports.saveProgress = asyncHandler(async (req, res) => {
     }
 
     // 🛡️ Fix 2 (Upgraded): Atomic Status Check
-    if (session.status !== SESSION_STATUS.IN_PROGRESS && session.status !== SESSION_STATUS.FLAGGED) {
+    if (session.status !== SESSION_STATUS.IN_PROGRESS && session.status !== SESSION_STATUS.FLAGGED && session.status !== SESSION_STATUS.PAUSED) {
         return res.status(403).json({ 
             success: false, 
             message: `Exam cannot be updated in its current state: ${session.status}` 
@@ -1018,6 +1045,23 @@ exports.resumeExam = asyncHandler(async (req, res) => {
         throw new Error('No session found. Please start the exam first.');
     }
 
+    const currentTime = Date.now();
+    const endTimeMs = session.endTime ? new Date(session.endTime).getTime() : new Date(session.startedAt).getTime() + ((session.exam?.duration || 0) * 60 * 1000);
+
+    if (currentTime > endTimeMs) {
+        if (session.status !== 'submitted' && session.status !== 'auto_submitted') {
+            const { processSubmission } = require('../services/submissionService');
+            const examObj = await Exam.findById(examId);
+            await processSubmission(session, examObj, {}, true);
+        }
+        res.status(403);
+        throw new Error('Exam time has expired. Your session has been auto-submitted.');
+    }
+
+    if (session.status === 'paused') {
+        session.status = 'in_progress';
+    }
+
     // Check if already submitted
     if (session.status === 'submitted' || session.status === 'auto_submitted') {
         return res.json({
@@ -1061,7 +1105,7 @@ exports.resumeExam = asyncHandler(async (req, res) => {
     const redisClient = getRedisClient();
     let liveAnswers = session.answers;
     let liveQuestionStates = session.questionStates;
-    let liveRemainingTime = session.remainingTimeSeconds;
+    let liveRemainingTime = Math.max(0, Math.floor((endTimeMs - currentTime) / 1000));
     let liveIndex = session.currentQuestionIndex;
 
     if (redisClient) {
@@ -1110,6 +1154,15 @@ exports.resumeExam = asyncHandler(async (req, res) => {
         message: 'Session restored!',
         isCompleted: false,
         sessionId: session._id,
+        isResumed: true,
+        resumeCount: session.resumeCount,
+        currentQuestionIndex: liveIndex,
+        answers: liveAnswers,
+        questionStates: liveQuestionStates,
+        remainingTimeSeconds: liveRemainingTime,
+        status: session.status,
+        startedAt: session.startedAt,
+        endTime: session.endTime,
         exam: {
             id: exam._id,
             title: exam.title,
@@ -1160,15 +1213,17 @@ exports.submitExam = asyncHandler(async (req, res) => {
         throw new Error(`This exam cannot be submitted. Status: ${session.status}`);
     }
 
-    // ⏱️ Fix: Server-Side Timer Validation (Strict 30-sec Grace)
+    // ⏱️ Fix: Server-Side Timer Validation
     const currentTime = Date.now();
-    const startTime = new Date(session.startedAt).getTime();
-    const durationMs = exam.duration * 60 * 1000;
+    const endTime = session.endTime ? new Date(session.endTime).getTime() : new Date(session.startedAt).getTime() + (exam.duration * 60 * 1000);
     const GRACE_MS = 30000; // 30 seconds max buffer for network lag
-
+    
     let isLateSubmission = false;
-    if (currentTime > (startTime + durationMs + GRACE_MS)) {
+    let isTimeExpired = false;
+
+    if (currentTime > (endTime + GRACE_MS)) {
         isLateSubmission = true;
+        isTimeExpired = true;
         console.warn(`🚫 [Security] Late submission detected for ${studentId}. Overtime payload rejected.`);
         
         session.violations.push({
@@ -1177,231 +1232,35 @@ exports.submitExam = asyncHandler(async (req, res) => {
             details: 'Exam submitted after strict server deadline. Overtime answers were rejected.',
             timestamp: new Date()
         });
+    } else if (currentTime > endTime) {
+        // Within grace period but time expired
+        isTimeExpired = true;
     }
 
-    // 🚀 Redis Final Merge Logic
-    const redisClient = getRedisClient();
-    let finalAnswers = answers || {};
-    if (redisClient) {
-        try {
-            const cacheKey = `exam_session:${examId}:${studentId}`;
-            const cachedData = await redisClient.hgetall(cacheKey);
-            if (cachedData && cachedData.answers) {
-                try {
-                    const redisAnswers = JSON.parse(cachedData.answers);
-                    if (isLateSubmission) {
-                        // 🛡️ Discard late payload, use only what was previously auto-saved
-                        finalAnswers = redisAnswers || {};
-                    } else if (redisAnswers && typeof redisAnswers === 'object') {
-                        // Normal merge
-                        finalAnswers = { ...redisAnswers, ...finalAnswers };
-                    }
-                } catch (parseErr) {
-                    console.error('⚠️ Redis Answers parse failed in submitExam:', parseErr.message);
-                }
-            } else if (isLateSubmission) {
-                // Late submission and no Redis backup = zero answers accepted
-                finalAnswers = {};
-            }
-            await redisClient.del(cacheKey); // Clean up hash
-        } catch (redisErr) {
-            console.warn('⚠️ Redis error during submission merge:', redisErr.message);
-        }
-    }
-
-    // ─── Evaluate Each Question ──────────────────────
-    const answerBulkOps = [];
-    const summaryResults = []; // For response only
-    let autoScore = 0;
-    let hasShortAnswers = false;
-
-    for (let index = 0; index < exam.questions.length; index++) {
-        const q = exam.questions[index];
-        const qId = q._id.toString();
-
-        // 🛡️ Fix 11: Fail-fast on Invalid Marks
-        if (typeof q.marks !== 'number' || q.marks < 0) {
-            console.error(`[SECURITY] Invalid question marks configuration for exam ${examId}, question ${qId}`);
-            res.status(500);
-            throw new Error(`Invalid exam configuration: Question ${index + 1} has invalid marks.`);
-        }
-
-        const studentAnswer = finalAnswers[qId] !== undefined ? finalAnswers[qId] : finalAnswers[String(index)];
-
-        let evaluation = { marksObtained: 0, status: 'not_answered', result: {} };
-
-        if (studentAnswer !== undefined && studentAnswer !== null) {
-            if (q.type === 'mcq') {
-                evaluation = gradeMCQ(q, studentAnswer);
-                autoScore += evaluation.marksObtained;
-            } else if (q.type === 'coding') {
-                try {
-                    const codeToGrade = (studentAnswer && typeof studentAnswer === 'object') ? studentAnswer.code : studentAnswer;
-                    evaluation = await gradeCoding(q, codeToGrade);
-                    autoScore += evaluation.marksObtained;
-                } catch (err) {
-                    evaluation = { 
-                        marksObtained: 0, maxMarks: q.marks || 1, status: 'pending_review', 
-                        result: { error: 'Grading Service Unavailable' } 
-                    };
-                    hasShortAnswers = true;
-                }
-            } else if (q.type === 'short') {
-                hasShortAnswers = true;
-                try {
-                    evaluation = await gradeShortAnswer(q, studentAnswer);
-                } catch (err) {
-                    evaluation = { 
-                        marksObtained: 0, maxMarks: q.marks || 1, status: 'pending_review',
-                        result: { error: 'AI Service Unavailable' }
-                    };
-                }
-            } else if (q.type === 'frontend-react') {
-                // For UI labs, we use the score from the background worker
-                // Check if an existing ExamAnswer has a frontendResult
-                const existingAnswer = await ExamAnswer.findOne({ sessionId: session._id, questionId: qId });
-                if (existingAnswer && existingAnswer.frontendResult) {
-                    evaluation = {
-                        marksObtained: existingAnswer.frontendResult.score || 0,
-                        maxMarks: q.marks || existingAnswer.frontendResult.maxMarks || 0,
-                        status: existingAnswer.frontendResult.passed ? 'correct' : 'incorrect',
-                        result: existingAnswer.frontendResult
-                    };
-                    autoScore += evaluation.marksObtained;
-                } else {
-                    hasShortAnswers = true; // Mark for review if not graded yet
-                    evaluation = {
-                        marksObtained: 0,
-                        maxMarks: q.marks || 0,
-                        status: 'pending_review',
-                        result: { message: 'UI Verification Pending' }
-                    };
-                }
-            }
-        }
-
-        // Prepare relational update
-        answerBulkOps.push({
-            updateOne: {
-                filter: { sessionId: session._id, questionId: qId },
-                update: {
-                    $set: {
-                        answer: (studentAnswer && typeof studentAnswer === 'object') ? studentAnswer.answer : studentAnswer,
-                        code: (studentAnswer && typeof studentAnswer === 'object') ? studentAnswer.code : undefined,
-                        marksObtained: evaluation.marksObtained,
-                        maxMarks: q.marks || evaluation.maxMarks || 0,
-                        status: evaluation.status,
-                        result: evaluation // Detailed results (test cases, AI reasoning)
-                    }
-                },
-                upsert: true
-            }
-        });
-
-        summaryResults.push({
-            questionIndex: index,
-            type: q.type,
-            marksObtained: evaluation.marksObtained,
-            maxMarks: q.marks || evaluation.maxMarks || 0,
-            status: evaluation.status
+    // 🛡️ Log early manual submission
+    if (!isTimeExpired) {
+        await AuditLog.create({
+            performedBy: req.user.id,
+            action: 'EXAM_SUBMITTED',
+            targetUserId: req.user.id,
+            details: { examId, method: 'manual_submit' }
         });
     }
 
-    // Execute Relational Writes
-    if (answerBulkOps.length > 0) {
-        await ExamAnswer.bulkWrite(answerBulkOps);
-    }
-
-    // ─── Calculate Score ──────────────────────
-    const totalMarksVal = Number(exam.totalMarks) || 1;
-    const percentage = Math.round((autoScore / totalMarksVal) * 100) || 0;
-    const passed = percentage >= (Number(exam.passingMarks) || 40);
-
-    // ─── 🛡️ Zero-Trust Behavioral Anomaly Detection ────────
-    const timeTakenSeconds = Math.round((Date.now() - new Date(session.startedAt).getTime()) / 1000);
-    const totalQuestions = exam.questions ? exam.questions.length : 0;
-    
-    // 1. Speed Anomaly: Adaptive check (is it impossibly fast?)
-    let speedAnomalyFlag = false;
-    if (totalQuestions > 0 && (timeTakenSeconds / totalQuestions) < 5) {
-        speedAnomalyFlag = true;
-    }
-
-    // 2. Telemetry Health (Missing data = Tampering)
-    const heartbeatInterval = 30; // expected every 30s
-    const expectedHeartbeats = Math.max(1, Math.floor(timeTakenSeconds / heartbeatInterval));
-    const actualHeartbeats = session.heartbeatCount || 0;
-    const telemetryRatio = actualHeartbeats / expectedHeartbeats;
-    
-    let missingTelemetryScore = 0;
-    if (telemetryRatio < 0.1) missingTelemetryScore = 20; // Critical missing data
-    else if (telemetryRatio < 0.3) missingTelemetryScore = 10; // Highly suspicious
-    
-    // Check Max Gap (e.g., disconnected for 5+ mins)
-    if ((session.maxHeartbeatGap || 0) > 300000) {
-        missingTelemetryScore += 10;
-    }
-
-    // 3. Suspicious Perfection
-    let perfectScoreAnomaly = false;
-    if (percentage > 95 && speedAnomalyFlag && (session.violations.length === 0 || telemetryRatio < 0.5)) {
-        perfectScoreAnomaly = true;
-    }
-
-    // 4. Central Risk Score Calculation (Overrides incremental frontend calculations)
-    const riskScoreRaw = 
-        (session.tabSwitchCount * 2) +
-        (session.violations.length * 5) +
-        missingTelemetryScore +
-        (speedAnomalyFlag ? 20 : 0) +
-        (perfectScoreAnomaly ? 15 : 0);
-
-    const riskScore = Math.min(riskScoreRaw, 100);
-    
-    let riskLevel = 'LOW';
-    if (riskScore >= 60) riskLevel = 'CRITICAL';
-    else if (riskScore >= 30) riskLevel = 'HIGH';
-    else if (riskScore >= 10) riskLevel = 'MEDIUM';
-
-    session.riskScore = riskScore;
-    session.riskLevel = riskLevel;
-
-    // ─── Update Session Status ──────────────
-    const finalStatus = hasShortAnswers ? 'pending_review' : (isLateSubmission ? 'auto_submitted' : 'submitted');
-
-    session.score = Number(autoScore) || 0;
-    session.totalMarks = Number(totalMarksVal) || 1;
-    session.percentage = Number(percentage) || 0;
-    session.passed = hasShortAnswers ? false : passed;
-    session.status = finalStatus;
-    session.requiresManualGrading = hasShortAnswers;
-    session.submittedAt = new Date();
-    await session.save();
-
-    // ─── Update ExamInvite Status → completed ────────
-    ExamInvite.findOneAndUpdate(
-        { exam: examId, student: studentId, status: { $in: ['exam_started', 'opened'] } },
-        { status: 'completed' }
-    ).catch(err => console.error('[Invite] Status update (completed) failed:', err.message));
-
-    // ⚡ CRITICAL: Clear student's dashboard cache to reflect submission immediately
-    await clearCache(`active_exams_user_${studentId}`);
-
-    // 🧠 AI Intelligence: Trigger background pre-computation
-    const { addIntelligenceJob } = require('../queues/intelligenceQueue');
-    await addIntelligenceJob(studentId);
+    // Process submission using the unified service
+    const results = await processSubmission(session, exam, answers, isLateSubmission);
 
     res.json({
-        message: hasShortAnswers 
+        message: results.requiresManualGrading 
             ? 'Exam submitted! Some answers require mentor evaluation.'
             : 'Exam submitted successfully!',
-        score: session.score,
-        totalMarks: session.totalMarks,
-        percentage: session.percentage,
-        passed: session.passed,
-        status: session.status,
-        requiresManualGrading: session.requiresManualGrading,
-        questionResults: summaryResults
+        score: results.score,
+        totalMarks: results.totalMarks,
+        percentage: results.percentage,
+        passed: results.passed,
+        status: results.status,
+        requiresManualGrading: results.requiresManualGrading,
+        questionResults: results.summaryResults
     });
 });
 
@@ -2412,9 +2271,9 @@ exports.heartbeat = asyncHandler(async (req, res) => {
     }
 
     // 🛡️ Strict State Validation (Replay Attack Prevention)
-    if (session.status !== 'in_progress') {
+    if (session.status !== 'in_progress' && session.status !== 'paused') {
         res.status(403);
-        throw new Error('Heartbeat ignored. Exam is not in progress.');
+        throw new Error(`Heartbeat ignored. Exam is not in progress or paused. Status: ${session.status}`);
     }
 
     const now = new Date();
@@ -2529,4 +2388,60 @@ exports.getLiveMonitoringData = asyncHandler(async (req, res) => {
         count: liveData.length,
         data: liveData
     });
+});
+
+// ─────────────── POST /api/exams/exit ───────────────
+// Secure exit endpoint that pauses the exam with a password
+exports.exitExam = asyncHandler(async (req, res) => {
+    const { examId, exitPassword } = req.body;
+    const studentId = req.user.id;
+
+    const session = await ExamSession.findOne({ exam: examId, student: studentId });
+    
+    if (!session) {
+        res.status(404);
+        throw new Error('Active session not found');
+    }
+
+    if (session.status !== 'in_progress') {
+        res.status(400);
+        throw new Error(`Cannot exit. Exam is not in progress. Status: ${session.status}`);
+    }
+
+    const globalSettings = await Setting.findOne();
+    if (!globalSettings || !globalSettings.exitPassword) {
+        res.status(500);
+        throw new Error('Server misconfiguration: Supervisor exit password is not set.');
+    }
+
+    if (!exitPassword || exitPassword !== globalSettings.exitPassword) {
+        // Log failed exit attempt
+        await AuditLog.create({
+            performedBy: req.user.id,
+            action: 'INVALID_EXIT_ATTEMPT',
+            targetUserId: req.user.id,
+            details: { examId, method: 'exit', reason: 'wrong_password' }
+        });
+
+        res.status(403);
+        throw new Error('Incorrect supervisor password. Cannot exit exam.');
+    }
+
+    // Update session to paused
+    session.status = 'paused';
+    session.pausedAt = new Date();
+    session.lastSavedAt = new Date();
+    await session.save();
+
+    // Log successful pause
+    await AuditLog.create({
+        performedBy: req.user.id,
+        action: 'EXAM_PAUSED',
+        targetUserId: req.user.id,
+        details: { examId, method: 'student_exit' }
+    });
+
+    // NOTE: Intentionally keeping Redis cache intact for fast resume
+
+    res.json({ success: true, message: 'Exam securely paused. You may resume later with supervisor authorization.' });
 });

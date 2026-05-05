@@ -30,6 +30,13 @@ const submitExamSchema = z.object({
     }) // Removed .strict() to resolve "Unrecognized key(s)" error
 });
 
+const exitExamSchema = z.object({
+    body: z.object({
+        examId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid Exam ID format"),
+        exitPassword: z.string().min(1, "Password is required")
+    }).strict()
+});
+
 const incidentSchema = z.object({
     body: z.object({
         examId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid Exam ID format"),
@@ -47,5 +54,6 @@ module.exports = {
     startExamSchema,
     saveProgressSchema,
     submitExamSchema,
+    exitExamSchema,
     incidentSchema
 };

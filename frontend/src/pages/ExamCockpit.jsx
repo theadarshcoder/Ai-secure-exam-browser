@@ -254,7 +254,7 @@ const ProctoringSidebar = React.memo(
   ),
 );
 
-const SubmitModal = React.memo(({ isOpen, onClose, onConfirm, stats, password, setPassword, error }) => (
+const SubmitModal = React.memo(({ isOpen, onClose, onConfirm, stats }) => (
   <AnimatePresence>
     {isOpen && (
       <div className="fixed inset-0 z-[110] bg-black/70 backdrop-blur-md flex items-center justify-center p-6">
@@ -298,22 +298,6 @@ const SubmitModal = React.memo(({ isOpen, onClose, onConfirm, stats, password, s
                 {stats.total}
               </p>
             </div>
-          </div>
-          <div className="relative mb-6">
-             <input
-               type="password"
-               value={password}
-               onChange={(e) => setPassword(e.target.value)}
-               placeholder="Supervisor Password"
-               className="w-full bg-surface-hover border border-main rounded-xl px-4 py-3.5 text-center text-primary font-mono text-[14px] tracking-[0.4em] focus:outline-none focus:border-[#1e2235] focus:ring-4 focus:ring-[#1e2235]/10 transition-all"
-             />
-             {error && (
-               <div className="absolute top-full left-0 right-0 mt-2 text-center">
-                 <span className="text-[10px] font-bold text-red-600 uppercase tracking-widest">
-                   {error}
-                 </span>
-               </div>
-             )}
           </div>
           <div className="flex gap-3">
             <button
@@ -1125,6 +1109,12 @@ const { examId } = useParams();
 
     socketService.onAdminMessage(handleAdminMessage);
 
+    const handleForceAutoSubmit = (data) => {
+      setSubmitted(true);
+      toast.error(data.message || "Your exam time has expired and has been automatically submitted.", { duration: 10000 });
+    };
+    socketService.onForceAutoSubmit(handleForceAutoSubmit);
+
     // 🚀 BullMQ Code Evaluation Results
     const handleCodeEvaluationResult = (data) => {
       setExecutionResultsByQuestion((prev) => ({
@@ -1201,6 +1191,7 @@ const { examId } = useParams();
 
     return () => {
       socketService.offAdminMessage(handleAdminMessage);
+      socketService.offForceAutoSubmit(handleForceAutoSubmit);
       socket.off("time_extended", handleTimeExtension);
       socket.off("code_evaluation_result", handleCodeEvaluationResult);
       socket.off("code_evaluation_error", handleCodeEvaluationError);
@@ -1782,7 +1773,7 @@ const { examId } = useParams();
 
         if (remainingSec === 0 && secondsLeft > 0 && !isSubmittingRef.current) {
           setSecondsLeft(0);
-          handleFinalSubmitRef.current();
+          handleFinalSubmitRef.current(); // Timer expiry auto-submits
         } else {
           setSecondsLeft(remainingSec);
         }
@@ -1919,7 +1910,7 @@ const { examId } = useParams();
           });
 
           setSecondsLeft(restoredTime);
-          endRef.current = Date.now() + restoredTime * 1000;
+          endRef.current = sessionProgress.endTime ? new Date(sessionProgress.endTime).getTime() : Date.now() + restoredTime * 1000;
           setAnswers(restoredAnswers);
           setCurrentQ(startIdx);
 
@@ -2835,15 +2826,11 @@ const { examId } = useParams();
           total: questions.length,
           marked: Object.values(markedForReview).filter(Boolean).length,
         }}
-        password={exitPassword}
-        setPassword={setExitPassword}
-        error={exitError}
-        onConfirm={() => {
-          const targetPass = settings?.exitPassword || "12345";
-          if (!settings?.exitPassword || exitPassword === targetPass) {
-            handleFinalSubmit();
-          } else {
-            setExitError("Incorrect Password");
+        onConfirm={async () => {
+          try {
+            await handleFinalSubmit();
+          } catch (err) {
+            // handleFinalSubmit already sets toasts
           }
         }}
       />
@@ -2853,13 +2840,14 @@ const { examId } = useParams();
         password={exitPassword}
         setPassword={setExitPassword}
         error={exitError}
-        onExit={() => {
-          const targetPass = settings?.exitPassword || "12345"; // Fallback to 12345 if not set or failed to load
-          if (!settings?.exitPassword || exitPassword === targetPass) {
+        onExit={async () => {
+          try {
+            const { exitExam } = await import("../services/api");
+            await exitExam(examId, exitPassword);
             window.removeEventListener("beforeunload", () => {});
             navigate("/student");
-          } else {
-            setExitError("Incorrect Password");
+          } catch (err) {
+            setExitError(err || "Incorrect Password");
           }
         }}
       />

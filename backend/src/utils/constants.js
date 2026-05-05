@@ -16,6 +16,7 @@ const VIOLATION_TYPES = {
  */
 const SESSION_STATUS = {
     IN_PROGRESS: 'in_progress',
+    PAUSED: 'paused',
     FLAGGED: 'flagged',
     SUBMITTED: 'submitted',
     AUTO_SUBMITTED: 'auto_submitted',

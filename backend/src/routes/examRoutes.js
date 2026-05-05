@@ -47,7 +47,7 @@ router.get('/admin-stats', verifyToken, checkRole(['admin']), examController.get
 
 
 const validate = require('../middleware/validate');
-const { startExamSchema, saveProgressSchema, submitExamSchema, incidentSchema } = require('../validations/exam.schema');
+const { startExamSchema, saveProgressSchema, submitExamSchema, exitExamSchema, incidentSchema } = require('../validations/exam.schema');
 
 // ═══════════════════════════════════════════════════════════
 //  🎓 Student Endpoints
@@ -68,6 +68,9 @@ router.get('/resume/:examId', verifyToken, examController.resumeExam);
 
 // Exam submit karo — auto-scoring hogi, results milenge
 router.post('/submit', verifyToken, validate(submitExamSchema), secureActionLimiter, examController.submitExam);
+
+// Secure exit — pauses exam with a password
+router.post('/exit', verifyToken, validate(exitExamSchema), secureActionLimiter, examController.exitExam);
 
 // 🆕 Student Result — Student view of their own performance breakdown
 router.get('/student-result/:examId', verifyToken, examController.getStudentResult);
