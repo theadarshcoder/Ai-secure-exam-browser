@@ -189,10 +189,12 @@ exports.bulkInvite = asyncHandler(async (req, res) => {
 
     for (const inv of existingInvites) {
         const email = (inv.email || '').toLowerCase().trim();
-        if (['sent', 'opened', 'exam_started', 'completed'].includes(inv.status)) {
+        // 🛡️ Only skip if the student has actually INTERACTED with the invite
+        if (['opened', 'exam_started', 'completed'].includes(inv.status)) {
             alreadySuccessfulEmails.add(email);
         } else {
-            // Failed or stuck in pending — we'll delete and re-create a fresh one
+            // Pending, Failed, OR even 'Sent' but not yet opened — we'll delete and re-create 
+            // to allow the admin to "re-push" the invite via CSV.
             staleInviteIds.push(inv._id);
         }
     }
