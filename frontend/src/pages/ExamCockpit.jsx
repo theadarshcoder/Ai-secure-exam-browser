@@ -1842,24 +1842,38 @@ const { examId } = useParams();
 
   // 🏢 Fetch Exam + Seeded Shuffle + Resume Data
   useEffect(() => {
+    // Guard: don't run if already loaded or already fetching
+    if (examLoadedRef.current || isFetchingRef.current) return;
+
+    let isCancelled = false; // Cleanup guard for when component unmounts mid-fetch
+
+    // Exponential backoff delays: 0s, 2s, 5s, 10s, 20s, 30s
+    const RETRY_DELAYS = [0, 2000, 5000, 10000, 20000, 30000];
+    const MAX_RETRIES = RETRY_DELAYS.length - 1;
+
     const fetchExam = async (retryCount = 0) => {
+      if (isCancelled || examLoadedRef.current) return;
+
       isFetchingRef.current = true;
-      // Clear any previous retry toasts
       toast.dismiss("exam-retry");
 
-      // On first attempt, show a professional loading indicator instead of waiting for error
-      let loadingToast = null;
       if (retryCount === 0) {
-        loadingToast = toast.loading("Connecting to secure server...", {
-          id: "exam-init",
-        });
+        toast.loading("Connecting to secure server...", { id: "exam-init" });
+      } else {
+        // Show a friendly warming-up message for retries (Render cold start)
+        toast.loading(
+          retryCount <= 2
+            ? "Establishing secure connection..."
+            : "Server warming up, please wait...",
+          { id: "exam-init" }
+        );
       }
 
       try {
         const response = await api.post("/api/exams/start", { examId });
 
-        // Success! Clean up all initialization toasts
-        if (loadingToast) toast.dismiss(loadingToast);
+        if (isCancelled) return;
+
         toast.dismiss("exam-init");
 
         if (
@@ -1874,6 +1888,7 @@ const { examId } = useParams();
         const sessionProgress = response.data;
         setExam(data);
         examLoadedRef.current = true;
+        isFetchingRef.current = false;
         setSessionId(sessionProgress.sessionId);
 
         if (data.questions && data.questions.length > 0) {
@@ -1929,7 +1944,6 @@ const { examId } = useParams();
           setAnswers(restoredAnswers);
           setCurrentQ(startIdx);
 
-          // Initial Block Sync
           if (sessionProgress.status === "blocked") {
             setIsBlocked(true);
           }
@@ -1952,53 +1966,61 @@ const { examId } = useParams();
           }
         }
       } catch (err) {
-        console.error("Fetch exam failed:", err);
-        toast.dismiss("exam-init");
+        if (isCancelled) return;
 
-        // If it's a 401/403, only kick them out if exam hasn't loaded yet
-        // If already in exam, a transient 401 could be token expiry mid-session - don't kill the exam
-        if (err.response?.status === 401 || err.response?.status === 403) {
-          if (examLoadedRef.current) {
-            console.warn("Got 401/403 during background re-fetch but exam is active. Ignoring.");
-            return;
+        console.error(`Fetch exam failed (attempt ${retryCount + 1}):`, err);
+        const status = err.response?.status;
+
+        // 401 = truly expired token, kick out only if exam not loaded
+        if (status === 401) {
+          toast.dismiss("exam-init");
+          if (!examLoadedRef.current) {
+            toast.error("Session expired. Please login again.");
+            navigate("/student");
           }
-          toast.error("Session expired. Please login again.");
-          navigate("/student");
+          isFetchingRef.current = false;
           return;
         }
 
-        if (retryCount < 3) {
-          const delay = retryCount === 0 ? 500 : 2500;
-          if (retryCount === 1 && !examLoadedRef.current) {
-            toast.loading("Establishing secure connection...", { id: "exam-init" });
+        // 403 = admin block or session issue — only kick if we have no data yet
+        if (status === 403) {
+          toast.dismiss("exam-init");
+          if (!examLoadedRef.current) {
+            toast.error(err.response?.data?.message || "Access denied. Please contact your supervisor.");
+            navigate("/student");
           }
+          isFetchingRef.current = false;
+          return;
+        }
+
+        // Network errors / 5xx / Render cold-start timeouts: RETRY
+        if (retryCount < MAX_RETRIES) {
+          const delay = RETRY_DELAYS[retryCount + 1];
+          console.log(`Retrying fetchExam in ${delay}ms... (attempt ${retryCount + 2}/${MAX_RETRIES + 1})`);
+          isFetchingRef.current = false;
           setTimeout(() => {
-            isFetchingRef.current = false;
-            fetchExam(retryCount + 1);
+            if (!isCancelled && !examLoadedRef.current) fetchExam(retryCount + 1);
           }, delay);
           return;
         }
 
-        // Final failure: Only exit if we HAVEN'T loaded the exam yet.
-        // If we have data, we just stay on the page and rely on auto-sync/save later.
+        // All retries exhausted
+        toast.dismiss("exam-init");
+        isFetchingRef.current = false;
         if (!examLoadedRef.current) {
           toast.error(
             err.response?.data?.message ||
-              "Critical error: Connection failed. Please check your internet.",
-            { duration: 5000, id: "exam-load-failure" }
+              "Unable to connect to the server. Please check your connection and try again.",
+            { duration: 8000, id: "exam-load-failure" }
           );
-          setTimeout(() => navigate("/student"), 3000);
-        } else {
-          console.warn("Background re-fetch failed, but exam is already loaded. Ignoring.");
+          setTimeout(() => navigate("/student"), 5000);
         }
-      } finally {
-        isFetchingRef.current = false;
       }
     };
 
-    if (!isFetchingRef.current && !examLoadedRef.current) {
-      fetchExam(0);
-    }
+    fetchExam(0);
+
+    return () => { isCancelled = true; };
 
     // Fetch Global Settings for Exit Password (Admin/Mentor only)
     const role = sessionStorage.getItem("vision_role");
