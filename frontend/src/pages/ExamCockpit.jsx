@@ -1850,6 +1850,48 @@ const { examId } = useParams();
         if (data.questions && data.questions.length > 0) {
           setRawQuestions(data.questions);
           setShuffleSeed(examId + sessionProgress.sessionId);
+          
+          const mainSeedStr = examId + sessionProgress.sessionId;
+          const getRNG = (salt) => generateSeed(mainSeedStr + salt);
+
+          const processedQuestions = data.questions.map((q) => {
+            const questionId = q.id || q._id;
+            const processedQ = { ...q, originalId: questionId };
+
+            if (
+              processedQ.type === "mcq" &&
+              processedQ.options &&
+              Array.isArray(processedQ.options)
+            ) {
+              const optionsWithIndex = processedQ.options.map(
+                (optText, optIndex) => ({
+                  text: optText,
+                  originalIndex: optIndex,
+                }),
+              );
+              processedQ.displayOptions = seededShuffle(
+                optionsWithIndex,
+                getRNG("mcq_options_" + questionId),
+              );
+            } else if (processedQ.type === "mcq") {
+              // Handle MCQ with missing options gracefully
+              processedQ.displayOptions = [];
+              console.warn(`MCQ Question ${questionId} has no options!`);
+            }
+            return processedQ;
+          });
+
+          const typeOrder = ["mcq", "short", "coding", "frontend-react"];
+          let finalShuffledQuestions = [];
+          
+          for (const type of typeOrder) {
+            const typeQs = processedQuestions.filter(q => q.type === type);
+            if (typeQs.length > 0) {
+              const shuffledTypeQs = seededShuffle(typeQs, getRNG("main_questions_" + type));
+              finalShuffledQuestions = [...finalShuffledQuestions, ...shuffledTypeQs];
+            }
+          }
+          setQuestions(finalShuffledQuestions);
 
           // Restore Progress
           let restoredTime =
