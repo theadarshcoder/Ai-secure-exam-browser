@@ -995,6 +995,8 @@ const { examId } = useParams();
   const tabToast = useTabVisibility();
 
   const [exam, setExam] = useState(null);
+  const examLoadedRef = useRef(false);
+  const isFetchingRef = useRef(false);
   const [sessionId, setSessionId] = useState(null);
 
   // 💓 HEARTBEAT SYSTEM (V4 Hardened)
@@ -1832,6 +1834,7 @@ const { examId } = useParams();
   // 🏢 Fetch Exam + Seeded Shuffle + Resume Data
   useEffect(() => {
     const fetchExam = async (retryCount = 0) => {
+      isFetchingRef.current = true;
       // Clear any previous retry toasts
       toast.dismiss("exam-retry");
 
@@ -1861,6 +1864,7 @@ const { examId } = useParams();
         const data = response.data.exam;
         const sessionProgress = response.data;
         setExam(data);
+        examLoadedRef.current = true;
         setSessionId(sessionProgress.sessionId);
 
         if (data.questions && data.questions.length > 0) {
@@ -1950,32 +1954,37 @@ const { examId } = useParams();
         }
 
         if (retryCount < 3) {
-          const delay = retryCount === 0 ? 500 : 2500; // Fast retry first, then steady
-
-          // No more red error toasts. We keep the 'exam-init' loading state active.
-          // Optional: We can update the loading toast message to show persistence
-          if (retryCount === 1) {
-            toast.loading("Establishing secure connection...", {
-              id: "exam-init",
-            });
+          const delay = retryCount === 0 ? 500 : 2500;
+          if (retryCount === 1 && !examLoadedRef.current) {
+            toast.loading("Establishing secure connection...", { id: "exam-init" });
           }
-
-          setTimeout(() => fetchExam(retryCount + 1), delay);
+          setTimeout(() => {
+            isFetchingRef.current = false;
+            fetchExam(retryCount + 1);
+          }, delay);
           return;
         }
 
-        toast.error(
-          err.response?.data?.message ||
-            "Critical error: Connection failed. Please check your internet.",
-          {
-            duration: 5000,
-            id: "exam-load-failure",
-          },
-        );
-        setTimeout(() => navigate("/student"), 3000);
+        // Final failure: Only exit if we HAVEN'T loaded the exam yet.
+        // If we have data, we just stay on the page and rely on auto-sync/save later.
+        if (!examLoadedRef.current) {
+          toast.error(
+            err.response?.data?.message ||
+              "Critical error: Connection failed. Please check your internet.",
+            { duration: 5000, id: "exam-load-failure" }
+          );
+          setTimeout(() => navigate("/student"), 3000);
+        } else {
+          console.warn("Background re-fetch failed, but exam is already loaded. Ignoring.");
+        }
+      } finally {
+        isFetchingRef.current = false;
       }
     };
-    fetchExam(0);
+
+    if (!isFetchingRef.current && !examLoadedRef.current) {
+      fetchExam(0);
+    }
 
     // Fetch Global Settings for Exit Password (Admin/Mentor only)
     const role = sessionStorage.getItem("vision_role");
