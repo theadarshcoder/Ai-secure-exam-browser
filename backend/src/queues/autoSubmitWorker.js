@@ -3,14 +3,9 @@ const ExamSession = require('../models/ExamSession');
 const Exam = require('../models/Exam');
 const AuditLog = require('../models/AuditLog');
 const { processSubmission } = require('../services/submissionService');
-const mongoose = require('mongoose');
-
-// Define connection for BullMQ
-const connection = {
-    host: process.env.REDIS_HOST || '127.0.0.1',
-    port: process.env.REDIS_PORT || 6379,
-    password: process.env.REDIS_PASSWORD || undefined
-};
+// Define connection for BullMQ using the existing centralized ioredis connection
+const { getRedisConnection } = require('../config/redis');
+const connection = getRedisConnection();
 
 const AUTO_SUBMIT_QUEUE_NAME = 'AutoSubmitQueue';
 const autoSubmitQueue = new Queue(AUTO_SUBMIT_QUEUE_NAME, { connection });
