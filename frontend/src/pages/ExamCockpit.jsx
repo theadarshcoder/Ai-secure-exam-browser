@@ -2020,8 +2020,6 @@ const { examId } = useParams();
 
     fetchExam(0);
 
-    return () => { isCancelled = true; };
-
     // Fetch Global Settings for Exit Password (Admin/Mentor only)
     const role = sessionStorage.getItem("vision_role");
     if (role === "admin" || role === "mentor" || role === "super_mentor") {
@@ -2031,6 +2029,8 @@ const { examId } = useParams();
         })
         .catch((err) => console.error("Failed to load global settings", err));
     }
+
+    return () => { isCancelled = true; };
   }, [examId, navigate]);
 
   // 📷 Camera & AI Setup (Refactored to be Deterministic)
