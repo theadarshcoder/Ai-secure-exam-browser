@@ -27,11 +27,13 @@ export default function VerifyInvite() {
 
     const verifyToken = async (token) => {
         try {
-            // Generate or retrieve device ID (same pattern as login flow)
-            let deviceId = sessionStorage.getItem('vision_device_id');
+            // Generate or retrieve device ID (consistent with login flow)
+            let deviceId = localStorage.getItem('vision_device_id');
             if (!deviceId) {
-                deviceId = crypto.randomUUID();
-                sessionStorage.setItem('vision_device_id', deviceId);
+                deviceId = (window.crypto && window.crypto.randomUUID) 
+                    ? window.crypto.randomUUID() 
+                    : `dev_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 10)}`;
+                localStorage.setItem('vision_device_id', deviceId);
             }
 
             const response = await api.post('/api/auth/verify-invite', {
@@ -41,12 +43,13 @@ export default function VerifyInvite() {
 
             const data = response.data;
 
-            // Store session data (same as login flow)
-            sessionStorage.setItem('vision_token', data.token);
+            // Store session data (consistent with LoginPage.jsx)
+            sessionStorage.setItem('vision_token', data.accessToken);
+            localStorage.setItem('vision_refresh_token', data.refreshToken);
             sessionStorage.setItem('vision_id', data.user.id || data.user._id);
-            sessionStorage.setItem('vision_user', JSON.stringify(data.user));
             sessionStorage.setItem('vision_role', data.user.role);
             sessionStorage.setItem('vision_email', data.user.email);
+            sessionStorage.setItem('vision_name', data.user.name);
 
             setExamInfo({
                 examId: data.examId,
