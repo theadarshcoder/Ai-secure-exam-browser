@@ -1054,8 +1054,8 @@ const { examId } = useParams();
     if (!examId) return;
 
     const heartbeatInterval = setInterval(async () => {
-      // Don't send heartbeat until exam data is actually loaded
-      if (!examLoadedRef.current) return;
+      // Don't send heartbeat until exam data is actually loaded or if session is over
+      if (!examLoadedRef.current || submitted || terminated) return;
 
       try {
         await api.post('/api/exams/heartbeat', { examId: examId });
@@ -1482,6 +1482,7 @@ const { examId } = useParams();
 
   const logIncident = useCallback(
     async (type, severity, details) => {
+      if (submitted || terminated) return; // Silence logs for completed sessions
       const studentId = sessionStorage.getItem("vision_id") || sessionStorage.getItem("vision_email");
       if (!studentId) return; // Guarded by useEffect above
       const incident = {
@@ -2089,6 +2090,19 @@ const { examId } = useParams();
           }
           isFetchingRef.current = false;
           return;
+        }
+
+        // 400 = specific state errors (e.g., already submitted)
+        if (status === 400) {
+          toast.dismiss("exam-init");
+          const msg = err.response?.data?.message || "";
+          if (msg.toLowerCase().includes("already submitted")) {
+            toast.success("Exam already submitted. Redirecting to dashboard...");
+            setSubmitted(true);
+            setTimeout(() => navigate("/student"), 2000);
+            isFetchingRef.current = false;
+            return;
+          }
         }
 
         // Network errors / 5xx / Render cold-start timeouts: RETRY
