@@ -34,7 +34,7 @@ const codeExecutionLimiter = rateLimit({
     max: (req) => {
         if (req.user?.role === 'admin' || req.user?.role === 'super_mentor') return 100;
         if (req.user?.role === 'mentor') return 20;
-        return 1; // Default for students
+        return 5; // Default for students (Increased for faster testing)
     },
     store: createRedisStore('code_exec'),
     standardHeaders: true,

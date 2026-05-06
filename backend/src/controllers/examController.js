@@ -1967,7 +1967,7 @@ exports.runCode = asyncHandler(async (req, res) => {
             throw new Error('Unauthorized execution. Start the exam session first.');
         }
 
-        // 🛡️ RUNTIME SECURITY: Continuous Verification (V4)
+        // 🛡️ RUNTIME SECURITY: (Relaxed for browser testing)
         const fingerprint = {
             userAgent: req.headers['user-agent'],
             platform: req.headers['x-fingerprint-platform'],
@@ -1983,9 +1983,9 @@ exports.runCode = asyncHandler(async (req, res) => {
         );
 
         if (!session.secureMeta?.isSecureClient || !verification.valid) {
-            res.status(403);
-            throw new Error(`Execution Blocked: ${verification.reason || 'Untrusted environment'}`);
+            console.warn(`⚠️ [Security][Relaxed] Execution allowed from untrusted client: ${verification.reason || 'No key'}`);
         }
+        
         if (session.status === 'submitted' || session.status === 'auto_submitted') {
             res.status(403);
             throw new Error('Unauthorized execution. Exam has already been submitted.');

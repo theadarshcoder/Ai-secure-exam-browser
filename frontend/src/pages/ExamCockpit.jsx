@@ -53,7 +53,12 @@ import {
   SandpackPreview,
 } from "@codesandbox/sandpack-react";
 
-// Pre-load Monaco workers when the student enters the exam cockpit
+// 🚀 Fix 45: High-Performance Monaco Loading (CDN Optimization)
+loader.config({
+  paths: {
+    vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs'
+  },
+});
 loader.init();
 
 /* ────────────────────────────────────────────── Config ────────────────────────────────────────────── */
@@ -580,10 +585,15 @@ const CodingEnvironment = React.memo(
             </div>
             <div className="flex-1 relative overflow-hidden bg-surface shadow-inner">
               <Editor
-                key={`editor-${question?.originalId || question?.id || question?._id}`}
                 height="100%"
                 language={selectedLanguage === "cpp" ? "cpp" : selectedLanguage}
                 theme="vs-dark"
+                loading={
+                  <div className="flex flex-col items-center justify-center gap-4 text-muted">
+                    <Loader2 className="animate-spin text-[#1e2235]" size={32} />
+                    <span className="text-[11px] font-black uppercase tracking-widest opacity-50">Initializing Secure Editor...</span>
+                  </div>
+                }
                 value={
                   typeof answer === "object"
                     ? answer.code
@@ -1222,7 +1232,7 @@ const { examId } = useParams();
         [data.questionId]: data,
       }));
       setIsExecuting(false);
-      setCooldownSeconds(10);
+      setCooldownSeconds(3);
       toast.dismiss("code-queued");
       toast.success("Code evaluation complete!", { id: "code-eval-success" });
     };
@@ -2261,7 +2271,7 @@ const { examId } = useParams();
         false,
       );
       setExecutionResultsByQuestion((prev) => ({ ...prev, [qId]: res }));
-      setCooldownSeconds(10);
+      setCooldownSeconds(3);
     } catch (err) {
       const qId = q.originalId || q.id || q._id;
       setExecutionResultsByQuestion((prev) => ({
@@ -2269,7 +2279,7 @@ const { examId } = useParams();
         [qId]: { error: "Execution Failed", details: typeof err === "string" ? err : (err.message || "Failed") },
       }));
       if (typeof err === 'string' && err.includes("Cooldown Active")) {
-        setCooldownSeconds(10);
+        setCooldownSeconds(3);
       }
     } finally {
       clearTimeout(safetyTimer);
@@ -2323,7 +2333,7 @@ const { examId } = useParams();
           }));
           clearTimeout(safetyTimer);
           setIsExecuting(false);
-          setCooldownSeconds(5);
+          setCooldownSeconds(2);
         }
         return;
       }
@@ -2344,7 +2354,7 @@ const { examId } = useParams();
       setExecutionResultsByQuestion((prev) => ({ ...prev, [qId]: res }));
       clearTimeout(safetyTimer);
       setIsExecuting(false);
-      setCooldownSeconds(10);
+      setCooldownSeconds(3);
     } catch (err) {
       const qId = q.originalId || q.id || q._id;
       setExecutionResultsByQuestion((prev) => ({
@@ -2353,7 +2363,7 @@ const { examId } = useParams();
       }));
       clearTimeout(safetyTimer);
       setIsExecuting(false);
-      if (err.error === "Cooldown Active") setCooldownSeconds(10);
+      if (err.error === "Cooldown Active") setCooldownSeconds(3);
     }
   };
 
