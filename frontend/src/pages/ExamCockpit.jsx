@@ -56,8 +56,9 @@ import {
 // 🚀 Fix 45: High-Performance Monaco Loading (CDN Optimization)
 loader.config({
   paths: {
-    vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs'
+    vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs'
   },
+  'vs/nls': { availableLanguages: { '*': 'en' } }
 });
 loader.init();
 
