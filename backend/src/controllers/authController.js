@@ -61,6 +61,7 @@ exports.register = asyncHandler(async (req, res) => {
         email,
         password,
         role: assignedRole,
+        institutionId: req.user?.institutionId || null, // Inherit creator's institution
         permissions: rolePermissions[assignedRole] || []
     });
 
@@ -160,7 +161,8 @@ exports.login = asyncHandler(async (req, res) => {
     // ✨ MASTER FEATURE: Role resolution logic
     let finalRole = user.role;
     const ROLE_FAMILY = {
-        'super_mentor': 'mentor'
+        'super_mentor': 'mentor',
+        'super_admin': 'admin'
     };
 
     if (requestedRole && user.role !== requestedRole) {
@@ -188,11 +190,12 @@ exports.login = asyncHandler(async (req, res) => {
 
     // 🛡️ Optimized JWT Payload: Standardized Access Token
     const accessToken = jwt.sign(
-        { 
+        {
             id: user._id, 
             email: user.email, 
             role: user.role,         
             displayRole: finalRole,
+            institutionId: user.institutionId,
             sessionVersion: user.sessionVersion 
         },
         process.env.JWT_SECRET,
@@ -286,6 +289,7 @@ exports.refresh = asyncHandler(async (req, res) => {
                 email: user.email, 
                 role: user.role,
                 displayRole: user.role,
+                institutionId: user.institutionId,
                 sessionVersion: user.sessionVersion
             },
             process.env.JWT_SECRET,

@@ -33,7 +33,6 @@ const verifyToken = async (req, res, next) => {
         }
 
         const authTask = (async () => {
-            let permissions = [];
             let cachedSession = null;
             
             try {
@@ -49,29 +48,39 @@ const verifyToken = async (req, res, next) => {
                 } else if (decoded.sessionVersion && cachedSession.sessionVersion < decoded.sessionVersion) {
                     // Cache is stale! The token is newer (e.g. recent login). Fall back to DB to confirm.
                     cachedSession = null; 
-                } else {
-                    permissions = cachedSession.permissions || [];
                 }
             } 
             
             if (!cachedSession || !cachedSession.sessionVersion) {
                 // L3: Fallback to MongoDB
-                const user = await User.findById(decoded.id).select('permissions sessionVersion');
+                const user = await User.findById(decoded.id).select('permissions sessionVersion role institutionId status').lean();
                 if (!user) throw new Error('USER_NOT_FOUND');
+                if (user.status === 'suspended' || user.status === 'deactivated') throw new Error('USER_SUSPENDED');
                 
                 // Session Versioning check
                 if (decoded.sessionVersion && user.sessionVersion !== decoded.sessionVersion) {
                     throw new Error('STALE_SESSION');
                 }
-                permissions = user.permissions || [];
+                
+                cachedSession = {
+                    sessionVersion: user.sessionVersion,
+                    permissions: user.permissions || [],
+                    role: user.role,
+                    institutionId: user.institutionId,
+                    status: user.status
+                };
 
                 // Backfill L2 cache for next request
                 try {
-                    await cacheService.saveUserSession(decoded.id, user.sessionVersion, permissions);
+                    await cacheService.saveUserSession(decoded.id, cachedSession);
                 } catch (_) { /* non-critical */ }
             }
 
-            const result = { sessionVersion: decoded.sessionVersion, permissions };
+            if (cachedSession.status === 'suspended' || cachedSession.status === 'deactivated') {
+                throw new Error('USER_SUSPENDED');
+            }
+
+            const result = { ...cachedSession };
             l1Cache.set(l1Key, result);
             return result;
         })();
@@ -79,7 +88,7 @@ const verifyToken = async (req, res, next) => {
         inFlightRequests.set(l1Key, authTask);
         try {
             const authResult = await authTask;
-            req.user = { ...decoded, permissions: authResult.permissions };
+            req.user = { id: decoded.id, ...authResult };
             next();
         } catch (err) {
             if (err.message === 'SESSION_COLLISION') {
@@ -94,6 +103,8 @@ const verifyToken = async (req, res, next) => {
                 });
             } else if (err.message === 'USER_NOT_FOUND') {
                 return res.status(403).json({ message: "User account not found" });
+            } else if (err.message === 'USER_SUSPENDED') {
+                return res.status(403).json({ message: "Your account is suspended or deactivated", code: "USER_SUSPENDED" });
             }
             throw err; // Let outer catch handle it
         } finally {
@@ -134,7 +145,7 @@ const checkPermission = (requiredPermission) => {
         // This keeps the JWT payload small and allows real-time permission updates.
         const { role, permissions } = req.user;
 
-        if (role === 'admin') return next();
+        if (role === 'admin' || role === 'super_admin') return next();
         
         if (permissions && permissions.includes(requiredPermission)) {
             return next();

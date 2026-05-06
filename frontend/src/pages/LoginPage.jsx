@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { 
   Shield, User, Lock as LockIcon, ShieldCheck, Webcam, MonitorCheck, Activity,
-  TerminalSquare, Video, BrainCircuit, Database,
+  Terminal, Video, BrainCircuit, Database, Server,
   Globe, ScrollText, MapPin, AppWindow, AlertTriangle
 } from 'lucide-react';
 // eslint-disable-next-line no-unused-vars
@@ -41,6 +41,16 @@ const ROLE_DATA = {
       { id: 'glob', label: 'Network Connected', icon: <Globe size={16} /> },
       { id: 'audit', label: 'Activity Logging On', icon: <ScrollText size={16} /> },
       { id: 'lvl1', label: 'Admin Access Level 1', icon: <Shield size={16} /> }
+    ]
+  },
+  super_admin: {
+    label: 'Platform',
+    icon: <Database size={12} />,
+    diagnostics: [
+      { id: 'master', label: 'Global Tenant Sync', icon: <Globe size={16} /> },
+      { id: 'root', label: 'Root Infrastructure', icon: <Server size={16} /> },
+      { id: 'sec', label: 'Master Security Layer', icon: <ShieldCheck size={16} /> },
+      { id: 'lvl0', label: 'Platform Command Active', icon: <Terminal size={16} /> }
     ]
   }
 };
@@ -299,7 +309,9 @@ const LoginPage = () => {
       // 🛡️ Fix Bug 3: Super Mentor redirection to mentor dashboard
       const target = userData.role === 'student' 
         ? '/student' 
-        : (['mentor', 'super_mentor'].includes(userData.role) ? '/mentor' : '/admin');
+        : (['mentor', 'super_mentor'].includes(userData.role) 
+          ? '/mentor' 
+          : (userData.role === 'super_admin' ? '/super-admin' : '/admin'));
       navigate(target);
     } catch (err) {
       console.error('Login Error:', err);

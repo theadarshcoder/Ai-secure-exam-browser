@@ -7,6 +7,10 @@ import LoginPage from './pages/LoginPage';
 import AdminDashboard from './pages/AdminDashboard';
 import MentorDashboard from './pages/MentorDashboard';
 import StudentDashboard from './pages/StudentDashboard';
+import SuperAdminDashboard from './pages/SuperAdminDashboard';
+import TenantManagement from './pages/TenantManagement';
+import PlatformSettings from './pages/SuperAdmin/PlatformSettings';
+import SystemHealth from './pages/SuperAdmin/SystemHealth';
 import ExamCockpit from './pages/ExamCockpit';
 import CreateExam from './pages/CreateExam';
 import IDVerification from './pages/IDVerification';
@@ -23,7 +27,7 @@ const ThemeEnforcer = () => {
 
   // Apply synchronously on every render (not just after mount)
   // so there is zero gap between navigation and theme application.
-  const isAdmin = pathname.startsWith('/admin');
+  const isAdmin = pathname.startsWith('/admin') || pathname.startsWith('/super-admin');
   const isMentor = pathname.startsWith('/mentor');
   if (isAdmin || isMentor) {
     document.documentElement.setAttribute('data-theme', theme);
@@ -32,7 +36,7 @@ const ThemeEnforcer = () => {
   }
 
   useEffect(() => {
-    const isAdmin = pathname.startsWith('/admin');
+    const isAdmin = pathname.startsWith('/admin') || pathname.startsWith('/super-admin');
     const isMentor = pathname.startsWith('/mentor');
     if (isAdmin || isMentor) {
       document.documentElement.setAttribute('data-theme', theme);
@@ -67,7 +71,8 @@ const DashboardRedirect = () => {
     const token = sessionStorage.getItem('vision_token');
     const role = getRoleFromToken(token);
 
-    if (role === 'admin' || role === 'super_mentor') navigate('/admin');
+    if (role === 'super_admin') navigate('/super-admin');
+    else if (role === 'admin' || role === 'super_mentor') navigate('/admin');
     else if (role === 'mentor') navigate('/mentor');
     else if (role === 'student') navigate('/student');
     else navigate('/login');
@@ -87,6 +92,7 @@ const ProtectedRoute = ({ allowedRoles, children }) => {
   if (allowedRoles && !allowedRoles.includes(role)) {
     console.warn(`🔒 Access Denied: User role "${role}" is not in ${allowedRoles}`);
     const redirectMap = {
+      super_admin: '/super-admin',
       admin: '/admin',
       super_mentor: '/admin',
       mentor: '/mentor',
@@ -125,6 +131,30 @@ export default function AppRouter() {
           <Route path="/admin" element={
             <ProtectedRoute allowedRoles={['admin', 'super_mentor']}>
               <AdminDashboard />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/super-admin" element={
+            <ProtectedRoute allowedRoles={['super_admin']}>
+              <SuperAdminDashboard />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/super-admin/institutions/:id" element={
+            <ProtectedRoute allowedRoles={['super_admin']}>
+              <TenantManagement />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/super-admin/settings" element={
+            <ProtectedRoute allowedRoles={['super_admin']}>
+              <PlatformSettings />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/super-admin/health" element={
+            <ProtectedRoute allowedRoles={['super_admin']}>
+              <SystemHealth />
             </ProtectedRoute>
           } />
           

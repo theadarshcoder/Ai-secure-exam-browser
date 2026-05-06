@@ -13,6 +13,7 @@ const connectDB = require('./config/db.js');
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const { verifyToken, checkRole, checkPermission } = require('./middlewares/authMiddleware');
+const { checkInstitutionActive } = require('./middlewares/institutionMiddleware');
 const User = require('./models/User');
 const Exam = require('./models/Exam');
 const ExamSession = require('./models/ExamSession');
@@ -44,6 +45,7 @@ const { LRUCache } = require('lru-cache');
 const authRoutes = require('./routes/authRoutes');
 const examRoutes = require('./routes/examRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const superAdminRoutes = require('./routes/superAdminRoutes');
 const sessionRoutes = require('./routes/sessionRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
@@ -55,6 +57,8 @@ const { startIntelligenceWorker } = require('./queues/intelligenceWorker');
 const { startAutoSubmitWorker } = require('./queues/autoSubmitWorker');
 const { inviteVerifyLimiter } = require('./middlewares/rateLimiter');
 const traceMiddleware = require('./middlewares/traceMiddleware');
+const { platformModeMiddleware } = require('./middlewares/platformMiddleware');
+const { activityTracker } = require('./middlewares/activityMiddleware');
 
 const app = express();
 app.set('trust proxy', 1); // 🛡️ Fix 15: Required for rate-limiter to see real IPs
@@ -144,6 +148,7 @@ app.get('/health', (req, res) => {
 app.use('/api/exams/save-progress', express.json({ limit: '2mb' }));
 app.use(express.json({ limit: '100kb' }));
 app.use(mongoSanitize()); // Prevent NoSQL Injection attacks
+app.use(platformModeMiddleware); // 🛡️ GLOBAL PLATFORM GOVERNANCE
 
 function isAllowedOrigin(origin) {
     if (!origin) return true;
@@ -337,36 +342,57 @@ io.use(async (socket, next) => {
                 console.warn(`🚫 [Socket Auth] Stale session for ${decoded.email}. Force disconnecting.`);
                 return next(new Error('Session terminated! You logged in from another device.'));
             }
+            if (cachedSession.status === 'suspended' || cachedSession.status === 'deactivated') {
+                return next(new Error('Institution suspended.'));
+            }
+            
+            socket.user = {
+                id: decoded.id,
+                email: decoded.email,
+                role: cachedSession.role || decoded.role,
+                institutionId: cachedSession.institutionId || null
+            };
             console.log(`📡 [SCALING] Socket Auth: Redis Cache Hit for ${decoded.email}`);
         } else {
             // 🔄 CACHE MISS: Fallback to MongoDB & Backfill
             console.log(`🔄 [SCALING] Socket Auth: Redis Cache Miss for ${decoded.email}. Fetching from DB.`);
-            const user = await User.findById(decoded.id);
+            const user = await User.findById(decoded.id).lean();
             if (!user) {
                 console.error(`🚫 [Socket Auth] User not found: ${decoded.id}`);
                 return next(new Error('User account no longer exists.'));
+            }
+            if (user.status === 'suspended' || user.status === 'deactivated') {
+                return next(new Error('Account suspended.'));
             }
             // Validate sessionVersion against DB
             if (decoded.sessionVersion && user.sessionVersion !== decoded.sessionVersion) {
                 console.warn(`🚫 [Socket Auth] Stale session version for ${decoded.email}.`);
                 return next(new Error('Session terminated! You logged in from another device.'));
             }
-            // Backfill cache with sessionVersion (not token)
-            await cacheService.saveUserSession(decoded.id, user.sessionVersion, user.permissions || []);
+            
+            socket.user = {
+                id: decoded.id,
+                email: decoded.email,
+                role: user.role,
+                institutionId: user.institutionId || null
+            };
+
+            // Backfill cache with full context
+            await cacheService.saveUserSession(decoded.id, {
+                sessionVersion: user.sessionVersion,
+                permissions: user.permissions || [],
+                role: user.role,
+                institutionId: user.institutionId,
+                status: user.status
+            });
         }
 
-        // User info socket object mein attach karo
-        socket.user = {
-            id: decoded.id,
-            email: decoded.email,
-            role: decoded.role
-        };
         socket.expiresAt = decoded.exp * 1000;
 
         // 🛡️ Ensure user room join immediately after auth
         socket.join(`user_${decoded.id}`);
 
-        console.log(`🔑 [Socket Auth] Success: ${decoded.email} (${decoded.role}) joined user_${decoded.id}`);
+        console.log(`🔑 [Socket Auth] Success: ${decoded.email} (${socket.user.role}) joined user_${decoded.id}`);
         next();
 
     } catch (error) {
@@ -408,20 +434,21 @@ createBullBoard({
 });
 
 // Protect Bull Board with Admin Role
-app.use('/admin/queues', verifyToken, checkRole(['admin', 'super_mentor']), serverAdapter.getRouter());
+app.use('/admin/queues', verifyToken, activityTracker, checkRole(['admin', 'super_mentor']), serverAdapter.getRouter());
 
 app.use('/api/auth', authLimiter, authRoutes);
 
 // 🛡️ CRITICAL: Apply verifyToken BEFORE limiters so req.user is available for keyGenerator
 // This prevents IP-based rate limiting from blocking entire colleges/offices
-app.use('/api/exams/save-progress', verifyToken, autoSaveLimiter);
+app.use('/api/exams/save-progress', verifyToken, activityTracker, autoSaveLimiter);
 
 // Protected routes — Verify Token FIRST, then Global Limiter
-app.use('/api/exams', verifyToken, globalLimiter, examRoutes);
-app.use('/api/admin', verifyToken, globalLimiter, adminRoutes);
-app.use('/api/session', verifyToken, telemetryLimiter, sessionRoutes);
-app.use('/api/ai', verifyToken, globalLimiter, aiRoutes);
-app.use('/api/upload', verifyToken, globalLimiter, uploadRoutes);
+app.use('/api/exams', verifyToken, activityTracker, checkInstitutionActive, globalLimiter, examRoutes);
+app.use('/api/admin', verifyToken, activityTracker, checkInstitutionActive, globalLimiter, adminRoutes);
+app.use('/api/super-admin', verifyToken, activityTracker, checkRole(['super_admin']), globalLimiter, superAdminRoutes); 
+app.use('/api/session', verifyToken, activityTracker, checkInstitutionActive, telemetryLimiter, sessionRoutes);
+app.use('/api/ai', verifyToken, activityTracker, checkInstitutionActive, globalLimiter, aiRoutes);
+app.use('/api/upload', verifyToken, activityTracker, checkInstitutionActive, globalLimiter, uploadRoutes);
 
 // Public routes — NO verifyToken, rate limiter falls back to IP
 app.use('/api/public', globalLimiter, publicRoutes);
@@ -449,7 +476,12 @@ io.on('connection', (socket) => {
     console.log(`🔌 Connected: ${socket.id} | User: ${socket.user.email} (${socket.user.role})`);
     
     // Join role-specific and user-specific rooms for targeted broadcasting
-    socket.join(`role_${socket.user.role}`);
+    if (socket.user.role === 'super_admin') {
+        socket.join('super_admin_global');
+    } else {
+        // Tenant isolated roles
+        socket.join(`inst_${socket.user.institutionId}_${socket.user.role}`);
+    }
     socket.join(`user_${socket.user.id}`);
 
     // 🛡️ Fix 41 (Performance): RAM Leak Cleanup

@@ -8,6 +8,7 @@ const { asyncHandler } = require('../middlewares/errorMiddleware');
 const axios = require('axios');
 const mongoose = require('mongoose');
 const { getCache, setCache, clearCache, TTL_API_CACHE } = require('../services/cacheService');
+const { getTenantFilter } = require('../utils/tenantFilter');
 
 // ═══════════════════════════════════════════════════════════
 // Fetch all exam results and sessions for Admin/Mentor Dashboard
@@ -18,7 +19,7 @@ exports.getAllResults = asyncHandler(async (req, res) => {
     limit = Math.min(limit, 100); // 🛡️ Fix 18: Security Limit
     const skip = (page - 1) * limit;
 
-    const results = await ExamSession.find()
+    const results = await ExamSession.find(getTenantFilter(req))
         .populate('student', 'name email')
         .populate('exam', 'title duration category')
         .select('student exam score totalMarks percentage passed status tabSwitchCount violations submittedAt startedAt')
@@ -27,7 +28,7 @@ exports.getAllResults = asyncHandler(async (req, res) => {
         .limit(limit)
         .lean();
 
-    const total = await ExamSession.countDocuments();
+    const total = await ExamSession.countDocuments(getTenantFilter(req));
 
     const formattedResults = results.map(session => ({
         _id: session._id,
@@ -59,10 +60,10 @@ exports.getAllResults = asyncHandler(async (req, res) => {
 // ═══════════════════════════════════════════════════════════
 exports.getLiveSessions = asyncHandler(async (req, res) => {
     const THREE_MINUTES_AGO = new Date(Date.now() - 3 * 60 * 1000);
-    const sessions = await ExamSession.find({
+    const sessions = await ExamSession.find(getTenantFilter(req, {
         status: { $in: ['in_progress', 'flagged', 'blocked'] },
         updatedAt: { $gte: THREE_MINUTES_AGO }
-    })
+    }))
     .populate('student', 'name email profilePicture')
     .populate('exam', 'title duration category')
     .select('student exam status isBlocked violationCount startedAt helpRequests updatedAt riskScore riskLevel')
@@ -97,12 +98,12 @@ exports.getDashboardStats = asyncHandler(async (req, res) => {
     if (cached) return res.json(cached);
 
     const [totalExams, totalAttempts, liveExams, liveStudents, totalViolations, totalStudents] = await Promise.all([
-        Exam.countDocuments().lean(),
-        ExamSession.countDocuments().lean(),
-        Exam.countDocuments({ status: 'published' }).lean(),
-        ExamSession.countDocuments({ status: 'in_progress' }).lean(),
-        ExamSession.countDocuments({ 'violations.0': { $exists: true } }).lean(),
-        User.countDocuments({ role: 'student' }).lean()
+        Exam.countDocuments(getTenantFilter(req)).lean(),
+        ExamSession.countDocuments(getTenantFilter(req)).lean(),
+        Exam.countDocuments(getTenantFilter(req, { status: 'published' })).lean(),
+        ExamSession.countDocuments(getTenantFilter(req, { status: 'in_progress' })).lean(),
+        ExamSession.countDocuments(getTenantFilter(req, { 'violations.0': { $exists: true } })).lean(),
+        User.countDocuments(getTenantFilter(req, { role: 'student' })).lean()
     ]);
 
     const result = { 
@@ -126,7 +127,11 @@ exports.getSystemMetrics = asyncHandler(async (req, res) => {
     const io = req.app.get('io');
     
     const activeSockets = io ? io.engine.clientsCount : 0;
+    
+    // Convert tenant filter to match phase for aggregation
+    const matchFilter = getTenantFilter(req);
     const sessionStats = await ExamSession.aggregate([
+        { $match: matchFilter },
         { $group: { _id: '$status', count: { $sum: 1 } } }
     ]);
 
@@ -146,14 +151,14 @@ exports.getAllStudents = asyncHandler(async (req, res) => {
     limit = Math.min(limit, 100); // 🛡️ Fix 18: Security Limit
     const skip = (page - 1) * limit;
 
-    const students = await User.find({ role: 'student' })
+    const students = await User.find(getTenantFilter(req, { role: 'student' }))
         .select('-password')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean();
 
-    const total = await User.countDocuments({ role: 'student' });
+    const total = await User.countDocuments(getTenantFilter(req, { role: 'student' }));
 
     res.json({
         students,
@@ -168,14 +173,14 @@ exports.getAllMentors = asyncHandler(async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const mentors = await User.find({ role: { $in: ['mentor', 'super_mentor'] } })
+    const mentors = await User.find(getTenantFilter(req, { role: { $in: ['mentor', 'super_mentor'] } }))
         .select('-password')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean();
 
-    const total = await User.countDocuments({ role: { $in: ['mentor', 'super_mentor'] } });
+    const total = await User.countDocuments(getTenantFilter(req, { role: { $in: ['mentor', 'super_mentor'] } }));
 
     res.json({
         mentors,
@@ -186,7 +191,7 @@ exports.getAllMentors = asyncHandler(async (req, res) => {
 });
 
 exports.getAllAdmins = asyncHandler(async (req, res) => {
-    const admins = await User.find({ role: 'admin' })
+    const admins = await User.find(getTenantFilter(req, { role: 'admin' }))
         .select('-password')
         .sort({ createdAt: -1 });
     res.json(admins);
@@ -194,7 +199,7 @@ exports.getAllAdmins = asyncHandler(async (req, res) => {
 
 exports.deleteStudent = asyncHandler(async (req, res) => {
     const studentId = req.params.id;
-    const deletedStudent = await User.findOneAndDelete({ _id: studentId, role: 'student' });
+    const deletedStudent = await User.findOneAndDelete(getTenantFilter(req, { _id: studentId, role: 'student' }));
     
     if (!deletedStudent) {
         res.status(404);
@@ -212,7 +217,7 @@ exports.deleteStudent = asyncHandler(async (req, res) => {
 
 exports.deleteMentor = asyncHandler(async (req, res) => {
     const mentorId = req.params.id;
-    const deletedMentor = await User.findOneAndDelete({ _id: mentorId, role: { $in: ['mentor', 'super_mentor'] } });
+    const deletedMentor = await User.findOneAndDelete(getTenantFilter(req, { _id: mentorId, role: { $in: ['mentor', 'super_mentor'] } }));
     
     if (!deletedMentor) {
         res.status(404);
@@ -244,7 +249,7 @@ exports.getSystemHealth = asyncHandler(async (req, res) => {
         judge0Status = 'unreachable';
     }
 
-    const liveSessionsCount = await ExamSession.countDocuments({ status: 'in_progress' });
+    const liveSessionsCount = await ExamSession.countDocuments(getTenantFilter(req, { status: 'in_progress' }));
 
     res.json({
         database: dbStatus,
@@ -260,14 +265,14 @@ exports.getAuditLogs = asyncHandler(async (req, res) => {
     limit = Math.min(limit, 100);
     const skip = (page - 1) * limit;
 
-    const logs = await AuditLog.find()
+    const logs = await AuditLog.find(getTenantFilter(req))
         .populate('performedBy', 'name email role')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean();
 
-    const total = await AuditLog.countDocuments();
+    const total = await AuditLog.countDocuments(getTenantFilter(req));
 
     res.json({
         logs,
@@ -297,14 +302,14 @@ exports.getIntelligenceLogs = asyncHandler(async (req, res) => {
     const limit = parseInt(req.query.limit) || 50;
     const skip = (page - 1) * limit;
 
-    const logs = await IntelligenceLog.find()
+    const logs = await IntelligenceLog.find(getTenantFilter(req))
         .populate('user', 'name email role')
         .sort({ timestamp: -1 })
         .skip(skip)
         .limit(limit)
         .lean();
 
-    const total = await IntelligenceLog.countDocuments();
+    const total = await IntelligenceLog.countDocuments(getTenantFilter(req));
 
     res.json({
         logs,

@@ -105,6 +105,8 @@ const processExpiredSessions = async (io) => {
                 performedBy: lockedSession.student,
                 action: 'AUTO_SUBMIT',
                 targetUserId: lockedSession.student,
+                institutionId: lockedSession.institutionId,
+                actorRole: 'system',
                 details: { examId: exam._id, method: 'cron' }
             });
 

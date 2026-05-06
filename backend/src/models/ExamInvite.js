@@ -14,6 +14,12 @@ const ExamInviteSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
+    institutionId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Institution',
+        required: false,  // optional for backward compat, will be backfilled by seed
+        index: true
+    },
     email: {
         type: String,
         required: true,
@@ -67,5 +73,8 @@ ExamInviteSchema.index({ exam: 1, email: 1 }, { unique: true });
 
 // Fast token lookups for verify endpoint
 ExamInviteSchema.index({ tokenHash: 1 });
+
+// Tenant-scoped queries
+ExamInviteSchema.index({ institutionId: 1, exam: 1 });
 
 module.exports = mongoose.model('ExamInvite', ExamInviteSchema);

@@ -69,7 +69,12 @@ const examSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-    scheduledDate: { type: Date, default: null }
+    scheduledDate: { type: Date, default: null },
+    institutionId: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Institution', 
+        required: true 
+    }
 }, { timestamps: true });
 
 // ─── INDEXES ─────────────────────────────────────────────
@@ -78,5 +83,8 @@ examSchema.index({ creator: 1, createdAt: -1 });
 
 // Status index helps filter active exams for Students
 examSchema.index({ status: 1 });
+
+// Tenant isolation index
+examSchema.index({ institutionId: 1, status: 1 });
 
 module.exports = mongoose.model('Exam', examSchema);

@@ -7,9 +7,20 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true, select: false },
     role: { 
         type: String, 
-        enum: ['student', 'mentor', 'super_mentor', 'admin'],
+        enum: ['student', 'mentor', 'super_mentor', 'admin', 'super_admin'],
         default: 'student' 
     },
+    institutionId: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Institution', 
+        default: null 
+    },
+    status: {
+        type: String,
+        enum: ['active', 'suspended', 'invited', 'deactivated'],
+        default: 'active'
+    },
+    lastActiveAt: { type: Date, default: Date.now },
     refreshToken: { type: String },
     currentDeviceId: { type: String },
     permissions: [{ type: String }],

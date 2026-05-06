@@ -13,31 +13,49 @@ const seedAdmin = async () => {
         await User.deleteMany({ role: 'admin' });
         console.log('🗑️  All old admin accounts deleted!');
 
-        // Step 3: Create the requested Master Admin
-        const adminUser = new User({
-            name: 'Vinit',
-            email: 'vinit',      // Login ID
-            password: '1234',    // Plain text, auto-hashed by model
-            role: 'admin',
-            permissions: [
-                'create_exam', 
-                'view_live_grid', 
-                'manage_users', 
-                'view_reports', 
-                'manage_exams', 
-                'delete_exam',
-                'system_settings'
-            ]
-        });
+        // Step 3: Create the requested Master Admins
+        const admins = [
+            {
+                name: 'Vinit',
+                email: 'vinit',      // Login ID
+                password: '1234',    // Plain text, auto-hashed by model
+                role: 'admin',
+                permissions: [
+                    'create_exam', 
+                    'view_live_grid', 
+                    'manage_users', 
+                    'view_reports', 
+                    'manage_exams', 
+                    'delete_exam',
+                    'system_settings'
+                ]
+            },
+            {
+                name: 'Adarsh',
+                email: 'adarsh',      // Login ID
+                password: '1234',    // Plain text, auto-hashed by model
+                role: 'admin',
+                permissions: [
+                    'create_exam', 
+                    'view_live_grid', 
+                    'manage_users', 
+                    'view_reports', 
+                    'manage_exams', 
+                    'delete_exam',
+                    'system_settings'
+                ]
+            }
+        ];
 
-        await adminUser.save();
+        for (const adminData of admins) {
+            const adminUser = new User(adminData);
+            await adminUser.save();
+            console.log(`🎉 ADMIN ${adminData.name} CREATED SUCCESSFULLY!`);
+        }
 
-        console.log('🎉 INITIAL MASTER ADMIN CREATED SUCCESSFULLY!');
         console.log('-------------------------------------------');
-        console.log('Name:     Vinit');
-        console.log('Email/ID: vinit');
-        console.log('Password: 1234');
-        console.log('Role:     ADMIN');
+        console.log('Admin Users Restored!');
+        console.log('Passwords: 1234');
         console.log('-------------------------------------------');
         
         process.exit(0);

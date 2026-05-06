@@ -14,22 +14,25 @@ const TTL_ACTIVE_SESSION = 21600; // 6 hours for ongoing exams
 const TTL_API_CACHE = 60; // 60 seconds for dashboard data
 const TTL_EXAM_CACHE = 3600; // 1 hour for exam definition caching
 
+// --- Tenant Isolation Helper ---
+const instKey = (institutionId, suffix) => institutionId ? `inst:${institutionId}:${suffix}` : suffix;
+
 /**
  * 🔑 Save user session metadata to Redis
  * 
- * DESIGN: Stores sessionVersion + permissions (NOT the full JWT token).
+ * DESIGN: Stores sessionVersion, permissions, role, status, and institutionId.
  * This aligns with the sessionVersion invalidation model used in MongoDB (L3).
  * On login/logout, sessionVersion increments → all old tokens become invalid.
  */
-const saveUserSession = async (userId, sessionVersion, permissions = []) => {
+const saveUserSession = async (userId, sessionDataObj = {}) => {
     const redis = getRedisClient();
     if (!redis) return;
 
     try {
         const key = `${SESSION_PREFIX}${userId}`;
-        const sessionData = JSON.stringify({ sessionVersion, permissions });
+        const sessionData = JSON.stringify(sessionDataObj);
         await redis.set(key, sessionData, 'EX', DEFAULT_TTL);
-        console.log(`📡 Redis: Cached session v${sessionVersion} for user ${userId}`);
+        console.log(`📡 Redis: Cached session v${sessionDataObj.sessionVersion} for user ${userId}`);
     } catch (err) {
         console.warn('⚠️  Redis: Failed to save user session:', err.message);
     }
@@ -252,5 +255,6 @@ module.exports = {
     popAllTelemetryLogs,
     TTL_ACTIVE_SESSION,
     TTL_API_CACHE,
-    TTL_EXAM_CACHE
+    TTL_EXAM_CACHE,
+    instKey
 };

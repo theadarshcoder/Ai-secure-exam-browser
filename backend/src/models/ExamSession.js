@@ -41,6 +41,11 @@ const examSessionSchema = new mongoose.Schema({
         ref: 'User', 
         required: true 
     },
+    institutionId: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Institution', 
+        required: true 
+    },
     
     // Student's Answers — 🆕 Moved to ExamAnswer collection
     // answers: { type: mongoose.Schema.Types.Mixed, default: {} },
@@ -157,13 +162,14 @@ examSessionSchema.index({ exam: 1, status: 1 });
 // Index for cron auto-submit query optimization
 examSessionSchema.index({ status: 1, endTime: 1 });
 
-// unique session per student per exam (already exists but re-ensuring)
-examSessionSchema.index({ student: 1, exam: 1 }, { unique: true });
-
 // startedAt index for recent activity sorting
 examSessionSchema.index({ startedAt: -1 });
 
 // Composite index for student dashboard queries
 examSessionSchema.index({ student: 1, status: 1 });
+
+// Tenant isolation indexes
+examSessionSchema.index({ institutionId: 1, status: 1 });
+examSessionSchema.index({ institutionId: 1, exam: 1, student: 1 });
 
 module.exports = mongoose.model('ExamSession', examSessionSchema);

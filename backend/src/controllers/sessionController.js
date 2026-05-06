@@ -34,7 +34,7 @@ exports.logViolation = asyncHandler(async (req, res) => {
     }
 
     const session = await ExamSession.findOneAndUpdate(
-        { exam: examId, student: studentId, status: { $ne: 'blocked' } },
+        getTenantFilter(req, { exam: examId, student: studentId, status: { $ne: 'blocked' } }),
         update,
         { new: true }
     );
@@ -95,7 +95,7 @@ exports.logViolation = asyncHandler(async (req, res) => {
 exports.getViolationHistory = asyncHandler(async (req, res) => {
     const { examId, studentId } = req.params;
 
-    const session = await ExamSession.findOne({ exam: examId, student: studentId })
+    const session = await ExamSession.findOne(getTenantFilter(req, { exam: examId, student: studentId }))
         .populate('student', 'name email')
         .populate('exam', 'title category duration');
 
@@ -138,10 +138,10 @@ exports.getViolationHistory = asyncHandler(async (req, res) => {
 exports.getFlaggedStudents = asyncHandler(async (req, res) => {
     const { examId } = req.params;
 
-    const sessions = await ExamSession.find({ 
+    const sessions = await ExamSession.find(getTenantFilter(req, { 
         exam: examId,
         'violations.0': { $exists: true }   
-    })
+    }))
         .populate('student', 'name email')
         .sort({ tabSwitchCount: -1 });
 

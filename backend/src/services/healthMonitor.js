@@ -33,11 +33,19 @@ const startHealthMonitor = (io) => {
             const cpuLoad = os.loadavg()[0]; 
             const memUsagePercent = ((os.totalmem() - os.freemem()) / os.totalmem()) * 100;
 
-            // Get all active distinct exams
-            const activeExams = await ExamSession.distinct('exam', { status: 'in_progress' });
+            // Get all active distinct exams with their institutionId
+            const activeExamGroups = await ExamSession.aggregate([
+                { $match: { status: 'in_progress' } },
+                { $group: { _id: { exam: '$exam', institutionId: '$institutionId' } } }
+            ]);
 
-            for (const examId of activeExams) {
+            for (const group of activeExamGroups) {
+                if (!group._id.exam || !group._id.institutionId) continue;
+                
+                const examId = group._id.exam;
+                const institutionId = group._id.institutionId;
                 const examStr = examId.toString();
+                const instAdminRoom = `inst_${institutionId.toString()}_admin`;
                 
                 // Initialize state for new exams
                 if (!lastAlertTimes[examStr]) lastAlertTimes[examStr] = { network: 0, errors: 0, drop: 0 };
@@ -57,7 +65,7 @@ const startHealthMonitor = (io) => {
                 const redisClient = getRedisClient();
 
                 // Emit telemetry to admins (Include examId so UI can filter)
-                io.to('role_admin').emit('server_health', {
+                io.to(instAdminRoom).emit('server_health', {
                     examId: examStr,
                     liveStudents: liveCount,
                     cpuLoad: cpuLoad.toFixed(2),
@@ -73,24 +81,22 @@ const startHealthMonitor = (io) => {
                 const prevCount = prevLiveStudents[examStr];
                 if (prevCount !== undefined && (prevCount - liveCount > 20)) {
                     if (now - lastAlertTimes[examStr].drop > 60000) { 
-                        emitAlert(io, examStr, 'SERVER_OVERLOAD', `MASS DISCONNECT! Lost ${prevCount - liveCount} students suddenly.`, 'critical', now);
+                        emitAlert(io, instAdminRoom, examStr, 'SERVER_OVERLOAD', `MASS DISCONNECT! Lost ${prevCount - liveCount} students suddenly.`, 'critical', now);
                         lastAlertTimes[examStr].drop = now;
                     }
                 }
                 prevLiveStudents[examStr] = liveCount;
 
-                // B. Network Spike
                 if (recentDisconnects[examStr] > 15) {
                     if (now - lastAlertTimes[examStr].network > 30000) { 
-                        emitAlert(io, examStr, 'NETWORK_SPIKE', `${recentDisconnects[examStr]} socket disconnects in last 10s.`, 'critical', now);
+                        emitAlert(io, instAdminRoom, examStr, 'NETWORK_SPIKE', `${recentDisconnects[examStr]} socket disconnects in last 10s.`, 'critical', now);
                         lastAlertTimes[examStr].network = now;
                     }
                 }
 
-                // C. High Error Rate
                 if (errorCount > 20) {
                     if (now - lastAlertTimes[examStr].errors > 60000) { 
-                        emitAlert(io, examStr, 'HIGH_ERROR_RATE', `High error rate (${errorCount} errors/min).`, 'warning', now);
+                        emitAlert(io, instAdminRoom, examStr, 'HIGH_ERROR_RATE', `High error rate (${errorCount} errors/min).`, 'warning', now);
                         lastAlertTimes[examStr].errors = now;
                     }
                 }
@@ -105,8 +111,8 @@ const startHealthMonitor = (io) => {
 };
 
 // Helper for sending alerts
-const emitAlert = (io, examId, type, message, severity, timestamp) => {
-    io.to('role_admin').emit('system_alert', { id: timestamp, examId, type, message, severity });
+const emitAlert = (io, room, examId, type, message, severity, timestamp) => {
+    io.to(room).emit('system_alert', { id: timestamp, examId, type, message, severity });
 };
 
 // Called from socket.js

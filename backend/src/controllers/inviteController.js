@@ -13,6 +13,7 @@ const ExamInvite = require('../models/ExamInvite');
 const { addBulkInviteJobs } = require('../queues/inviteEmailQueue');
 const { asyncHandler } = require('../middlewares/errorMiddleware');
 const cacheService = require('../services/cacheService');
+const { getTenantFilter, getTenantId } = require('../utils/tenantFilter');
 
 // ─── Helper: Generate password in vision@XXXXXX format ───
 const generatePassword = () => {
@@ -54,7 +55,7 @@ exports.bulkInvite = asyncHandler(async (req, res) => {
     const { students } = req.body;
 
     // ─── 1. Validate Exam ────────────────────────────────
-    const exam = await Exam.findById(examId);
+    const exam = await Exam.findOne(getTenantFilter(req, { _id: examId }));
     if (!exam) {
         res.status(404);
         throw new Error('Exam not found.');
@@ -111,7 +112,7 @@ exports.bulkInvite = asyncHandler(async (req, res) => {
 
     // ─── 4. Check Existing Users & Create New Ones ───────
     const emails = validStudents.map(s => s.email);
-    const existingUsers = await User.find({ email: { $in: emails } }).select('_id email name');
+    const existingUsers = await User.find(getTenantFilter(req, { email: { $in: emails } })).select('_id email name');
     // 🛡️ Robustness Fix: Ensure keys are lowercase even if legacy data is messy
     const existingEmailMap = new Map(existingUsers.map(u => [(u.email || '').toLowerCase().trim(), u]));
 
@@ -147,6 +148,7 @@ exports.bulkInvite = asyncHandler(async (req, res) => {
                 email: s.email,
                 password: hashedPassword,
                 role: 'student',
+                institutionId: getTenantId(req),
                 permissions: []
             });
 
@@ -178,10 +180,10 @@ exports.bulkInvite = asyncHandler(async (req, res) => {
     }
 
     // ─── 5. Check Existing Invites & Create New Ones ─────
-    const existingInvites = await ExamInvite.find({
+    const existingInvites = await ExamInvite.find(getTenantFilter(req, {
         exam: examId,
         email: { $in: emails }
-    });
+    }));
 
     // 🛡️ Smart Retry Logic: Identify invites that are already successful vs those that are "stale" (failed/pending)
     const alreadySuccessfulEmails = new Set();
@@ -427,7 +429,7 @@ exports.verifyInvite = asyncHandler(async (req, res) => {
 exports.getInviteStatus = asyncHandler(async (req, res) => {
     const { examId } = req.params;
 
-    const exam = await Exam.findById(examId);
+    const exam = await Exam.findOne(getTenantFilter(req, { _id: examId }));
     if (!exam) {
         res.status(404);
         throw new Error('Exam not found.');
@@ -438,7 +440,7 @@ exports.getInviteStatus = asyncHandler(async (req, res) => {
         throw new Error('You do not have permission to view invites for this exam.');
     }
 
-    const invites = await ExamInvite.find({ exam: examId })
+    const invites = await ExamInvite.find(getTenantFilter(req, { exam: examId }))
         .populate('student', 'name email')
         .sort({ createdAt: -1 })
         .lean();
@@ -465,7 +467,7 @@ exports.resendInvite = asyncHandler(async (req, res) => {
     const { examId } = req.params;
     const { email } = req.body;
 
-    const exam = await Exam.findById(examId);
+    const exam = await Exam.findOne(getTenantFilter(req, { _id: examId }));
     if (!exam) {
         res.status(404);
         throw new Error('Exam not found.');
@@ -476,7 +478,7 @@ exports.resendInvite = asyncHandler(async (req, res) => {
         throw new Error('Permission denied.');
     }
 
-    const invite = await ExamInvite.findOne({ exam: examId, email: email.toLowerCase().trim() });
+    const invite = await ExamInvite.findOne(getTenantFilter(req, { exam: examId, email: email.toLowerCase().trim() }));
     if (!invite) {
         res.status(404);
         throw new Error('No invite found for this email.');

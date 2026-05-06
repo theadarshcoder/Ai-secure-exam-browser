@@ -11,6 +11,10 @@ const ErrorLogSchema = new mongoose.Schema({
     ref: 'Exam',
     required: true,
   },
+  institutionId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Institution'
+  },
   errorType: {
     type: String,
     enum: ['CAMERA_DENIED', 'MIC_DENIED', 'STREAM_FAILED', 'TAB_SWITCH', 'NETWORK_LOST'],

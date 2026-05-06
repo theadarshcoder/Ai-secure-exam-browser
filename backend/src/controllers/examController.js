@@ -17,11 +17,17 @@ const { VIOLATION_TYPES, SESSION_STATUS } = require('../utils/constants');
 const { processSubmission } = require('../services/submissionService');
 const AuditLog = require('../models/AuditLog');
 const { getSystemStatus } = require('../utils/monitor');
+const { getTenantFilter, getTenantId } = require('../utils/tenantFilter');
 
 // ─────────────── POST /api/exams/create ───────────────
 // Mentor/Admin creates a new exam and saves it to MongoDB
 exports.createExam = asyncHandler(async (req, res) => {
     const { title, category, duration, totalMarks, passingMarks, questions, scheduledDate, status, negativeMarks } = req.body;
+
+    if (req.user.role === 'super_admin') {
+        res.status(403);
+        throw new Error('Super Admin cannot create exams directly. Please use an institution admin account.');
+    }
 
     const isDraft = status === 'draft';
 
@@ -116,6 +122,7 @@ exports.createExam = asyncHandler(async (req, res) => {
         negativeMarks: negMarks,
         questions: validQuestions,
         creator: req.user.id,
+        institutionId: getTenantId(req),
         status: status || 'published',
         scheduledDate: (scheduledDate && !isNaN(new Date(scheduledDate).getTime())) 
             ? new Date(scheduledDate) 
@@ -145,7 +152,7 @@ exports.updateExam = asyncHandler(async (req, res) => {
     const examId = req.params.id;
     let { title, category, duration, totalMarks, passingMarks, questions, scheduledDate, status, negativeMarks } = req.body;
 
-    const exam = await Exam.findById(examId);
+    const exam = await Exam.findOne(getTenantFilter(req, { _id: examId }));
 
     if (!exam) {
         res.status(404);
@@ -289,7 +296,7 @@ exports.togglePublishResults = asyncHandler(async (req, res) => {
     const examId = req.params.id;
     const { resultsPublished } = req.body;
 
-    const exam = await Exam.findById(examId);
+    const exam = await Exam.findOne(getTenantFilter(req, { _id: examId }));
     if (!exam) {
         res.status(404);
         throw new Error('Exam not found');
@@ -317,7 +324,7 @@ exports.togglePublishResults = asyncHandler(async (req, res) => {
 exports.deleteExam = asyncHandler(async (req, res) => {
     const examId = req.params.id;
 
-    const exam = await Exam.findById(examId);
+    const exam = await Exam.findOne(getTenantFilter(req, { _id: examId }));
 
     if (!exam) {
         res.status(404);
@@ -348,7 +355,7 @@ exports.getActiveExams = asyncHandler(async (req, res) => {
     const cached = await getCache(cacheKey);
     if (cached) return res.json(cached);
 
-    const exams = await Exam.find({ status: 'published' })
+    const exams = await Exam.find(getTenantFilter(req, { status: 'published' }))
         .select('title category duration totalMarks passingMarks scheduledDate questions creator resultsPublished')
         .populate('creator', 'name email')
         .sort({ scheduledDate: -1 })
@@ -398,9 +405,9 @@ exports.getMentorExams = asyncHandler(async (req, res) => {
     const mongoose = require('mongoose');
     
     // Admins and super mentors see all exams; regular mentors see their own
-    const matchStage = (req.user.role === 'admin' || req.user.role === 'super_mentor')
+    const matchStage = getTenantFilter(req, (req.user.role === 'admin' || req.user.role === 'super_mentor')
         ? {}
-        : { creator: req.user.id }; // Simplified string ID for find()
+        : { creator: req.user.id }); // Simplified string ID for find()
 
     // 1. Try Cache
     const redisClient = getRedisClient();
@@ -448,7 +455,7 @@ exports.getMentorExams = asyncHandler(async (req, res) => {
 // ─────────────── GET /api/exams/:id ───────────────
 // Load exam for student (STRIPS correct answers for security)
 exports.getExamById = asyncHandler(async (req, res) => {
-    const exam = await Exam.findById(req.params.id)
+    const exam = await Exam.findOne(getTenantFilter(req, { _id: req.params.id }))
         .select('-questions.correctOption -questions.expectedAnswer -questions.testCases.expectedOutput')
         .populate('creator', 'name')
         .lean();
@@ -509,7 +516,7 @@ exports.getExamById = asyncHandler(async (req, res) => {
 // ─────────────── GET /api/exams/mentor/:id ───────────────
 // Load exam for mentor (INCLUDES full data for editing)
 exports.getMentorExamById = asyncHandler(async (req, res) => {
-    const exam = await Exam.findById(req.params.id);
+    const exam = await Exam.findOne(getTenantFilter(req, { _id: req.params.id }));
 
     if (!exam) {
         res.status(404);
@@ -535,7 +542,7 @@ exports.updateExamStatus = asyncHandler(async (req, res) => {
         throw new Error('Invalid status.');
     }
 
-    const exam = await Exam.findById(examId);
+    const exam = await Exam.findOne(getTenantFilter(req, { _id: examId }));
 
     if (!exam) {
         res.status(404);
@@ -560,6 +567,11 @@ exports.updateExamStatus = asyncHandler(async (req, res) => {
 
 // ─────────────── POST /api/exams/start ───────────────
 exports.startExam = asyncHandler(async (req, res) => {
+    if (req.user.role === 'super_admin') {
+        res.status(403);
+        throw new Error('Super Admin cannot attempt exams.');
+    }
+
     const { examId } = req.body;
     const studentId = req.user.id;
     const globalSettings = await Setting.findOne() || {
@@ -698,6 +710,7 @@ exports.startExam = asyncHandler(async (req, res) => {
     const newSession = new ExamSession({
         exam: examId,
         student: studentId,
+        institutionId: getTenantId(req),
         status: 'in_progress',
         totalMarks: exam.totalMarks,
         startedAt: new Date(),

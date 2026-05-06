@@ -134,11 +134,29 @@ const inviteVerifyLimiter = rateLimit({
     }
 });
 
+/**
+ * 🏢 Demo Request Limiter
+ * Specifically for public SaaS demo requests to prevent spam.
+ */
+const demoRequestLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 3, // 3 requests per IP per hour
+    store: createRedisStore('demo_request'),
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: ipKeyGenerator, // Only rely on IP for public endpoint
+    message: {
+        success: false,
+        error: "Too many demo requests. Please try again later."
+    }
+});
+
 module.exports = { 
     codeExecutionLimiter, 
     telemetryLimiter, 
     importLimiter, 
     autosaveLimiter,
     secureActionLimiter,
-    inviteVerifyLimiter
+    inviteVerifyLimiter,
+    demoRequestLimiter
 };
