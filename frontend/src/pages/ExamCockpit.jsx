@@ -1167,7 +1167,7 @@ const { examId } = useParams();
     if (broadcastMessage) {
       const timer = setTimeout(() => {
         setBroadcastMessage(null);
-      }, 15000); // 15 seconds
+      }, 300000); // 5 minutes
       return () => clearTimeout(timer);
     }
   }, [broadcastMessage]);
