@@ -1161,6 +1161,16 @@ const { examId } = useParams();
   const [selectedLanguages, setSelectedLanguages] = useState({});
   const [confidence] = useState(98);
   const [broadcastMessage, setBroadcastMessage] = useState(null);
+  
+  // 🚀 Auto-dismiss live announcement after 15 seconds
+  useEffect(() => {
+    if (broadcastMessage) {
+      const timer = setTimeout(() => {
+        setBroadcastMessage(null);
+      }, 15000); // 15 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [broadcastMessage]);
   const [helpStatus, setHelpStatus] = useState("idle");
   const [isTabViolation, setIsTabViolation] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
@@ -3120,28 +3130,29 @@ const { examId } = useParams();
       <AnimatePresence>
         {broadcastMessage && (
           <motion.div
-            initial={{ opacity: 0, y: -50 }}
+            initial={{ opacity: 0, y: -100 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -50 }}
-            className="fixed top-16 left-1/2 -translate-x-1/2 z-[250] pointer-events-none"
+            exit={{ opacity: 0, y: -100 }}
+            className="fixed top-6 left-1/2 -translate-x-1/2 z-[300] w-fit max-w-[90vw] pointer-events-none"
           >
-            <div className="bg-surface text-primary px-6 py-4 rounded-2xl shadow-2xl flex items-start gap-4 max-w-xl border border-main ring-8 ring-[#1e2235]/5 pointer-events-auto">
-              <div className="bg-white/20 p-2 rounded-xl shrink-0 mt-0.5">
-                <Radio size={20} className="animate-pulse" />
+            <div className="bg-[#1e2235] text-white px-6 py-4 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-start gap-4 border border-white/10 ring-1 ring-white/20 pointer-events-auto backdrop-blur-md">
+              <div className="bg-white/10 p-2 rounded-xl shrink-0 mt-0.5">
+                <Radio size={20} className="text-white animate-pulse" />
               </div>
-              <div>
-                <h3 className="text-[10px] font-black uppercase tracking-widest text-muted mb-1">
+              <div className="flex-1 min-w-[200px]">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50 mb-1">
                   Live Announcement
                 </h3>
-                <p className="text-sm font-semibold leading-relaxed text-white">
+                <p className="text-[15px] font-bold leading-relaxed text-white drop-shadow-sm">
                   {broadcastMessage}
                 </p>
               </div>
               <button
                 onClick={() => setBroadcastMessage(null)}
-                className="ml-2 p-1 hover:bg-surface-hover rounded-lg transition-colors text-muted hover:text-primary"
+                className="ml-2 p-1.5 hover:bg-white/10 rounded-xl transition-all text-white/50 hover:text-white"
+                title="Dismiss"
               >
-                <XCircle size={18} />
+                <XCircle size={20} />
               </button>
             </div>
           </motion.div>
