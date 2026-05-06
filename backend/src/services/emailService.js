@@ -166,9 +166,49 @@ const sendAccessApprovedEmail = async ({ to, name, institutionName, password, in
     });
 };
 
+const sendPasswordResetEmail = async ({ to, name, institutionName, password }) => {
+    const loginLink = process.env.FRONTEND_URL?.split(',')[0] || 'http://localhost:5173/login';
+    
+    const htmlContent = `
+        <div style="padding: 24px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; max-width: 600px; margin: 0 auto;">
+            <div style="text-align: center; margin-bottom: 24px;">
+                <h1 style="color: #f59e0b; margin: 0; font-size: 24px;">Security Update 🔒</h1>
+                <p style="color: #6b7280; margin-top: 8px;">Your administrator password has been reset.</p>
+            </div>
+            
+            <div style="background-color: #f9fafb; padding: 20px; border-radius: 12px; margin-bottom: 24px;">
+                <p style="margin: 0 0 12px 0;">Hi <strong>${name}</strong>,</p>
+                <p style="margin: 0; line-height: 1.6;">The Super Admin has recently updated or reset your login credentials for <strong>${institutionName}</strong>.</p>
+            </div>
+
+            <div style="padding: 20px; border: 1px dashed #f59e0b; border-radius: 12px; margin-bottom: 24px;">
+                <h3 style="margin-top: 0; font-size: 14px; color: #d97706; text-transform: uppercase; letter-spacing: 0.05em;">Your New Credentials</h3>
+                <p style="margin: 8px 0; font-size: 14px;">Login Email: <strong>${to}</strong></p>
+                <p style="margin: 8px 0; font-size: 14px;">New Password: <strong style="color: #f59e0b;">${password}</strong></p>
+            </div>
+
+            <div style="text-align: center;">
+                <a href="${loginLink}" style="display: inline-block; background-color: #f59e0b; color: #ffffff; padding: 14px 40px; border-radius: 12px; text-decoration: none; font-weight: bold; box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.2);">Login Now</a>
+            </div>
+
+            <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #f3f4f6; font-size: 12px; color: #9ca3af; text-align: center;">
+                <p>If you did not request this change, please contact platform support immediately.</p>
+                <p>&copy; ${new Date().getFullYear()} Vision Exam Platform. Built for Excellence.</p>
+            </div>
+        </div>`;
+
+    return await sendBrevoEmail({
+        to,
+        subject: `Security Alert: Password Reset for ${institutionName}`,
+        htmlContent,
+        senderName: "Vision Security"
+    });
+};
+
 module.exports = {
     sendInviteEmail,
     sendSubscriptionNotification,
     sendDemoRequestNotification,
-    sendAccessApprovedEmail
+    sendAccessApprovedEmail,
+    sendPasswordResetEmail
 };

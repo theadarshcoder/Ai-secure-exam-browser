@@ -7,7 +7,7 @@ const Exam = require('../models/Exam');
 const mongoose = require('mongoose');
 const { asyncHandler } = require('../middlewares/errorMiddleware');
 const { getRedisClient } = require('../config/redis');
-const { sendAccessApprovedEmail } = require('../services/emailService');
+const { sendAccessApprovedEmail, sendPasswordResetEmail } = require('../services/emailService');
 
 /**
  * 📈 Get Platform-wide Statistics (Cached)
@@ -234,6 +234,17 @@ exports.resetAdminPassword = asyncHandler(async (req, res) => {
         institutionId: id,
         actorRole: 'super_admin',
         details: { adminEmail: user.email }
+    });
+
+    // Send Password Reset Email (Async)
+    const institution = await Institution.findById(id);
+    sendPasswordResetEmail({
+        to: user.email,
+        name: user.name,
+        institutionName: institution ? institution.name : 'Your Institution',
+        password: newPassword
+    }).catch(err => {
+        console.error('Failed to send password reset email:', err);
     });
 
     res.json({ message: `Admin password reset successfully`, newPassword });
