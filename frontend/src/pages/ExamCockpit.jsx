@@ -56,7 +56,7 @@ import {
 // 🚀 Fix 45: High-Performance Monaco Loading (CDN Optimization)
 loader.config({
   paths: {
-    vs: 'https://unpkg.com/monaco-editor@0.44.0/min/vs'
+    vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs'
   },
   'vs/nls': { availableLanguages: { '*': 'en' } }
 });
@@ -2460,7 +2460,7 @@ const { examId } = useParams();
         } finally {
           setIsAIInitializing(false);
         }
-      }, 1000);
+      }, 8000); // 🚀 Fix: Defer AI by 8s to let Editor load first
 
     } catch (err) {
       console.error("Secure entry failed:", err);

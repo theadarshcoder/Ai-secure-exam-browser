@@ -233,10 +233,6 @@ const LoginPage = () => {
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     const timer = setInterval(() => setCurrentTime(new Date().toLocaleTimeString('en-GB', { hour12: false })), 1000);
-    
-    // 🚀 Server Wake-up: Ping backend immediately to handle Render cold-start
-    api.get('/api/auth/status').catch(() => {}); 
-
     return () => {
       document.body.style.overflow = 'auto';
       clearInterval(timer);
@@ -285,7 +281,7 @@ const LoginPage = () => {
         const { loader } = await import('@monaco-editor/react');
         loader.config({
           paths: {
-            vs: 'https://unpkg.com/monaco-editor@0.44.0/min/vs'
+            vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs'
           },
           'vs/nls': { availableLanguages: { '*': 'en' } }
         });
