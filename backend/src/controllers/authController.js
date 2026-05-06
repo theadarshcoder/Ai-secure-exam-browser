@@ -163,13 +163,12 @@ exports.login = asyncHandler(async (req, res) => {
         'super_mentor': 'mentor'
     };
 
-    if (user.role === 'admin' && requestedRole) {
-        finalRole = requestedRole;
-    } else if (requestedRole && user.role !== requestedRole) {
+    if (requestedRole && user.role !== requestedRole) {
         const family = ROLE_FAMILY[user.role];
         if (!family || family !== requestedRole) {
             res.status(403);
-            throw new Error(`Your account is registered as '${user.role}', but you selected '${requestedRole}'!`);
+            const displayRole = user.role.charAt(0).toUpperCase() + user.role.slice(1);
+            throw new Error(`Your account is registered as '${displayRole}'. Please select the correct role to login.`);
         }
         finalRole = user.role;
     }
