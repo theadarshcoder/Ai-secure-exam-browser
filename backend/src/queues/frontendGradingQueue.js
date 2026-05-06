@@ -90,4 +90,4 @@ const setupFrontendEvaluationWorker = (io) => {
     return worker;
 };
 
-module.exports = { addFrontendEvaluationJob, setupFrontendEvaluationWorker };
+module.exports = { addFrontendEvaluationJob, setupFrontendEvaluationWorker, frontendEvaluationQueue };

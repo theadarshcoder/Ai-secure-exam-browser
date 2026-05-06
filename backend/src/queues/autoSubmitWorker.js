@@ -127,6 +127,4 @@ const processExpiredSessions = async (io) => {
     return { count: processedCount };
 };
 
-module.exports = {
-    startAutoSubmitWorker
-};
+module.exports = { startAutoSubmitWorker, autoSubmitQueue };

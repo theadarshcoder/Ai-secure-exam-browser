@@ -13,6 +13,7 @@ router.get('/results', verifyToken, checkRole(['admin', 'super_mentor', 'mentor'
 
 // Dashboard counters (Live Students, Total Exams, etc.)
 router.get('/stats', verifyToken, checkRole(['admin', 'super_mentor', 'mentor']), adminController.getDashboardStats);
+router.get('/metrics', verifyToken, checkRole(['admin']), adminController.getSystemMetrics);
 
 // Live Proctoring - Fetch all active sessions
 router.get('/live-sessions', verifyToken, checkRole(['admin', 'super_mentor', 'mentor']), adminController.getLiveSessions);

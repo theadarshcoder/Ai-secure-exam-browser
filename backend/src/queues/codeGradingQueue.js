@@ -38,10 +38,14 @@ const setupCodeEvaluationWorker = (io) => {
     }
 
     const worker = new Worker('CodeEvaluation', async (job) => {
+        const { trackQueueMetric } = require('../utils/monitor');
+        const startProcessing = Date.now();
+        const waitTime = startProcessing - job.timestamp;
+
         try {
             const { sourceCode, language, testCases, studentId, questionId } = job.data;
             
-            console.log(`[Worker] Started Evaluation: Student ${studentId} | Q: ${questionId}`);
+            console.log(`[Worker] Started Evaluation: Student ${studentId} | Q: ${questionId} (Wait: ${waitTime}ms)`);
             const results = [];
         let allPassed = true;
 
@@ -89,11 +93,13 @@ const setupCodeEvaluationWorker = (io) => {
                 timestamp: new Date()
             });
         }
-
         return { allPassed, results };
-        } catch (error) {
+    } catch (error) {
             console.error(`[Worker] Fatal Error in Code Evaluation Job ${job.id}:`, error.message);
             throw error; // Throwing triggers BullMQ retry mechanism
+        } finally {
+            const processTime = Date.now() - startProcessing;
+            await trackQueueMetric('CodeEvaluation', waitTime, processTime);
         }
     }, { 
         connection,
@@ -117,4 +123,4 @@ const setupCodeEvaluationWorker = (io) => {
     return worker;
 };
 
-module.exports = { addCodeEvaluationJob, setupCodeEvaluationWorker };
+module.exports = { addCodeEvaluationJob, setupCodeEvaluationWorker, codeEvaluationQueue };

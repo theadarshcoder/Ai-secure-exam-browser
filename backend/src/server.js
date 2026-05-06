@@ -12,17 +12,30 @@ const mongoSanitize = require('express-mongo-sanitize');
 const connectDB = require('./config/db.js');
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
-const { verifyToken } = require('./middlewares/authMiddleware');
+const { verifyToken, checkRole, checkPermission } = require('./middlewares/authMiddleware');
 const User = require('./models/User');
 const Exam = require('./models/Exam');
 const ExamSession = require('./models/ExamSession');
 const Setting = require('./models/Setting');
-const { connectRedis, getRedisClient } = require('./config/redis');
+const { connectRedis, getRedisClient, redisUrl } = require('./config/redis');
+const { createAdapter } = require('@socket.io/redis-adapter');
+const IORedis = require('ioredis');
 const { RedisStore } = require('rate-limit-redis');
 const cacheService = require('./services/cacheService');
 const morgan = require('morgan');
 const validateEnv = require('./utils/envValidator');
 const { startHealthMonitor, incrementDisconnect } = require('./services/healthMonitor');
+const logger = require('./utils/logger');
+
+const { startLagMonitor, getMetrics } = require('./utils/monitor');
+startLagMonitor();
+
+const helmet = require('helmet');
+const compression = require('compression');
+const timeout = require('connect-timeout');
+const { createBullBoard } = require('@bull-board/api');
+const { BullMQAdapter } = require('@bull-board/api/bullMQAdapter');
+const { ExpressAdapter } = require('@bull-board/express');
 
 const { VIOLATION_TYPES, SESSION_STATUS } = require('./utils/constants');
 const { LRUCache } = require('lru-cache');
@@ -47,11 +60,26 @@ const app = express();
 app.set('trust proxy', 1); // 🛡️ Fix 15: Required for rate-limiter to see real IPs
 const server = http.createServer(app);
 
+app.use(helmet());
+app.use(compression());
+app.use(timeout('45s'));
 app.use(traceMiddleware); // Generate Request IDs
+
+// 🛡️ [PHASE 2] Request-Scoped Logger Middleware
+app.use((req, res, next) => {
+    req.log = logger.child({ 
+        requestId: req.requestId,
+        path: req.path,
+        method: req.method 
+    });
+    next();
+});
 
 // Customize Morgan for easy debugging with prefix Request ID
 morgan.token('req-id', (req) => req.requestId ? req.requestId.split('-')[0] : '????');
-app.use(morgan('[:req-id] :method :url :status - :response-time ms'));
+if (process.env.NODE_ENV !== 'production') {
+    app.use(morgan('[:req-id] :method :url :status - :response-time ms'));
+}
 
 
 // ═══════════════════════════════════════════════════════════
@@ -67,7 +95,7 @@ app.use(morgan('[:req-id] :method :url :status - :response-time ms'));
 // Multiple URLs can be comma-separated:
 //   FRONTEND_URL=http://localhost:5173,https://app.proctoshield.com
 
-const logger = require('./utils/logger');
+
 
 // 🛡️ Fix 31: All origins must be exact matches to prevent PaaS subdomain takeover
 const allowedOrigins = new Set(
@@ -199,7 +227,7 @@ const globalLimiter = rateLimit({
 // Auth Rate Limiter — Strict limits for Login/Register endpoints
 const authLimiter = rateLimit({
     windowMs: 5 * 60 * 1000, // 🛡️ Reduced window to 5 minutes
-    max: 10, // 🛡️ Reduced attempts to 10
+    max: 20, // 🛡️ Production: 20 attempts per 5 mins
     store: createRedisStore('auth'),
     message: {
         error: 'Too many login attempts! Please try again in 5 minutes.',
@@ -255,8 +283,25 @@ const io = new Server(server, {
         },
         methods: ['GET', 'POST'],
         credentials: true
+    },
+    perMessageDeflate: {
+        threshold: 1024 // Only compress payloads larger than 1KB
     }
 });
+
+// ─── Socket.IO Redis Adapter (Cluster Mode Fix) ────────────
+// PM2 Cluster mein har worker ka alag Socket.io instance hota hai.
+// Bina Redis Adapter ke, agar student Worker-1 par connected hai
+// aur event Worker-2 se emit hota hai, toh student ko event NAHI milega.
+// Redis Pub/Sub is gap ko bridge karta hai — sabhi workers ek broadcast receive karte hain.
+try {
+    const pubClient = new IORedis(redisUrl);
+    const subClient = pubClient.duplicate();
+    io.adapter(createAdapter(pubClient, subClient));
+    console.log('🔗 [Socket.IO] Redis Adapter active — Cluster broadcasting enabled');
+} catch (adapterErr) {
+    console.warn('⚠️  [Socket.IO] Redis Adapter failed, falling back to in-memory (single instance only):', adapterErr.message);
+}
 
 // Expose Socket.IO instance to routes/controllers globally
 app.set('io', io);
@@ -339,6 +384,30 @@ app.get('/', (req, res) => res.send('<h1>Server & Sockets working perfectly 🔒
 
 // Auth routes — Rate limiter EXTRA tight
 app.use('/api/auth/verify-invite', inviteVerifyLimiter);
+// ─── Bull Board Dashboard ────────────────────────────────
+const { codeEvaluationQueue } = require('./queues/codeGradingQueue');
+const { frontendEvaluationQueue } = require('./queues/frontendGradingQueue');
+const { inviteEmailQueue } = require('./queues/inviteEmailQueue');
+const { intelligenceQueue } = require('./queues/intelligenceQueue');
+const { autoSubmitQueue } = require('./queues/autoSubmitWorker');
+
+const serverAdapter = new ExpressAdapter();
+serverAdapter.setBasePath('/admin/queues');
+
+createBullBoard({
+  queues: [
+    new BullMQAdapter(codeEvaluationQueue),
+    new BullMQAdapter(frontendEvaluationQueue),
+    new BullMQAdapter(inviteEmailQueue),
+    new BullMQAdapter(intelligenceQueue),
+    new BullMQAdapter(autoSubmitQueue),
+  ],
+  serverAdapter: serverAdapter,
+});
+
+// Protect Bull Board with Admin Role
+app.use('/admin/queues', verifyToken, checkRole(['admin', 'super_mentor']), serverAdapter.getRouter());
+
 app.use('/api/auth', authLimiter, authRoutes);
 
 // 🛡️ CRITICAL: Apply verifyToken BEFORE limiters so req.user is available for keyGenerator
@@ -916,20 +985,20 @@ async function bootstrap() {
         await connectRedis();
         console.log('✅ [BOOT] Redis Connection Established');
 
-        // 🚀 Initialize and Track Workers for Graceful Shutdown
-        workers.push(setupCodeEvaluationWorker(io));
-        workers.push(setupFrontendEvaluationWorker(io));
-        workers.push(setupInviteEmailWorker());
-        workers.push(startIntelligenceWorker());
-        workers.push(await startAutoSubmitWorker(io));
-        console.log('✅ [BOOT] Background Workers Initialized (5/5)');
-
         await cacheService.preWarmCache();
         console.log('✅ [BOOT] Performance Cache Pre-warmed');
 
         server.listen(PORT, '0.0.0.0', () => {
             console.log(`🚀 [BOOT] Server Live & Accepting Traffic on Port ${PORT}`);
             isReady = true;
+
+            // ─── PM2 Cluster Readiness Signal ─────────────────────────
+            // PM2 ko signal bhejo ki ye worker process ab ready hai.
+            // Iske bina `pm2 reload` (zero-downtime) properly kaam nahi karta.
+            if (process.send) {
+                process.send('ready');
+                console.log(`⚡ [PM2] Worker ${process.pid} signaled ready to master`);
+            }
 
             // Start Monitoring ONLY after server is live
             startHealthMonitor(io);

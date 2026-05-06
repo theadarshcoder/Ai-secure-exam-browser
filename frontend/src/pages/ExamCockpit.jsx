@@ -1131,6 +1131,7 @@ const { examId } = useParams();
   const isResizing = useRef(false);
   const isPanelResizing = useRef(false);
   const progressRef = useRef({ answers: {}, currentQ: 0, secondsLeft: 0, visited: {} });
+  const lastSavedAnswersRef = useRef({});
 
   // 📡 Real-time Socket Connection & Admin Communication
   useEffect(() => {
@@ -2110,26 +2111,86 @@ const { examId } = useParams();
   useEffect(() => {
     if (submitted || terminated || !examId) return;
     const saveTimer = setInterval(async () => {
+      // 🔥 Scalability Fix: Dirty Save Logic
+      const currentAnswers = progressRef.current.answers;
+      const dirtyAnswers = {};
+      let hasChanges = false;
+      
+      Object.keys(currentAnswers).forEach(qId => {
+        if (JSON.stringify(currentAnswers[qId]) !== JSON.stringify(lastSavedAnswersRef.current[qId])) {
+          dirtyAnswers[qId] = currentAnswers[qId];
+          hasChanges = true;
+        }
+      });
+
       const payload = {
         examId,
-        answers: progressRef.current.answers,
+        answers: hasChanges ? dirtyAnswers : undefined,
         currentQuestionIndex: progressRef.current.currentQ,
         questionStates: progressRef.current.visited,
         remainingTimeSeconds: progressRef.current.secondsLeft,
         lastUpdated: Date.now(), // 🏎️ Fix 5: Auto-Save Race Condition
       };
+
       if (!navigator.onLine) {
+        // Offline: save everything to local storage for safety
+        payload.answers = currentAnswers;
         await storageService.saveProgress(examId, payload);
         return;
       }
       try {
         await api.post("/api/exams/save-progress", payload);
         await storageService.deleteProgress(examId);
+        if (hasChanges) {
+          lastSavedAnswersRef.current = { ...lastSavedAnswersRef.current, ...dirtyAnswers };
+        }
       } catch (err) {
+        payload.answers = currentAnswers;
         await storageService.saveProgress(examId, payload);
       }
     }, 30000);
-    return () => clearInterval(saveTimer);
+
+    // 🛡️ Final Flush before unload
+    const handleBeforeUnload = () => {
+      const currentAnswers = progressRef.current.answers;
+      const dirtyAnswers = {};
+      let hasChanges = false;
+      Object.keys(currentAnswers).forEach(qId => {
+        if (JSON.stringify(currentAnswers[qId]) !== JSON.stringify(lastSavedAnswersRef.current[qId])) {
+          dirtyAnswers[qId] = currentAnswers[qId];
+          hasChanges = true;
+        }
+      });
+      
+      if (hasChanges) {
+        const payload = {
+          examId,
+          answers: dirtyAnswers,
+          currentQuestionIndex: progressRef.current.currentQ,
+          questionStates: progressRef.current.visited,
+          remainingTimeSeconds: progressRef.current.secondsLeft,
+          lastUpdated: Date.now(),
+        };
+        const token = sessionStorage.getItem('vision_token');
+        if (token) {
+          fetch(`${import.meta.env.VITE_API_URL || ''}/api/exams/save-progress`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(payload),
+            keepalive: true
+          }).catch(() => {});
+        }
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      clearInterval(saveTimer);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
   }, [examId, submitted, terminated]);
 
   // ⚙️ Code Execution Handlers

@@ -10,7 +10,7 @@ const { getTimeAgo, parseLeetCode, parseCodeChef } = require('../utils/helpers')
 const { gradeMCQ, gradeCoding, gradeShortAnswer, wrapStudentCode } = require('../services/gradingService');
 const { addCodeEvaluationJob } = require('../queues/codeGradingQueue');
 const { addFrontendEvaluationJob } = require('../queues/frontendGradingQueue');
-const { getCache, setCache, clearCache, clearPattern, TTL_API_CACHE } = require('../services/cacheService');
+const { getCache, setCache, clearCache, clearPattern, TTL_API_CACHE, TTL_EXAM_CACHE } = require('../services/cacheService');
 const Setting = require('../models/Setting');
 const { verifySecureRequest } = require('../utils/securityUtils');
 const { VIOLATION_TYPES, SESSION_STATUS } = require('../utils/constants');
@@ -449,7 +449,8 @@ exports.getMentorExams = asyncHandler(async (req, res) => {
 exports.getExamById = asyncHandler(async (req, res) => {
     const exam = await Exam.findById(req.params.id)
         .select('-questions.correctOption -questions.expectedAnswer -questions.testCases.expectedOutput')
-        .populate('creator', 'name');
+        .populate('creator', 'name')
+        .lean();
 
     if (!exam) {
         res.status(404);
@@ -457,7 +458,7 @@ exports.getExamById = asyncHandler(async (req, res) => {
     }
 
     const sanitizedQuestions = exam.questions.map((q, index) => {
-        const questionObject = q.toObject();
+        const questionObject = q;
         const safe = {
             id: questionObject._id,
             index,
@@ -789,10 +790,14 @@ exports.saveProgress = asyncHandler(async (req, res) => {
     const studentId = req.user.id;
 
     // 1. Fetch Exam & Session to verify ownership and time
-    const [exam, session] = await Promise.all([
-        Exam.findById(examId),
-        ExamSession.findOne({ exam: examId, student: studentId })
-    ]);
+    // 🔥 Scalability Fix: Cache Exam to shield DB during mass auto-saves
+    let exam = await getCache(`exam:${examId}`);
+    if (!exam) {
+        exam = await Exam.findById(examId).lean();
+        if (exam) await setCache(`exam:${examId}`, exam, TTL_EXAM_CACHE);
+    }
+    
+    const session = await ExamSession.findOne({ exam: examId, student: studentId });
 
     if (!exam) {
         res.status(404);
@@ -834,7 +839,7 @@ exports.saveProgress = asyncHandler(async (req, res) => {
                     }));
                     if (bulkOps.length > 0) await ExamAnswer.bulkWrite(bulkOps);
                 }
-            } catch (e) { console.error('Failed to sync Redis to Mongo on auto-submit:', e.message); }
+            } catch (e) { req.log.error({ err: e.message }, 'Failed to sync Redis to Mongo on auto-submit'); }
 
             session.status = 'auto_submitted';
             session.submittedAt = new Date();
@@ -1073,7 +1078,14 @@ exports.saveProgress = asyncHandler(async (req, res) => {
     if (redisClient) {
         try {
             const updates = [];
-            if (answers !== undefined)              updates.push('answers', JSON.stringify(answers));
+            if (answers !== undefined) {
+                // 🔥 Scalability Fix: Dirty Save Merge
+                // Since frontend only sends CHANGED answers, we MUST merge them with existing cached answers.
+                const existingData = await redisClient.hget(cacheKey, 'answers');
+                let mergedAnswers = existingData ? JSON.parse(existingData) : {};
+                mergedAnswers = { ...mergedAnswers, ...answers };
+                updates.push('answers', JSON.stringify(mergedAnswers));
+            }
             if (currentQuestionIndex !== undefined) updates.push('currentQuestionIndex', (currentQuestionIndex ?? 0).toString());
             if (questionStates !== undefined)       updates.push('questionStates', JSON.stringify(questionStates));
             if (remainingTimeSeconds !== undefined) updates.push('remainingTimeSeconds', (remainingTimeSeconds ?? 0).toString());

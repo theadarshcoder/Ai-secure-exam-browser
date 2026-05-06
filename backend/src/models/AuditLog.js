@@ -9,6 +9,7 @@ const auditLogSchema = new mongoose.Schema({
 
 // 🗑️ Auto-delete logs older than 30 days (MongoDB TTL Index)
 auditLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: 30 * 24 * 60 * 60 });
+auditLogSchema.index({ createdAt: -1 }); // 🛡️ Fix for Admin Pagination sorting
 
 module.exports = mongoose.model('AuditLog', auditLogSchema);
 

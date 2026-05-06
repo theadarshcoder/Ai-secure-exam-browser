@@ -12,6 +12,7 @@ const DEFAULT_TTL = 86400; // 24 hours in seconds (matching JWT expiry)
 // --- Added for Phase 2 Optimization ---
 const TTL_ACTIVE_SESSION = 21600; // 6 hours for ongoing exams
 const TTL_API_CACHE = 60; // 60 seconds for dashboard data
+const TTL_EXAM_CACHE = 3600; // 1 hour for exam definition caching
 
 /**
  * 🔑 Save user session metadata to Redis
@@ -250,5 +251,6 @@ module.exports = {
     pushTelemetryLog,
     popAllTelemetryLogs,
     TTL_ACTIVE_SESSION,
-    TTL_API_CACHE
+    TTL_API_CACHE,
+    TTL_EXAM_CACHE
 };

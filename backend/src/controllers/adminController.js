@@ -21,6 +21,7 @@ exports.getAllResults = asyncHandler(async (req, res) => {
     const results = await ExamSession.find()
         .populate('student', 'name email')
         .populate('exam', 'title duration category')
+        .select('student exam score totalMarks percentage passed status tabSwitchCount violations submittedAt startedAt')
         .sort({ startedAt: -1, submittedAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -64,7 +65,9 @@ exports.getLiveSessions = asyncHandler(async (req, res) => {
     })
     .populate('student', 'name email profilePicture')
     .populate('exam', 'title duration category')
+    .select('student exam status isBlocked violationCount startedAt helpRequests updatedAt riskScore riskLevel')
     .sort({ startedAt: -1 })
+    .limit(100) // 🛡️ Safety Cap for live monitoring
     .lean();
 
     const formatted = sessions.filter(s => s.student && s.exam).map(s => ({
@@ -113,6 +116,25 @@ exports.getDashboardStats = asyncHandler(async (req, res) => {
 
     await setCache(cacheKey, result, TTL_API_CACHE);
     res.json(result);
+});
+
+// ═══════════════════════════════════════════════════════════
+// System Metrics for Admin (RAM, Lag, Sockets)
+// ═══════════════════════════════════════════════════════════
+exports.getSystemMetrics = asyncHandler(async (req, res) => {
+    const { getMetrics } = require('../utils/monitor');
+    const io = req.app.get('io');
+    
+    const activeSockets = io ? io.engine.clientsCount : 0;
+    const sessionStats = await ExamSession.aggregate([
+        { $group: { _id: '$status', count: { $sum: 1 } } }
+    ]);
+
+    res.json({
+        ...(await getMetrics()),
+        activeSockets,
+        sessionStats
+    });
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -233,11 +255,26 @@ exports.getSystemHealth = asyncHandler(async (req, res) => {
 });
 
 exports.getAuditLogs = asyncHandler(async (req, res) => {
+    const page = parseInt(req.query.page) || 1;
+    let limit = parseInt(req.query.limit) || 20;
+    limit = Math.min(limit, 100);
+    const skip = (page - 1) * limit;
+
     const logs = await AuditLog.find()
         .populate('performedBy', 'name email role')
         .sort({ createdAt: -1 })
-        .limit(100);
-    res.json(logs);
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+    const total = await AuditLog.countDocuments();
+
+    res.json({
+        logs,
+        total,
+        page,
+        pages: Math.ceil(total / limit)
+    });
 });
 
 exports.deleteAuditLog = asyncHandler(async (req, res) => {

@@ -19,12 +19,16 @@ const connection = getRedisConnection();
  */
 const startIntelligenceWorker = () => {
     const worker = new Worker('intelligence_queue', async (job) => {
+        const { trackQueueMetric } = require('../utils/monitor');
+        const startProcessing = Date.now();
+        const waitTime = startProcessing - job.timestamp;
+
         const { studentId } = job.data;
         if (!studentId) return;
 
-        console.log(`🧠 Worker: Pre-warming intelligence cache for student ${studentId}...`);
-
         try {
+            console.log(`🧠 Worker: Pre-warming intelligence cache for student ${studentId}... (Wait: ${waitTime}ms)`);
+            
             // 1. Invalidate ALL stale cached pages for this student
             await clearPattern(`student_intelligence:${studentId}:*`);
 
@@ -38,14 +42,18 @@ const startIntelligenceWorker = () => {
             console.log(`✅ Worker: Intelligence cache warmed for student ${studentId}`);
         } catch (err) {
             console.error(`❌ Worker error for student ${studentId}:`, err.message);
+            // We still track metrics even if it failed, to see how long it took to fail
             throw err; // Let BullMQ retry
+        } finally {
+            const processTime = Date.now() - startProcessing;
+            await trackQueueMetric('Intelligence', waitTime, processTime);
         }
     }, { 
         connection,
-        concurrency: 3, // Process up to 3 students in parallel
+        concurrency: 5, 
         limiter: {
-            max: 10,
-            duration: 60000 // Max 10 jobs per minute to protect DB
+            max: 50, // 🏎️ Increased for load testing
+            duration: 1000 
         }
     });
 

@@ -24,5 +24,7 @@ const intelligenceLogSchema = new mongoose.Schema({
 
 // Auto-expire logs after 30 days to save space
 intelligenceLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: 2592000 });
+intelligenceLogSchema.index({ createdAt: -1 }); // 🛡️ Fix for Admin Pagination sorting
+intelligenceLogSchema.index({ timestamp: -1 });
 
 module.exports = mongoose.model('IntelligenceLog', intelligenceLogSchema);

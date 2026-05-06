@@ -85,7 +85,7 @@ router.put('/evaluate/:sessionId', verifyToken, checkRole(['admin', 'super_mento
 router.put('/terminate/:sessionId', verifyToken, checkRole(['admin', 'super_mentor', 'mentor']), examController.terminateSession);
 
 // Proctoring violation log karo (Tab Switch, Face Not Detected, etc.)
-router.post('/incident', verifyToken, validate(incidentSchema), examController.logIncident);
+router.post('/incident', verifyToken, validate(incidentSchema), telemetryLimiter, examController.logIncident);
 
 // 💓 Heartbeat — Continuous secure client verification
 router.post('/heartbeat', verifyToken, secureActionLimiter, examController.heartbeat);
