@@ -12,12 +12,12 @@ require('dotenv').config({ path: require('path').join(__dirname, '../../.env') }
 
 const seedSuperAdmin = async () => {
     try {
-        console.log('⏳ Connecting to Database...');
+        console.log('Connecting to Database...');
         await mongoose.connect(process.env.MONGODB_URI);
-        console.log('✅ Database connected.');
+        console.log('Database connected.');
 
         // Step 1: Create DEFAULT_INSTITUTION
-        console.log('🏗️ Creating DEFAULT_INSTITUTION...');
+        console.log('Creating DEFAULT_INSTITUTION...');
         let defaultInst = await Institution.findOne({ code: 'DEFAULT' });
         if (!defaultInst) {
             defaultInst = new Institution({
@@ -28,9 +28,9 @@ const seedSuperAdmin = async () => {
                 status: 'active'
             });
             await defaultInst.save();
-            console.log('✅ DEFAULT_INSTITUTION created.');
+            console.log('DEFAULT_INSTITUTION created.');
         } else {
-            console.log('✅ DEFAULT_INSTITUTION already exists.');
+            console.log('DEFAULT_INSTITUTION already exists.');
         }
 
         // Step 2: Create Default Institution Settings
@@ -43,24 +43,37 @@ const seedSuperAdmin = async () => {
             console.log('✅ Default Institution Settings created.');
         }
 
-        // Step 3: Create super_admin (You)
-        console.log('👑 Creating SUPER_ADMIN account...');
-        // Delete old super admins to prevent duplicates
+        console.log('Creating SUPER_ADMIN accounts...');
         await User.deleteMany({ role: 'super_admin' });
+        await User.deleteOne({ email: 'vinit' });
         
-        const superAdmin = new User({
-            name: 'Platform Owner',
-            email: 'superadmin', // Login ID
-            password: 'admin',   // Plain text, auto-hashed by model
-            role: 'super_admin',
-            institutionId: null, // super_admin has global access
-            permissions: ['all']
-        });
-        await superAdmin.save();
-        console.log('✅ SUPER_ADMIN account created! (Login: superadmin / admin)');
+        const superAdmins = [
+            {
+                name: 'Platform Owner',
+                email: 'superadmin', // Login ID
+                password: 'admin',   // Plain text, auto-hashed by model
+                role: 'super_admin',
+                institutionId: null, // super_admin has global access
+                permissions: ['all']
+            },
+            {
+                name: 'Vinit',
+                email: 'vinit',      // Login ID
+                password: '1234',    // Plain text, auto-hashed by model
+                role: 'super_admin',
+                institutionId: null, // super_admin has global access
+                permissions: ['all']
+            }
+        ];
+
+        for (const adminData of superAdmins) {
+            const admin = new User(adminData);
+            await admin.save();
+            console.log(`SUPER_ADMIN account created: ${adminData.email}`);
+        }
 
         // Step 4: Migrate existing data to DEFAULT_INSTITUTION
-        console.log('🔄 Migrating existing data to DEFAULT_INSTITUTION...');
+        console.log('Migrating existing data to DEFAULT_INSTITUTION...');
         const migrationPromises = [
             User.updateMany({ institutionId: null, role: { $ne: 'super_admin' } }, { institutionId: defaultInst._id }),
             Exam.updateMany({ institutionId: null }, { institutionId: defaultInst._id }),
@@ -71,7 +84,7 @@ const seedSuperAdmin = async () => {
         ];
 
         const results = await Promise.all(migrationPromises);
-        console.log(`✅ Migration complete:`);
+        console.log(`Migration complete:`);
         console.log(`  - Users modified: ${results[0].modifiedCount}`);
         console.log(`  - Exams modified: ${results[1].modifiedCount}`);
         console.log(`  - Sessions modified: ${results[2].modifiedCount}`);
@@ -79,12 +92,12 @@ const seedSuperAdmin = async () => {
         console.log(`  - ErrorLogs modified: ${results[4].modifiedCount}`);
         console.log(`  - ExamInvites modified: ${results[5].modifiedCount}`);
         console.log('-------------------------------------------');
-        console.log('SaaS Transformation Seed & Migration Successful! 🎉');
+        console.log('SaaS Transformation Seed & Migration Successful!');
         console.log('-------------------------------------------');
         
         process.exit(0);
     } catch (error) {
-        console.error('❌ SEEDING FAILED:', error.message);
+        console.error('SEEDING FAILED:', error.message);
         process.exit(1);
     }
 };

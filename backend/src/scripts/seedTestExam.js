@@ -93,7 +93,7 @@ const seedTestExam = async () => {
 
         process.exit(0);
     } catch (e) {
-        console.error('❌ Seeding failed:', e.message);
+        console.error('Seeding failed:', e.message);
         process.exit(1);
     }
 };

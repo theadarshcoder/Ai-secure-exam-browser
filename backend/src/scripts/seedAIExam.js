@@ -72,10 +72,10 @@ const seed = async () => {
         });
 
         await exam.save();
-        console.log('🚀 AI & Machine Learning Exam Seeded Successfully!');
+        console.log('AI & Machine Learning Exam Seeded Successfully!');
         process.exit(0);
     } catch (e) {
-        console.error('❌ Seeding failed:', e.message);
+        console.error('Seeding failed:', e.message);
         process.exit(1);
     }
 };

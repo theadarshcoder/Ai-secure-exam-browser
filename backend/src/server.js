@@ -148,7 +148,6 @@ app.get('/health', (req, res) => {
 app.use('/api/exams/save-progress', express.json({ limit: '2mb' }));
 app.use(express.json({ limit: '100kb' }));
 app.use(mongoSanitize()); // Prevent NoSQL Injection attacks
-app.use(platformModeMiddleware); // 🛡️ GLOBAL PLATFORM GOVERNANCE
 
 function isAllowedOrigin(origin) {
     if (!origin) return true;
@@ -319,15 +318,14 @@ const workers = [];
 // ─── Auth Middleware & Handlers Logic stays here ───
 // ...
 
-// Socket.IO Authentication Middleware
-// Har connection se pehle JWT token verify hoga
+// Verify JWT token before connection
 io.use(async (socket, next) => {
     try {
         const token = socket.handshake.auth?.token
             || socket.handshake.headers?.authorization?.split(' ')[1];
 
         if (!token) {
-            console.error('🚫 [Socket Auth] Connection rejected: Token missing');
+            console.error('[Socket Auth] Connection rejected: Token missing');
             return next(new Error('Authentication required! Token missing.'));
         }
 
@@ -339,7 +337,7 @@ io.use(async (socket, next) => {
 
         if (cachedSession && cachedSession.sessionVersion) {
             if (decoded.sessionVersion && cachedSession.sessionVersion !== decoded.sessionVersion) {
-                console.warn(`🚫 [Socket Auth] Stale session for ${decoded.email}. Force disconnecting.`);
+                console.warn(`[Socket Auth] Stale session for ${decoded.email}. Force disconnecting.`);
                 return next(new Error('Session terminated! You logged in from another device.'));
             }
             if (cachedSession.status === 'suspended' || cachedSession.status === 'deactivated') {
@@ -352,13 +350,13 @@ io.use(async (socket, next) => {
                 role: cachedSession.role || decoded.role,
                 institutionId: cachedSession.institutionId || null
             };
-            console.log(`📡 [SCALING] Socket Auth: Redis Cache Hit for ${decoded.email}`);
+            console.log(`[SCALING] Socket Auth: Redis Cache Hit for ${decoded.email}`);
         } else {
             // 🔄 CACHE MISS: Fallback to MongoDB & Backfill
-            console.log(`🔄 [SCALING] Socket Auth: Redis Cache Miss for ${decoded.email}. Fetching from DB.`);
+            console.log(`[SCALING] Socket Auth: Redis Cache Miss for ${decoded.email}. Fetching from DB.`);
             const user = await User.findById(decoded.id).lean();
             if (!user) {
-                console.error(`🚫 [Socket Auth] User not found: ${decoded.id}`);
+                console.error(`[Socket Auth] User not found: ${decoded.id}`);
                 return next(new Error('User account no longer exists.'));
             }
             if (user.status === 'suspended' || user.status === 'deactivated') {
@@ -366,7 +364,7 @@ io.use(async (socket, next) => {
             }
             // Validate sessionVersion against DB
             if (decoded.sessionVersion && user.sessionVersion !== decoded.sessionVersion) {
-                console.warn(`🚫 [Socket Auth] Stale session version for ${decoded.email}.`);
+                console.warn(`[Socket Auth] Stale session version for ${decoded.email}.`);
                 return next(new Error('Session terminated! You logged in from another device.'));
             }
             
@@ -392,11 +390,11 @@ io.use(async (socket, next) => {
         // 🛡️ Ensure user room join immediately after auth
         socket.join(`user_${decoded.id}`);
 
-        console.log(`🔑 [Socket Auth] Success: ${decoded.email} (${socket.user.role}) joined user_${decoded.id}`);
+        console.log(`[Socket Auth] Success: ${decoded.email} joined user_${decoded.id}`);
         next();
 
     } catch (error) {
-        console.warn(`🚫 [Socket Auth] Failed: ${error.message}`);
+        console.warn(`[Socket Auth] Failed: ${error.message}`);
         // Return generic error to client but log specific error internally
         const genericMsg = error.name === 'TokenExpiredError' 
             ? 'Session expired. Please login again.' 
@@ -408,7 +406,7 @@ io.use(async (socket, next) => {
 
 // 🛡️ Removed: Scattered IIFE startup logic
 
-app.get('/', (req, res) => res.send('<h1>Server & Sockets working perfectly 🔒</h1>'));
+app.get('/', (req, res) => res.send('<h1>Server & Sockets working perfectly</h1>'));
 
 // Auth routes — Rate limiter EXTRA tight
 app.use('/api/auth/verify-invite', inviteVerifyLimiter);
@@ -440,15 +438,15 @@ app.use('/api/auth', authLimiter, authRoutes);
 
 // 🛡️ CRITICAL: Apply verifyToken BEFORE limiters so req.user is available for keyGenerator
 // This prevents IP-based rate limiting from blocking entire colleges/offices
-app.use('/api/exams/save-progress', verifyToken, activityTracker, autoSaveLimiter);
+app.use('/api/exams/save-progress', verifyToken, platformModeMiddleware, activityTracker, autoSaveLimiter);
 
 // Protected routes — Verify Token FIRST, then Global Limiter
-app.use('/api/exams', verifyToken, activityTracker, checkInstitutionActive, globalLimiter, examRoutes);
-app.use('/api/admin', verifyToken, activityTracker, checkInstitutionActive, globalLimiter, adminRoutes);
-app.use('/api/super-admin', verifyToken, activityTracker, checkRole(['super_admin']), globalLimiter, superAdminRoutes); 
-app.use('/api/session', verifyToken, activityTracker, checkInstitutionActive, telemetryLimiter, sessionRoutes);
-app.use('/api/ai', verifyToken, activityTracker, checkInstitutionActive, globalLimiter, aiRoutes);
-app.use('/api/upload', verifyToken, activityTracker, checkInstitutionActive, globalLimiter, uploadRoutes);
+app.use('/api/exams', verifyToken, platformModeMiddleware, activityTracker, checkInstitutionActive, globalLimiter, examRoutes);
+app.use('/api/admin', verifyToken, platformModeMiddleware, activityTracker, checkInstitutionActive, globalLimiter, adminRoutes);
+app.use('/api/super-admin', verifyToken, platformModeMiddleware, activityTracker, checkRole(['super_admin']), globalLimiter, superAdminRoutes); 
+app.use('/api/session', verifyToken, platformModeMiddleware, activityTracker, checkInstitutionActive, telemetryLimiter, sessionRoutes);
+app.use('/api/ai', verifyToken, platformModeMiddleware, activityTracker, checkInstitutionActive, globalLimiter, aiRoutes);
+app.use('/api/upload', verifyToken, platformModeMiddleware, activityTracker, checkInstitutionActive, globalLimiter, uploadRoutes);
 
 // Public routes — NO verifyToken, rate limiter falls back to IP
 app.use('/api/public', globalLimiter, publicRoutes);
@@ -465,15 +463,9 @@ app.use(errorHandler);
 
 
 
-// ═══════════════════════════════════════════════════════════
-//  📡 Socket.IO Event Handlers (Now Secured!)
-// ═══════════════════════════════════════════════════════════
-// Ab yahan sirf authenticated users hi pahunchenge
-
-
-
+// Only authenticated users reach here
 io.on('connection', (socket) => {
-    console.log(`🔌 Connected: ${socket.id} | User: ${socket.user.email} (${socket.user.role})`);
+    console.log(`Connected: ${socket.id} | User: ${socket.user.email}`);
     
     // Join role-specific and user-specific rooms for targeted broadcasting
     if (socket.user.role === 'super_admin') {
@@ -514,11 +506,11 @@ io.on('connection', (socket) => {
     socket.on('re_auth', (token) => {
         jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
             if (err) {
-                logger.warn(`🚫 Socket re-auth failed for ${socket.id}: ${err.message}`);
+                logger.warn(`Socket re-auth failed for ${socket.id}: ${err.message}`);
                 return;
             }
 
-            logger.info(`🔄 [SCALING] Socket Re-Auth: ${decoded.email}`);
+            logger.info(`[SCALING] Socket Re-Auth: ${decoded.email}`);
             socket.user = { id: decoded.id, email: decoded.email, role: decoded.role };
             socket.expiresAt = decoded.exp * 1000;
 
@@ -541,7 +533,7 @@ io.on('connection', (socket) => {
 
     if (remainingTime > 0) {
         watchdogTimer = setTimeout(() => {
-            console.warn(`🚦 Socket Session Expired: ${socket.user.email}. Force disconnecting.`);
+            console.warn(`Socket Session Expired: ${socket.user.email}. Force disconnecting.`);
             socket.emit('session_expired', { message: 'Security: Your session has expired. Please login again to continue.' });
             socket.disconnect(true);
         }, remainingTime);
@@ -932,7 +924,7 @@ io.on('connection', (socket) => {
         // 🏎️ Fix 41: Resources are scoped locally (like eventCounts), so they auto-gc.
         // No global tracking maps to delete here, preventing ReferenceErrors.
         
-        console.log(`❌ Disconnected: ${socket.id} | User: ${socket.user.email}`);
+        console.log(`Disconnected: ${socket.id} | User: ${socket.user.email}`);
     });
 });
 
@@ -943,7 +935,7 @@ const PORT = process.env.PORT || 5000;
 // Fix 5 (Last-Mile): Cache Pre-Warming to prevent "Cold Start" thundering herd
 const preWarmCache = async () => {
     try {
-        console.log('🔥 Pre-warming cache: Loading active exams and global settings...');
+        console.log('Pre-warming cache: Loading active exams and global settings...');
         const Exam = require('./models/Exam');
         const Setting = require('./models/Setting');
         const cacheService = require('./services/cacheService');
@@ -952,9 +944,9 @@ const preWarmCache = async () => {
         const settings = await Setting.findOne().lean();
 
         if (settings) await cacheService.setCache('global_settings', settings, 3600);
-        console.log(`✔ Cache warmed: ${activeExams.length} exams ready.`);
+        console.log(`Cache warmed: ${activeExams.length} exams ready.`);
     } catch (err) {
-        console.error('❌ Cache pre-warm failed:', err.message);
+        console.error('Cache pre-warm failed:', err.message);
     }
 };
 
@@ -1008,22 +1000,22 @@ async function bootstrap() {
     global.__BOOTSTRAPPED__ = true;
 
     try {
-        console.log('🏗️  [BOOT] Starting Centralized System Bootstrap...');
+        console.log('[BOOT] Starting Centralized System Bootstrap...');
         
         validateEnv();
-        console.log('✅ [BOOT] Environment Variables Validated');
+        console.log('[BOOT] Environment Variables Validated');
 
         await connectDB();
-        console.log('✅ [BOOT] MongoDB Connection Established');
+        console.log('[BOOT] MongoDB Connection Established');
 
         await connectRedis();
-        console.log('✅ [BOOT] Redis Connection Established');
+        console.log('[BOOT] Redis Connection Established');
 
         await cacheService.preWarmCache();
-        console.log('✅ [BOOT] Performance Cache Pre-warmed');
+        console.log('[BOOT] Performance Cache Pre-warmed');
 
         server.listen(PORT, '0.0.0.0', () => {
-            console.log(`🚀 [BOOT] Server Live & Accepting Traffic on Port ${PORT}`);
+            console.log(`[BOOT] Server Live & Accepting Traffic on Port ${PORT}`);
             isReady = true;
 
             // ─── PM2 Cluster Readiness Signal ─────────────────────────
@@ -1031,16 +1023,16 @@ async function bootstrap() {
             // Iske bina `pm2 reload` (zero-downtime) properly kaam nahi karta.
             if (process.send) {
                 process.send('ready');
-                console.log(`⚡ [PM2] Worker ${process.pid} signaled ready to master`);
+                console.log(`[PM2] Worker ${process.pid} signaled ready to master`);
             }
 
             // Start Monitoring ONLY after server is live
             startHealthMonitor(io);
-            console.log('🩺 [BOOT] Real-time Health Monitor Active');
+            console.log('[BOOT] Real-time Health Monitor Active');
         });
 
     } catch (err) {
-        console.error('❌ [BOOT] Fatal Bootstrap Failure:', err.message);
+        console.error('[BOOT] Fatal Bootstrap Failure:', err.message);
         process.exit(1);
     }
 }
@@ -1050,7 +1042,7 @@ async function bootstrap() {
 const mongoose = require('mongoose');
 
 async function gracefulShutdown(signal) {
-    console.log(`\n🛑 [SHUTDOWN] Received ${signal}. Starting Safe Cleanup...`);
+    console.log(`[SHUTDOWN] Received ${signal}. Starting Safe Cleanup...`);
     isReady = false; // Immediately fail health checks
 
     const shutdownWithTimeout = (promise, timeout = 10000, name) =>
@@ -1065,29 +1057,29 @@ async function gracefulShutdown(signal) {
         // 1. Stop accepting new HTTP requests
         if (server) {
             await new Promise((resolve) => server.close(resolve));
-            console.log('📉 [SHUTDOWN] HTTP Server offline');
+            console.log('[SHUTDOWN] HTTP Server offline');
         }
 
         // 2. Close Workers (allow active jobs to finish or timeout)
-        console.log('⚙️  [SHUTDOWN] Closing Active Workers...');
+        console.log('[SHUTDOWN] Closing Active Workers...');
         await Promise.all(workers.map((w, i) => 
             shutdownWithTimeout(w.close(), 15000, `Worker-${i}`).catch(e => console.warn(`⚠️  ${e.message}`))
         ));
-        console.log('✅ [SHUTDOWN] Background Processing terminated');
+        console.log('[SHUTDOWN] Background Processing terminated');
 
         // 3. Close Infrastructure Connections
         if (mongoose.connection.readyState === 1) {
             await mongoose.connection.close();
-            console.log('📦 [SHUTDOWN] MongoDB connection closed');
+            console.log('[SHUTDOWN] MongoDB connection closed');
         }
 
         const redisClient = getRedisClient();
         if (redisClient) {
             await redisClient.quit();
-            console.log('📡 [SHUTDOWN] Redis connection closed');
+            console.log('[SHUTDOWN] Redis connection closed');
         }
 
-        console.log('🏁 [SHUTDOWN] System Clean. Process exiting. 👋');
+        console.log('[SHUTDOWN] System Clean. Process exiting.');
         process.exit(0);
     } catch (err) {
         console.error('❌ [SHUTDOWN] Error during cleanup:', err.message);
@@ -1101,12 +1093,12 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // 🛡️ Presentation Safety Nets: Prevent server crashes from unhandled errors
 process.on('uncaughtException', (err) => {
-    console.error('🔥 [CRITICAL] Uncaught Exception:', err.message);
+    console.error('[CRITICAL] Uncaught Exception:', err.message);
     // Don't exit, keep the presentation alive!
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-    console.error('⚠️ [WARNING] Unhandled Promise Rejection:', reason);
+    console.error('[WARNING] Unhandled Promise Rejection:', reason);
     // Log but stay alive
 });
 

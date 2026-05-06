@@ -1,0 +1,81 @@
+﻿
+> vision-backend@1.0.0 lint
+> eslint .
+
+
+C:\Users\LENOVO\OneDrive\Desktop\Code Hub\OJT Project\backend\src\controllers\adminController.js
+  215:9   error    The value assigned to 'judge0Status' is not used in subsequent statements  no-useless-assignment
+  221:14  warning  'e' is defined but never used                                              no-unused-vars
+
+C:\Users\LENOVO\OneDrive\Desktop\Code Hub\OJT Project\backend\src\controllers\aiController.js
+  130:61  warning  'mcqCount' is defined but never used     no-unused-vars
+  130:71  warning  'shortCount' is defined but never used   no-unused-vars
+  130:83  warning  'codingCount' is defined but never used  no-unused-vars
+  130:96  warning  'reactCount' is defined but never used   no-unused-vars
+
+C:\Users\LENOVO\OneDrive\Desktop\Code Hub\OJT Project\backend\src\controllers\examController.js
+    11:9   warning  'addCodeEvaluationJob' is assigned a value but never used       no-unused-vars
+   340:11  warning  'mongoose' is assigned a value but never used                   no-unused-vars
+   839:11  warning  'currentHash' is assigned a value but never used                no-unused-vars
+   844:16  warning  'storedHash' is assigned a value but never used                 no-unused-vars
+  1150:11  warning  'fingerprint' is assigned a value but never used                no-unused-vars
+  1242:26  warning  'err' is defined but never used                                 no-unused-vars
+  1253:26  warning  'err' is defined but never used                                 no-unused-vars
+  2230:9   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  2314:9   error    There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+
+C:\Users\LENOVO\OneDrive\Desktop\Code Hub\OJT Project\backend\src\controllers\publicController.js
+  13:15  warning  'newSub' is assigned a value but never used  no-unused-vars
+
+C:\Users\LENOVO\OneDrive\Desktop\Code Hub\OJT Project\backend\src\controllers\sessionController.js
+  2:7  warning  'User' is assigned a value but never used  no-unused-vars
+
+C:\Users\LENOVO\OneDrive\Desktop\Code Hub\OJT Project\backend\src\controllers\telemetryController.js
+  1:7  warning  'ErrorLog' is assigned a value but never used  no-unused-vars
+
+C:\Users\LENOVO\OneDrive\Desktop\Code Hub\OJT Project\backend\src\middlewares\authMiddleware.js
+  71:26  warning  '_' is defined but never used  no-unused-vars
+
+C:\Users\LENOVO\OneDrive\Desktop\Code Hub\OJT Project\backend\src\middlewares\errorMiddleware.js
+  7:44  warning  'next' is defined but never used  no-unused-vars
+
+C:\Users\LENOVO\OneDrive\Desktop\Code Hub\OJT Project\backend\src\routes\sessionRoutes.js
+  8:33  warning  'checkPermission' is assigned a value but never used  no-unused-vars
+
+C:\Users\LENOVO\OneDrive\Desktop\Code Hub\OJT Project\backend\src\server.js
+    15:22  warning  'checkRole' is assigned a value but never used               no-unused-vars
+    26:5   warning  'isHealthMonitorStarted' is assigned a value but never used  no-unused-vars
+   131:14  warning  '_err' is defined but never used                             no-unused-vars
+   358:20  warning  'next' is defined but never used                             no-unused-vars
+   840:7   warning  'preWarmCache' is assigned a value but never used            no-unused-vars
+   863:7   warning  'shutdown' is assigned a value but never used                no-unused-vars
+  1003:43  warning  'promise' is defined but never used                          no-unused-vars
+
+C:\Users\LENOVO\OneDrive\Desktop\Code Hub\OJT Project\backend\src\services\cacheService.js
+   57:18  warning  'e' is defined but never used  no-unused-vars
+  233:52  warning  'e' is defined but never used  no-unused-vars
+
+C:\Users\LENOVO\OneDrive\Desktop\Code Hub\OJT Project\backend\src\services\frontendGradingService.js
+  110:13  error  There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+
+C:\Users\LENOVO\OneDrive\Desktop\Code Hub\OJT Project\backend\src\services\healthMonitor.js
+  52:26  warning  'e' is defined but never used  no-unused-vars
+
+C:\Users\LENOVO\OneDrive\Desktop\Code Hub\OJT Project\backend\src\services\judge0.js
+  11:7  warning  'JUDGE0_URL' is assigned a value but never used  no-unused-vars
+
+C:\Users\LENOVO\OneDrive\Desktop\Code Hub\OJT Project\backend\src\tests\contracts\auth.contract.test.js
+  79:15  warning  'refresh1' is assigned a value but never used  no-unused-vars
+
+C:\Users\LENOVO\OneDrive\Desktop\Code Hub\OJT Project\backend\src\tests\contracts\grading.contract.test.js
+   2:9   warning  'runFrontendCode' is assigned a value but never used           no-unused-vars
+   3:9   warning  'addFrontendEvaluationJob' is assigned a value but never used  no-unused-vars
+  33:15  warning  'res' is assigned a value but never used                       no-unused-vars
+
+C:\Users\LENOVO\OneDrive\Desktop\Code Hub\OJT Project\backend\src\utils\helpers.js
+  116:9  error  There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  173:9  error  There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+
+Γ£û 39 problems (6 errors, 33 warnings)
+
+
