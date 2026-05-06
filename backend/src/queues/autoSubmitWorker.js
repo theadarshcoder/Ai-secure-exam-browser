@@ -59,11 +59,12 @@ const startAutoSubmitWorker = async (io) => {
 const processExpiredSessions = async (io) => {
     const now = new Date();
 
-    // Find sessions that have expired but are still in progress or paused
+    // Find sessions that have expired but are still in progress, paused, or blocked
     const expiredSessions = await ExamSession.find({
-        status: { $in: ['in_progress', 'paused'] },
-        endTime: { $lte: now }
-    }).select('_id exam student');
+        status: { $in: ['in_progress', 'paused', 'blocked'] },
+        endTime: { $lte: now },
+        submittedAt: { $exists: false } // Only process sessions that haven't been submitted yet
+    }).select('_id exam student status');
 
     if (!expiredSessions || expiredSessions.length === 0) {
         return { count: 0 };
@@ -72,11 +73,13 @@ const processExpiredSessions = async (io) => {
     let processedCount = 0;
 
     for (const sessionDoc of expiredSessions) {
+        const targetStatus = sessionDoc.status === 'blocked' ? 'blocked' : 'auto_submitted';
+
         // Atomic update to lock the session for processing
         // This prevents race conditions if the student tries to submit at the exact same time
         const lockedSession = await ExamSession.findOneAndUpdate(
-            { _id: sessionDoc._id, status: { $in: ['in_progress', 'paused'] } },
-            { $set: { status: 'auto_submitted', submittedAt: now } },
+            { _id: sessionDoc._id, status: sessionDoc.status, submittedAt: { $exists: false } },
+            { $set: { status: targetStatus, submittedAt: now } },
             { new: true } // Return the updated document
         );
 

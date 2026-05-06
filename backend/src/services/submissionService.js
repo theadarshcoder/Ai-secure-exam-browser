@@ -196,7 +196,14 @@ const processSubmission = async (session, exam, answers, isLateSubmission = fals
     session.totalMarks = Number(totalMarksVal) || 1;
     session.percentage = Number(percentage) || 0;
     session.passed = hasShortAnswers ? false : passed;
-    session.status = finalStatus;
+    
+    // 🛡️ Preserve 'blocked' status if the student was disqualified
+    if (session.status === 'blocked' || session.isBlocked) {
+        session.status = 'blocked';
+    } else {
+        session.status = finalStatus;
+    }
+    
     session.requiresManualGrading = hasShortAnswers;
     session.submittedAt = new Date();
     await session.save();
