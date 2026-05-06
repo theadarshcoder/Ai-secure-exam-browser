@@ -171,8 +171,10 @@ function isAllowedOrigin(origin) {
 // ⚡ SHARED STORE HELPER: Cluster-Safe Rate Limiting
 const createRedisStore = (label) => {
     const client = getRedisClient();
-    if (!client) {
-        console.warn(`⚠️  [SCALING] Redis not ready. Using Capped LRU-Memory fallback for ${label} rate limiter.`);
+    if (!client || process.env.NODE_ENV === 'test') {
+        if (process.env.NODE_ENV !== 'test') {
+            console.warn(`⚠️  [SCALING] Redis not ready. Using Capped LRU-Memory fallback for ${label} rate limiter.`);
+        }
         
         // Fix 15: Capped LRU Memory fallback to prevent OOM
         const cache = new LRUCache({

@@ -66,4 +66,8 @@ const getMetrics = async () => {
     return metrics;
 };
 
-module.exports = { startLagMonitor, getMetrics, trackQueueMetric };
+const getSystemStatus = () => {
+    return localEventLoopLag > 150 ? 'STRESSED' : 'HEALTHY';
+};
+
+module.exports = { startLagMonitor, getMetrics, trackQueueMetric, getSystemStatus };
