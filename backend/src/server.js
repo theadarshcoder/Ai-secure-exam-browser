@@ -304,7 +304,7 @@ const io = new Server(server, {
 // aur event Worker-2 se emit hota hai, toh student ko event NAHI milega.
 // Redis Pub/Sub is gap ko bridge karta hai — sabhi workers ek broadcast receive karte hain.
 try {
-    const pubClient = new IORedis(redisUrl);
+    const pubClient = getRedisClient();
     const subClient = pubClient.duplicate();
     io.adapter(createAdapter(pubClient, subClient));
     console.log('🔗 [Socket.IO] Redis Adapter active — Cluster broadcasting enabled');
@@ -1038,8 +1038,9 @@ async function bootstrap() {
             // ─── 🚀 Start Background Workers ─────────────────────────────
             // Important for Render/Free tier where a separate worker.js process 
             // might not be running. This ensures emails and grading still happen.
-            try {
-                console.log('[BOOT] Initializing Background Workers...');
+            if (process.env.DISABLE_INTERNAL_WORKERS !== 'true') {
+                try {
+                    console.log('[BOOT] Initializing Background Workers...');
                 workers.push(setupCodeEvaluationWorker(io));
                 workers.push(setupFrontendEvaluationWorker(io));
                 workers.push(setupInviteEmailWorker());
@@ -1055,7 +1056,8 @@ async function bootstrap() {
             } catch (err) {
                 console.error('[BOOT] Worker Initialization Failed:', err.message);
             }
-        });
+        }
+    });
 
     } catch (err) {
         console.error('[BOOT] Fatal Bootstrap Failure:', err.message);
