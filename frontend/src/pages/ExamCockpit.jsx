@@ -1012,7 +1012,7 @@ const { examId } = useParams();
       if (!examLoadedRef.current) return;
 
       try {
-        await api.post('/exams/heartbeat', { examId: examId });
+        await api.post('/api/exams/heartbeat', { examId: examId });
         heartbeatFailCountRef.current = 0; // Reset on success
         console.log('💓 Heartbeat sent & verified');
       } catch (err) {
@@ -1036,11 +1036,11 @@ const { examId } = useParams();
   const [shuffleSeed, setShuffleSeed] = useState(null);
   const [isInitializing, setIsInitializing] = useState(true);
 
-  const questions = useMemo(() => {
-    if (!rawQuestions.length || !shuffleSeed) return [];
-    const getRNG = (salt) => generateSeed(shuffleSeed + salt);
+    const getProcessedQuestions = useCallback((rawQs, seed) => {
+    if (!rawQs.length || !seed) return [];
+    const getRNG = (salt) => generateSeed(seed + salt);
 
-    const processed = rawQuestions.map((q) => {
+    const processed = rawQs.map((q) => {
       const questionId = q.id || q._id;
       const processedQ = { ...q, originalId: questionId };
       if (
@@ -1063,18 +1063,20 @@ const { examId } = useParams();
     });
 
     const typeOrder = ["mcq", "short", "coding", "frontend-react"];
-    let finalShuffledQuestions = [];
-    
+    let final = [];
     for (const type of typeOrder) {
       const typeQs = processed.filter(q => q.type === type);
       if (typeQs.length > 0) {
         const shuffledTypeQs = seededShuffle(typeQs, getRNG("main_questions_" + type));
-        finalShuffledQuestions = [...finalShuffledQuestions, ...shuffledTypeQs];
+        final = [...final, ...shuffledTypeQs];
       }
     }
-    
-    return finalShuffledQuestions;
-  }, [rawQuestions, shuffleSeed]);
+    return final;
+  }, []);
+
+  const questions = useMemo(() => {
+    return getProcessedQuestions(rawQuestions, shuffleSeed);
+  }, [rawQuestions, shuffleSeed, getProcessedQuestions]);
   const [secondsLeft, setSecondsLeft] = useState(TOTAL_SECONDS);
   const [endTime, setEndTime] = useState(null);
   const [cameraActive, setCameraActive] = useState(false); // false until stream is confirmed active
@@ -1959,19 +1961,20 @@ const { examId } = useParams();
             setIsBlocked(true);
           }
 
-          const currentId = finalShuffledQuestions[startIdx]?.originalId;
+          const processedQs = getProcessedQuestions(data.questions, examId + sessionProgress.sessionId);
+          const currentId = processedQs[startIdx]?.originalId;
           if (currentId) restoredVisited[currentId] = true;
           setVisited(restoredVisited);
 
-          if (finalShuffledQuestions[startIdx]?.type === "coding") {
+          if (processedQs[startIdx]?.type === "coding") {
             const startId =
-              finalShuffledQuestions[startIdx].originalId ||
-              finalShuffledQuestions[startIdx]._id;
+              processedQs[startIdx].originalId ||
+              processedQs[startIdx]._id;
             if (startId) {
               setSelectedLanguages((prev) => ({
                 ...prev,
                 [startId]:
-                  finalShuffledQuestions[startIdx].language || "javascript",
+                  processedQs[startIdx].language || "javascript",
               }));
             }
           }

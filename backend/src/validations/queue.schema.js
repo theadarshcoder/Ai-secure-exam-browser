@@ -21,6 +21,7 @@ const codeGradingPayloadSchema = z.object({
 
 const frontendGradingPayloadSchema = z.object({
     studentId: z.string().min(1),
+    examId: z.string().min(1),
     questionId: z.string().min(1),
     codeFiles: z.record(z.string()), // Filename -> Content
     testCases: z.array(z.object({

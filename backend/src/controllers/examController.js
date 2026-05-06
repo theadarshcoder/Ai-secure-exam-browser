@@ -824,7 +824,7 @@ exports.saveProgress = asyncHandler(async (req, res) => {
     }
 
     // 🛡️ Strict State Validation (Replay Attack Prevention)
-    if (session.status !== 'in_progress' && session.status !== 'paused' && session.status !== 'flagged') {
+    if (!['in_progress', 'paused', 'flagged', 'blocked'].includes(session.status)) {
         res.status(403);
         throw new Error(`Cannot save progress. Exam is not in progress. (Status: ${session.status})`);
     }
@@ -1317,7 +1317,7 @@ exports.submitExam = asyncHandler(async (req, res) => {
     };
 
     // Bug Fix: Submission Lock (Guardrail 3)
-    if (session.status === 'submitted' || session.status === 'auto_submitted' || session.status === 'blocked') {
+    if (session.status === 'submitted' || session.status === 'auto_submitted') {
         res.status(400);
         throw new Error(`This exam cannot be submitted. Status: ${session.status}`);
     }
@@ -1978,6 +1978,7 @@ exports.runCode = asyncHandler(async (req, res) => {
             req.headers['x-electron-key'], 
             fingerprint, 
             req.headers['x-nonce'], 
+            req.headers['x-timestamp'],
             process.env.ELECTRON_SECRET
         );
 
