@@ -315,9 +315,6 @@ try {
 // Expose Socket.IO instance to routes/controllers globally
 app.set('io', io);
 
-// 🚀 [PHASE 4] Worker Registry
-const workers = [];
-
 // ─── Auth Middleware & Handlers Logic stays here ───
 // ...
 
