@@ -90,8 +90,8 @@ exports.approveDemoRequest = asyncHandler(async (req, res) => {
         });
         await institution.save({ session });
 
-        // Generate random password
-        const randomPassword = Math.random().toString(36).slice(-8); 
+        // Generate simple default password format: vision + 4 random digits
+        const randomPassword = "vision" + Math.floor(1000 + Math.random() * 9000);
 
         const adminUser = new User({
             name: demoReq.name,
@@ -215,13 +215,14 @@ exports.toggleInstitutionStatus = asyncHandler(async (req, res) => {
  */
 exports.resetAdminPassword = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { adminId } = req.body;
+    const { adminId, password } = req.body;
 
     const user = await User.findById(adminId);
     if (!user || user.institutionId.toString() !== id) throw new Error('Admin not found in this institution');
 
-    const randomPassword = Math.random().toString(36).slice(-8);
-    user.password = randomPassword;
+    // Use manually provided password, or generate a default one
+    const newPassword = password || ("vision" + Math.floor(1000 + Math.random() * 9000));
+    user.password = newPassword;
     await user.save();
 
     // Audit Log
@@ -235,7 +236,7 @@ exports.resetAdminPassword = asyncHandler(async (req, res) => {
         details: { adminEmail: user.email }
     });
 
-    res.json({ message: `Admin password reset successfully`, newPassword: randomPassword });
+    res.json({ message: `Admin password reset successfully`, newPassword });
 });
 
 /**
@@ -284,8 +285,8 @@ exports.addInstitutionAdmin = asyncHandler(async (req, res) => {
         return res.status(400).json({ message: 'User with this email already exists' });
     }
 
-    // Generate random secure password
-    const randomPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8).toUpperCase();
+    // Generate simple secure password
+    const randomPassword = "vision" + Math.floor(100000 + Math.random() * 900000);
 
     const newAdmin = await User.create({
         name,

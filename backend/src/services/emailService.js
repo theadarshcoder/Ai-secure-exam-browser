@@ -146,7 +146,7 @@ const sendAccessApprovedEmail = async ({ to, name, institutionName, password, in
                 <h3 style="margin-top: 0; font-size: 14px; color: #059669; text-transform: uppercase; letter-spacing: 0.05em;">Your Admin Credentials</h3>
                 <p style="margin: 8px 0; font-size: 14px;">Institution Code: <code style="background: #ecfdf5; padding: 2px 4px; border-radius: 4px; font-weight: bold;">${institutionCode}</code></p>
                 <p style="margin: 8px 0; font-size: 14px;">Login Email: <strong>${to}</strong></p>
-                <p style="margin: 8px 0; font-size: 14px;">Temporary Password: <strong style="color: #10b981;">${password}</strong></p>
+                <p style="margin: 8px 0; font-size: 14px;">Password: <strong style="color: #10b981;">${password}</strong></p>
             </div>
 
             <div style="text-align: center;">
@@ -154,7 +154,6 @@ const sendAccessApprovedEmail = async ({ to, name, institutionName, password, in
             </div>
 
             <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #f3f4f6; font-size: 12px; color: #9ca3af; text-align: center;">
-                <p>Security Tip: Please change your password immediately after your first login.</p>
                 <p>&copy; ${new Date().getFullYear()} Vision Exam Platform. Built for Excellence.</p>
             </div>
         </div>`;

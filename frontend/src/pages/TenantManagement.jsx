@@ -43,6 +43,7 @@ export default function TenantManagement() {
     const [addAdminModalOpen, setAddAdminModalOpen] = useState(false);
     const [newAdminForm, setNewAdminForm] = useState({ name: '', email: '' });
     const [submittingAdmin, setSubmittingAdmin] = useState(false);
+    const [resetPasswordModal, setResetPasswordModal] = useState({ isOpen: false, adminId: '', customPassword: '' });
 
     useEffect(() => {
         fetchData();
@@ -66,21 +67,22 @@ export default function TenantManagement() {
     };
 
     const handleResetPassword = (adminId) => {
-        setConfirmDialog({
-            isOpen: true,
-            title: 'Reset Admin Password',
-            message: "This will immediately log them out and generate a new secure key. The new key will be shown on the screen.",
-            isDestructive: false,
-            action: async () => {
-                try {
-                    const { data } = await api.post(`/api/super-admin/institutions/${id}/reset-admin`, { adminId });
-                    toast.success(`Password Reset! New Key: ${data.newPassword}`, { duration: 20000 });
-                    fetchData(); // Refresh timeline
-                } catch (error) {
-                    toast.error('Failed to reset password');
-                }
-            }
-        });
+        setResetPasswordModal({ isOpen: true, adminId, customPassword: '' });
+    };
+
+    const submitPasswordReset = async (e) => {
+        if (e) e.preventDefault();
+        try {
+            const { data } = await api.post(`/api/super-admin/institutions/${id}/reset-admin`, { 
+                adminId: resetPasswordModal.adminId,
+                password: resetPasswordModal.customPassword.trim() || undefined
+            });
+            toast.success(`Password Reset! New Key: ${data.newPassword}`, { duration: 20000 });
+            fetchData(); // Refresh timeline
+            setResetPasswordModal({ isOpen: false, adminId: '', customPassword: '' });
+        } catch (error) {
+            toast.error('Failed to reset password');
+        }
     };
 
     const handleToggleStatus = () => {
@@ -365,6 +367,66 @@ export default function TenantManagement() {
                                     Confirm Action
                                 </button>
                             </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Reset Password Modal */}
+            <AnimatePresence>
+                {resetPasswordModal.isOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div 
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                            onClick={() => setResetPasswordModal({ isOpen: false, adminId: '', customPassword: '' })}
+                        />
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="relative w-full max-w-md bg-surface border border-main rounded-3xl p-8 shadow-2xl"
+                        >
+                            <button 
+                                onClick={() => setResetPasswordModal({ isOpen: false, adminId: '', customPassword: '' })}
+                                className="absolute top-6 right-6 p-2 text-muted hover:text-primary hover:bg-main rounded-full transition-all"
+                            >
+                                <X size={20} />
+                            </button>
+
+                            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6 border shadow-inner bg-amber-500/10 text-amber-500 border-amber-500/20">
+                                <Key size={32} />
+                            </div>
+                            <h3 className="text-2xl font-black text-primary mb-3">Reset Password</h3>
+                            <p className="text-muted leading-relaxed mb-6 text-sm">Enter a custom password below, or leave it blank to auto-generate a secure key.</p>
+                            
+                            <form onSubmit={submitPasswordReset} className="space-y-6">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-muted uppercase tracking-widest pl-1">New Password (Optional)</label>
+                                    <input 
+                                        type="text" 
+                                        value={resetPasswordModal.customPassword}
+                                        onChange={(e) => setResetPasswordModal({...resetPasswordModal, customPassword: e.target.value})}
+                                        placeholder="Leave blank to auto-generate"
+                                        className="w-full bg-main border border-main text-primary rounded-xl px-4 py-3 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-all placeholder:text-muted/40"
+                                    />
+                                </div>
+                                <div className="flex justify-end gap-3 pt-2 border-t border-main">
+                                    <button 
+                                        type="button"
+                                        onClick={() => setResetPasswordModal({ isOpen: false, adminId: '', customPassword: '' })}
+                                        className="px-6 py-3 bg-main text-primary hover:bg-surface-hover border border-main rounded-xl text-xs font-black uppercase tracking-widest transition-all"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button 
+                                        type="submit"
+                                        className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-amber-500/20"
+                                    >
+                                        Reset Credentials
+                                    </button>
+                                </div>
+                            </form>
                         </motion.div>
                     </div>
                 )}
