@@ -786,12 +786,28 @@ const CodingEnvironment = React.memo(
                         <span className="text-[11px] font-bold text-muted uppercase tracking-widest">Output Log</span>
                       </div>
                       <div className="p-5">
-                        <pre className="text-[14px] font-mono text-primary leading-relaxed whitespace-pre-wrap">
-                          {executionResult.rawOutput ||
-                            executionResult.stdout ||
-                            executionResult.details ||
-                            executionResult.error ||
-                            "No output."}
+                        <pre className={`text-[14px] font-mono leading-relaxed whitespace-pre-wrap ${
+                          (executionResult.error || executionResult.details) ? 'text-rose-400' : 'text-primary'
+                        }`}>
+                          {executionResult.rawOutput || executionResult.stdout || ""}
+                          
+                          {(executionResult.error || executionResult.details) && (
+                            <div className="mt-2 p-3 bg-rose-500/10 border border-rose-500/20 rounded-lg">
+                              <div className="flex items-center gap-2 mb-1">
+                                <AlertCircle size={14} className="text-rose-500" />
+                                <span className="text-[11px] font-bold uppercase tracking-wider text-rose-500">
+                                  {executionResult.error || "Execution Error"}
+                                </span>
+                              </div>
+                              <div className="text-[13px] text-rose-200/80 font-mono">
+                                {executionResult.details || "No further details available."}
+                              </div>
+                            </div>
+                          )}
+
+                          {(!executionResult.rawOutput && !executionResult.stdout && !executionResult.error && !executionResult.details) && (
+                            <span className="text-muted/50 italic text-[13px]">No output recorded.</span>
+                          )}
                         </pre>
                       </div>
                     </div>
@@ -935,6 +951,19 @@ const FrontendReactEnvironment = React.memo(
                 </div>
               ) : executionResult ? (
                 <div className="space-y-3">
+                  {/* 🛡️ Fix: Show main error message if entire evaluation failed */}
+                  {executionResult.errorMsg && (
+                    <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl mb-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <AlertCircle size={14} className="text-rose-500" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-rose-500">Evaluation Failed</span>
+                      </div>
+                      <p className="text-[12px] text-rose-200/80 font-mono whitespace-pre-wrap leading-relaxed">
+                        {executionResult.errorMsg}
+                      </p>
+                    </div>
+                  )}
+
                   {executionResult.testCaseResults?.map((res, i) => (
                     <div
                       key={i}
@@ -955,6 +984,12 @@ const FrontendReactEnvironment = React.memo(
                       </span>
                     </div>
                   ))}
+
+                  {(!executionResult.testCaseResults || executionResult.testCaseResults.length === 0) && !executionResult.errorMsg && (
+                    <div className="text-center py-6 text-muted/30">
+                       <span className="text-[10px] uppercase tracking-widest font-bold">No validation results</span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="h-full flex flex-col items-center justify-center text-muted/30 gap-2">
@@ -1200,7 +1235,7 @@ const { examId } = useParams();
     const handleCodeEvaluationError = (err) => {
       setExecutionResultsByQuestion((prev) => ({
         ...prev,
-        [err.questionId]: { error: "Evaluation Failed", details: err.message },
+        [err.questionId]: { error: "Evaluation Failed", details: (typeof err === \string\ ? err : err.message) },
       }));
       setIsExecuting(false);
       setCooldownSeconds(0);
@@ -2258,9 +2293,11 @@ const { examId } = useParams();
       const qId = q.originalId || q.id || q._id;
       setExecutionResultsByQuestion((prev) => ({
         ...prev,
-        [qId]: { error: "Failed", details: err.message },
+        [qId]: { error: "Execution Failed", details: typeof err === "string" ? err : (err.message || "Failed") },
       }));
-      if (err.error === "Cooldown Active") setCooldownSeconds(10);
+      if (typeof err === 'string' && err.includes("Cooldown Active")) {
+        setCooldownSeconds(10);
+      }
     } finally {
       clearTimeout(safetyTimer);
       setIsExecuting(false);
@@ -2339,7 +2376,7 @@ const { examId } = useParams();
       const qId = q.originalId || q.id || q._id;
       setExecutionResultsByQuestion((prev) => ({
         ...prev,
-        [qId]: { error: "Failed", details: err.message },
+        [qId]: { error: "Execution Failed", details: typeof err === "string" ? err : (err.message || "Failed") },
       }));
       clearTimeout(safetyTimer);
       setIsExecuting(false);
@@ -3200,3 +3237,4 @@ function seededShuffle(array, randomFunc) {
   }
   return shuffled;
 }
+
