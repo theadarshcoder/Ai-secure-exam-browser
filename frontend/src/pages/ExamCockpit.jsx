@@ -1235,7 +1235,7 @@ const { examId } = useParams();
     const handleCodeEvaluationError = (err) => {
       setExecutionResultsByQuestion((prev) => ({
         ...prev,
-        [err.questionId]: { error: "Evaluation Failed", details: (typeof err === \string\ ? err : err.message) },
+        [err.questionId]: { error: "Evaluation Failed", details: (typeof err === "string" ? err : err.message) },
       }));
       setIsExecuting(false);
       setCooldownSeconds(0);
