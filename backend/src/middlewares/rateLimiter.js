@@ -89,7 +89,7 @@ const importLimiter = rateLimit({
  */
 const autosaveLimiter = rateLimit({
     windowMs: 30 * 1000,
-    max: (req) => (req.user?.role === 'admin' ? 100 : 20),
+    max: (req) => (req.user?.role === 'admin' ? 200 : 100),
     store: createRedisStore('autosave'),
     standardHeaders: true,
     legacyHeaders: false,
@@ -105,8 +105,8 @@ const autosaveLimiter = rateLimit({
 const secureActionLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
     max: (req) => {
-        if (req.path.includes('heartbeat')) return 5; // 30s interval = 2/min, 5 is safe
-        return 10; // Start/Submit should be rare
+        if (req.path.includes('heartbeat')) return 50; // Very safe
+        return 50; // Start/Submit should be rare but allowed
     },
     store: createRedisStore('secure_action'),
     standardHeaders: true,

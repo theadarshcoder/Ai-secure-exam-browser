@@ -440,8 +440,8 @@ app.use('/api/auth', authLimiter, authRoutes);
 // This prevents IP-based rate limiting from blocking entire colleges/offices
 app.use('/api/exams/save-progress', verifyToken, platformModeMiddleware, activityTracker, autoSaveLimiter);
 
-// Protected routes — Verify Token FIRST, then Global Limiter
-app.use('/api/exams', verifyToken, platformModeMiddleware, activityTracker, checkInstitutionActive, globalLimiter, examRoutes);
+// Protected routes — Verify Token FIRST, then Route-Specific Limiters
+app.use('/api/exams', verifyToken, platformModeMiddleware, activityTracker, checkInstitutionActive, examRoutes);
 app.use('/api/admin', verifyToken, platformModeMiddleware, activityTracker, checkInstitutionActive, globalLimiter, adminRoutes);
 app.use('/api/super-admin', verifyToken, platformModeMiddleware, activityTracker, checkRole(['super_admin']), globalLimiter, superAdminRoutes); 
 app.use('/api/session', verifyToken, platformModeMiddleware, activityTracker, checkInstitutionActive, telemetryLimiter, sessionRoutes);
