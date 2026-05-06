@@ -2217,21 +2217,8 @@ const { examId } = useParams();
       }
     }, 30000);
 
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(payload),
-            keepalive: true
-          }).catch(() => {});
-        }
-      }
-    };
-    
-    window.addEventListener('beforeunload', handleBeforeUnload);
     return () => {
       clearInterval(saveTimer);
-      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [examId, submitted, terminated]);
 
