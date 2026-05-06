@@ -20,7 +20,9 @@ import {
     Terminal,
     History,
     AlertCircle,
-    CheckCircle2
+    CheckCircle2,
+    X,
+    Plus
 } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
@@ -35,6 +37,12 @@ export default function TenantManagement() {
     const [timeline, setTimeline] = useState([]);
     const [sidebarExpanded, setSidebarExpanded] = useState(true);
     const [userName] = useState(sessionStorage.getItem('vision_name') || 'Platform Owner');
+
+    // UI States
+    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', action: null, isDestructive: false });
+    const [addAdminModalOpen, setAddAdminModalOpen] = useState(false);
+    const [newAdminForm, setNewAdminForm] = useState({ name: '', email: '' });
+    const [submittingAdmin, setSubmittingAdmin] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -57,31 +65,63 @@ export default function TenantManagement() {
         }
     };
 
-    const handleResetPassword = async (adminId) => {
-        if (!window.confirm(`Reset this admin's password?\n\nThis will immediately log them out and generate a new secure key.`)) return;
-        
-        try {
-            const { data } = await api.post(`/api/super-admin/institutions/${id}/reset-admin`, { adminId });
-            toast.success(`Password Reset! New Key: ${data.newPassword}`, { duration: 20000 });
-            fetchData(); // Refresh timeline
-        } catch (error) {
-            toast.error('Failed to reset password');
-        }
+    const handleResetPassword = (adminId) => {
+        setConfirmDialog({
+            isOpen: true,
+            title: 'Reset Admin Password',
+            message: "This will immediately log them out and generate a new secure key. The new key will be shown on the screen.",
+            isDestructive: false,
+            action: async () => {
+                try {
+                    const { data } = await api.post(`/api/super-admin/institutions/${id}/reset-admin`, { adminId });
+                    toast.success(`Password Reset! New Key: ${data.newPassword}`, { duration: 20000 });
+                    fetchData(); // Refresh timeline
+                } catch (error) {
+                    toast.error('Failed to reset password');
+                }
+            }
+        });
     };
 
-    const handleToggleStatus = async () => {
+    const handleToggleStatus = () => {
         const action = details.institution.status === 'active' ? 'suspend' : 'activate';
-        if (!window.confirm(`Are you sure you want to ${action} ${details.institution.name}?\n\n${action === 'suspend' ? 'This will block all students and mentors from this institution immediately.' : 'This will restore access for all users.'}`)) return;
+        setConfirmDialog({
+            isOpen: true,
+            title: `${action === 'suspend' ? 'Suspend' : 'Activate'} Tenant`,
+            message: action === 'suspend' 
+                ? `Are you sure you want to suspend ${details.institution.name}? This will block all students and mentors from this institution immediately.`
+                : `Are you sure you want to activate ${details.institution.name}? This will restore access for all users.`,
+            isDestructive: action === 'suspend',
+            action: async () => {
+                try {
+                    const { data } = await api.patch(`/api/super-admin/institutions/${id}/status`, { 
+                        status: details.institution.status === 'active' ? 'suspended' : 'active' 
+                    });
+                    toast.success(`Tenant ${action}ed successfully`);
+                    setDetails({ ...details, institution: data.institution });
+                    fetchData(); // Refresh timeline
+                } catch (error) {
+                    toast.error(`Failed to ${action} tenant`);
+                }
+            }
+        });
+    };
 
+    const handleAddAdmin = async (e) => {
+        e.preventDefault();
+        if (!newAdminForm.name || !newAdminForm.email) return toast.error('Fill all fields');
+        setSubmittingAdmin(true);
         try {
-            const { data } = await api.patch(`/api/super-admin/institutions/${id}/status`, { 
-                status: details.institution.status === 'active' ? 'suspended' : 'active' 
-            });
-            toast.success(`Tenant ${action}ed successfully`);
-            setDetails({ ...details, institution: data.institution });
-            fetchData(); // Refresh timeline
+            const { data } = await api.post(`/api/super-admin/institutions/${id}/add-admin`, newAdminForm);
+            toast.success('Admin added successfully!');
+            toast.success(`Temp Password: ${data.tempPassword}`, { duration: 20000 });
+            setAddAdminModalOpen(false);
+            setNewAdminForm({ name: '', email: '' });
+            fetchData();
         } catch (error) {
-            toast.error(`Failed to ${action} tenant`);
+            toast.error(error.response?.data?.message || 'Failed to add admin');
+        } finally {
+            setSubmittingAdmin(false);
         }
     };
 
@@ -191,7 +231,8 @@ export default function TenantManagement() {
                                 <section className="space-y-4">
                                     <div className="flex items-center justify-between">
                                         <h3 className="text-[12px] font-black uppercase tracking-[0.2em] text-muted flex items-center gap-2"><Lock size={14} /> Institutional Admins</h3>
-                                        <button className="text-[10px] font-black uppercase tracking-widest text-primary-500 hover:underline flex items-center gap-1.5"><Key size={12} /> Add New Admin</button>
+                                        <button onClick={() => setAddAdminModalOpen(true)} className="text-[10px] font-black uppercase tracking-widest text-primary-500 hover:underline flex items-center gap-1.5"><Key size={12} /> Add New Admin</button>
+
                                     </div>
                                     <div className="grid gap-4">
                                         {admins.map(admin => (
@@ -286,6 +327,120 @@ export default function TenantManagement() {
                     </div>
                 </div>
             </main>
+
+            {/* Custom Confirm Dialog Modal */}
+            <AnimatePresence>
+                {confirmDialog.isOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div 
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                            onClick={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+                        />
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="relative w-full max-w-md bg-surface border border-main rounded-3xl p-8 shadow-2xl"
+                        >
+                            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-6 border shadow-inner ${confirmDialog.isDestructive ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 'bg-primary-500/10 text-primary-500 border-primary-500/20'}`}>
+                                <AlertCircle size={32} />
+                            </div>
+                            <h3 className="text-2xl font-black text-primary mb-3">{confirmDialog.title}</h3>
+                            <p className="text-muted leading-relaxed mb-8">{confirmDialog.message}</p>
+                            <div className="flex justify-end gap-3">
+                                <button 
+                                    onClick={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+                                    className="px-6 py-3 bg-main text-primary hover:bg-surface-hover border border-main rounded-xl text-xs font-black uppercase tracking-widest transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    onClick={() => {
+                                        confirmDialog.action();
+                                        setConfirmDialog({ ...confirmDialog, isOpen: false });
+                                    }}
+                                    className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg text-white ${confirmDialog.isDestructive ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/20' : 'bg-primary-500 hover:bg-primary-600 shadow-primary-500/20'}`}
+                                >
+                                    Confirm Action
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Add Admin Modal */}
+            <AnimatePresence>
+                {addAdminModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div 
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                            onClick={() => !submittingAdmin && setAddAdminModalOpen(false)}
+                        />
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="relative w-full max-w-lg bg-surface border border-main rounded-3xl p-8 shadow-2xl"
+                        >
+                            <button 
+                                onClick={() => !submittingAdmin && setAddAdminModalOpen(false)}
+                                className="absolute top-6 right-6 p-2 text-muted hover:text-primary hover:bg-main rounded-full transition-all"
+                            >
+                                <X size={20} />
+                            </button>
+                            
+                            <div className="flex items-center gap-4 mb-8">
+                                <div className="w-14 h-14 rounded-2xl bg-primary-500/10 text-primary-500 flex items-center justify-center border border-primary-500/20 shadow-inner">
+                                    <Plus size={28} />
+                                </div>
+                                <div>
+                                    <h3 className="text-2xl font-black text-primary">Add Administrator</h3>
+                                    <p className="text-xs font-bold text-muted uppercase tracking-widest mt-1">Provision New Institutional Access</p>
+                                </div>
+                            </div>
+
+                            <form onSubmit={handleAddAdmin} className="space-y-6">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-muted uppercase tracking-widest pl-1">Full Name</label>
+                                    <input 
+                                        type="text" 
+                                        required
+                                        value={newAdminForm.name}
+                                        onChange={(e) => setNewAdminForm({...newAdminForm, name: e.target.value})}
+                                        placeholder="e.g. Adarsh Sharma"
+                                        className="w-full bg-main border border-main text-primary rounded-xl px-4 py-3 focus:outline-none focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/50 transition-all placeholder:text-muted/40"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-muted uppercase tracking-widest pl-1">Email Address</label>
+                                    <input 
+                                        type="email" 
+                                        required
+                                        value={newAdminForm.email}
+                                        onChange={(e) => setNewAdminForm({...newAdminForm, email: e.target.value})}
+                                        placeholder="admin@institution.edu"
+                                        className="w-full bg-main border border-main text-primary rounded-xl px-4 py-3 focus:outline-none focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/50 transition-all placeholder:text-muted/40"
+                                    />
+                                </div>
+                                
+                                <div className="pt-4 border-t border-main">
+                                    <button 
+                                        type="submit"
+                                        disabled={submittingAdmin}
+                                        className="w-full py-4 bg-primary-500 hover:bg-primary-600 text-white rounded-xl text-sm font-black uppercase tracking-widest transition-all shadow-lg shadow-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    >
+                                        {submittingAdmin ? <RefreshCw className="animate-spin" size={18} /> : <Key size={18} />}
+                                        {submittingAdmin ? 'Provisioning...' : 'Provision Administrator'}
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

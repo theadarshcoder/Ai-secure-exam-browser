@@ -23,6 +23,7 @@ router.get('/institutions/:id', superAdminController.getInstitutionDetails);
 router.get('/institutions/:id/timeline', superAdminController.getInstitutionTimeline);
 router.patch('/institutions/:id/status', superAdminController.toggleInstitutionStatus);
 router.post('/institutions/:id/reset-admin', superAdminController.resetAdminPassword);
+router.post('/institutions/:id/add-admin', superAdminController.addInstitutionAdmin);
 
 // Platform Governance & Settings
 router.get('/settings', platformController.getSettings);

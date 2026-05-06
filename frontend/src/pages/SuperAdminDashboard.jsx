@@ -24,6 +24,7 @@ import {
     ExternalLink,
     AlertCircle,
     CheckCircle2,
+    RefreshCw,
     X
 } from 'lucide-react';
 import api from '../services/api';

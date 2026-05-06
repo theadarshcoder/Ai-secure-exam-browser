@@ -262,3 +262,58 @@ exports.getGlobalLogs = asyncHandler(async (req, res) => {
         .limit(100);
     res.json(logs);
 });
+
+/**
+ * 🔐 Add New Admin to Existing Institution
+ */
+exports.addInstitutionAdmin = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { name, email } = req.body;
+
+    if (!name || !email) {
+        return res.status(400).json({ message: 'Name and email are required' });
+    }
+
+    const institution = await Institution.findById(id);
+    if (!institution) {
+        return res.status(404).json({ message: 'Institution not found' });
+    }
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+        return res.status(400).json({ message: 'User with this email already exists' });
+    }
+
+    // Generate random secure password
+    const randomPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8).toUpperCase();
+
+    const newAdmin = await User.create({
+        name,
+        email,
+        password: randomPassword,
+        role: 'admin',
+        institutionId: id,
+        permissions: ['MANAGE_USERS', 'MANAGE_EXAMS', 'VIEW_REPORTS', 'MANAGE_SETTINGS']
+    });
+
+    // Send Welcome Email
+    sendAccessApprovedEmail({
+        to: newAdmin.email,
+        name: newAdmin.name,
+        institutionName: institution.name,
+        password: randomPassword,
+        institutionCode: institution.code
+    }).catch(err => {
+        console.error('Failed to send admin email:', err);
+    });
+
+    await AuditLog.create({
+        action: 'ADD_INSTITUTION_ADMIN',
+        performedBy: req.user.id,
+        institutionId: id,
+        severity: 'info',
+        details: { newAdminId: newAdmin._id, email: newAdmin.email }
+    });
+
+    res.json({ message: 'Admin added successfully', adminId: newAdmin._id, tempPassword: randomPassword });
+});
