@@ -16,6 +16,7 @@ const { verifySecureRequest } = require('../utils/securityUtils');
 const { VIOLATION_TYPES, SESSION_STATUS } = require('../utils/constants');
 const { processSubmission } = require('../services/submissionService');
 const AuditLog = require('../models/AuditLog');
+const { getMetrics } = require('../utils/monitor');
 
 // ─────────────── POST /api/exams/create ───────────────
 // Mentor/Admin creates a new exam and saves it to MongoDB
@@ -1114,7 +1115,16 @@ exports.saveProgress = asyncHandler(async (req, res) => {
     session.lastSavedAt = new Date();
     await session.save();
 
-    res.json({ success: true, message: 'Progress synchronized successfully.' });
+    // 5. Adaptive Resilience: Suggest interval based on system load
+    const metrics = await getMetrics();
+    const suggestedInterval = metrics.status === 'STRESSED' ? 60000 : 30000;
+
+    res.json({ 
+        success: true, 
+        message: 'Progress synchronized successfully.',
+        status: metrics.status,
+        suggestedInterval 
+    });
 });
 
 
