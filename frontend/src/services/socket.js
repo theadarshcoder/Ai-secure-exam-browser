@@ -99,13 +99,27 @@ class SocketService {
 
   onStudentHelp(callback) {
     if (this.socket) {
+        this.socket.off('student_need_help'); // prevent duplicate listeners
         this.socket.on('student_need_help', callback);
+    }
+  }
+
+  offStudentHelp() {
+    if (this.socket) {
+        this.socket.off('student_need_help');
     }
   }
 
   onMentorAlert(callback) {
     if (this.socket) {
+      this.socket.off('mentor_alert'); // prevent duplicate listeners
       this.socket.on('mentor_alert', callback);
+    }
+  }
+
+  offMentorAlert() {
+    if (this.socket) {
+      this.socket.off('mentor_alert');
     }
   }
 
@@ -170,9 +184,9 @@ class SocketService {
   // --- 📨 ADMIN MESSAGING SYSTEM ---
 
   joinExamRoom(examId) {
+    this.currentExamRoom = examId;
+    sessionStorage.setItem('current_exam_room', examId); // Save to storage
     if (this.socket && this.socket.connected) {
-      this.currentExamRoom = examId;
-      sessionStorage.setItem('current_exam_room', examId); // Save to storage
       this.socket.emit('join_exam_room', { examId });
     }
   }

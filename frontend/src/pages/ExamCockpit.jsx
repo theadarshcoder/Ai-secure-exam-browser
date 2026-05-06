@@ -7,7 +7,7 @@ import api, {
   requestHelp,
   getSettings,
 } from "../services/api";
-import Editor from "@monaco-editor/react";
+import Editor, { loader } from "@monaco-editor/react";
 import {
   CameraOff,
   Clock,
@@ -52,6 +52,9 @@ import {
   SandpackCodeEditor,
   SandpackPreview,
 } from "@codesandbox/sandpack-react";
+
+// Pre-load Monaco workers when the student enters the exam cockpit
+loader.init();
 
 /* ────────────────────────────────────────────── Config ────────────────────────────────────────────── */
 
@@ -234,13 +237,13 @@ const CameraMonitor = React.memo(
                 )}
               </div>
               <span className="text-[9px] font-bold text-muted uppercase tracking-[0.2em] animate-pulse">
-                {camError ? "Feed Disabled" : "Initializing Secure Feed..."}
+                {camError ? "Feed Disabled" : "Activating Secure Feed..."}
               </span>
             </div>
           )}
           <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2 py-1 bg-black/60 backdrop-blur-md rounded-lg text-[8px] font-bold text-white uppercase tracking-widest border border-white/10 z-10">
             <div className={`w-1.5 h-1.5 rounded-full ${modelsLoaded ? 'bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)]'}`} />
-            {modelsLoaded ? 'Live Proxy' : isAIInitializing ? 'Syncing AI...' : 'Wait...'}
+            {modelsLoaded ? 'Live Proxy' : isAIInitializing ? 'Syncing AI...' : 'Securing...'}
           </div>
         </div>
       </div>
@@ -384,7 +387,7 @@ const ExitModal = React.memo(
             <p className="text-[12px] font-medium text-zinc-500 mb-8 mx-auto max-w-[240px]">
               Enter supervisor credentials to force terminate this session.
             </p>
-            <div className="relative mb-6">
+            <div className="mb-8">
               <input
                 type="password"
                 value={password}
@@ -393,8 +396,8 @@ const ExitModal = React.memo(
                 className="w-full bg-surface-hover border border-main rounded-xl px-4 py-3.5 text-center text-primary font-mono text-[14px] tracking-[0.4em] focus:outline-none focus:border-[#1e2235] focus:ring-4 focus:ring-[#1e2235]/10 transition-all"
               />
               {error && (
-                <div className="absolute top-full left-0 right-0 mt-2">
-                  <span className="text-[10px] font-bold text-red-600 uppercase tracking-widest">
+                <div className="mt-4 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <span className="text-[10px] font-black text-red-600 uppercase tracking-widest">
                     {error}
                   </span>
                 </div>
@@ -1892,6 +1895,13 @@ const { examId } = useParams();
         isFetchingRef.current = false;
         setSessionId(sessionProgress.sessionId);
 
+        // ✅ Fix: Re-join the exam room NOW that ExamSession is confirmed in DB.
+        // The initial joinExamRoom() in the socket useEffect fires at mount time,
+        // before /api/exams/start creates the session. The server rejects the room
+        // join because ExamSession.exists() returns false. Re-joining here guarantees
+        // the student is admitted and will receive admin broadcasts.
+        socketService.joinExamRoom(examId);
+
         if (data.questions && data.questions.length > 0) {
           setRawQuestions(data.questions);
           setShuffleSeed(examId + sessionProgress.sessionId);
@@ -2085,6 +2095,14 @@ const { examId } = useParams();
             if (mountedRef.current) {
               setCamError(true);
               setCameraActive(false); // Show placeholder if stream is killed
+
+              // 🚨 Security: Notify admin that camera was disconnected mid-exam
+              socketService.emitViolationReport("CAMERA_DISCONNECTED", 0, examId);
+              logIncident(
+                "Camera Disconnected",
+                "critical",
+                "Student's camera/mic stream was disconnected or permission was revoked mid-session."
+              );
             }
           };
         });
@@ -2338,6 +2356,12 @@ const { examId } = useParams();
 
   const handleSecureEntry = async () => {
     if (!document.documentElement.requestFullscreen) return;
+
+    // 🚀 Start the initialization timer immediately to overlap with camera/fullscreen setup.
+    // This reduces perceived load time significantly as the 2s grace period runs in parallel.
+    setIsInitializing(true);
+    initEndTime.current = Date.now() + 2000; 
+    setTimeout(() => setIsInitializing(false), 2000);
     
     try {
       // 1. Enter Fullscreen (The mandatory first step)
@@ -2367,15 +2391,15 @@ const { examId } = useParams();
       // 3. Clear interaction overlay
       setNeedsInteraction(false);
       
-      // 4. Start session-start grace period (3 seconds)
-      setIsInitializing(true);
-      initEndTime.current = Date.now() + 3000;
-      setTimeout(() => setIsInitializing(false), 3000);
+      // 4. Initialization timer is already running (started at top of handleSecureEntry)
 
       // 5. Defer AI Model Loading (Yield thread first)
+      if (!aiModel) setIsAIInitializing(true);
       setTimeout(async () => {
-        if (!window.cocoSsd || aiModel) return;
-        setIsAIInitializing(true);
+        if (!window.cocoSsd || aiModel) {
+          setIsAIInitializing(false);
+          return;
+        }
         try {
           // Yield to let UI breathe
           await new Promise(r => setTimeout(r, 100)); 

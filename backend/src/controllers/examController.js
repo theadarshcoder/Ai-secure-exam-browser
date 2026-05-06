@@ -2101,7 +2101,7 @@ exports.requestHelp = asyncHandler(async (req, res) => {
     const io = req.app.get('io');
     if (io) {
         // Broad alert for global monitoring
-        io.to('role_mentor').to('role_admin').emit('student_need_help', supportMessage);
+        io.to(`inst_${req.user.institutionId}_mentor`).to(`inst_${req.user.institutionId}_admin`).emit('student_need_help', supportMessage);
         
         // 🛡️ Fix Bug 5: Scoped alert for specific exam room
         if (examId) {

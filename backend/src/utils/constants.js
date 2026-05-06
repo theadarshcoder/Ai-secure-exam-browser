@@ -8,7 +8,8 @@ const VIOLATION_TYPES = {
     INVALID_DATA: 'Invalid Data',
     SUSPICIOUS_ACTIVITY: 'Suspicious Activity',
     SESSION_HASH_MISMATCH: 'Session Hash Mismatch',
-    VIOLATION_BLOCK: 'VIOLATION_BLOCK'
+    VIOLATION_BLOCK: 'VIOLATION_BLOCK',
+    CAMERA_DISCONNECTED: 'Camera Disconnected'
 };
 
 /**

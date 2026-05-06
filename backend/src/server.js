@@ -608,6 +608,11 @@ io.on('connection', (socket) => {
                 updatePayload.$push.violations.severity = severity || 'medium';
                 updatePayload.$push.violations.details = details || 'AI proctor flagged multiple suspicious behaviors';
                 updatePayload.$inc.faceDetectionCount = 1;
+            } else if (type === 'CAMERA_DISCONNECTED' || type === VIOLATION_TYPES.CAMERA_DISCONNECTED) {
+                // 🚨 Camera disconnection is a critical security event
+                updatePayload.$push.violations.type = VIOLATION_TYPES.CAMERA_DISCONNECTED;
+                updatePayload.$push.violations.severity = 'critical';
+                updatePayload.$push.violations.details = details || 'Camera/microphone stream was disconnected or permission revoked mid-session';
             } else {
                 // Default handling for other violation types
                 updatePayload.$push.violations.type = type || 'Unknown';
@@ -866,8 +871,8 @@ io.on('connection', (socket) => {
                 io.to(`exam_${payload.examId}`).emit('receive_admin_message', messageData);
                 console.log(`📨 [Broadcast] to exam_${payload.examId} by ${socket.user.email}: ${payload.message}`);
             } else {
-                // Global broadcast to all students
-                io.to('role_student').emit('receive_admin_message', messageData);
+                // Global broadcast to all students in the tenant
+                io.to(`inst_${socket.user.institutionId}_student`).emit('receive_admin_message', messageData);
                 console.log(`📨 [Global Broadcast] by ${socket.user.email}: ${payload.message}`);
             }
         } else if (payload.type === 'direct' && payload.studentId) {

@@ -560,6 +560,8 @@ export default function AdminDashboard() {
     });
 
     return () => {
+      socketService.offStudentHelp();
+      socketService.offMentorAlert();
       socketService.disconnect();
     };
   }, []);

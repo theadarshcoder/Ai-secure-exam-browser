@@ -563,6 +563,8 @@ export default function MentorDashboard() {
     });
 
     return () => {
+      socketService.offStudentHelp();
+      socketService.offMentorAlert();
       socketService.disconnect();
     };
   }, []);
