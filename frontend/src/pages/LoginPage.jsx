@@ -276,6 +276,18 @@ const LoginPage = () => {
           localStorage.setItem('vision_device_id', deviceId);
       }
 
+      // 🚀 Early Pre-warm: Start loading Monaco if this is a student login
+      if (role === 'student') {
+        const { loader } = await import('@monaco-editor/react');
+        loader.config({
+          paths: {
+            vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs'
+          },
+          'vs/nls': { availableLanguages: { '*': 'en' } }
+        });
+        loader.init().catch(() => {});
+      }
+
       // 🚀 Real API Authentication
       const response = await api.post('/api/auth/login', {
         email,
