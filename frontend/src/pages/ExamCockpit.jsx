@@ -1582,6 +1582,58 @@ const { examId } = useParams();
     return () => clearInterval(interval);
   }, [aiModel, cameraActive, submitted, terminated, runAIDetection]);
 
+  // 🛡️ Final Flush & Navigation Guard
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      // 1. Navigation Guard (Only if not submitted/terminated)
+      if (!submitted && !terminated) {
+        e.preventDefault();
+        e.returnValue = "Are you sure you want to leave? Your exam progress might be lost.";
+      }
+
+      // 2. Final Flush (Save Progress)
+      const currentAnswers = progressRef.current.answers;
+      const dirtyAnswers = {};
+      let hasChanges = false;
+      Object.keys(currentAnswers).forEach(qId => {
+        if (JSON.stringify(currentAnswers[qId]) !== JSON.stringify(lastSavedAnswersRef.current[qId])) {
+          dirtyAnswers[qId] = currentAnswers[qId];
+          hasChanges = true;
+        }
+      });
+      
+      if (hasChanges) {
+        const payload = {
+          examId,
+          answers: dirtyAnswers,
+          currentQuestionIndex: progressRef.current.currentQ,
+          questionStates: progressRef.current.visited,
+          remainingTimeSeconds: progressRef.current.secondsLeft,
+          lastUpdated: Date.now(),
+        };
+        const token = sessionStorage.getItem('vision_token');
+        if (token) {
+          fetch(`${import.meta.env.VITE_API_URL || ''}/api/exams/save-progress`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(payload),
+            keepalive: true
+          }).catch(() => {});
+        }
+      }
+
+      return e.returnValue;
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [examId, submitted, terminated]);
+
   // 🔒 Security: Fullscreen & Shortcuts
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -1600,15 +1652,6 @@ const { examId } = useParams();
       }
     };
 
-    const handleBeforeUnload = (e) => {
-      if (!submitted && !terminated) {
-        e.preventDefault();
-        e.returnValue =
-          "Are you sure you want to leave? Your exam progress might be lost.";
-        return e.returnValue;
-      }
-    };
-
     const blockShortcuts = (e) => {
       // Dynamic Check: Skip blocking if Admin disabled Copy/Paste restriction
       const isRestricted = exam?.settings?.disableCopyPaste ?? true;
@@ -1621,12 +1664,6 @@ const { examId } = useParams();
         (e.altKey && e.key === "Tab")
       ) {
         e.preventDefault();
-        // Shortcut Blocked incident removed as per user request to reduce noise
-        // logIncident(
-        //   "Shortcut Blocked",
-        //   "medium",
-        //   `Attempted shortcut: ${e.key}`,
-        // );
         return false;
       }
     };
@@ -1635,8 +1672,6 @@ const { examId } = useParams();
       if (!isRestricted) return true;
 
       e.preventDefault();
-      // Right Click Blocked incident removed as per user request to reduce noise
-      // logIncident("Right Click Blocked", "low", "Context menu attempt");
       return false;
     };
 
@@ -1672,7 +1707,6 @@ const { examId } = useParams();
     document.addEventListener("keydown", blockShortcuts);
     document.addEventListener("contextmenu", blockContextMenu);
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("beforeunload", handleBeforeUnload);
 
     // Auto-check initially (though it will stay blocked, the overlay handles the reset)
     if (!document.fullscreenElement) {
@@ -1684,9 +1718,8 @@ const { examId } = useParams();
       document.removeEventListener("keydown", blockShortcuts);
       document.removeEventListener("contextmenu", blockContextMenu);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, [logIncident]);
+  }, [logIncident, exam, submitted, terminated]);
 
   // 🧱 Global Styles/UI Reset
   useEffect(() => {
@@ -2120,8 +2153,6 @@ const { examId } = useParams();
         }
         streamRef.current = s;
 
-        // Start Detection Loop (Disabled as per request)
-
         // Track listener for permission revocation mid-session
         s.getTracks().forEach((t) => {
           t.onended = () => {
@@ -2160,13 +2191,12 @@ const { examId } = useParams();
   }, [logIncident, submitted, terminated, initCamera]);
 
   useEffect(() => {
-    if (submitted || terminated || !examId) return;
     const saveTimer = setInterval(async () => {
-      // 🔥 Scalability Fix: Dirty Save Logic
+      if (submitted || terminated) return;
       const currentAnswers = progressRef.current.answers;
       const dirtyAnswers = {};
       let hasChanges = false;
-      
+
       Object.keys(currentAnswers).forEach(qId => {
         if (JSON.stringify(currentAnswers[qId]) !== JSON.stringify(lastSavedAnswersRef.current[qId])) {
           dirtyAnswers[qId] = currentAnswers[qId];
@@ -2174,45 +2204,6 @@ const { examId } = useParams();
         }
       });
 
-      const payload = {
-        examId,
-        answers: hasChanges ? dirtyAnswers : undefined,
-        currentQuestionIndex: progressRef.current.currentQ,
-        questionStates: progressRef.current.visited,
-        remainingTimeSeconds: progressRef.current.secondsLeft,
-        lastUpdated: Date.now(), // 🏎️ Fix 5: Auto-Save Race Condition
-      };
-
-      if (!navigator.onLine) {
-        // Offline: save everything to local storage for safety
-        payload.answers = currentAnswers;
-        await storageService.saveProgress(examId, payload);
-        return;
-      }
-      try {
-        await api.post("/api/exams/save-progress", payload);
-        await storageService.deleteProgress(examId);
-        if (hasChanges) {
-          lastSavedAnswersRef.current = { ...lastSavedAnswersRef.current, ...dirtyAnswers };
-        }
-      } catch (err) {
-        payload.answers = currentAnswers;
-        await storageService.saveProgress(examId, payload);
-      }
-    }, 30000);
-
-    // 🛡️ Final Flush before unload
-    const handleBeforeUnload = () => {
-      const currentAnswers = progressRef.current.answers;
-      const dirtyAnswers = {};
-      let hasChanges = false;
-      Object.keys(currentAnswers).forEach(qId => {
-        if (JSON.stringify(currentAnswers[qId]) !== JSON.stringify(lastSavedAnswersRef.current[qId])) {
-          dirtyAnswers[qId] = currentAnswers[qId];
-          hasChanges = true;
-        }
-      });
-      
       if (hasChanges) {
         const payload = {
           examId,
@@ -2222,10 +2213,10 @@ const { examId } = useParams();
           remainingTimeSeconds: progressRef.current.secondsLeft,
           lastUpdated: Date.now(),
         };
-        const token = sessionStorage.getItem('vision_token');
-        if (token) {
-          fetch(`${import.meta.env.VITE_API_URL || ''}/api/exams/save-progress`, {
-            method: 'POST',
+        await storageService.saveProgress(examId, payload);
+      }
+    }, 30000);
+
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`
@@ -3062,10 +3053,11 @@ const { examId } = useParams();
           try {
             const { exitExam } = await import("../services/api");
             await exitExam(examId, exitPassword);
-            window.removeEventListener("beforeunload", () => {});
-            navigate("/student");
+            // 🛡️ Mark as terminated FIRST to bypass navigation guard
+            setTerminated({ reason: "Session paused by supervisor." });
+            setTimeout(() => navigate("/student"), 100);
           } catch (err) {
-            setExitError(err || "Incorrect Password");
+            setExitError(typeof err === "string" ? err : (err.message || "Incorrect Password"));
           }
         }}
       />
