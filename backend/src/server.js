@@ -64,6 +64,9 @@ const app = express();
 app.set('trust proxy', 1); // 🛡️ Fix 15: Required for rate-limiter to see real IPs
 const server = http.createServer(app);
 
+// Keep track of active workers for graceful shutdown
+const workers = [];
+
 app.use(helmet());
 app.use(compression());
 app.use(timeout('45s'));
@@ -1029,6 +1032,27 @@ async function bootstrap() {
             // Start Monitoring ONLY after server is live
             startHealthMonitor(io);
             console.log('[BOOT] Real-time Health Monitor Active');
+
+            // ─── 🚀 Start Background Workers ─────────────────────────────
+            // Important for Render/Free tier where a separate worker.js process 
+            // might not be running. This ensures emails and grading still happen.
+            try {
+                console.log('[BOOT] Initializing Background Workers...');
+                workers.push(setupCodeEvaluationWorker(io));
+                workers.push(setupFrontendEvaluationWorker(io));
+                workers.push(setupInviteEmailWorker());
+                workers.push(startIntelligenceWorker());
+                
+                // startAutoSubmitWorker requires io to emit events
+                startAutoSubmitWorker(io).then(worker => {
+                    workers.push(worker);
+                    console.log('[BOOT] All Background Workers Active 🚀');
+                }).catch(err => {
+                    console.error('[BOOT] Failed to start AutoSubmit Worker:', err.message);
+                });
+            } catch (err) {
+                console.error('[BOOT] Worker Initialization Failed:', err.message);
+            }
         });
 
     } catch (err) {
