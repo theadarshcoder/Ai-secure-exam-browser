@@ -1125,21 +1125,7 @@ const CredMockupSequence = () => {
 
   return (
     <section id="features" ref={trackRef} className="relative bg-[#030303] w-full" style={{ height: "150vh" }}>
-      {/* Dynamic Marquee Divider */}
-      <div className="w-full h-16 border-y border-white/5 bg-[#080808] overflow-hidden flex items-center relative z-20">
-        <div className="absolute inset-0 bg-gradient-to-r from-[#030303] via-transparent to-[#030303] z-10" />
-        <motion.div
-          animate={{ x: [0, -1000] }}
-          transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
-          className="flex whitespace-nowrap gap-12 font-mono text-xs tracking-[0.3em] text-white/20 uppercase"
-        >
-          {Array(8).fill("Continuous Verification ┬╖ Zero Trust Environment ┬╖ AI-Powered Vision ┬╖ ").map((text, i) => (
-            <span key={i}>{text}</span>
-          ))}
-        </motion.div>
-      </div>
-
-      <div className="flex w-full max-w-7xl mx-auto h-[calc(100%-7rem)] px-8 relative mt-12">
+      <div className="flex w-full max-w-7xl mx-auto h-full pt-12 pb-12 px-8 relative">
         <div className="absolute left-4 top-0 bottom-0 w-1 bg-white/10 z-10 hidden md:block">
            <motion.div 
              style={{ scaleY: springProgress, originY: 0 }} 
@@ -1187,7 +1173,7 @@ const CredMockupSequence = () => {
               <div className="w-3 h-3 rounded-full bg-red-500/50"></div>
               <div className="w-3 h-3 rounded-full bg-amber-500/50"></div>
               <div className="w-3 h-3 rounded-full bg-emerald-500/50"></div>
-              <div className="mx-auto bg-black/50 px-6 py-1 rounded-md text-[10px] text-white/50 font-mono tracking-widest border border-white/5">VISION // KERNEL</div>
+              <div className="mx-auto bg-black/50 px-6 py-1 rounded-md text-[10px] text-white/50 font-mono tracking-widest border border-white/5">VISION</div>
             </div>
 
             <div className="flex-1 relative flex items-center justify-center bg-black overflow-hidden z-10 w-full h-full" style={{ perspective: "1000px" }}>
