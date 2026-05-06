@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const User = require('../models/User');
+const Institution = require('../models/Institution');
 require('dotenv').config();
 
 const seedAdmin = async () => {
@@ -7,6 +8,19 @@ const seedAdmin = async () => {
         console.log('Connecting to Database...');
         await mongoose.connect(process.env.MONGODB_URI);
         console.log('Database connected.');
+
+        // Ensure DEFAULT institution exists
+        let defaultInst = await Institution.findOne({ code: 'DEFAULT' });
+        if (!defaultInst) {
+            console.log('Creating fallback DEFAULT institution...');
+            defaultInst = new Institution({
+                name: 'Default Platform Institution',
+                code: 'DEFAULT',
+                domain: 'default.local',
+                status: 'active'
+            });
+            await defaultInst.save();
+        }
 
         console.log('Cleaning old admin accounts...');
         await User.deleteMany({ role: 'admin' });
@@ -19,6 +33,7 @@ const seedAdmin = async () => {
                 email: 'adarsh',      // Login ID
                 password: '1234',    // Plain text, auto-hashed by model
                 role: 'admin',
+                institutionId: defaultInst._id,
                 permissions: [
                     'create_exam', 
                     'view_live_grid', 

@@ -1219,7 +1219,7 @@ export default function CreateExam() {
         }
     } catch (err) {
         console.error('AI Suggestion Error:', err);
-        const rawAiErr = err.response?.data?.error;
+        const rawAiErr = err.response?.data?.message || err.response?.data?.error;
         addToast((typeof rawAiErr === 'string' ? rawAiErr : null) || "AI Service is currently unavailable. Please try again later.", 'error');
     } finally {
         setAiLoading(false);

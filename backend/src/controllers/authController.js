@@ -172,7 +172,8 @@ exports.login = asyncHandler(async (req, res) => {
             const displayRole = user.role.charAt(0).toUpperCase() + user.role.slice(1);
             throw new Error(`Your account is registered as '${displayRole}'. Please select the correct role to login.`);
         }
-        finalRole = user.role;
+        // ✨ Use the role they asked for for the response/token
+        finalRole = requestedRole; 
     }
 
     // 🛡️ Phase 2/3 Fix: Use dedicated Refresh Secret & Include sessionVersion
