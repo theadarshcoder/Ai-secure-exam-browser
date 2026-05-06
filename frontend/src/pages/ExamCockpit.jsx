@@ -1187,27 +1187,22 @@ const { examId } = useParams();
     const handleAdminMessage = (data) => {
         const { action, message, type } = data;
         
-        // Handle normal broadcasts (show in overlay + toast)
+        // Handle normal broadcasts (Only show in top bar)
         if (type === 'broadcast') {
             setBroadcastMessage(message);
-            toast(message, { icon: '📩', duration: 8000 });
             return;
         }
 
         // Handle commands
         if (action === 'BLOCK') {
             setIsBlocked(true);
-            toast.error(message || "Your screen has been blocked by an administrator.");
+            setBlockReason(message || "Your screen has been blocked by an administrator.");
         } else if (action === 'UNBLOCK') {
             setIsBlocked(false);
-            toast.success("Your screen has been unblocked. You can resume.");
         } else if (action === 'TERMINATE') {
             setTerminated({ reason: message || "Exam terminated by administrator." });
-            toast.error("EXAM TERMINATED", { duration: 10000 });
         } else if (type === 'direct') {
-            // plain direct message (no command)
-            toast(message, { icon: '💬', duration: 8000 });
-            // Also show in broadcast overlay if it's important
+            // plain direct message (show in top bar)
             setBroadcastMessage(`[DIRECT] ${message}`);
         }
     };
@@ -3200,10 +3195,6 @@ const { examId } = useParams();
 
       <FullBlockOverlay isOpen={isBlocked} reason={blockReason} />
 
-      <StudentMessageModal 
-        userId={sessionStorage.getItem("vision_id") || sessionStorage.getItem("vision_email")} 
-        examId={examId}
-      />
       <FAQBot 
         examId={examId} 
         userId={sessionStorage.getItem("vision_id") || sessionStorage.getItem("vision_email")} 
