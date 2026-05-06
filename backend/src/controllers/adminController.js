@@ -405,7 +405,7 @@ exports.getCandidates = asyncHandler(async (req, res) => {
     limit = Math.min(limit, 100); // 🛡️ Fix 18: Security limit
     const skip = (page - 1) * limit;
 
-    const query = {};
+    const query = { role: 'student' }; // Only fetch candidates (students)
 
     if (role) query.role = role;
 
@@ -518,6 +518,13 @@ exports.aiScanCandidates = asyncHandler(async (req, res) => {
                     message: issueText,
                     timestamp: new Date()
                 });
+            }
+        } else {
+            // Auto-verify candidate if no issues found
+            if (!student.isVerified) {
+                student.isVerified = true;
+                student.verificationIssue = null;
+                await student.save();
             }
         }
     }
