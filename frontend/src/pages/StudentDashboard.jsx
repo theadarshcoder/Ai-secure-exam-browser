@@ -10,6 +10,16 @@ import {
   Fingerprint, LifeBuoy, AlertTriangle, Search, Filter,
   ChevronRight, Hash, Info, UserCircle, Activity, ClipboardList, LogOut, X, Power
 } from 'lucide-react';
+import { loader } from "@monaco-editor/react";
+
+// 🚀 Targeted Pre-warm: Start loading Monaco background workers when student hits dashboard
+loader.config({
+  paths: {
+    vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs'
+  },
+  'vs/nls': { availableLanguages: { '*': 'en' } }
+});
+loader.init().catch(() => {});
 
 
 /* ─────────────── Sub-components ─────────────── */
