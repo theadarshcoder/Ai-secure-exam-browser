@@ -23,6 +23,16 @@ const seedUsers = async () => {
                 ]
             },
             {
+                name: 'Adarsh',
+                email: 'adarsh',
+                password: '1234',
+                role: 'admin',
+                permissions: [
+                    'create_exam', 'view_live_grid', 'manage_users',
+                    'view_reports', 'manage_exams', 'delete_exam', 'system_settings'
+                ]
+            },
+            {
                 name: 'Vinit',
                 email: 'vinit.mentor',
                 password: '1234',
@@ -46,6 +56,7 @@ const seedUsers = async () => {
         console.log('  CREDENTIALS SUMMARY');
         console.log('========================================');
         console.log('  Admin    →  vinit         / 1234');
+        console.log('  Admin    →  adarsh        / 1234');
         console.log('  Mentor   →  vinit.mentor  / 1234');
         console.log('  Student  →  vinit.student / 1234');
         console.log('========================================');
