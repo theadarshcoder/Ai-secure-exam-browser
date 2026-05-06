@@ -7,6 +7,7 @@ const Exam = require('../models/Exam');
 const mongoose = require('mongoose');
 const { asyncHandler } = require('../middlewares/errorMiddleware');
 const { getRedisClient } = require('../config/redis');
+const { sendAccessApprovedEmail } = require('../services/emailService');
 
 /**
  * 📈 Get Platform-wide Statistics (Cached)
@@ -124,6 +125,17 @@ exports.approveDemoRequest = asyncHandler(async (req, res) => {
 
         await session.commitTransaction();
         session.endSession();
+
+        // 🚀 Send Welcome Email to the new Admin (Async)
+        sendAccessApprovedEmail({
+            to: adminUser.email,
+            name: adminUser.name,
+            institutionName: institution.name,
+            password: randomPassword,
+            institutionCode: institution.code
+        }).catch(err => {
+            console.error('Failed to send onboarding email:', err);
+        });
 
         res.json({
             message: 'Institution created successfully',

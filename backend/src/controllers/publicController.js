@@ -1,6 +1,6 @@
 const Subscription = require('../models/Subscription');
 const DemoRequest = require('../models/DemoRequest');
-const { sendSubscriptionNotification } = require('../services/emailService');
+const { sendSubscriptionNotification, sendDemoRequestNotification } = require('../services/emailService');
 
 const subscribe = async (req, res) => {
     try {
@@ -48,6 +48,11 @@ const createDemoRequest = async (req, res) => {
             phone,
             website,
             status: 'pending'
+        });
+
+        // 🚀 Notify Admin Immediately (Async)
+        sendDemoRequestNotification({ name, email, institutionName, phone, website }).catch(err => {
+            console.error('Failed to send demo request notification:', err);
         });
 
         res.status(201).json({
