@@ -8,6 +8,7 @@ const mongoose = require('mongoose');
 const { asyncHandler } = require('../middlewares/errorMiddleware');
 const { getRedisClient } = require('../config/redis');
 const { sendAccessApprovedEmail, sendPasswordResetEmail } = require('../services/emailService');
+const { clearCache } = require('../services/cacheService');
 
 /**
  * 📈 Get Platform-wide Statistics (Cached)
@@ -232,8 +233,8 @@ exports.updateInstitutionStatus = asyncHandler(async (req, res) => {
     await institution.save();
 
     // ⚡ CRITICAL: Clear cache so middleware picks up new status immediately
-    const cacheService = require('../services/cacheService');
-    await cacheService.deleteCache(`inst_access:${id}`);
+    await clearCache(`inst_access:${id}`);
+    await clearCache(`admin_dashboard_stats_${id}`);
 
     // Audit Log
     await AuditLog.create({
@@ -399,6 +400,9 @@ exports.updateInstitutionLimits = asyncHandler(async (req, res) => {
     if (plan) institution.plan = plan;
 
     await institution.save();
+
+    // 🛡️ Clear cache for this institution so the admin sees the update immediately
+    await clearCache(`admin_dashboard_stats_${id}`);
 
     // Audit Log
     await AuditLog.create({

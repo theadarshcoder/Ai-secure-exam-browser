@@ -94,7 +94,8 @@ exports.getLiveSessions = asyncHandler(async (req, res) => {
 // Get Stats for Top Cards (Total Exams, Total Students, Total Live)
 // ═══════════════════════════════════════════════════════════
 exports.getDashboardStats = asyncHandler(async (req, res) => {
-    const cacheKey = 'admin_dashboard_stats_global';
+    const institutionId = req.user.institutionId;
+    const cacheKey = `admin_dashboard_stats_${institutionId}`;
     const cached = await getCache(cacheKey);
     if (cached) return res.json(cached);
 
@@ -107,7 +108,7 @@ exports.getDashboardStats = asyncHandler(async (req, res) => {
         User.countDocuments(getTenantFilter(req, { role: 'student' })).lean()
     ]);
 
-    const institution = await Institution.findById(req.user.institutionId)
+    const institution = await Institution.findById(institutionId)
         .select('plan trialEndsAt status')
         .lean();
 
