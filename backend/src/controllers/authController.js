@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const { asyncHandler } = require('../middlewares/errorMiddleware');
 const cacheService = require('../services/cacheService');
 const AppError = require('../utils/AppError');
+const logger = require('../utils/logger');
 
 // ─── POST /api/auth/register ─────────────────────────────
 // Creates a new user (Restricted to Admin)
@@ -91,21 +92,21 @@ exports.login = asyncHandler(async (req, res) => {
     }
 
     let searchEmail = email.trim();
-    console.log(`🔑 [LOGIN ATTEMPT] Email: ${searchEmail} | Role: ${requestedRole}`);
+    logger.info({ email: searchEmail, role: requestedRole }, `🔑 [LOGIN ATTEMPT] Email: ${searchEmail} | Role: ${requestedRole}`);
 
     const user = await User.findOne({ email: searchEmail }).select('+password');
     if (!user) {
-        console.warn(`❌ [LOGIN FAILED] User not found: ${searchEmail}`);
+        logger.warn({ email: searchEmail }, `❌ [LOGIN FAILED] User not found: ${searchEmail}`);
         throw new AppError('Invalid Access Identity or Secure Key!', 401, 'AUTH_FAILED');
     }
 
     const isPasswordCorrect = await user.comparePassword(password);
     if (!isPasswordCorrect) {
-        console.warn(`❌ [LOGIN FAILED] Incorrect password for: ${searchEmail}`);
+        logger.warn({ email: searchEmail }, `❌ [LOGIN FAILED] Incorrect password for: ${searchEmail}`);
         throw new AppError('Invalid Access Identity or Secure Key!', 401, 'AUTH_FAILED');
     }
 
-    console.log(`✅ [LOGIN SUCCESS] User: ${searchEmail} (${user.role})`);
+    logger.info({ email: searchEmail, role: user.role }, `✅ [LOGIN SUCCESS] User: ${searchEmail} (${user.role})`);
 
     // ✨ DEVICE FINGERPRINTING: Anti-Login Sharing (Upgraded Fix 5 & 3)
     if (deviceId) {
@@ -142,14 +143,14 @@ exports.login = asyncHandler(async (req, res) => {
                     await redisClient.expire(forceLoginKey, 300); // 5 min window
                 }
 
-                console.warn(`[SECURITY] Force Login by ${user.email} during active exam ${activeSession.exam}`);
+                logger.warn({ email: user.email, examId: activeSession.exam }, `[SECURITY] Force Login by ${user.email} during active exam ${activeSession.exam}`);
             }
         }
 
         if (user.currentDeviceId && user.currentDeviceId !== deviceId) {
             const io = req.app.get('io');
             if (io) {
-                console.log(`🔒 Anti-Cheating: Disconnecting previous session for ${user.email} (New device detected)`);
+                logger.info({ email: user.email }, `🔒 Anti-Cheating: Disconnecting previous session for ${user.email} (New device detected)`);
                 io.to(`user_${user._id.toString()}`).emit('force_logout', {
                     message: 'Security Alert: Account accessed from another device. Your session has been terminated.',
                     code: 'SESSION_REPLACED'
@@ -213,7 +214,7 @@ exports.login = asyncHandler(async (req, res) => {
             institutionId: user.institutionId
         });
     } catch (cacheErr) {
-        console.warn('🛡️ Cache sync failed during login (Redis down):', cacheErr.message);
+        logger.warn({ err: cacheErr.message, userId: user._id }, '🛡️ Cache sync failed during login (Redis down)');
     }
 
     res.json({
@@ -243,7 +244,7 @@ exports.logout = asyncHandler(async (req, res) => {
     try {
         await cacheService.removeUserSession(userId);
     } catch (cacheErr) {
-        console.warn('🛡️ Cache sync failed during logout (Redis down):', cacheErr.message);
+        logger.warn({ err: cacheErr.message, userId }, '🛡️ Cache sync failed during logout (Redis down)');
     }
     
     res.json({ message: 'Logout successful' });
@@ -270,7 +271,7 @@ exports.refresh = asyncHandler(async (req, res) => {
             // If we found the user by ID but the token doesn't match, someone used an old token.
             const compromisedUser = await User.findById(decoded.id);
             if (compromisedUser) {
-                console.error(`⚠️ [SECURITY] Token reuse detected for user: ${decoded.id}. Invalidating all sessions.`);
+                logger.error({ userId: decoded.id }, `⚠️ [SECURITY] Token reuse detected for user: ${decoded.id}. Invalidating all sessions.`);
                 compromisedUser.refreshToken = null;
                 compromisedUser.sessionVersion = (compromisedUser.sessionVersion || 0) + 1;
                 await compromisedUser.save();
@@ -310,7 +311,7 @@ exports.refresh = asyncHandler(async (req, res) => {
         // 6. Sync new session version to cache
         await cacheService.saveUserSession(user._id, user.sessionVersion, user.permissions);
 
-        console.log(`🔁 [Auth] Token rotated successfully for user: ${user.email}`);
+        logger.info({ email: user.email }, `🔁 [Auth] Token rotated successfully for user: ${user.email}`);
 
         res.json({ 
             accessToken: newAccessToken, 
@@ -318,7 +319,7 @@ exports.refresh = asyncHandler(async (req, res) => {
         });
 
     } catch (error) {
-        console.warn(`🚫 [Auth] Refresh failed: ${error.message}`);
+        logger.warn({ err: error.message }, `🚫 [Auth] Refresh failed: ${error.message}`);
         throw new AppError(error.message || 'Refresh Token validation failed', 403);
     }
 });
@@ -355,10 +356,45 @@ exports.setPassword = asyncHandler(async (req, res) => {
     
     await user.save();
 
-    console.log(`✅ [ONBOARDING] Admin ${user.email} successfully set their password.`);
+    logger.info({ email: user.email }, `✅ [ONBOARDING] Admin ${user.email} successfully set their password.`);
 
     res.json({
         success: true,
         message: 'Password set successfully! You can now login.'
+    });
+});
+
+// ─── POST /api/auth/re-authenticate ──────────────────────
+// High-risk re-auth: Returns short-lived token for sensitive operations
+exports.reAuthenticate = asyncHandler(async (req, res) => {
+    const { password } = req.body;
+    const userId = req.user.id;
+
+    if (!password) {
+        throw new AppError('Password is required for re-authentication', 400);
+    }
+
+    const user = await User.findById(userId).select('+password');
+    if (!user) throw new AppError('User not found', 404);
+
+    const isPasswordCorrect = await user.comparePassword(password);
+    if (!isPasswordCorrect) {
+        logger.warn({ userId }, `❌ [RE-AUTH FAILED] Incorrect password for user: ${userId}`);
+        throw new AppError('Incorrect password. Re-authentication failed.', 401);
+    }
+
+    // Generate short-lived (15 min) fresh auth token
+    const freshToken = jwt.sign(
+        { id: user._id, type: 'fresh_auth' },
+        process.env.JWT_SECRET,
+        { expiresIn: '15m' }
+    );
+
+    logger.info({ userId }, `🔐 [RE-AUTH SUCCESS] User ${userId} verified identity for sensitive action.`);
+
+    res.json({
+        success: true,
+        freshToken,
+        expiresIn: 900 // 15 mins
     });
 });

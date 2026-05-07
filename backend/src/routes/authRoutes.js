@@ -28,8 +28,10 @@ router.post('/set-password', authController.setPassword);
 // POST /api/auth/register — Admin naye students/mentors create karega
 router.post('/register', verifyToken, checkRole(['admin', 'super_mentor']), validate(registerSchema), authController.register);
 
-// ─── Protected Route (any authenticated user) ───────────
 // POST /api/auth/logout — Clear current session token
 router.post('/logout', verifyToken, authController.logout);
+
+// POST /api/auth/re-authenticate — Verify password to get a fresh-auth-token
+router.post('/re-authenticate', verifyToken, authController.reAuthenticate);
 
 module.exports = router;

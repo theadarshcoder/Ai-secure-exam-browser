@@ -10,7 +10,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Exam = require('../models/Exam');
 const ExamInvite = require('../models/ExamInvite');
-const { addBulkInviteJobs } = require('../queues/inviteEmailQueue');
+const { dispatchBulkNotifications, NOTIFICATION_TYPES } = require('../queues/notificationQueue');
 const { asyncHandler } = require('../middlewares/errorMiddleware');
 const cacheService = require('../services/cacheService');
 const { getTenantFilter, getTenantId } = require('../utils/tenantFilter');
@@ -301,7 +301,7 @@ exports.bulkInvite = asyncHandler(async (req, res) => {
 
     // ─── 6. Queue All Emails (Edge Case Fix #3: addBulk) ─
     if (finalEmailJobs.length > 0) {
-        await addBulkInviteJobs(finalEmailJobs);
+        await dispatchBulkNotifications(finalEmailJobs);
     }
 
     // ─── 7. Response ─────────────────────────────────────
@@ -532,7 +532,7 @@ exports.resendInvite = asyncHandler(async (req, res) => {
     const student = await User.findById(invite.student).select('name');
 
     // Queue new email
-    await addBulkInviteJobs([{
+    await dispatchBulkNotifications([{
         inviteId: invite._id.toString(),
         email: invite.email,
         studentName: student?.name || 'Student',

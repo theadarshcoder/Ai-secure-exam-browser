@@ -44,6 +44,9 @@ userSchema.pre('save', async function () {
     // Skip if the password has not been modified (e.g., updating only the name)
     if (!this.isModified('password')) return;
 
+    // 🛡️ Security Fix: Invalidate all existing sessions on password change
+    this.sessionVersion = (this.sessionVersion || 0) + 1;
+
     // Hash the password with 10 rounds of salt for strong security
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
@@ -53,6 +56,9 @@ userSchema.pre('save', async function () {
 userSchema.pre('findOneAndUpdate', async function() {
     const update = this.getUpdate();
     if (update.password) {
+        // 🛡️ Security Fix: Invalidate sessions on password change
+        update.sessionVersion = (update.sessionVersion || 0) + 1;
+
         const salt = await bcrypt.genSalt(10);
         update.password = await bcrypt.hash(update.password, salt);
     }

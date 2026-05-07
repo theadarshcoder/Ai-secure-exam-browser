@@ -6,16 +6,14 @@ const { redisUrl } = require('../config/redis');
  * Processes payment webhooks and subscription lifecycle events asynchronously.
  */
 
+const { RETRY_STRATEGIES } = require('../utils/queueHardening');
+
 const billingQueue = new Queue('billing-queue', {
     connection: { url: redisUrl },
     defaultJobOptions: {
-        attempts: 5,
-        backoff: {
-            type: 'exponential',
-            delay: 5000, // 5 seconds initial delay
-        },
+        ...RETRY_STRATEGIES.CONSERVATIVE,
         removeOnComplete: true,
-        removeOnFail: false, // Keep failed jobs for manual review (Dead Letter Queue)
+        removeOnFail: false
     }
 });
 

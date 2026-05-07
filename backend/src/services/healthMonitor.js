@@ -1,4 +1,5 @@
 const os = require('os');
+const logger = require('../utils/logger');
 const ErrorLog = require('../models/ErrorLog'); 
 const ExamSession = require('../models/ExamSession');
 
@@ -8,7 +9,7 @@ const prevLiveStudents = {};  // { "examId_123": 100 }
 const lastAlertTimes = {};    // { "examId_123": { network: 0, errors: 0, drop: 0 } }
 
 const startHealthMonitor = (io) => {
-    console.log('🩺 [Health Monitor] Initialization successful. Monitoring starting...');
+    logger.info('🩺 [Health Monitor] Initialization successful. Monitoring starting...');
     
     // 🚀 Phase 3 Optimization: Bulk Flush Telemetry Logs every 30s
     setInterval(async () => {
@@ -17,10 +18,10 @@ const startHealthMonitor = (io) => {
             const logs = await popAllTelemetryLogs();
             if (logs && logs.length > 0) {
                 await ErrorLog.insertMany(logs, { ordered: false });
-                console.log(`💾 [DB] Bulk inserted ${logs.length} telemetry logs`);
+                logger.info({ count: logs.length }, `💾 [DB] Bulk inserted ${logs.length} telemetry logs`);
             }
         } catch (err) {
-            console.error('❌ [Telemetry Bulk Insert Failed]:', err.message);
+            logger.error({ err: err.message }, '❌ [Telemetry Bulk Insert Failed]');
         }
     }, 30000);
 
@@ -105,7 +106,7 @@ const startHealthMonitor = (io) => {
                 recentDisconnects[examStr] = 0; 
             }
         } catch (error) {
-            console.error("Health monitor failed:", error);
+            logger.error({ err: error.message }, "Health monitor failed");
         }
     }, 10000); 
 };

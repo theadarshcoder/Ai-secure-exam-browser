@@ -5,6 +5,7 @@
  */
 
 const { getRedisClient } = require('../config/redis');
+const logger = require('../utils/logger');
 
 const SESSION_PREFIX = 'session:';
 const DEFAULT_TTL = 86400; // 24 hours in seconds (matching JWT expiry)
@@ -32,9 +33,9 @@ const saveUserSession = async (userId, sessionDataObj = {}) => {
         const key = `${SESSION_PREFIX}${userId}`;
         const sessionData = JSON.stringify(sessionDataObj);
         await redis.set(key, sessionData, 'EX', DEFAULT_TTL);
-        console.log(`📡 Redis: Cached session v${sessionDataObj.sessionVersion} for user ${userId}`);
+        logger.debug({ userId, sessionVersion: sessionDataObj.sessionVersion }, `📡 Redis: Cached session for user ${userId}`);
     } catch (err) {
-        console.warn('⚠️  Redis: Failed to save user session:', err.message);
+        logger.warn({ err: err.message, userId }, '⚠️  Redis: Failed to save user session');
     }
 };
 
@@ -62,7 +63,7 @@ const getUserSession = async (userId) => {
             return null; // Corrupt data → force cache miss
         }
     } catch (err) {
-        console.warn('⚠️  Redis: Failed to retrieve session:', err.message);
+        logger.warn({ err: err.message, userId }, '⚠️  Redis: Failed to retrieve session');
         return null;
     }
 };
@@ -77,9 +78,9 @@ const removeUserSession = async (userId) => {
     try {
         const key = `${SESSION_PREFIX}${userId}`;
         await redis.del(key);
-        console.log(`📡 Redis: Removed session for user ${userId}`);
+        logger.debug({ userId }, `📡 Redis: Removed session for user ${userId}`);
     } catch (err) {
-        console.warn('⚠️  Redis: Failed to delete session:', err.message);
+        logger.warn({ err: err.message, userId }, '⚠️  Redis: Failed to delete session');
     }
 };
 
@@ -92,7 +93,7 @@ const setCache = async (key, data, ttl = TTL_API_CACHE) => {
     try {
         await redis.set(key, JSON.stringify(data), 'EX', ttl);
     } catch (err) {
-        console.warn(`⚠️  Redis: Failed to set cache for ${key}:`, err.message);
+        logger.warn({ err: err.message, key }, `⚠️  Redis: Failed to set cache for ${key}`);
     }
 };
 
@@ -106,7 +107,7 @@ const getCache = async (key) => {
         const data = await redis.get(key);
         return data ? JSON.parse(data) : null;
     } catch (err) {
-        console.warn(`⚠️  Redis: Failed to get cache for ${key}:`, err.message);
+        logger.warn({ err: err.message, key }, `⚠️  Redis: Failed to get cache for ${key}`);
         return null;
     }
 };
@@ -120,7 +121,7 @@ const clearCache = async (key) => {
     try {
         await redis.del(key);
     } catch (err) {
-        console.warn(`⚠️  Redis: Failed to clear cache for ${key}:`, err.message);
+        logger.warn({ err: err.message, key }, `⚠️  Redis: Failed to clear cache for ${key}`);
     }
 };
 
@@ -166,10 +167,10 @@ const clearPattern = async (pattern) => {
         }
 
         if (deletedCount > 0) {
-            console.log(`📡 Redis: Cleared ${deletedCount} keys matching pattern: ${pattern}`);
+            logger.info({ pattern, deletedCount }, `📡 Redis: Cleared ${deletedCount} keys matching pattern: ${pattern}`);
         }
     } catch (err) {
-        console.warn(`⚠️  Redis: Failed to clear pattern ${pattern}:`, err.message);
+        logger.warn({ err: err.message, pattern }, `⚠️  Redis: Failed to clear pattern ${pattern}`);
     }
 };
 
@@ -182,7 +183,7 @@ const preWarmCache = async () => {
     if (!redis) return;
 
     try {
-        console.log('🔥 [Cache] Starting pre-warming routine...');
+        logger.info('🔥 [Cache] Starting pre-warming routine...');
         const Setting = require('../models/Setting');
         const Exam = require('../models/Exam');
 
@@ -198,9 +199,9 @@ const preWarmCache = async () => {
             await redis.set('active_exams_metadata', JSON.stringify(activeExams), 'EX', 3600);
         }
 
-        console.log('✅ [Cache] Pre-warming complete.');
+        logger.info('✅ [Cache] Pre-warming complete.');
     } catch (err) {
-        console.warn('⚠️ [Cache] Pre-warming failed:', err.message);
+        logger.warn({ err: err.message }, '⚠️ [Cache] Pre-warming failed');
     }
 };
 
@@ -216,7 +217,7 @@ const pushTelemetryLog = async (logData) => {
     try {
         await redis.rpush(TELEMETRY_BUFFER_KEY, JSON.stringify(logData));
     } catch (err) {
-        console.warn('⚠️ Redis: Failed to buffer telemetry log:', err.message);
+        logger.warn({ err: err.message }, '⚠️ Redis: Failed to buffer telemetry log');
     }
 };
 
@@ -237,7 +238,7 @@ const popAllTelemetryLogs = async () => {
             try { return JSON.parse(str); } catch (e) { return null; }
         }).filter(Boolean);
     } catch (err) {
-        console.warn('⚠️ Redis: Failed to flush telemetry buffer:', err.message);
+        logger.warn({ err: err.message }, '⚠️ Redis: Failed to flush telemetry buffer');
         return [];
     }
 };

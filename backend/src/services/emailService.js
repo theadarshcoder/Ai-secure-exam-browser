@@ -4,6 +4,7 @@
 // ═══════════════════════════════════════════════════════════
 
 const axios = require('axios');
+const logger = require('../utils/logger');
 
 /**
  * Send an email using Brevo HTTP API.
@@ -29,11 +30,11 @@ const sendBrevoEmail = async ({ to, subject, htmlContent, senderName }) => {
             }
         });
 
-        console.log(`📧 [Brevo SUCCESS]: Sent to ${to} | MessageId: ${response.data.messageId}`);
+        logger.info({ to, messageId: response.data.messageId }, `📧 [Brevo SUCCESS]: Sent to ${to}`);
         return { success: true, id: response.data.messageId };
     } catch (error) {
         const errorMsg = error.response?.data?.message || error.message;
-        console.error('❌ [Brevo FAILED]:', errorMsg);
+        logger.error({ err: errorMsg, to, subject }, '❌ [Brevo FAILED]');
         return { success: false, error: errorMsg };
     }
 };
@@ -286,6 +287,57 @@ const sendPasswordSetupEmail = async ({ to, name, institutionName, setupLink }) 
     });
 };
 
+const sendTrialEndingEmail = async ({ to, name, daysLeft }) => {
+    const htmlContent = `
+        <div style="padding: 24px; font-family: sans-serif; background-color: #fffbeb; border: 1px solid #fef3c7; border-radius: 16px; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #92400e;">Action Required: Your Trial is Ending soon ⏳</h2>
+            <p>Hi ${name}, your Vision trial for your institution will expire in <strong>${daysLeft} days</strong>. Upgrade now to keep your data and continue proctoring exams seamlessly.</p>
+            <div style="text-align: center; margin-top: 24px;">
+                <a href="${process.env.FRONTEND_URL}/billing" style="background-color: #d97706; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">Upgrade Now</a>
+            </div>
+        </div>`;
+
+    return await sendBrevoEmail({
+        to,
+        subject: `Your Vision Trial Expires in ${daysLeft} Days`,
+        htmlContent,
+        senderName: "Vision Billing"
+    });
+};
+
+const sendPaymentFailedEmail = async ({ to, name, amount, reason }) => {
+    const htmlContent = `
+        <div style="padding: 24px; font-family: sans-serif; background-color: #fef2f2; border: 1px solid #fee2e2; border-radius: 16px; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #b91c1c;">Payment Failed 🚨</h2>
+            <p>Hi ${name}, we couldn't process your payment of <strong>₹${amount}</strong>.</p>
+            <p style="color: #7f1d1d;">Reason: ${reason || 'Card declined or insufficient funds'}</p>
+            <p>Please update your payment method to avoid service interruption.</p>
+        </div>`;
+
+    return await sendBrevoEmail({
+        to,
+        subject: `Urgent: Payment Failed for Vision Subscription`,
+        htmlContent,
+        senderName: "Vision Billing"
+    });
+};
+
+const sendUpgradeSuccessEmail = async ({ to, name, planName }) => {
+    const htmlContent = `
+        <div style="padding: 24px; font-family: sans-serif; background-color: #f0fdf4; border: 1px solid #dcfce7; border-radius: 16px; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #15803d;">Upgrade Successful! 🎉</h2>
+            <p>Hi ${name}, your institution is now on the <strong>${planName}</strong> plan.</p>
+            <p>All enterprise features and increased limits are now active.</p>
+        </div>`;
+
+    return await sendBrevoEmail({
+        to,
+        subject: `Welcome to ${planName}! Your Upgrade is Complete`,
+        htmlContent,
+        senderName: "Vision Billing"
+    });
+};
+
 module.exports = {
     sendInviteEmail,
     sendSubscriptionNotification,
@@ -293,5 +345,8 @@ module.exports = {
     sendAccessApprovedEmail,
     sendPasswordResetEmail,
     sendVerificationEmail,
-    sendPasswordSetupEmail
+    sendPasswordSetupEmail,
+    sendTrialEndingEmail,
+    sendPaymentFailedEmail,
+    sendUpgradeSuccessEmail
 };

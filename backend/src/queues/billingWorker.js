@@ -4,6 +4,7 @@ const billingService = require('../services/billingService');
 const reconciliationService = require('../services/reconciliationService');
 const ProcessedWebhook = require('../models/ProcessedWebhook');
 const logger = require('../utils/logger');
+const { RETRY_STRATEGIES, moveToDLQ } = require('../utils/queueHardening');
 
 /**
  * 🛠️ Billing Worker
@@ -15,7 +16,21 @@ const setupBillingWorker = () => {
     const worker = new Worker('billing-queue', async (job) => {
         const { type, eventId, eventType, provider, payload, institutionId } = job.data;
         
-        logger.info(`[Billing Worker] Processing ${type || eventType} for inst: ${institutionId || 'system'}`);
+        logger.info({ 
+            jobId: job.id, 
+            type: type || eventType, 
+            institutionId: institutionId || 'system',
+            attempt: job.attemptsMade + 1
+        }, `[Billing Worker] Processing Job`);
+
+        // 🛡️ [STEP 4] Idempotency Check for Webhooks
+        if (eventId) {
+            const alreadyProcessed = await ProcessedWebhook.findOne({ eventId, status: 'processed' });
+            if (alreadyProcessed) {
+                logger.info({ eventId, jobId: job.id }, `♻️ [Billing Worker] Event already processed. Skipping.`);
+                return { skipped: true, reason: 'ALREADY_PROCESSED' };
+            }
+        }
 
         try {
             // A. Webhook Processing
@@ -50,19 +65,41 @@ const setupBillingWorker = () => {
             }
 
         } catch (error) {
-            logger.error(`[Billing Worker] Job ${job.id} failed: ${error.message}`);
+            logger.error({ 
+                jobId: job.id, 
+                err: error.message, 
+                stack: error.stack 
+            }, `[Billing Worker] Job failed`);
+
             if (eventId) {
-                await ProcessedWebhook.findOneAndUpdate({ eventId }, { status: 'failed', errorDetails: error.message });
+                await ProcessedWebhook.findOneAndUpdate(
+                    { eventId }, 
+                    { status: 'failed', errorDetails: error.message },
+                    { upsert: true }
+                );
             }
             throw error;
         }
     }, {
         connection: { url: redisUrl },
-        concurrency: 5
+        concurrency: 5,
+        settings: {
+            backoffStrategies: {
+                ...RETRY_STRATEGIES.CONSERVATIVE.backoff
+            }
+        }
     });
 
-    worker.on('failed', (job, err) => {
-        logger.error(`[Billing Worker] CRITICAL: Job ${job.id} definitively failed after all retries. Manual intervention required.`);
+    worker.on('failed', async (job, err) => {
+        const attempt = job.attemptsMade;
+        const maxAttempts = RETRY_STRATEGIES.CONSERVATIVE.attempts;
+
+        if (attempt >= maxAttempts) {
+            logger.error({ jobId: job.id, err: err.message }, `[Billing Worker] CRITICAL: Job definitively failed. Moving to DLQ.`);
+            await moveToDLQ(job, err, 'billing-queue');
+        } else {
+            logger.warn({ jobId: job.id, attempt, err: err.message }, `[Billing Worker] Job failed. Retrying...`);
+        }
     });
 
     return worker;

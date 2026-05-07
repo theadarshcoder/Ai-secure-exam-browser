@@ -110,7 +110,7 @@ exports.createExam = asyncHandler(async (req, res) => {
     let finalPassingMarks = passingMarks || 40;
     const calcTotalMarks = totalMarks || (validQuestions ? validQuestions.reduce((sum, q) => sum + (Number(q.marks) || 1), 0) : 0);
     if (finalPassingMarks > calcTotalMarks) {
-        console.warn(`[Logic Fix] Exam '${title}': passingMarks (${finalPassingMarks}) > totalMarks (${calcTotalMarks}). Auto-correcting to 40%.`);
+        logger.warn({ title, finalPassingMarks, calcTotalMarks }, `[Logic Fix] Exam '${title}': passingMarks > totalMarks. Auto-correcting to 40%.`);
         finalPassingMarks = Math.floor(calcTotalMarks * 0.4);
     }
 
@@ -143,7 +143,7 @@ exports.createExam = asyncHandler(async (req, res) => {
             );
         }
     } catch (usageErr) {
-        console.error('Failed to update institution usage for new exam:', usageErr);
+        logger.error({ err: usageErr.message }, 'Failed to update institution usage for new exam');
     }
 
     // Clear mentor exams cache
@@ -258,7 +258,7 @@ exports.updateExam = asyncHandler(async (req, res) => {
     
     // 🛡️ Fix 35: Auto-correct passing marks (UX improvement)
     if (passingMarks > totalMarks) {
-        console.warn(`[Logic Fix] Auto-correcting passingMarks for exam ${examId}`);
+        logger.warn({ examId }, `[Logic Fix] Auto-correcting passingMarks for exam ${examId}`);
         passingMarks = Math.floor(totalMarks * 0.4);
     }
 
@@ -432,7 +432,7 @@ exports.getMentorExams = asyncHandler(async (req, res) => {
             const cached = await redisClient.get(cacheKey);
             if (cached) return res.json(JSON.parse(cached));
         } catch (e) {
-            console.error('Redis cache read error:', e.message);
+            logger.error({ err: e.message }, 'Redis cache read error');
         }
     }
 
@@ -460,7 +460,7 @@ exports.getMentorExams = asyncHandler(async (req, res) => {
         try {
             await redisClient.set(cacheKey, JSON.stringify(formattedExams), 'EX', 60); // 60s TTL
         } catch (e) {
-            console.error('Redis cache write error:', e.message);
+            logger.error({ err: e.message }, 'Redis cache write error');
         }
     }
 
@@ -747,7 +747,7 @@ exports.startExam = asyncHandler(async (req, res) => {
     } catch (saveErr) {
         // 🛡️ Fix 36: Double-click Race Condition Handling (E11000)
         if (saveErr.code === 11000) {
-            console.log(`[Race Condition] Handled concurrent startExam for student ${studentId}`);
+            logger.info({ studentId }, `[Race Condition] Handled concurrent startExam for student ${studentId}`);
             session = await ExamSession.findOne({ exam: examId, student: studentId });
         } else {
             throw saveErr;
@@ -758,7 +758,7 @@ exports.startExam = asyncHandler(async (req, res) => {
     ExamInvite.findOneAndUpdate(
         { exam: examId, student: studentId, status: { $in: ['opened', 'sent', 'pending'] } },
         { status: 'exam_started' }
-    ).catch(err => console.error('[Invite] Status update (exam_started) failed:', err.message));
+    ).catch(err => logger.error({ err: err.message }, '[Invite] Status update (exam_started) failed'));
 
     // --- Cache Initialization ---
     const redisClient = getRedisClient();

@@ -3,6 +3,7 @@ const ExamSession = require('../models/ExamSession');
 const Exam = require('../models/Exam');
 const AuditLog = require('../models/AuditLog');
 const { processSubmission } = require('../services/submissionService');
+const logger = require('../utils/logger');
 // Define connection for BullMQ using the existing centralized ioredis connection
 const { getRedisConnection } = require('../config/redis');
 const connection = getRedisConnection();
@@ -16,7 +17,7 @@ let autoSubmitWorker;
  * Add a repeatable job to scan for expired sessions
  */
 const startAutoSubmitWorker = async (io) => {
-    console.log('⏳ Starting Auto-Submit Worker (runs every 60 seconds)');
+    logger.info('⏳ Starting Auto-Submit Worker (runs every 60 seconds)');
 
     // Ensure only one repeatable job is running
     await autoSubmitQueue.add(
@@ -42,12 +43,12 @@ const startAutoSubmitWorker = async (io) => {
 
     autoSubmitWorker.on('completed', (job, returnvalue) => {
         if (returnvalue && returnvalue.count > 0) {
-            console.log(`✅ [Auto-Submit] Successfully processed ${returnvalue.count} expired sessions.`);
+            logger.info({ jobId: job.id, count: returnvalue.count }, `✅ [Auto-Submit] Successfully processed ${returnvalue.count} expired sessions.`);
         }
     });
 
     autoSubmitWorker.on('failed', (job, err) => {
-        console.error(`❌ [Auto-Submit] Worker failed: ${err.message}`);
+        logger.error({ jobId: job?.id, err: err.message }, `❌ [Auto-Submit] Worker failed: ${err.message}`);
     });
 
     return autoSubmitWorker;
@@ -92,7 +93,7 @@ const processExpiredSessions = async (io) => {
             // Load full exam details
             const exam = await Exam.findById(lockedSession.exam);
             if (!exam) {
-                console.error(`[Auto-Submit] Exam not found for session ${lockedSession._id}`);
+                logger.error({ sessionId: lockedSession._id, examId: lockedSession.exam }, `[Auto-Submit] Exam not found for session ${lockedSession._id}`);
                 continue;
             }
 
@@ -119,9 +120,9 @@ const processExpiredSessions = async (io) => {
             }
 
             processedCount++;
-            console.log(`🎯 [Auto-Submit] Processed expired session: ${lockedSession._id}`);
+            logger.info({ sessionId: lockedSession._id, examId: exam._id }, `🎯 [Auto-Submit] Processed expired session: ${lockedSession._id}`);
         } catch (error) {
-            console.error(`[Auto-Submit] Error processing session ${lockedSession._id}:`, error);
+            logger.error({ err: error.message, sessionId: lockedSession._id }, `[Auto-Submit] Error processing session ${lockedSession._id}`);
             // Even if processing fails, status is already 'auto_submitted' so it won't loop infinitely
         }
     }

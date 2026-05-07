@@ -23,10 +23,10 @@ const { createAdapter } = require('@socket.io/redis-adapter');
 const IORedis = require('ioredis');
 const { RedisStore } = require('rate-limit-redis');
 const cacheService = require('./services/cacheService');
-const morgan = require('morgan');
 const validateEnv = require('./utils/envValidator');
 const { startHealthMonitor, incrementDisconnect } = require('./services/healthMonitor');
 const logger = require('./utils/logger');
+const { initSentry, Sentry } = require('./utils/sentry');
 
 const { startLagMonitor, getMetrics } = require('./utils/monitor');
 startLagMonitor();
@@ -46,6 +46,7 @@ const authRoutes = require('./routes/authRoutes');
 const examRoutes = require('./routes/examRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const superAdminRoutes = require('./routes/superAdminRoutes');
+const adminOpsRoutes = require('./routes/adminOpsRoutes');
 const sessionRoutes = require('./routes/sessionRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
@@ -53,42 +54,128 @@ const publicRoutes = require('./routes/publicRoutes');
 const billingRoutes = require('./routes/billingRoutes');
 const { setupCodeEvaluationWorker } = require('./queues/codeGradingQueue');
 const { setupFrontendEvaluationWorker } = require('./queues/frontendGradingQueue');
-const { setupInviteEmailWorker } = require('./queues/inviteEmailQueue');
+const { setupNotificationWorker } = require('./queues/notificationQueue');
 const { setupBillingWorker } = require('./queues/billingWorker');
 const { startIntelligenceWorker } = require('./queues/intelligenceWorker');
 const { startAutoSubmitWorker } = require('./queues/autoSubmitWorker');
-const { inviteVerifyLimiter } = require('./middlewares/rateLimiter');
+const { 
+    inviteVerifyLimiter, 
+    authLimiter, 
+    billingLimiter, 
+    aiLimiter, 
+    uploadLimiter, 
+    publicLimiter, 
+    globalLimiter 
+} = require('./middlewares/rateLimiter');
 const traceMiddleware = require('./middlewares/traceMiddleware');
 const { platformModeMiddleware } = require('./middlewares/platformMiddleware');
+const { securityHeaders, csrfGuard } = require('./middlewares/securityMiddleware');
+const responseStandardizer = require('./middlewares/responseMiddleware');
 const { activityTracker } = require('./middlewares/activityMiddleware');
+const { 
+    httpRequestsTotal, 
+    httpRequestDuration, 
+    wsActiveConnections,
+    activeExamsGauge 
+} = require('./utils/metrics');
+
+const healthRoutes = require('./routes/healthRoutes');
+const versionRoutes = require('./routes/versionRoutes');
+const setupSwagger = require('./config/swagger');
+const { featureFlagGuard, isEnabled } = require('./utils/featureFlags');
 
 const app = express();
-app.set('trust proxy', 1); // 🛡️ Fix 15: Required for rate-limiter to see real IPs
+
+// 🛰️ Initialize Sentry Tracking
+initSentry(app);
+
+// 📖 [STEP 5] Setup Swagger API Documentation
+setupSwagger(app);
+
+// Sentry v10+ automatic instrumentation handles request tracing if initialized correctly
+// No longer need Handlers.requestHandler() or tracingHandler()
+
+app.set('trust proxy', 1);
+
+// 🛡️ [STEP 5] Maintenance Mode Global Guard
+app.use((req, res, next) => {
+    if (isEnabled('MAINTENANCE_MODE') && !req.path.startsWith('/health') && !req.path.startsWith('/admin')) {
+        return res.status(503).json({
+            success: false,
+            error: {
+                code: 'MAINTENANCE_MODE',
+                message: 'System is currently undergoing maintenance. Please check back later.'
+            }
+        });
+    }
+    next();
+});
 const server = http.createServer(app);
 
 // Keep track of active workers for graceful shutdown
 const workers = [];
 
-app.use(helmet());
+app.use(securityHeaders);
+app.use(csrfGuard);
 app.use(compression());
 app.use(timeout('45s'));
-app.use(traceMiddleware); // Generate Request IDs
+app.use(traceMiddleware); // Generate Request IDs & Initialize Context
+app.use(responseStandardizer); // Standardize all responses
 
-// 🛡️ [PHASE 2] Request-Scoped Logger Middleware
+// 🛡️ [STEP 1] Request Logging Middleware (Start & Finish)
 app.use((req, res, next) => {
+    const start = Date.now();
+    const { method, path } = req;
+
+    // Attach request-scoped child logger
     req.log = logger.child({ 
         requestId: req.requestId,
-        path: req.path,
-        method: req.method 
+        path,
+        method 
     });
+
+    // Log request start
+    req.log.info({ type: 'request_start' }, `🚀 ${method} ${path}`);
+
+    // Capture response finish to log duration and status
+    res.on('finish', () => {
+        const duration = Date.now() - start;
+        const level = res.statusCode >= 500 ? 'error' : (res.statusCode >= 400 ? 'warn' : 'info');
+        const env = process.env.NODE_ENV || 'development';
+
+        // 📊 [STEP 2] Record Metrics
+        httpRequestsTotal.inc({ method, path, status: res.statusCode, env });
+        httpRequestDuration.observe({ method, path, env }, duration);
+        
+        req.log[level]({
+            type: 'request_finish',
+            statusCode: res.statusCode,
+            duration: `${duration}ms`,
+            requestId: req.requestId
+        }, `🏁 ${method} ${path} - ${res.statusCode} (${duration}ms)`);
+    });
+
     next();
 });
 
-// Customize Morgan for easy debugging with prefix Request ID
-morgan.token('req-id', (req) => req.requestId ? req.requestId.split('-')[0] : '????');
-if (process.env.NODE_ENV !== 'production') {
-    app.use(morgan('[:req-id] :method :url :status - :response-time ms'));
-}
+// 🧠 [STEP 1] Post-Auth Context Middleware
+// This will be called after verifyToken in routes to backfill userId/institutionId into the context
+app.use((req, res, next) => {
+    if (req.user) {
+        const { storage } = require('./utils/asyncStorage');
+        const context = storage.getStore();
+        if (context) {
+            context.userId = req.user.id;
+            context.institutionId = req.user.institutionId;
+            // Also update req.log to include these
+            req.log = req.log.child({ 
+                userId: req.user.id, 
+                institutionId: req.user.institutionId 
+            });
+        }
+    }
+    next();
+});
 
 
 // ═══════════════════════════════════════════════════════════
@@ -117,6 +204,10 @@ if (process.env.NODE_ENV !== 'production') {
     allowedOrigins.add('http://127.0.0.1:5173');
     allowedOrigins.add('http://localhost:5174');
 }
+
+// 🚀 [STEP 2] Mount Health & Version Routes
+app.use('/health', healthRoutes);
+app.use('/version', versionRoutes);
 
 const corsOptions = {
     origin: function (origin, callback) {
@@ -181,100 +272,9 @@ function isAllowedOrigin(origin) {
 // ═══════════════════════════════════════════════════════════
 // Mitigate brute-force and DDoS attacks by limiting request rates.
 
-// ⚡ SHARED STORE HELPER: Cluster-Safe Rate Limiting
-const createRedisStore = (label) => {
-    const client = getRedisClient();
-    if (!client || process.env.NODE_ENV === 'test') {
-        if (process.env.NODE_ENV !== 'test') {
-            console.warn(`⚠️  [SCALING] Redis not ready. Using Capped LRU-Memory fallback for ${label} rate limiter.`);
-        }
-        
-        // Fix 15: Capped LRU Memory fallback to prevent OOM
-        const cache = new LRUCache({
-            max: 50000,         // Max 50k unique IPs
-            ttl: 60 * 1000,     // 1 minute TTL
-        });
-
-        return {
-            increment: (key) => {
-                const current = cache.get(key) || 0;
-                cache.set(key, current + 1);
-                return { totalHits: current + 1, resetTime: new Date(Date.now() + 60000) };
-            },
-            decrement: (key) => {
-                const current = cache.get(key) || 0;
-                if (current > 0) cache.set(key, current - 1);
-            },
-            resetKey: (key) => cache.delete(key),
-        };
-    }
-    return new RedisStore({
-        sendCommand: (...args) => client.call(...args),
-        prefix: `vision_rl:${label}:`,
-    });
-};
-
-// Global Rate Limiter — Saari APIs ke liye
-const globalLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 1000,
-    store: createRedisStore('global'),
-    keyGenerator: (req) => {
-        // Fix 3 (Last-Mile): Use userId for authenticated users to prevent IP-spoofing key exhaustion
-        if (req.user && req.user.id) {
-            return `user:${req.user.id}`;
-        }
-        
-        // Use IP + UserAgent hash for anonymous to prevent single-IP-multi-browser attacks
-        const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-        const ua = req.headers['user-agent'] || 'no-ua';
-        return `ip:${require('crypto').createHash('md5').update(`${ip}:${ua}`).digest('hex')}`;
-    },
-    message: {
-        error: 'Too many requests! Please try again in 15 minutes.',
-        retryAfter: '15 minutes'
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
-    validate: { ip: false }
-});
-
-// Auth Rate Limiter — Strict limits for Login/Register endpoints
-const authLimiter = rateLimit({
-    windowMs: 5 * 60 * 1000, // 🛡️ Reduced window to 5 minutes
-    max: 20, // 🛡️ Production: 20 attempts per 5 mins
-    store: createRedisStore('auth'),
-    message: {
-        error: 'Too many login attempts! Please try again in 5 minutes.',
-        retryAfter: '5 minutes'
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
-    validate: { ip: false }
-});
-
-// Relaxed Rate Limiter for Auto-Save
-const autoSaveLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 1000, 
-    store: createRedisStore('autosave'),
-    message: {
-        error: 'Too many autosave requests! Please reduce frequency.'
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
-    validate: { ip: false }
-});
-
-// 🛡️ Telemetry Limiter — Prevent log spamming
-const telemetryLimiter = rateLimit({
-    windowMs: 1 * 60 * 1000,
-    max: 20, // 🛡️ Max 20 logs per minute per user
-    store: createRedisStore('telemetry'),
-    message: { error: 'Stop spamming logs!' },
-    standardHeaders: true,
-    legacyHeaders: false
-});
+// 🛡️ [STEP 5] Rate Limiters moved to centralized middleware
+const telemetryLimiter = publicLimiter; 
+const autoSaveLimiter = globalLimiter;
 
 // Global limiter definition is above. 
 // We will apply it route-wise below to avoid blocking the save-progress endpoint.
@@ -313,9 +313,9 @@ try {
     const pubClient = getRedisClient();
     const subClient = pubClient.duplicate();
     io.adapter(createAdapter(pubClient, subClient));
-    console.log('🔗 [Socket.IO] Redis Adapter active — Cluster broadcasting enabled');
+    logger.info('🔗 [Socket.IO] Redis Adapter active — Cluster broadcasting enabled');
 } catch (adapterErr) {
-    console.warn('⚠️  [Socket.IO] Redis Adapter failed, falling back to in-memory (single instance only):', adapterErr.message);
+    logger.warn({ err: adapterErr.message }, '⚠️  [Socket.IO] Redis Adapter failed, falling back to in-memory (single instance only)');
 }
 
 // Expose Socket.IO instance to routes/controllers globally
@@ -331,7 +331,7 @@ io.use(async (socket, next) => {
             || socket.handshake.headers?.authorization?.split(' ')[1];
 
         if (!token) {
-            console.error('[Socket Auth] Connection rejected: Token missing');
+            logger.warn('[Socket Auth] Connection rejected: Token missing');
             return next(new Error('Authentication required! Token missing.'));
         }
 
@@ -343,7 +343,7 @@ io.use(async (socket, next) => {
 
         if (cachedSession && cachedSession.sessionVersion) {
             if (decoded.sessionVersion && cachedSession.sessionVersion !== decoded.sessionVersion) {
-                console.warn(`[Socket Auth] Stale session for ${decoded.email}. Force disconnecting.`);
+                logger.warn({ email: decoded.email }, `[Socket Auth] Stale session for ${decoded.email}. Force disconnecting.`);
                 return next(new Error('Session terminated! You logged in from another device.'));
             }
             if (cachedSession.status === 'suspended' || cachedSession.status === 'trial_expired' || cachedSession.status === 'payment_failed') {
@@ -356,13 +356,13 @@ io.use(async (socket, next) => {
                 role: cachedSession.role || decoded.role,
                 institutionId: cachedSession.institutionId || null
             };
-            console.log(`[SCALING] Socket Auth: Redis Cache Hit for ${decoded.email}`);
+            logger.debug({ email: decoded.email }, `[SCALING] Socket Auth: Redis Cache Hit for ${decoded.email}`);
         } else {
             // 🔄 CACHE MISS: Fallback to MongoDB & Backfill
-            console.log(`[SCALING] Socket Auth: Redis Cache Miss for ${decoded.email}. Fetching from DB.`);
+            logger.info({ email: decoded.email }, `[SCALING] Socket Auth: Redis Cache Miss for ${decoded.email}. Fetching from DB.`);
             const user = await User.findById(decoded.id).lean();
             if (!user) {
-                console.error(`[Socket Auth] User not found: ${decoded.id}`);
+                logger.warn({ userId: decoded.id }, `[Socket Auth] User not found: ${decoded.id}`);
                 return next(new Error('User account no longer exists.'));
             }
             if (user.status === 'suspended' || user.status === 'trial_expired' || user.status === 'payment_failed') {
@@ -370,7 +370,7 @@ io.use(async (socket, next) => {
             }
             // Validate sessionVersion against DB
             if (decoded.sessionVersion && user.sessionVersion !== decoded.sessionVersion) {
-                console.warn(`[Socket Auth] Stale session version for ${decoded.email}.`);
+                logger.warn({ email: decoded.email }, `[Socket Auth] Stale session version for ${decoded.email}.`);
                 return next(new Error('Session terminated! You logged in from another device.'));
             }
             
@@ -396,11 +396,11 @@ io.use(async (socket, next) => {
         // 🛡️ Ensure user room join immediately after auth
         socket.join(`user_${decoded.id}`);
 
-        console.log(`[Socket Auth] Success: ${decoded.email} joined user_${decoded.id}`);
+        logger.info({ email: decoded.email }, `[Socket Auth] Success: ${decoded.email} joined user_${decoded.id}`);
         next();
 
     } catch (error) {
-        console.warn(`[Socket Auth] Failed: ${error.message}`);
+        logger.warn({ err: error.message }, `[Socket Auth] Failed: ${error.message}`);
         // Return generic error to client but log specific error internally
         const genericMsg = error.name === 'TokenExpiredError' 
             ? 'Session expired. Please login again.' 
@@ -419,9 +419,12 @@ app.use('/api/auth/verify-invite', inviteVerifyLimiter);
 // ─── Bull Board Dashboard ────────────────────────────────
 const { codeEvaluationQueue } = require('./queues/codeGradingQueue');
 const { frontendEvaluationQueue } = require('./queues/frontendGradingQueue');
-const { inviteEmailQueue } = require('./queues/inviteEmailQueue');
+const { notificationQueue } = require('./queues/notificationQueue');
 const { intelligenceQueue } = require('./queues/intelligenceQueue');
 const { autoSubmitQueue } = require('./queues/autoSubmitWorker');
+const { billingQueue } = require('./queues/billingQueue');
+const { DLQ_NAME } = require('./utils/queueHardening');
+const { Queue } = require('bullmq');
 
 const serverAdapter = new ExpressAdapter();
 serverAdapter.setBasePath('/admin/queues');
@@ -430,37 +433,49 @@ createBullBoard({
   queues: [
     new BullMQAdapter(codeEvaluationQueue),
     new BullMQAdapter(frontendEvaluationQueue),
-    new BullMQAdapter(inviteEmailQueue),
+    new BullMQAdapter(notificationQueue),
     new BullMQAdapter(intelligenceQueue),
     new BullMQAdapter(autoSubmitQueue),
+    new BullMQAdapter(billingQueue),
+    new BullMQAdapter(new Queue(DLQ_NAME, { connection: getRedisClient() }))
   ],
   serverAdapter: serverAdapter,
 });
 
-// Protect Bull Board with Admin Role
-app.use('/admin/queues', verifyToken, activityTracker, checkRole(['admin', 'super_mentor']), serverAdapter.getRouter());
+// 🛡️ [STEP 4] Protect Bull Board with Super Admin Role
+app.use('/admin/queues', verifyToken, checkRole(['super_admin']), serverAdapter.getRouter());
 
-app.use('/api/auth', authLimiter, authRoutes);
+// ─── 🚀 [STEP 5] API V1 Versioning Foundation ──────────────────
+const v1Router = express.Router();
 
-// 🛡️ CRITICAL: Apply verifyToken BEFORE limiters so req.user is available for keyGenerator
-// This prevents IP-based rate limiting from blocking entire colleges/offices
-app.use('/api/exams/save-progress', verifyToken, platformModeMiddleware, activityTracker, autoSaveLimiter);
+v1Router.use('/auth', authLimiter, authRoutes);
+v1Router.use('/exams/save-progress', verifyToken, platformModeMiddleware, activityTracker, autoSaveLimiter);
+v1Router.use('/exams', verifyToken, platformModeMiddleware, activityTracker, checkInstitutionActive, examRoutes);
+v1Router.use('/admin', verifyToken, platformModeMiddleware, activityTracker, checkInstitutionActive, globalLimiter, adminRoutes);
+v1Router.use('/admin/ops', verifyToken, checkRole(['super_admin']), adminOpsRoutes);
+v1Router.use('/super-admin', verifyToken, platformModeMiddleware, activityTracker, checkRole(['super_admin']), globalLimiter, superAdminRoutes); 
+v1Router.use('/session', verifyToken, platformModeMiddleware, activityTracker, checkInstitutionActive, telemetryLimiter, sessionRoutes);
+v1Router.use('/ai', featureFlagGuard('AI_ENABLED'), verifyToken, platformModeMiddleware, activityTracker, checkInstitutionActive, globalLimiter, aiRoutes);
+v1Router.use('/upload', verifyToken, platformModeMiddleware, activityTracker, checkInstitutionActive, globalLimiter, uploadRoutes);
+v1Router.use('/public', globalLimiter, publicRoutes);
+v1Router.use('/billing', featureFlagGuard('BILLING_ENABLED'), billingRoutes);
 
-// Protected routes — Verify Token FIRST, then Route-Specific Limiters
-app.use('/api/exams', verifyToken, platformModeMiddleware, activityTracker, checkInstitutionActive, examRoutes);
-app.use('/api/admin', verifyToken, platformModeMiddleware, activityTracker, checkInstitutionActive, globalLimiter, adminRoutes);
-app.use('/api/super-admin', verifyToken, platformModeMiddleware, activityTracker, checkRole(['super_admin']), globalLimiter, superAdminRoutes); 
-app.use('/api/session', verifyToken, platformModeMiddleware, activityTracker, checkInstitutionActive, telemetryLimiter, sessionRoutes);
-app.use('/api/ai', verifyToken, platformModeMiddleware, activityTracker, checkInstitutionActive, globalLimiter, aiRoutes);
-app.use('/api/upload', verifyToken, platformModeMiddleware, activityTracker, checkInstitutionActive, globalLimiter, uploadRoutes);
+// Mount V1 Router
+app.use('/api/v1', v1Router);
 
-// Public routes — NO verifyToken, rate limiter falls back to IP
-app.use('/api/public', globalLimiter, publicRoutes);
-app.use('/api/billing', billingRoutes);
+// Maintain Legacy /api for Backward Compatibility (Internal use)
+app.use('/api', v1Router);
 
 // ─── 404 Global Handler ──────────────────────────────────
 app.use((req, res, next) => {
-    res.status(404).json({ error: 'Endpoint Not Found. Are you lost?' });
+    res.status(404).json({ 
+        success: false, 
+        error: {
+            code: 'NOT_FOUND',
+            message: 'Endpoint Not Found. Are you lost?',
+            requestId: req.requestId
+        }
+    });
 });
 
 // ─── ERROR Global Handler ────────────────────────────────
@@ -472,7 +487,15 @@ app.use(errorHandler);
 
 // Only authenticated users reach here
 io.on('connection', (socket) => {
-    console.log(`Connected: ${socket.id} | User: ${socket.user.email}`);
+    logger.info({ socketId: socket.id, email: socket.user.email }, `Connected: ${socket.id} | User: ${socket.user.email}`);
+    
+    // 📊 [STEP 2] WebSocket Metrics
+    wsActiveConnections.inc({ env: process.env.NODE_ENV || 'development' });
+
+    socket.on('disconnect', () => {
+        wsActiveConnections.dec({ env: process.env.NODE_ENV || 'development' });
+        logger.info({ socketId: socket.id, email: socket.user?.email }, `Disconnected: ${socket.id}`);
+    });
     
     // Join role-specific and user-specific rooms for targeted broadcasting
     if (socket.user.role === 'super_admin') {
@@ -501,7 +524,7 @@ io.on('connection', (socket) => {
         
         eventCounts.set(eventName, data);
         if (data.count > limit) {
-            console.warn(`[Socket Spam] Event '${eventName}' throttled for user ${socket.user?.email}`);
+            logger.warn({ eventName, email: socket.user?.email }, `[Socket Spam] Event '${eventName}' throttled for user ${socket.user?.email}`);
             socket.emit('error', { message: 'Too many requests. Please slow down.' });
             return true;
         }
@@ -540,7 +563,7 @@ io.on('connection', (socket) => {
 
     if (remainingTime > 0) {
         watchdogTimer = setTimeout(() => {
-            console.warn(`Socket Session Expired: ${socket.user.email}. Force disconnecting.`);
+            logger.warn({ email: socket.user.email }, `Socket Session Expired: ${socket.user.email}. Force disconnecting.`);
             socket.emit('session_expired', { message: 'Security: Your session has expired. Please login again to continue.' });
             socket.disconnect(true);
         }, remainingTime);
@@ -580,7 +603,7 @@ io.on('connection', (socket) => {
             // 🛡️ Optimized: Use cached settings to prevent DB read-storms
             let settings = await cacheService.getCache('global_settings');
             if (!settings) {
-                console.log('📡 Cache miss: Fetching global settings from DB...');
+                logger.info('📡 Cache miss: Fetching global settings from DB...');
                 settings = await Setting.findOne() || new Setting();
                 await cacheService.setCache('global_settings', settings, 86400); // Cache for 24h
             }
@@ -745,7 +768,7 @@ io.on('connection', (socket) => {
 
             if (!targetId) return;
 
-            console.log(`🔒 Blocking student ${targetId}`);
+            logger.info({ studentId: targetId }, `🔒 Blocking student ${targetId}`);
             await ExamSession.findOneAndUpdate(
                 { $or: [{ student: targetId, exam: examId }, { _id: sessionId || targetId }] },
                 { status: 'blocked', isBlocked: true, blockReason: data.reason || 'Blocked by supervisor' }
@@ -769,7 +792,7 @@ io.on('connection', (socket) => {
 
             if (!targetId) return;
 
-            console.log(`🔓 Unblocking student ${targetId}`);
+            logger.info({ studentId: targetId }, `🔓 Unblocking student ${targetId}`);
             await ExamSession.findOneAndUpdate(
                 { status: 'blocked', $or: [{ student: targetId, exam: examId }, { _id: sessionId || targetId }] },
                 { status: 'in_progress', isBlocked: false, blockReason: '' }
@@ -794,7 +817,7 @@ io.on('connection', (socket) => {
 
             if (!targetId) return;
 
-            console.log(`⚠️ Warning to ${targetId}: ${message}`);
+            logger.info({ studentId: targetId, message }, `⚠️ Warning to ${targetId}: ${message}`);
             io.to(`user_${targetId}`).emit('warning', { 
                 message,
                 timestamp: new Date()
@@ -1040,45 +1063,56 @@ async function bootstrap() {
 
             // Start Monitoring ONLY after server is live
             startHealthMonitor(io);
-            console.log('[BOOT] Real-time Health Monitor Active');
+            logger.info('🩺 [Health Monitor] Real-time Health Monitor Active');
 
             // ─── 🚀 Start Background Workers ─────────────────────────────
-            // Important for Render/Free tier where a separate worker.js process 
-            // might not be running. This ensures emails and grading still happen.
             if (process.env.DISABLE_INTERNAL_WORKERS !== 'true') {
                 try {
-                    console.log('[BOOT] Initializing Background Workers...');
-                workers.push(setupCodeEvaluationWorker(io));
-                workers.push(setupFrontendEvaluationWorker(io));
-                workers.push(setupInviteEmailWorker());
-                workers.push(setupBillingWorker());
-                workers.push(startIntelligenceWorker());
-                
-                // startAutoSubmitWorker requires io to emit events
-                startAutoSubmitWorker(io).then(worker => {
-                    workers.push(worker);
-                    console.log('[BOOT] All Background Workers Active 🚀');
-                }).catch(err => {
-                    console.error('[BOOT] Failed to start AutoSubmit Worker:', err.message);
-                });
-            } catch (err) {
-                console.error('[BOOT] Worker Initialization Failed:', err.message);
+                    logger.info('🚀 [BOOT] Initializing Background Workers...');
+                    workers.push(setupCodeEvaluationWorker(io));
+                    workers.push(setupFrontendEvaluationWorker(io));
+                    workers.push(setupNotificationWorker());
+                    workers.push(setupBillingWorker());
+                    workers.push(startIntelligenceWorker());
+                    
+                    startAutoSubmitWorker(io).then(worker => {
+                        workers.push(worker);
+                        logger.info('✅ [BOOT] All Background Workers Active');
+                        
+                        // 📊 [STEP 2] Startup Metrics Log
+                        logger.info({
+                            env: process.env.NODE_ENV,
+                            node: process.version,
+                            mongo: mongoose.connection.readyState === 1 ? 'CONNECTED' : 'DISCONNECTED',
+                            redis: getRedisClient() ? 'CONNECTED' : 'DISCONNECTED',
+                            workers: workers.length,
+                            version: process.env.npm_package_version || '1.0.0'
+                        }, '🔥 [SYSTEM] Vision Backend Startup Complete');
+                    }).catch(err => {
+                        logger.error({ err: err.message }, '❌ [BOOT] Failed to start AutoSubmit Worker');
+                    });
+                } catch (err) {
+                    logger.error({ err: err.message }, '❌ [BOOT] Worker Initialization Failed');
+                }
             }
-        }
-    });
+        });
 
     } catch (err) {
-        console.error('[BOOT] Fatal Bootstrap Failure:', err.message);
+        logger.error({ err: err.message }, '❌ [BOOT] Fatal Bootstrap Failure');
         process.exit(1);
     }
 }
+
+// 🛰️ [STEP 3/5] Sentry Error Handler (Must be after all controllers but before any other error middleware)
+// v10+ syntax
+Sentry.setupExpressErrorHandler(app);
 
 // ─── GRACEFUL SHUTDOWN (Cleanup Crew) ─────────────────────
 
 const mongoose = require('mongoose');
 
 async function gracefulShutdown(signal) {
-    console.log(`[SHUTDOWN] Received ${signal}. Starting Safe Cleanup...`);
+    logger.info({ signal }, `🛑 [SHUTDOWN] Received ${signal}. Starting Safe Cleanup...`);
     isReady = false; // Immediately fail health checks
 
     const shutdownWithTimeout = (promise, timeout = 10000, name) =>
@@ -1093,32 +1127,32 @@ async function gracefulShutdown(signal) {
         // 1. Stop accepting new HTTP requests
         if (server) {
             await new Promise((resolve) => server.close(resolve));
-            console.log('[SHUTDOWN] HTTP Server offline');
+            logger.info('🏁 [SHUTDOWN] HTTP Server offline');
         }
 
         // 2. Close Workers (allow active jobs to finish or timeout)
-        console.log('[SHUTDOWN] Closing Active Workers...');
+        logger.info('🏗️ [SHUTDOWN] Closing Active Workers...');
         await Promise.all(workers.map((w, i) => 
-            shutdownWithTimeout(w.close(), 15000, `Worker-${i}`).catch(e => console.warn(`⚠️  ${e.message}`))
+            shutdownWithTimeout(w.close(), 15000, `Worker-${i}`).catch(e => logger.warn(`⚠️ [SHUTDOWN] ${e.message}`))
         ));
-        console.log('[SHUTDOWN] Background Processing terminated');
+        logger.info('⏹️ [SHUTDOWN] Background Processing terminated');
 
         // 3. Close Infrastructure Connections
         if (mongoose.connection.readyState === 1) {
             await mongoose.connection.close();
-            console.log('[SHUTDOWN] MongoDB connection closed');
+            logger.info('🗄️ [SHUTDOWN] MongoDB connection closed');
         }
 
         const redisClient = getRedisClient();
         if (redisClient) {
             await redisClient.quit();
-            console.log('[SHUTDOWN] Redis connection closed');
+            logger.info('🔌 [SHUTDOWN] Redis connection closed');
         }
 
-        console.log('[SHUTDOWN] System Clean. Process exiting.');
+        logger.info('✅ [SHUTDOWN] System Clean. Process exiting.');
         process.exit(0);
     } catch (err) {
-        console.error('❌ [SHUTDOWN] Error during cleanup:', err.message);
+        logger.error({ err: err.message }, '❌ [SHUTDOWN] Error during cleanup');
         process.exit(1);
     }
 }
@@ -1129,12 +1163,12 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // 🛡️ Presentation Safety Nets: Prevent server crashes from unhandled errors
 process.on('uncaughtException', (err) => {
-    console.error('[CRITICAL] Uncaught Exception:', err.message);
+    logger.error({ err: err.message, stack: err.stack }, '[CRITICAL] Uncaught Exception');
     // Don't exit, keep the presentation alive!
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-    console.error('[WARNING] Unhandled Promise Rejection:', reason);
+    logger.error({ reason }, '[WARNING] Unhandled Promise Rejection');
     // Log but stay alive
 });
 

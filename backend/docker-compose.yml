@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  # 🚀 Vision Backend API
+  api:
+    build: .
+    ports:
+      - "${PORT:-5001}:5001"
+    env_file: .env
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongo:27017/vision-saas
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - mongo
+      - redis
+    restart: always
+
+  # 🤖 Background Workers (Same image, different entrypoint if needed, or same if single entrypoint)
+  # In our case, server.js starts workers, but for scaling we could separate them.
+  # worker:
+  #   build: .
+  #   env_file: .env
+  #   command: ["node", "src/workers/index.js"] 
+  #   depends_on:
+  #     - mongo
+  #     - redis
+  #   restart: always
+
+  # 🍃 Database
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    restart: always
+
+  # ⚡ Cache & Queues
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    restart: always
+
+volumes:
+  mongodb_data:
+  redis_data:

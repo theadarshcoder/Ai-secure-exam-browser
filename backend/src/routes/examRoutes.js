@@ -8,7 +8,13 @@ const { verifyToken, checkRole } = require('../middlewares/authMiddleware');
 const examController = require('../controllers/examController');
 const telemetryController = require('../controllers/telemetryController');
 const inviteController = require('../controllers/inviteController');
-const { codeExecutionLimiter, telemetryLimiter, importLimiter, autosaveLimiter, secureActionLimiter } = require('../middlewares/rateLimiter');
+const { 
+    telemetryLimiter, 
+    autosaveLimiter, 
+    secureActionLimiter,
+    codeExecutionLimiter,
+    importLimiter
+} = require('../middlewares/rateLimiter');
 const { checkQuota, checkFeature } = require('../middlewares/subscriptionMiddleware');
 
 // ═══════════════════════════════════════════════════════════

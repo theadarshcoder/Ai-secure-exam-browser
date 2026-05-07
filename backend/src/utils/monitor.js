@@ -1,6 +1,8 @@
 const logger = require('./logger');
 const { getRedisClient } = require('../config/redis');
 
+const { updateEventLoopLag } = require('./metrics');
+
 let localEventLoopLag = 0;
 
 const startLagMonitor = () => {
@@ -8,6 +10,10 @@ const startLagMonitor = () => {
     setInterval(() => {
         const now = Date.now();
         localEventLoopLag = Math.max(0, now - start - 1000);
+        
+        // Report to Prometheus
+        updateEventLoopLag(localEventLoopLag);
+
         if (localEventLoopLag > 100) {
             logger.warn({ lag: localEventLoopLag }, '🚨 EVENT LOOP LAG DETECTED');
         }

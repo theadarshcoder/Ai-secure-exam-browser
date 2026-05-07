@@ -16,6 +16,7 @@
   "dependencies": {
     "@codesandbox/sandpack-react": "^2.20.0",
     "@monaco-editor/react": "^4.7.0",
+    "@sentry/react": "^10.52.0",
     "@tailwindcss/vite": "^4.2.1",
     "@vladmandic/face-api": "^1.7.15",
     "axios": "^1.7.9",

@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User'); 
 const cacheService = require('../services/cacheService');
 const NodeCache = require('node-cache');
+const logger = require('../utils/logger');
 
 // 🛡️ Fix 16: L1 In-Memory Cache (5s TTL to absorb thundering herd)
 // 🛡️ Fix 1 (Last-Mile): useClones: false to avoid GC pressure on high churn
@@ -38,7 +39,7 @@ const verifyToken = async (req, res, next) => {
             try {
                 cachedSession = await cacheService.getUserSession(decoded.id);
             } catch (cacheErr) {
-                console.error('🛡️ L2 Cache Service Down:', cacheErr.message);
+                logger.error({ err: cacheErr.message }, '🛡️ L2 Cache Service Down');
             }
 
             if (cachedSession && cachedSession.sessionVersion) {
@@ -158,5 +159,43 @@ const checkPermission = (requiredPermission) => {
     };
 };
 
-module.exports = { verifyToken, checkRole, checkPermission };
+/**
+ * 🔐 [STEP 5] Require Fresh Authentication
+ * Ensures that the user has verified their identity recently (within 15 mins)
+ * used for high-risk admin actions (billing, deletion, admin creation).
+ */
+const requireFreshAuth = async (req, res, next) => {
+    const freshToken = req.headers['x-fresh-auth'];
+
+    if (!freshToken) {
+        return res.status(403).json({
+            success: false,
+            error: {
+                code: 'FRESH_AUTH_REQUIRED',
+                message: 'This action requires recent password verification. Please re-authenticate.'
+            }
+        });
+    }
+
+    try {
+        const decoded = jwt.verify(freshToken, process.env.JWT_SECRET);
+        
+        // Ensure fresh token belongs to same user and is indeed a 'fresh' type
+        if (decoded.id !== req.user.id || decoded.type !== 'fresh_auth') {
+            throw new Error('INVALID_FRESH_TOKEN');
+        }
+
+        next();
+    } catch (err) {
+        return res.status(403).json({
+            success: false,
+            error: {
+                code: 'FRESH_AUTH_INVALID',
+                message: 'Recent authentication session expired or is invalid.'
+            }
+        });
+    }
+};
+
+module.exports = { verifyToken, checkRole, checkPermission, requireFreshAuth };
 

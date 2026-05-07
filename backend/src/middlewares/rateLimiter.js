@@ -1,185 +1,105 @@
-const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
+const { rateLimit } = require('express-rate-limit');
 const { RedisStore } = require('rate-limit-redis');
 const { getRedisClient } = require('../config/redis');
+const logger = require('../utils/logger');
 
-// ⚡ SHARED STORE HELPER: Cluster-Safe Rate Limiting
-const createRedisStore = (label) => {
-    const client = getRedisClient();
-    if (!client) {
-        console.warn(`⚠️  [SCALING] Redis not ready. Using In-Memory fallback for ${label} rate limiter.`);
-        return undefined; 
-    }
-    return new RedisStore({
-        sendCommand: (...args) => client.call(...args),
-        prefix: `vision_rl:${label}:`,
+/**
+ * 🛰️ Advanced Redis-Backed Rate Limiting
+ * Standardizes API limits across different categories to prevent brute-force and DoS.
+ */
+
+const createLimiter = (options) => {
+    const redisClient = getRedisClient();
+    
+    return rateLimit({
+        windowMs: options.windowMs || 15 * 60 * 1000, // Default 15 mins
+        max: options.max || 100, // Default 100 requests per window
+        standardHeaders: true,
+        legacyHeaders: false,
+        store: redisClient ? new RedisStore({
+            sendCommand: (...args) => redisClient.sendCommand(args),
+            prefix: `rate-limit:${options.category}:`
+        }) : undefined, // Fallback to memory if Redis is down
+        handler: (req, res) => {
+            logger.warn({ 
+                ip: req.ip, 
+                category: options.category, 
+                path: req.originalUrl 
+            }, `🚫 Rate limit exceeded [${options.category}]`);
+            
+            res.status(429).json({
+                success: false,
+                error: {
+                    code: 'RATE_LIMIT_EXCEEDED',
+                    message: options.message || 'Too many requests, please try again later.'
+                }
+            });
+        },
+        keyGenerator: (req) => {
+            return req.user ? req.user.id : req.ip;
+        },
+        validate: { keyGeneratorIpFallback: false }
     });
 };
 
-// ⚡ COMBINED KEY GENERATOR: Fix for shared networks (Hostels/Colleges)
-// Combines IP with a unique identifier (userId, email, or session) to prevent 
-// one student's actions from rate-limiting the entire network.
-const combinedKeyGenerator = (req, res) => {
-    const ip = ipKeyGenerator(req, res);
-    let identifier = req.user?.id || req.body?.studentId || req.params?.id || 'anon';
-    
-    // 🛡️ Normalize email before using as rate limit key
-    if (req.body?.email) {
-        identifier = req.body.email.trim().toLowerCase();
-    }
-    
-    return `${ip}_${identifier}`;
-};
-
-/**
- * 🛡️ Code Execution Rate Limiter
- * Specifically designed to protect Judge0 API from exhaustion.
- * Students: 1 per 10s | Mentors/Admins: 10 per 10s
- */
-const codeExecutionLimiter = rateLimit({
-    windowMs: 10 * 1000, 
-    max: (req) => {
-        if (req.user?.role === 'admin' || req.user?.role === 'super_mentor') return 100;
-        if (req.user?.role === 'mentor') return 20;
-        return 5; // Default for students (Increased for faster testing)
-    },
-    store: createRedisStore('code_exec'),
-    standardHeaders: true,
-    legacyHeaders: false,
-    keyGenerator: combinedKeyGenerator,
-    message: {
-        allPassed: false,
-        error: 'Cooldown Active',
-        details: 'Please wait between code executions to maintain system stability.',
-        isRawExecution: true
-    }
+// 🔐 Auth Limiter (Strict: prevents brute-force)
+exports.authLimiter = createLimiter({
+    category: 'auth',
+    windowMs: 15 * 60 * 1000, // 15 mins
+    max: 15, // 15 attempts
+    message: 'Too many login attempts. Please try again in 15 minutes.'
 });
 
-/**
- * 🛡️ Telemetry Limiter
- * Students: 20 per min | Mentors: 100 per min
- */
-const telemetryLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    max: (req) => {
-        if (req.user?.role === 'admin' || req.user?.role === 'super_mentor') return 500;
-        return 20;
-    },
-    store: createRedisStore('telemetry'),
-    standardHeaders: true,
-    legacyHeaders: false,
-    keyGenerator: combinedKeyGenerator,
-    message: {
-        success: false,
-        message: 'Telemetry rate limit exceeded.'
-    }
-});
-
-/**
- * 🔗 External Import Rate Limiter
- */
-const importLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    max: (req) => (req.user?.role === 'admin' ? 50 : 5),
-    store: createRedisStore('import'),
-    standardHeaders: true,
-    legacyHeaders: false,
-    keyGenerator: combinedKeyGenerator,
-    message: {
-        success: false,
-        error: "Too many import requests."
-    }
-});
-
-/**
- * 💾 Autosave Rate Limiter
- */
-const autosaveLimiter = rateLimit({
-    windowMs: 30 * 1000,
-    max: (req) => (req.user?.role === 'admin' ? 200 : 100),
-    store: createRedisStore('autosave'),
-    standardHeaders: true,
-    legacyHeaders: false,
-    keyGenerator: combinedKeyGenerator,
-    message: 'Too many autosave requests.'
-});
-
-/**
- * 🛡️ Secure Action Rate Limiter
- * Specifically for security-sensitive operations like starting/submitting exams
- * and heartbeats.
- */
-const secureActionLimiter = rateLimit({
-    windowMs: 60 * 1000, // 1 minute
-    max: (req) => {
-        if (req.path.includes('heartbeat')) return 50; // Very safe
-        return 50; // Start/Submit should be rare but allowed
-    },
-    store: createRedisStore('secure_action'),
-    standardHeaders: true,
-    legacyHeaders: false,
-    keyGenerator: combinedKeyGenerator,
-    message: {
-        success: false,
-        error: "Too many security-sensitive requests. Please slow down."
-    }
-});
-
-/**
- * 📧 Invite Verification Limiter
- */
-const inviteVerifyLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 20, // 20 attempts
-    store: createRedisStore('invite_verify'),
-    standardHeaders: true,
-    legacyHeaders: false,
-    keyGenerator: combinedKeyGenerator,
-    message: {
-        success: false,
-        error: "Too many verification attempts. Please try again later."
-    }
-});
-
-/**
- * 🏢 Demo Request Limiter
- * Specifically for public SaaS demo requests to prevent spam.
- */
-const demoRequestLimiter = rateLimit({
+// 💳 Billing & Payment Limiter
+exports.billingLimiter = createLimiter({
+    category: 'billing',
     windowMs: 60 * 60 * 1000, // 1 hour
-    max: 50, // Increased for testing (was 5)
-    store: createRedisStore('demo_request_ip'),
-    standardHeaders: true,
-    legacyHeaders: false,
-    keyGenerator: ipKeyGenerator,
-    message: {
-        success: false,
-        error: "Too many requests from this IP. Please try again later."
-    }
+    max: 20, 
+    message: 'Payment action limit reached. Please contact support if this is an error.'
 });
 
-const demoEmailLimiter = rateLimit({
+// 🤖 AI Generation Limiter
+exports.aiLimiter = createLimiter({
+    category: 'ai',
     windowMs: 60 * 60 * 1000, // 1 hour
-    max: 20, // Increased for testing (was 3)
-    store: createRedisStore('demo_request_email'),
-    standardHeaders: true,
-    legacyHeaders: false,
-    keyGenerator: (req, res) => {
-        const ip = ipKeyGenerator(req, res);
-        return req.body?.email ? `${ip}_${req.body.email.trim().toLowerCase()}` : ip;
-    },
-    message: {
-        success: false,
-        error: "Too many requests for this email address. Please try again later."
-    }
+    max: 50,
+    message: 'AI usage limit reached for this hour.'
 });
 
-module.exports = { 
-    codeExecutionLimiter, 
-    telemetryLimiter, 
-    importLimiter, 
-    autosaveLimiter,
-    secureActionLimiter,
-    inviteVerifyLimiter,
-    demoRequestLimiter,
-    demoEmailLimiter
-};
+// 📁 Upload Limiter
+exports.uploadLimiter = createLimiter({
+    category: 'upload',
+    windowMs: 30 * 60 * 1000, // 30 mins
+    max: 30,
+    message: 'Upload limit exceeded. Please wait before uploading more files.'
+});
+
+// 🩺 Public API Limiter
+exports.publicLimiter = createLimiter({
+    category: 'public',
+    windowMs: 15 * 60 * 1000,
+    max: 100
+});
+
+// 📧 Invite Verification Limiter
+exports.inviteVerifyLimiter = createLimiter({
+    category: 'invite-verify',
+    windowMs: 10 * 60 * 1000, // 10 mins
+    max: 10 // Only 10 attempts to verify an invite
+});
+
+// ⚡ Global Standard Limiter
+exports.globalLimiter = createLimiter({
+    category: 'global',
+    windowMs: 1 * 60 * 1000, // 1 min
+    max: 120 // 2 requests per second avg
+});
+
+// 🔗 Legacy Aliases for Backward Compatibility
+exports.telemetryLimiter = exports.publicLimiter;
+exports.autosaveLimiter = exports.globalLimiter;
+exports.secureActionLimiter = exports.authLimiter;
+exports.codeExecutionLimiter = exports.publicLimiter;
+exports.importLimiter = exports.publicLimiter;
+exports.demoRequestLimiter = exports.publicLimiter;
+exports.demoEmailLimiter = exports.publicLimiter;
