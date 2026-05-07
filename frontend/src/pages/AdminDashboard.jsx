@@ -9,7 +9,7 @@ import {
   Search, FileUp, UserPlus, Trash2, Eye,
   ShieldCheck, Activity, AlertOctagon,
   ChevronRight, LogOut, Bell, RefreshCw, Edit3,
-  BarChart3, Download, Clock, Check, X, Star, CheckCircle, AlertCircle, Plus, ScanFace, Radio, ShieldAlert, User, EyeOff, MessageCircle, AlertTriangle, OctagonX, TrendingUp, Sparkles, Inbox, ChevronDown, CreditCard
+  BarChart3, Download, Clock, Check, X, Star, CheckCircle, AlertCircle, Plus, ScanFace, Radio, ShieldAlert, User, EyeOff, MessageCircle, AlertTriangle, OctagonX, TrendingUp, Sparkles, Inbox, ChevronDown, CreditCard, Info
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import PremiumSidebar from '../components/PremiumSidebar';
