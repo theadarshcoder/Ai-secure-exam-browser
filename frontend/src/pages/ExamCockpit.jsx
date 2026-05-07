@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import socketService from "../services/socket";
@@ -7,7 +7,8 @@ import api, {
   requestHelp,
   getSettings,
 } from "../services/api";
-import Editor, { loader } from "@monaco-editor/react";
+import { loader } from "@monaco-editor/react";
+const Editor = lazy(() => import("@monaco-editor/react"));
 import {
   CameraOff,
   Clock,
@@ -585,42 +586,49 @@ const CodingEnvironment = React.memo(
               </div>
             </div>
             <div className="flex-1 relative overflow-hidden bg-surface shadow-inner">
-              <Editor
-                height="100%"
-                language={selectedLanguage === "cpp" ? "cpp" : selectedLanguage}
-                theme="vs-dark"
-                loading={
-                  <div className="flex flex-col items-center justify-center gap-4 text-muted">
-                    <Loader2 className="animate-spin text-[#1e2235]" size={32} />
-                    <span className="text-[11px] font-black uppercase tracking-widest opacity-50">Initializing Secure Editor...</span>
-                  </div>
-                }
-                value={
-                  typeof answer === "object"
-                    ? answer.code
-                    : (answer ?? question?.initialCode)
-                }
-                onChange={onCodeChange}
-                options={{
-                  fontSize: 13,
-                  minimap: { enabled: false },
-                  automaticLayout: true,
-                  padding: { top: 16 },
-                  hover: { enabled: false },
-                  lightbulb: { enabled: false },
-                  codeLens: false,
-                  renderValidationDecorations: "off",
-                  quickSuggestions: false,
-                  contextmenu: false,
-                  scrollBeyondLastLine: false,
-                  lineNumbersMinChars: 3,
-                  unicodeHighlight: {
-                    ambiguousCharacters: false,
-                    invisibleCharacters: false,
-                    nonBasicASCII: false,
-                  },
-                }}
-              />
+              <Suspense fallback={
+                <div className="flex flex-col items-center justify-center h-full gap-4 text-muted">
+                  <Loader2 className="animate-spin text-[#1e2235]" size={32} />
+                  <span className="text-[11px] font-black uppercase tracking-widest opacity-50">Loading Editor Assets...</span>
+                </div>
+              }>
+                <Editor
+                  height="100%"
+                  language={selectedLanguage === "cpp" ? "cpp" : selectedLanguage}
+                  theme="vs-dark"
+                  loading={
+                    <div className="flex flex-col items-center justify-center gap-4 text-muted">
+                      <Loader2 className="animate-spin text-[#1e2235]" size={32} />
+                      <span className="text-[11px] font-black uppercase tracking-widest opacity-50">Initializing Secure Editor...</span>
+                    </div>
+                  }
+                  value={
+                    typeof answer === "object"
+                      ? answer.code
+                      : (answer ?? question?.initialCode)
+                  }
+                  onChange={onCodeChange}
+                  options={{
+                    fontSize: 13,
+                    minimap: { enabled: false },
+                    automaticLayout: true,
+                    padding: { top: 16 },
+                    hover: { enabled: false },
+                    lightbulb: { enabled: false },
+                    codeLens: false,
+                    renderValidationDecorations: "off",
+                    quickSuggestions: false,
+                    contextmenu: false,
+                    scrollBeyondLastLine: false,
+                    lineNumbersMinChars: 3,
+                    unicodeHighlight: {
+                      ambiguousCharacters: false,
+                      invisibleCharacters: false,
+                      nonBasicASCII: false,
+                    },
+                  }}
+                />
+              </Suspense>
             </div>
           </div>
           <div
@@ -1782,6 +1790,12 @@ const { examId } = useParams();
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
+      
+      // 🛡️ Memory Cleanup: Dispose TensorFlow tensors to prevent leaks
+      if (window.tf && typeof window.tf.disposeVariables === 'function') {
+        console.log("🧹 AI: Disposing engine variables...");
+        window.tf.disposeVariables();
+      }
     };
   }, []);
 
@@ -2412,11 +2426,10 @@ const { examId } = useParams();
     setTimeout(() => setIsInitializing(false), 2000);
     
     try {
-      // 1. Enter Fullscreen (The mandatory first step)
+      // 🚀 Step 1: Fullscreen Request (Mandatory UI Anchor)
       if (exam?.settings?.forceFullscreen !== false) {
         await document.documentElement.requestFullscreen();
         
-        // 🛡️ Await actual fullscreen confirmation from the browser
         await new Promise((resolve) => {
           const handler = () => {
             if (document.fullscreenElement) {
@@ -2425,42 +2438,47 @@ const { examId } = useParams();
             }
           };
           document.addEventListener("fullscreenchange", handler);
-          // Safety timeout
           setTimeout(resolve, 2000);
         });
         setIsFullscreen(true);
       }
 
-      // 2. Start Camera (Only after UI is stable in fullscreen)
+      // 🚀 Step 2: Camera Activation
       if (exam?.settings?.enableWebcam !== false) {
         await initCamera();
       }
 
-      // 3. Clear interaction overlay
+      // 🚀 Step 3: UI Stabilization
       setNeedsInteraction(false);
       
-      // 4. Initialization timer is already running (started at top of handleSecureEntry)
-
-      // 5. Defer AI Model Loading (Yield thread first)
-      if (!aiModel) setIsAIInitializing(true);
-      setTimeout(async () => {
-        if (!window.cocoSsd || aiModel) {
-          setIsAIInitializing(false);
-          return;
-        }
-        try {
-          // Yield to let UI breathe
-          await new Promise(r => setTimeout(r, 100)); 
-          const model = await window.cocoSsd.load();
-          setAiModel(model);
-          setModelsLoaded(true);
-          console.log("🚀 AI: Background Engine Activated");
-        } catch (err) {
-          console.error("AI load failed", err);
-        } finally {
-          setIsAIInitializing(false);
-        }
-      }, 8000); // 🚀 Fix: Defer AI by 8s to let Editor load first
+      // 🚀 Step 4: AI Model Initialization (Staged & Singleton-Aware)
+      const engine = window.__VISION_AI_ENGINE__;
+      
+      if (engine?.isReady && engine.model) {
+        console.log("🚀 Cockpit: Using pre-warmed AI Engine singleton");
+        setAiModel(engine.model);
+        setModelsLoaded(true);
+        setIsAIInitializing(false);
+      } else {
+        // Fallback for non-pre-warmed sessions
+        setIsAIInitializing(true);
+        setTimeout(async () => {
+          if (!window.cocoSsd || aiModel) {
+            setIsAIInitializing(false);
+            return;
+          }
+          try {
+            await new Promise(r => setTimeout(r, 500)); // Brief yield
+            const model = await window.cocoSsd.load();
+            setAiModel(model);
+            setModelsLoaded(true);
+          } catch (err) {
+            console.error("AI load failed", err);
+          } finally {
+            setIsAIInitializing(false);
+          }
+        }, 1500); // Drastically reduced delay
+      }
 
     } catch (err) {
       console.error("Secure entry failed:", err);

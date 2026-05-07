@@ -11,6 +11,7 @@ import Navbar from '../components/Navbar';
 import BouncingDotLoader from '../components/BouncingDotLoader';
 import api, { getSettings } from '../services/api';
 import ModernAlert from '../components/ModernAlert';
+import preloadService from '../services/preloadService';
 
 /* ─────────────── Sub-components ─────────────── */
 
@@ -159,6 +160,7 @@ export default function ExamWaitingRoom() {
   const [exitPassword,   setExitPassword]   = useState('');
   const [settings,       setSettings]       = useState(null);
   const [aiReady,        setAiReady]        = useState(false);
+  const [cocoReady,      setCocoReady]      = useState(false);
   const [alertConfig,    setAlertConfig]    = useState({ isOpen: false, title: '', message: '', type: 'info' });
   const [isSecure,       setIsSecure]       = useState(true);
 
@@ -169,9 +171,12 @@ export default function ExamWaitingRoom() {
 
     const preLoadModels = async () => {
       try {
-        await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/');
-        setAiReady(true);
-      } catch (err) { console.warn('AI pre-load failed'); }
+        // Parallel load both models
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/').then(() => setAiReady(true)),
+          preloadService.preloadAIModels().then(() => setCocoReady(true))
+        ]);
+      } catch (err) { console.warn('AI pre-load failed', err); }
     };
 
     const fetchExam = async () => {
@@ -258,9 +263,9 @@ export default function ExamWaitingRoom() {
             {/* Meta chips + AI status */}
             <div className="flex flex-wrap items-center gap-2 mb-2">
               <ExamMeta exam={exam} />
-              <div className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border shadow-sm ${aiReady ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-amber-50 border-amber-100 text-amber-700'}`}>
-                <div className={`w-1.5 h-1.5 rounded-full ${aiReady ? 'bg-emerald-500' : 'bg-amber-400 animate-pulse'}`} />
-                <span className="text-[12px] font-semibold tracking-wide">{aiReady ? 'Systems Ready' : 'Calibrating AI…'}</span>
+              <div className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border shadow-sm ${(aiReady && cocoReady) ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-amber-50 border-amber-100 text-amber-700'}`}>
+                <div className={`w-1.5 h-1.5 rounded-full ${(aiReady && cocoReady) ? 'bg-emerald-500' : 'bg-amber-400 animate-pulse'}`} />
+                <span className="text-[12px] font-semibold tracking-wide">{(aiReady && cocoReady) ? 'Systems Ready' : !aiReady ? 'Calibrating Biometrics…' : 'Syncing Proctors…'}</span>
               </div>
             </div>
           </div>

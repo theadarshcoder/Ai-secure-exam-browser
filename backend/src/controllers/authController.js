@@ -205,7 +205,12 @@ exports.login = asyncHandler(async (req, res) => {
 
     // ⚡ SYNC TO CACHE: Redis stores sessionVersion (not token) for lightweight validation
     try {
-        await cacheService.saveUserSession(user._id, user.sessionVersion, user.permissions);
+        await cacheService.saveUserSession(user._id, {
+            sessionVersion: user.sessionVersion,
+            permissions: user.permissions || [],
+            role: user.role,
+            institutionId: user.institutionId
+        });
     } catch (cacheErr) {
         console.warn('🛡️ Cache sync failed during login (Redis down):', cacheErr.message);
     }

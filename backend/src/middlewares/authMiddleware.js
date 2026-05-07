@@ -19,7 +19,7 @@ const verifyToken = async (req, res, next) => {
         const cachedL1 = l1Cache.get(l1Key);
 
         if (cachedL1 && (!decoded.sessionVersion || cachedL1.sessionVersion === decoded.sessionVersion)) {
-            req.user = { ...decoded, permissions: cachedL1.permissions };
+            req.user = { id: decoded.id, ...cachedL1 };
             return next();
         }
 
@@ -27,7 +27,7 @@ const verifyToken = async (req, res, next) => {
         if (inFlightRequests.has(l1Key)) {
             const result = await inFlightRequests.get(l1Key);
             if (!decoded.sessionVersion || result.sessionVersion === decoded.sessionVersion) {
-                req.user = { ...decoded, permissions: result.permissions };
+                req.user = { id: decoded.id, ...result };
                 return next();
             }
         }

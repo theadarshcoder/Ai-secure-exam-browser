@@ -325,7 +325,7 @@ exports.verifyInvite = asyncHandler(async (req, res) => {
     // Hash the token to find the invite
     const tokenH = hashToken(token);
     const invite = await ExamInvite.findOne({ tokenHash: tokenH })
-        .populate('student', '_id name email role')
+        .populate('student', '_id name email role institutionId')
         .populate('exam', '_id title');
 
     if (!invite) {
@@ -388,6 +388,7 @@ exports.verifyInvite = asyncHandler(async (req, res) => {
             id: user._id, 
             email: user.email, 
             role: user.role, 
+            institutionId: user.institutionId,
             sessionVersion: user.sessionVersion 
         },
         process.env.JWT_SECRET,
@@ -399,7 +400,12 @@ exports.verifyInvite = asyncHandler(async (req, res) => {
 
     // ⚡ SYNC TO CACHE (sessionVersion, not token)
     try {
-        await cacheService.saveUserSession(user._id, user.sessionVersion, user.permissions || []);
+        await cacheService.saveUserSession(user._id, {
+            sessionVersion: user.sessionVersion,
+            permissions: user.permissions || [],
+            role: user.role,
+            institutionId: user.institutionId
+        });
     } catch (cacheErr) {
         console.warn('🛡️ Cache sync failed during invite (Redis down):', cacheErr.message);
     }

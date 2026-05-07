@@ -11,6 +11,7 @@ import {
   ChevronRight, Hash, Info, UserCircle, Activity, ClipboardList, LogOut, X, Power
 } from 'lucide-react';
 import { loader } from "@monaco-editor/react";
+import preloadService from '../services/preloadService';
 
 // 🚀 Targeted Pre-warm: Start loading Monaco background workers when student hits dashboard
 loader.config({
@@ -319,6 +320,9 @@ export default function StudentDashboard() {
         if (res) setSettings(res);
       }).catch(err => console.error("Failed to load settings", err));
     }
+
+    // 🚀 Start early pre-warming of AI models and Monaco workers
+    preloadService.prewarmAll();
 
     return () => {
       document.body.style.overflow = 'auto';
