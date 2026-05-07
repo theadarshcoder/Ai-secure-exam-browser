@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const ExamSession = require('../models/ExamSession');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { asyncHandler } = require('../middlewares/errorMiddleware');
 const cacheService = require('../services/cacheService');
 const AppError = require('../utils/AppError');
@@ -320,4 +321,44 @@ exports.refresh = asyncHandler(async (req, res) => {
         console.warn(`🚫 [Auth] Refresh failed: ${error.message}`);
         throw new AppError(error.message || 'Refresh Token validation failed', 403);
     }
+});
+// ─── POST /api/auth/set-password ─────────────────────────
+exports.setPassword = asyncHandler(async (req, res) => {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+        throw new AppError('Token and password are required!', 400);
+    }
+
+    if (password.length < 8) {
+        throw new AppError('Password must be at least 8 characters long.', 400);
+    }
+
+    // 1. Hash incoming token
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+    // 2. Find user with valid token
+    const user = await User.findOne({
+        passwordSetupToken: tokenHash,
+        passwordSetupExpires: { $gt: new Date() }
+    }).select('+passwordSetupToken');
+
+    if (!user) {
+        throw new AppError('Invalid or expired setup link. Please request a new one.', 400);
+    }
+
+    // 3. Set password and activate account
+    user.password = password;
+    user.status = 'active';
+    user.passwordSetupToken = undefined;
+    user.passwordSetupExpires = undefined;
+    
+    await user.save();
+
+    console.log(`✅ [ONBOARDING] Admin ${user.email} successfully set their password.`);
+
+    res.json({
+        success: true,
+        message: 'Password set successfully! You can now login.'
+    });
 });

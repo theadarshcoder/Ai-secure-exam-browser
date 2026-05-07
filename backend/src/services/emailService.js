@@ -205,10 +205,93 @@ const sendPasswordResetEmail = async ({ to, name, institutionName, password }) =
     });
 };
 
+const sendVerificationEmail = async ({ to, name, otp }) => {
+    const htmlContent = `
+        <div style="padding: 24px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; max-width: 600px; margin: 0 auto;">
+            <div style="text-align: center; margin-bottom: 24px;">
+                <h1 style="color: #10b981; margin: 0; font-size: 24px;">Verify Your Request 🚀</h1>
+                <p style="color: #6b7280; margin-top: 8px;">Just one more step to join Vision.</p>
+            </div>
+            
+            <div style="background-color: #f9fafb; padding: 20px; border-radius: 12px; margin-bottom: 24px;">
+                <p style="margin: 0 0 12px 0;">Hi <strong>${name}</strong>,</p>
+                <p style="margin: 0; line-height: 1.6;">We received a request to access the Vision Exam Platform for your institution. To ensure this request is valid, please use the verification code below.</p>
+            </div>
+
+            <div style="text-align: center; margin-bottom: 24px;">
+                <div style="display: inline-block; background-color: #f3f4f6; color: #111827; padding: 16px 32px; border-radius: 12px; font-size: 32px; font-weight: bold; letter-spacing: 8px; border: 2px solid #e5e7eb;">
+                    ${otp}
+                </div>
+            </div>
+
+            <div style="padding: 16px; background-color: #fffbeb; border: 1px solid #fef3c7; border-radius: 12px; margin-bottom: 24px;">
+                <p style="margin: 0; font-size: 13px; color: #92400e; text-align: center;">
+                    <strong>Note:</strong> This code will expire in <strong>10 minutes</strong>.
+                </p>
+            </div>
+
+            <div style="font-size: 13px; color: #6b7280; line-height: 1.5;">
+                <p style="margin-bottom: 8px;">If you did not make this request, you can safely ignore this email. No institution will be created without verification.</p>
+                <p>For support, contact us at <a href="mailto:support@vision.edu" style="color: #10b981; text-decoration: none;">support@vision.edu</a></p>
+            </div>
+
+            <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #f3f4f6; font-size: 12px; color: #9ca3af; text-align: center;">
+                <p>&copy; ${new Date().getFullYear()} Vision Exam Platform. Built for Excellence.</p>
+            </div>
+        </div>`;
+
+    return await sendBrevoEmail({
+        to,
+        subject: `${otp} is your Vision verification code`,
+        htmlContent,
+        senderName: "Vision Verification"
+    });
+};
+
+const sendPasswordSetupEmail = async ({ to, name, institutionName, setupLink }) => {
+    const htmlContent = `
+        <div style="padding: 24px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; max-width: 600px; margin: 0 auto;">
+            <div style="text-align: center; margin-bottom: 24px;">
+                <h1 style="color: #10b981; margin: 0; font-size: 24px;">Your Trial is Ready! 🎉</h1>
+                <p style="color: #6b7280; margin-top: 8px;">Welcome to the Vision Exam Platform.</p>
+            </div>
+            
+            <div style="background-color: #f9fafb; padding: 20px; border-radius: 12px; margin-bottom: 24px;">
+                <p style="margin: 0 0 12px 0;">Hi <strong>${name}</strong>,</p>
+                <p style="margin: 0; line-height: 1.6;">Congratulations! Your trial workspace for <strong>${institutionName}</strong> has been provisioned. To get started, please set your administrator password.</p>
+            </div>
+
+            <div style="text-align: center; margin-bottom: 24px;">
+                <a href="${setupLink}" style="display: inline-block; background-color: #10b981; color: #ffffff; padding: 14px 40px; border-radius: 12px; text-decoration: none; font-weight: bold; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);">Complete Your Setup</a>
+            </div>
+
+            <div style="padding: 16px; border: 1px dashed #10b981; border-radius: 12px; margin-bottom: 24px;">
+                <h3 style="margin-top: 0; font-size: 14px; color: #059669; text-transform: uppercase; letter-spacing: 0.05em;">Trial Plan Details</h3>
+                <p style="margin: 8px 0; font-size: 14px;">• Duration: <strong>7 Days</strong></p>
+                <p style="margin: 8px 0; font-size: 14px;">• Student Limit: <strong>50</strong></p>
+                <p style="margin: 8px 0; font-size: 14px;">• Exam Limit: <strong>2</strong></p>
+            </div>
+
+            <div style="font-size: 13px; color: #6b7280; line-height: 1.5; text-align: center;">
+                <p>If you have any questions, our support team is here to help.</p>
+                <p>&copy; ${new Date().getFullYear()} Vision Exam Platform. Built for Excellence.</p>
+            </div>
+        </div>`;
+
+    return await sendBrevoEmail({
+        to,
+        subject: `Welcome to Vision! Complete Your Setup for ${institutionName}`,
+        htmlContent,
+        senderName: "Vision Onboarding"
+    });
+};
+
 module.exports = {
     sendInviteEmail,
     sendSubscriptionNotification,
     sendDemoRequestNotification,
     sendAccessApprovedEmail,
-    sendPasswordResetEmail
+    sendPasswordResetEmail,
+    sendVerificationEmail,
+    sendPasswordSetupEmail
 };

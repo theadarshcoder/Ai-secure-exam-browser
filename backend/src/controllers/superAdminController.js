@@ -187,27 +187,72 @@ exports.getInstitutionDetails = asyncHandler(async (req, res) => {
 });
 
 /**
- * ⚖️ Toggle institution status (Suspend/Activate)
+ * ⚖️ Advanced Institution Status Management
+ * Super Admin manually overrides institution lifecycle state
  */
-exports.toggleInstitutionStatus = asyncHandler(async (req, res) => {
+exports.updateInstitutionStatus = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, reason } = req.body;
     
-    if (!['active', 'suspended'].includes(status)) throw new Error('Invalid status');
+    const validStatuses = [
+        'active', 
+        'suspended', 
+        'maintenance', 
+        'trial_expired', 
+        'payment_failed', 
+        'grace_period'
+    ];
 
-    const institution = await Institution.findByIdAndUpdate(id, { status }, { new: true });
-    if (!institution) throw new Error('Institution not found');
+    if (!validStatuses.includes(status)) {
+        res.status(400);
+        throw new Error(`Invalid status. Allowed: ${validStatuses.join(', ')}`);
+    }
+
+    const institution = await Institution.findById(id);
+    if (!institution) {
+        res.status(404);
+        throw new Error('Institution not found');
+    }
+
+    const oldStatus = institution.status;
+    institution.status = status;
+    institution.statusUpdatedAt = new Date();
+
+    if (status === 'suspended') {
+        institution.suspendedAt = new Date();
+        institution.suspendedBy = req.user.id;
+        institution.suspensionReason = reason || 'Manual suspension by Super Admin';
+    } else {
+        // Reset suspension metadata if reactivated
+        institution.suspendedAt = undefined;
+        institution.suspendedBy = undefined;
+        institution.suspensionReason = undefined;
+    }
+
+    await institution.save();
+
+    // ⚡ CRITICAL: Clear cache so middleware picks up new status immediately
+    const cacheService = require('../services/cacheService');
+    await cacheService.deleteCache(`inst_access:${id}`);
 
     // Audit Log
     await AuditLog.create({
         performedBy: req.user.id,
-        action: status === 'suspended' ? 'SUSPEND_INSTITUTION' : 'ACTIVATE_INSTITUTION',
-        severity: status === 'suspended' ? 'critical' : 'info',
+        action: `INSTITUTION_STATUS_CHANGE`,
+        severity: (status === 'suspended' || status === 'trial_expired') ? 'critical' : 'info',
         institutionId: id,
-        actorRole: 'super_admin'
+        actorRole: 'super_admin',
+        details: { 
+            oldStatus, 
+            newStatus: status, 
+            reason: reason || 'Status updated by system administrator' 
+        }
     });
 
-    res.json({ message: `Institution status updated to ${status}`, institution });
+    res.json({ 
+        message: `Institution status updated from ${oldStatus} to ${status}`, 
+        institution 
+    });
 });
 
 /**
@@ -328,4 +373,42 @@ exports.addInstitutionAdmin = asyncHandler(async (req, res) => {
     });
 
     res.json({ message: 'Admin added successfully', adminId: newAdmin._id, tempPassword: randomPassword });
+});
+
+/**
+ * 📊 Update Institution Usage Limits (Upgrade License)
+ */
+exports.updateInstitutionLimits = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { maxStudents, maxMentors, plan } = req.body;
+
+    const institution = await Institution.findById(id);
+    if (!institution) {
+        res.status(404);
+        throw new Error('Institution not found');
+    }
+
+    const oldLimits = { 
+        maxStudents: institution.maxStudents, 
+        maxMentors: institution.maxMentors, 
+        plan: institution.plan 
+    };
+
+    if (maxStudents) institution.maxStudents = maxStudents;
+    if (maxMentors) institution.maxMentors = maxMentors;
+    if (plan) institution.plan = plan;
+
+    await institution.save();
+
+    // Audit Log
+    await AuditLog.create({
+        performedBy: req.user.id,
+        action: 'UPDATE_INSTITUTION_LIMITS',
+        severity: 'warning',
+        institutionId: id,
+        actorRole: 'super_admin',
+        details: { oldLimits, newLimits: { maxStudents, maxMentors, plan } }
+    });
+
+    res.json({ message: 'Institution limits updated successfully', institution });
 });

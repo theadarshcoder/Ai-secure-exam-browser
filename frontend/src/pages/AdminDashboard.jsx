@@ -461,6 +461,7 @@ export default function AdminDashboard() {
   // App States
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({ totalStudents: 0, activeExams: 0, systemHealth: '100%', totalViolations: 0 });
+  const [subscription, setSubscription] = useState(null);
   const [auditLogs, setAuditLogs] = useState([]);
   const [helpRequests, setHelpRequests] = useState([]);
   const [notifications, setNotifications] = useState([]);
@@ -652,6 +653,7 @@ export default function AdminDashboard() {
                   systemHealth: '100%',
                   totalViolations: res.flaggedSessions || 0
               });
+              setSubscription(res.subscription || null);
               setAuditLogs(logsRes || []);
               setStudents(studentsRes?.students || studentsRes || []);
           } else if (tab === 'Users') {
@@ -1037,10 +1039,18 @@ export default function AdminDashboard() {
 
   // ────────── Tab Views ──────────
 
+  const getTrialDaysRemaining = () => {
+    if (!subscription?.trialEndsAt) return 0;
+    const end = new Date(subscription.trialEndsAt);
+    const now = new Date();
+    const diff = end - now;
+    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  };
+
   const STAT_CARDS = [
-     { label: 'Total Students', value: stats.totalStudents, icon: Users },
-     { label: 'Active Live Exams', value: stats.activeExams, icon: FileText },
-     { label: 'System Health', value: stats.systemHealth, icon: ShieldCheck },
+     { label: 'Total Students', value: `${stats.totalStudents} / 50`, icon: Users, sub: 'Trial limit' },
+     { label: 'Created Exams', value: `${stats.totalExams || 0} / 5`, icon: FileText, sub: 'Trial limit' },
+     { label: 'Trial Mode', value: `${getTrialDaysRemaining()} Days`, icon: Clock, sub: 'Premium trial' },
      { label: 'Total Violations', value: stats.totalViolations, icon: AlertOctagon },
   ];
 
@@ -1052,6 +1062,10 @@ export default function AdminDashboard() {
             <div className="relative z-10 flex flex-col">
               <p className="text-[13px] font-medium text-muted mb-2">{stat.label}</p>
               <h3 className="text-3xl font-bold text-primary tracking-tight leading-none">{stat.value}</h3>
+              {stat.sub && <p className="text-[10px] font-bold text-primary-500 uppercase tracking-widest mt-3">{stat.sub}</p>}
+            </div>
+            <div className="absolute top-1/2 -translate-y-1/2 right-[-10px] opacity-[0.03] group-hover:opacity-[0.08] transition-opacity">
+              <stat.icon size={80} strokeWidth={1} />
             </div>
           </div>
         ))}
@@ -1607,6 +1621,53 @@ export default function AdminDashboard() {
 
   const renderSettings = () => (
     <div className="max-w-4xl mx-auto pb-32 ">
+      {/* Card 0: Billing & Subscription */}
+      <div className="bg-surface border border-primary-500/20 rounded-2xl shadow-sm mb-6 overflow-hidden relative">
+        <div className="absolute top-0 right-0 px-3 py-1 bg-primary-500 text-white text-[9px] font-black uppercase tracking-widest rounded-bl-xl">
+          {subscription?.plan || 'Trial'}
+        </div>
+        <div className="px-6 py-3.5 bg-primary-500/5 border-b border-primary-500/10">
+          <h3 className="text-[9px] font-bold text-primary-500 uppercase tracking-[0.15em] flex items-center gap-2">
+            <ShieldCheck size={12} /> Billing & Subscription
+          </h3>
+        </div>
+        <div className="p-6 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="p-4 bg-main/50 rounded-2xl border border-main">
+              <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1">Student Limit</p>
+              <h4 className="text-xl font-black text-primary">{stats.totalStudents} / 50</h4>
+              <div className="h-1.5 bg-main rounded-full mt-2 overflow-hidden">
+                <div className="h-full bg-primary-500 rounded-full" style={{ width: `${Math.min(100, (stats.totalStudents / 50) * 100)}%` }} />
+              </div>
+            </div>
+            <div className="p-4 bg-main/50 rounded-2xl border border-main">
+              <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1">Exam Limit</p>
+              <h4 className="text-xl font-black text-primary">{stats.totalExams || 0} / 5</h4>
+              <div className="h-1.5 bg-main rounded-full mt-2 overflow-hidden">
+                <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.min(100, ((stats.totalExams || 0) / 5) * 100)}%` }} />
+              </div>
+            </div>
+            <div className="p-4 bg-main/50 rounded-2xl border border-main">
+              <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1">Trial Period</p>
+              <h4 className="text-xl font-black text-primary">{getTrialDaysRemaining()} Days</h4>
+              <p className="text-[9px] text-muted font-bold mt-1 uppercase tracking-tight italic">Expires {subscription?.trialEndsAt ? new Date(subscription.trialEndsAt).toLocaleDateString() : 'N/A'}</p>
+            </div>
+          </div>
+          <div className="flex items-center justify-between pt-4 border-t border-main">
+            <div>
+              <p className="text-[13px] font-bold text-primary">Need more capacity?</p>
+              <p className="text-[11px] text-muted mt-0.5">Upgrade your plan to increase student and exam limits.</p>
+            </div>
+            <button 
+              onClick={() => window.open('mailto:billing@vision.edu?subject=Plan Upgrade Request&body=I would like to upgrade my institution plan.')}
+              className="px-6 py-2.5 bg-primary-500 text-white text-[11px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all rounded-xl shadow-lg shadow-primary-500/20 active:scale-95 flex items-center gap-2"
+            >
+              <Plus size={14} strokeWidth={2.5} /> Upgrade Now
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div className="mb-8 py-4 relative overflow-hidden">
         <h2 className="text-2xl font-bold text-primary tracking-tight">Global System Control</h2>
         <p className="text-[9px] font-semibold text-muted uppercase tracking-[0.2em] mt-1.5 opacity-70">Unified Security & Proctoring Architecture</p>

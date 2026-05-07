@@ -20,7 +20,13 @@ const createRedisStore = (label) => {
 // one student's actions from rate-limiting the entire network.
 const combinedKeyGenerator = (req, res) => {
     const ip = ipKeyGenerator(req, res);
-    const identifier = req.user?.id || req.body?.email || req.body?.studentId || req.params?.id || 'anon';
+    let identifier = req.user?.id || req.body?.studentId || req.params?.id || 'anon';
+    
+    // 🛡️ Normalize email before using as rate limit key
+    if (req.body?.email) {
+        identifier = req.body.email.trim().toLowerCase();
+    }
+    
     return `${ip}_${identifier}`;
 };
 
@@ -140,14 +146,30 @@ const inviteVerifyLimiter = rateLimit({
  */
 const demoRequestLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
-    max: 3, // 3 requests per IP per hour
-    store: createRedisStore('demo_request'),
+    max: 50, // Increased for testing (was 5)
+    store: createRedisStore('demo_request_ip'),
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: ipKeyGenerator, // Only rely on IP for public endpoint
+    keyGenerator: ipKeyGenerator,
     message: {
         success: false,
-        error: "Too many demo requests. Please try again later."
+        error: "Too many requests from this IP. Please try again later."
+    }
+});
+
+const demoEmailLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 20, // Increased for testing (was 3)
+    store: createRedisStore('demo_request_email'),
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req, res) => {
+        const ip = ipKeyGenerator(req, res);
+        return req.body?.email ? `${ip}_${req.body.email.trim().toLowerCase()}` : ip;
+    },
+    message: {
+        success: false,
+        error: "Too many requests for this email address. Please try again later."
     }
 });
 
@@ -158,5 +180,6 @@ module.exports = {
     autosaveLimiter,
     secureActionLimiter,
     inviteVerifyLimiter,
-    demoRequestLimiter
+    demoRequestLimiter,
+    demoEmailLimiter
 };

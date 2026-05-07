@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const userSchema = new mongoose.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    password: { type: String, required: true, select: false },
+    password: { type: String, select: false }, // Optional for invited users
     role: { 
         type: String, 
         enum: ['student', 'mentor', 'super_mentor', 'admin', 'super_admin'],
@@ -29,7 +29,10 @@ const userSchema = new mongoose.Schema({
     idCardUrl: { type: String, default: null },
     isVerified: { type: Boolean, default: false },
     verificationIssue: { type: String, default: null },
-    sessionVersion: { type: Number, default: 1 }
+    sessionVersion: { type: Number, default: 1 },
+    // Onboarding
+    passwordSetupToken: { type: String, select: false },
+    passwordSetupExpires: { type: Date }
 }, { timestamps: true });
 
 // ─── Password Hashing ───────────────────────────────────

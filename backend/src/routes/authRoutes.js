@@ -20,6 +20,10 @@ router.post('/refresh', validate(refreshSchema), authController.refresh);
 // POST /api/auth/verify-invite — Token verify → auto-login → exam redirect
 router.post('/verify-invite', validate(inviteVerifySchema), inviteController.verifyInvite);
 
+// ─── Public Route — New Admin sets their password ────────
+// POST /api/auth/set-password — Verification token → set password → active status
+router.post('/set-password', authController.setPassword);
+
 // ─── Protected Route (sirf Admin hi access kar sakta hai) ─
 // POST /api/auth/register — Admin naye students/mentors create karega
 router.post('/register', verifyToken, checkRole(['admin', 'super_mentor']), validate(registerSchema), authController.register);

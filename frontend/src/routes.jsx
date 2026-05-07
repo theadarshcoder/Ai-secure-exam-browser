@@ -20,6 +20,9 @@ import StudentResult from './pages/StudentResult';
 import VerifyInvite from './pages/VerifyInvite';
 import StudentIntelligenceDashboard from './pages/StudentIntelligenceDashboard';
 import MentorLiveMonitoring from './pages/MentorLiveMonitoring';
+import VerifyOtp from './pages/VerifyOtp';
+
+import SetPassword from './pages/SetPassword';
 
 const ThemeEnforcer = () => {
   const { pathname } = useLocation();
@@ -127,6 +130,8 @@ export default function AppRouter() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginRedirect />} />
           <Route path="/verify" element={<VerifyInvite />} />
+          <Route path="/verify-otp" element={<VerifyOtp />} />
+          <Route path="/set-password" element={<SetPassword />} />
           
           <Route path="/admin" element={
             <ProtectedRoute allowedRoles={['admin', 'super_mentor']}>

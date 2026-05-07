@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import { ThemeToggle } from '../contexts/ThemeContext';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 
@@ -1631,17 +1632,46 @@ const CyclingPillHeadline = () => {
 
 const DemoRequestModal = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({ name: '', email: '', institutionName: '', phone: '', website: '' });
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [submitting, setSubmitting] = useState(false);
+  const [step, setStep] = useState(0); // 0: Form, 1: OTP, 2: Success
+  const otpRefs = useRef([]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     try {
       await api.post('/api/public/demo-request', formData);
-      toast.success('Request submitted! We will be in touch soon.');
-      onClose();
+      toast.success('Verification code sent!');
+      setStep(1);
     } catch (error) {
-      toast.error('Failed to submit request');
+      toast.error(error.response?.data?.error || 'Failed to send code');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleOtpChange = (index, value) => {
+    if (isNaN(value)) return;
+    const newOtp = [...otp];
+    newOtp[index] = value.substring(value.length - 1);
+    setOtp(newOtp);
+    if (value && index < 5) otpRefs.current[index + 1].focus();
+  };
+
+  const handleOtpVerify = async () => {
+    setSubmitting(true);
+    try {
+      const response = await api.post('/api/public/verify-request', {
+        email: formData.email,
+        otp: otp.join('')
+      });
+      if (response.data.success) {
+        setStep(2);
+        toast.success('Verified! Account created.');
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Invalid code');
     } finally {
       setSubmitting(false);
     }
@@ -1650,31 +1680,62 @@ const DemoRequestModal = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 10 }}
-        className="bg-[#0a0a0a] border border-white/10 rounded-2xl w-full max-w-md p-6 relative overflow-hidden"
+        className="bg-[#0f0f11] border border-white/10 rounded-[2rem] w-full max-w-md p-8 relative overflow-hidden shadow-2xl"
       >
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-emerald-500 to-indigo-500" />
-        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" />
+        <button onClick={onClose} className="absolute top-6 right-6 text-zinc-500 hover:text-white transition-colors">
           <XCircle className="w-6 h-6" />
         </button>
-        <h2 className="text-2xl font-bold text-white mb-2">Request Access</h2>
-        <p className="text-slate-400 text-sm mb-6">Experience the future of secure exams. Tell us about your institution.</p>
-        
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <input required placeholder="Your Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors" />
-          <input required type="email" placeholder="Work Email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors" />
-          <input required placeholder="Institution Name" value={formData.institutionName} onChange={e => setFormData({...formData, institutionName: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors" />
-          <input placeholder="Phone Number (Optional)" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors" />
-          <input placeholder="Institution Website (Optional)" value={formData.website} onChange={e => setFormData({...formData, website: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors" />
-          
-          <button disabled={submitting} type="submit" className="w-full bg-white text-black font-bold text-sm py-3 rounded-xl mt-2 hover:bg-zinc-200 transition-colors disabled:opacity-50">
-            {submitting ? 'Submitting...' : 'Submit Request'}
-          </button>
-        </form>
+
+        {step === 0 && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h2 className="text-2xl font-bold text-white mb-2">Request Access</h2>
+            <p className="text-zinc-400 text-sm mb-8">Join the elite institutions using Vision.</p>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <input required placeholder="Your Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none focus:border-blue-500 transition-all" />
+              <input required type="email" placeholder="Work Email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none focus:border-blue-500 transition-all" />
+              <input required placeholder="Institution Name" value={formData.institutionName} onChange={e => setFormData({...formData, institutionName: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none focus:border-blue-500 transition-all" />
+              <button disabled={submitting} type="submit" className="w-full bg-white text-black font-bold py-4 rounded-2xl mt-4 hover:bg-zinc-200 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                {submitting ? 'Sending code...' : 'Continue'} <ChevronRight className="w-4 h-4" />
+              </button>
+            </form>
+          </div>
+        )}
+
+        {step === 1 && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h2 className="text-2xl font-bold text-white mb-2">Verify Email</h2>
+            <p className="text-zinc-400 text-sm mb-8">Enter the code sent to {formData.email}</p>
+            <div className="flex justify-between gap-2 mb-8">
+              {otp.map((digit, i) => (
+                <input key={i} ref={el => otpRefs.current[i] = el} type="text" maxLength={1} value={digit} onChange={e => handleOtpChange(i, e.target.value)} className="w-12 h-14 bg-white/5 border border-white/10 rounded-xl text-center text-xl font-bold text-white focus:outline-none focus:border-blue-500" />
+              ))}
+            </div>
+            <button onClick={handleOtpVerify} disabled={submitting || otp.join('').length < 6} className="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl hover:bg-blue-700 transition-all disabled:opacity-50">
+              {submitting ? 'Verifying...' : 'Verify & Finish'}
+            </button>
+            <button onClick={() => setStep(0)} className="w-full mt-4 text-zinc-500 text-sm hover:text-white transition-colors">
+              Back to details
+            </button>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="text-center py-4 animate-in zoom-in duration-500">
+            <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Check className="w-10 h-10 text-emerald-500" />
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2">Welcome Aboard!</h2>
+            <p className="text-zinc-400 text-sm mb-8">Your trial account for {formData.institutionName} is ready. Check your email to set your password.</p>
+            <button onClick={() => window.location.href = '/login'} className="w-full bg-white text-black font-bold py-4 rounded-2xl hover:bg-zinc-200 transition-all">
+              Go to Login
+            </button>
+          </div>
+        )}
       </motion.div>
     </div>
   );

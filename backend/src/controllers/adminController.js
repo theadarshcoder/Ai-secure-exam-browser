@@ -4,6 +4,7 @@ const User = require('../models/User');
 const AuditLog = require('../models/AuditLog');
 const IntelligenceLog = require('../models/IntelligenceLog');
 const Setting = require('../models/Setting');
+const Institution = require('../models/Institution');
 const { asyncHandler } = require('../middlewares/errorMiddleware');
 const axios = require('axios');
 const mongoose = require('mongoose');
@@ -106,13 +107,22 @@ exports.getDashboardStats = asyncHandler(async (req, res) => {
         User.countDocuments(getTenantFilter(req, { role: 'student' })).lean()
     ]);
 
+    const institution = await Institution.findById(req.user.institutionId)
+        .select('plan trialEndsAt status')
+        .lean();
+
     const result = { 
         totalExams, 
         totalAttempts,
         liveExams,
         liveStudents, 
         totalStudents,
-        flaggedSessions: totalViolations
+        flaggedSessions: totalViolations,
+        subscription: {
+            plan: institution?.plan || 'trial',
+            trialEndsAt: institution?.trialEndsAt,
+            status: institution?.status
+        }
     };
 
     await setCache(cacheKey, result, TTL_API_CACHE);
@@ -283,7 +293,7 @@ exports.getAuditLogs = asyncHandler(async (req, res) => {
 });
 
 exports.deleteAuditLog = asyncHandler(async (req, res) => {
-    const log = await AuditLog.findByIdAndDelete(req.params.id);
+    const log = await AuditLog.findOneAndDelete(getTenantFilter(req, { _id: req.params.id }));
     if (!log) {
         res.status(404);
         throw new Error('Audit log not found');
@@ -292,8 +302,8 @@ exports.deleteAuditLog = asyncHandler(async (req, res) => {
 });
 
 exports.clearAuditLogs = asyncHandler(async (req, res) => {
-    await AuditLog.deleteMany({});
-    res.json({ message: 'All audit logs cleared' });
+    await AuditLog.deleteMany(getTenantFilter(req));
+    res.json({ message: 'Audit logs for your institution cleared' });
 });
 
 // ─── Intelligence Logs ───
@@ -320,7 +330,7 @@ exports.getIntelligenceLogs = asyncHandler(async (req, res) => {
 });
 
 exports.deleteIntelligenceLog = asyncHandler(async (req, res) => {
-    const log = await IntelligenceLog.findByIdAndDelete(req.params.id);
+    const log = await IntelligenceLog.findOneAndDelete(getTenantFilter(req, { _id: req.params.id }));
     if (!log) {
         res.status(404);
         throw new Error('Intelligence log not found');
@@ -329,8 +339,8 @@ exports.deleteIntelligenceLog = asyncHandler(async (req, res) => {
 });
 
 exports.clearIntelligenceLogs = asyncHandler(async (req, res) => {
-    await IntelligenceLog.deleteMany({});
-    res.json({ message: 'All intelligence logs cleared' });
+    await IntelligenceLog.deleteMany(getTenantFilter(req));
+    res.json({ message: 'Intelligence logs for your institution cleared' });
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -376,7 +386,8 @@ exports.bulkImportUsers = asyncHandler(async (req, res) => {
             name: userData.name,
             email: userData.email,
             role: role,
-            password: hashedPassword
+            password: hashedPassword,
+            institutionId: req.user.institutionId // 🛡️ Mandatory Tenant Assignment
         });
 
         results.push({ email: userData.email, password: plainPassword, status: 'success' });
@@ -410,13 +421,13 @@ exports.bulkDeleteUsers = asyncHandler(async (req, res) => {
 // Global Settings
 // ═══════════════════════════════════════════════════════════
 exports.getSettings = asyncHandler(async (req, res) => {
-    let setting = await Setting.findOne();
-    if (!setting) setting = await Setting.create({});
+    let setting = await Setting.findOne(getTenantFilter(req));
+    if (!setting) setting = await Setting.create({ institutionId: req.user.institutionId });
     res.json(setting);
 });
 
 exports.saveSettings = asyncHandler(async (req, res) => {
-    let setting = await Setting.findOne();
+    let setting = await Setting.findOne(getTenantFilter(req));
     if (setting) {
         setting.maxTabSwitches = req.body.maxTabSwitches ?? setting.maxTabSwitches;
         setting.forceFullscreen = req.body.forceFullscreen ?? setting.forceFullscreen;
@@ -428,7 +439,7 @@ exports.saveSettings = asyncHandler(async (req, res) => {
         setting.anomalyThreshold = req.body.anomalyThreshold ?? setting.anomalyThreshold;
         await setting.save();
     } else {
-        setting = await Setting.create(req.body);
+        setting = await Setting.create({ ...req.body, institutionId: req.user.institutionId });
     }
     
     // 🛡️ Invalidate Cache so the next rule-engine check picks up new settings
@@ -447,15 +458,18 @@ exports.getCandidates = asyncHandler(async (req, res) => {
     limit = Math.min(limit, 100); // 🛡️ Fix 18: Security limit
     const skip = (page - 1) * limit;
 
-    const query = { role: 'student' }; // Only fetch candidates (students)
+    const query = getTenantFilter(req, { role: 'student' });
 
     if (role) query.role = role;
 
     if (search) {
-        query.$or = [
-            { name: { $regex: search, $options: 'i' } },
-            { email: { $regex: search, $options: 'i' } }
-        ];
+        query.$and = query.$and || [];
+        query.$and.push({
+            $or: [
+                { name: { $regex: search, $options: 'i' } },
+                { email: { $regex: search, $options: 'i' } }
+            ]
+        });
     }
 
     const candidates = await User.find(query)
@@ -492,7 +506,7 @@ exports.getCandidates = asyncHandler(async (req, res) => {
 });
 
 exports.verifyCandidate = asyncHandler(async (req, res) => {
-    const user = await User.findByIdAndUpdate(req.params.userId, { 
+    const user = await User.findOneAndUpdate(getTenantFilter(req, { _id: req.params.userId }), { 
         isVerified: true,
         verificationIssue: null 
     }, { new: true }).select('name email isVerified verificationIssue');
@@ -501,13 +515,13 @@ exports.verifyCandidate = asyncHandler(async (req, res) => {
 });
 
 exports.unverifyCandidate = asyncHandler(async (req, res) => {
-    const user = await User.findByIdAndUpdate(req.params.userId, { isVerified: false }, { new: true }).select('name email isVerified');
+    const user = await User.findOneAndUpdate(getTenantFilter(req, { _id: req.params.userId }), { isVerified: false }, { new: true }).select('name email isVerified');
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json({ success: true, user });
 });
 
 exports.aiScanCandidates = asyncHandler(async (req, res) => {
-    const students = await User.find({ role: 'student' });
+    const students = await User.find(getTenantFilter(req, { role: 'student' }));
     let flaggedCount = 0;
     const logs = [];
 
@@ -588,13 +602,13 @@ exports.aiScanCandidates = asyncHandler(async (req, res) => {
 exports.extendExamTime = asyncHandler(async (req, res) => {
     const { examId, extraMinutes } = req.body;
     const extraSeconds = extraMinutes * 60;
-    // Security Fix: Only extend sessions that are actually active (remainingTime > 0)
+    // Security Fix: Only extend sessions that belong to the institution
     const result = await ExamSession.updateMany(
-        { 
+        getTenantFilter(req, { 
             exam: examId, 
             status: 'in_progress',
             remainingTimeSeconds: { $gt: 0 } 
-        },
+        }),
         { $inc: { remainingTimeSeconds: extraSeconds } }
     );
     const io = req.app.get('io'); 
@@ -608,13 +622,13 @@ exports.extendExamTime = asyncHandler(async (req, res) => {
 exports.exportStudentIntelligenceCSV = asyncHandler(async (req, res) => {
     const { studentId } = req.params;
     
-    const student = await User.findById(studentId).select('name email');
+    const student = await User.findOne(getTenantFilter(req, { _id: studentId }));
     if (!student) {
         res.status(404);
         throw new Error('Student not found');
     }
 
-    const sessions = await ExamSession.find({ student: studentId })
+    const sessions = await ExamSession.find(getTenantFilter(req, { student: studentId }))
         .populate('exam', 'title category')
         .sort({ submittedAt: -1 })
         .lean();

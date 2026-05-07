@@ -11,9 +11,28 @@ const institutionSchema = new mongoose.Schema({
     },
     status: { 
         type: String, 
-        enum: ['pending', 'active', 'suspended', 'deactivated'], 
-        default: 'active' 
+        enum: [
+            'active', 
+            'suspended', 
+            'maintenance', 
+            'trial_expired', 
+            'payment_failed', 
+            'grace_period',
+            'trialing'
+        ], 
+        default: 'active',
+        index: true
     },
+    statusUpdatedAt: { type: Date, default: Date.now },
+    subscriptionId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Subscription'
+    },
+    trialEndsAt: { type: Date },
+    // 🛡️ Security & suspension metadata
+    suspendedAt: { type: Date },
+    suspendedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    suspensionReason: { type: String },
     // SaaS Limits
     maxStudents: { type: Number, default: 200 },
     maxMentors: { type: Number, default: 10 },

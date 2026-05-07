@@ -44,6 +44,7 @@ export default function TenantManagement() {
     const [newAdminForm, setNewAdminForm] = useState({ name: '', email: '' });
     const [submittingAdmin, setSubmittingAdmin] = useState(false);
     const [resetPasswordModal, setResetPasswordModal] = useState({ isOpen: false, adminId: '', customPassword: '' });
+    const [upgradeModal, setUpgradeModal] = useState({ isOpen: false, maxStudents: 0, maxMentors: 0, plan: '' });
 
     useEffect(() => {
         fetchData();
@@ -124,6 +125,22 @@ export default function TenantManagement() {
             toast.error(error.response?.data?.message || 'Failed to add admin');
         } finally {
             setSubmittingAdmin(false);
+        }
+    };
+
+    const handleUpgradeLimits = async (e) => {
+        e.preventDefault();
+        try {
+            await api.patch(`/api/super-admin/institutions/${id}/limits`, {
+                maxStudents: upgradeModal.maxStudents,
+                maxMentors: upgradeModal.maxMentors,
+                plan: upgradeModal.plan
+            });
+            toast.success('License limits upgraded successfully');
+            setUpgradeModal({ ...upgradeModal, isOpen: false });
+            fetchData();
+        } catch (error) {
+            toast.error('Failed to upgrade limits');
         }
     };
 
@@ -300,7 +317,17 @@ export default function TenantManagement() {
                                             </div>
                                         </div>
                                     </div>
-                                    <button className="w-full py-3 bg-indigo-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20 transition-all active:scale-95">Upgrade License</button>
+                                        <button 
+                                            onClick={() => setUpgradeModal({ 
+                                                isOpen: true, 
+                                                maxStudents: institution.maxStudents, 
+                                                maxMentors: institution.maxMentors, 
+                                                plan: institution.plan 
+                                            })} 
+                                            className="w-full py-3 bg-indigo-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20 transition-all active:scale-95"
+                                        >
+                                            Upgrade License
+                                        </button>
                                 </div>
 
                                 {/* System Config (Condensed) */}
@@ -496,6 +523,91 @@ export default function TenantManagement() {
                                     >
                                         {submittingAdmin ? <RefreshCw className="animate-spin" size={18} /> : <Key size={18} />}
                                         {submittingAdmin ? 'Provisioning...' : 'Provision Administrator'}
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Upgrade License Modal */}
+            <AnimatePresence>
+                {upgradeModal.isOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div 
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                            onClick={() => setUpgradeModal({ ...upgradeModal, isOpen: false })}
+                        />
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="relative w-full max-w-md bg-surface border border-main rounded-3xl p-8 shadow-2xl"
+                        >
+                            <button 
+                                onClick={() => setUpgradeModal({ ...upgradeModal, isOpen: false })}
+                                className="absolute top-6 right-6 p-2 text-muted hover:text-primary hover:bg-main rounded-full transition-all"
+                            >
+                                <X size={20} />
+                            </button>
+                            
+                            <div className="flex items-center gap-4 mb-8">
+                                <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center border border-indigo-500/20 shadow-inner">
+                                    <Server size={28} />
+                                </div>
+                                <div>
+                                    <h3 className="text-2xl font-black text-primary">Upgrade License</h3>
+                                    <p className="text-xs font-bold text-muted uppercase tracking-widest mt-1">Adjust Institution Capacity</p>
+                                </div>
+                            </div>
+
+                            <form onSubmit={handleUpgradeLimits} className="space-y-6">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-muted uppercase tracking-widest pl-1">Student Capacity</label>
+                                        <input 
+                                            type="number" 
+                                            required
+                                            value={upgradeModal.maxStudents}
+                                            onChange={(e) => setUpgradeModal({...upgradeModal, maxStudents: e.target.value})}
+                                            className="w-full bg-main border border-main text-primary rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500/50 transition-all"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-muted uppercase tracking-widest pl-1">Mentor Capacity</label>
+                                        <input 
+                                            type="number" 
+                                            required
+                                            value={upgradeModal.maxMentors}
+                                            onChange={(e) => setUpgradeModal({...upgradeModal, maxMentors: e.target.value})}
+                                            className="w-full bg-main border border-main text-primary rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500/50 transition-all"
+                                        />
+                                    </div>
+                                </div>
+                                
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-muted uppercase tracking-widest pl-1">Subscription Plan</label>
+                                    <select 
+                                        value={upgradeModal.plan}
+                                        onChange={(e) => setUpgradeModal({...upgradeModal, plan: e.target.value})}
+                                        className="w-full bg-main border border-main text-primary rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500/50 transition-all appearance-none"
+                                    >
+                                        <option value="trial">Trial Mode</option>
+                                        <option value="free">Free Tier</option>
+                                        <option value="basic">Basic Plan</option>
+                                        <option value="pro">Pro (Standard)</option>
+                                        <option value="enterprise">Enterprise (Unlimited)</option>
+                                    </select>
+                                </div>
+
+                                <div className="pt-4 border-t border-main">
+                                    <button 
+                                        type="submit"
+                                        className="w-full py-4 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl text-sm font-black uppercase tracking-widest transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2"
+                                    >
+                                        Update Subscription
                                     </button>
                                 </div>
                             </form>

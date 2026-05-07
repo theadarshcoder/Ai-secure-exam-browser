@@ -9,6 +9,7 @@ const examController = require('../controllers/examController');
 const telemetryController = require('../controllers/telemetryController');
 const inviteController = require('../controllers/inviteController');
 const { codeExecutionLimiter, telemetryLimiter, importLimiter, autosaveLimiter, secureActionLimiter } = require('../middlewares/rateLimiter');
+const { checkQuota, checkFeature } = require('../middlewares/subscriptionMiddleware');
 
 // ═══════════════════════════════════════════════════════════
 //  📊 Telemetry & Diagnostics
@@ -22,7 +23,7 @@ router.post('/telemetry/log', verifyToken, telemetryLimiter, telemetryController
 // ═══════════════════════════════════════════════════════════
 
 // Exam create karo (sirf admin/mentor)
-router.post('/create', verifyToken, checkRole(['admin', 'super_mentor', 'mentor']), examController.createExam);
+router.post('/create', verifyToken, checkRole(['admin', 'super_mentor', 'mentor']), checkQuota('exam'), examController.createExam);
 
 // Exam update karo (draft -> publish ya details edit)
 router.put('/update/:id', verifyToken, checkRole(['admin', 'super_mentor', 'mentor']), examController.updateExam);
@@ -120,7 +121,7 @@ router.post('/run-frontend', verifyToken, codeExecutionLimiter, examController.r
 // ═══════════════════════════════════════════════════════════
 
 // Bulk invite students to an exam (CSV upload)
-router.post('/:examId/bulk-invite', verifyToken, checkRole(['admin', 'super_mentor', 'mentor']), inviteController.bulkInvite);
+router.post('/:examId/bulk-invite', verifyToken, checkRole(['admin', 'super_mentor', 'mentor']), checkQuota('student'), inviteController.bulkInvite);
 
 // Get invite status for an exam
 router.get('/:examId/invites', verifyToken, checkRole(['admin', 'super_mentor', 'mentor']), inviteController.getInviteStatus);

@@ -1,9 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { subscribe, createDemoRequest } = require('../controllers/publicController');
+const { subscribe, createDemoRequest, verifyDemoRequest, setPassword } = require('../controllers/publicController');
+const { demoRequestLimiter, demoEmailLimiter } = require('../middlewares/rateLimiter');
 
 // POST /api/public/subscribe
 router.post('/subscribe', subscribe);
-router.post('/demo-request', createDemoRequest);
+router.post('/demo-request', demoRequestLimiter, demoEmailLimiter, createDemoRequest);
+router.post('/verify-request', verifyDemoRequest);
+router.post('/set-password', setPassword);
 
 module.exports = router;

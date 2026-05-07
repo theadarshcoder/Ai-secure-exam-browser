@@ -14,6 +14,7 @@ const { addBulkInviteJobs } = require('../queues/inviteEmailQueue');
 const { asyncHandler } = require('../middlewares/errorMiddleware');
 const cacheService = require('../services/cacheService');
 const { getTenantFilter, getTenantId } = require('../utils/tenantFilter');
+const InstitutionUsage = require('../models/InstitutionUsage');
 
 // ─── Helper: Generate password in vision@XXXXXX format ───
 const generatePassword = () => {
@@ -167,9 +168,24 @@ exports.bulkInvite = asyncHandler(async (req, res) => {
         }
     }
 
-    // Batch insert new users (bypasses pre-save middleware — password already hashed)
+    // Batch insert new users
     if (newUsersToCreate.length > 0) {
         const insertedUsers = await User.insertMany(newUsersToCreate, { ordered: false });
+        
+        // 📈 SaaS Usage Tracking: Increment Student Count
+        try {
+            const instId = getTenantId(req);
+            if (instId) {
+                await InstitutionUsage.findOneAndUpdate(
+                    { institutionId: instId },
+                    { $inc: { studentsUsed: insertedUsers.length } },
+                    { upsert: true }
+                );
+            }
+        } catch (usageErr) {
+            console.error('Failed to update student usage for bulk invite:', usageErr);
+        }
+
         // Map inserted users back to our tracking map
         for (const user of insertedUsers) {
             const entry = studentUserMap.get(user.email);

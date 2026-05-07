@@ -50,9 +50,11 @@ const sessionRoutes = require('./routes/sessionRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 const publicRoutes = require('./routes/publicRoutes');
+const billingRoutes = require('./routes/billingRoutes');
 const { setupCodeEvaluationWorker } = require('./queues/codeGradingQueue');
 const { setupFrontendEvaluationWorker } = require('./queues/frontendGradingQueue');
 const { setupInviteEmailWorker } = require('./queues/inviteEmailQueue');
+const { setupBillingWorker } = require('./queues/billingWorker');
 const { startIntelligenceWorker } = require('./queues/intelligenceWorker');
 const { startAutoSubmitWorker } = require('./queues/autoSubmitWorker');
 const { inviteVerifyLimiter } = require('./middlewares/rateLimiter');
@@ -147,7 +149,11 @@ app.get('/health', (req, res) => {
     });
 });
 
-// Fix 7: Scoped JSON Limit (Progress saving needs more, others stay tight)
+// ─── ⚓ WEBHOOKS (MUST BE BEFORE express.json) ───────
+const webhookController = require('./controllers/webhookController');
+app.post('/api/billing/webhook/razorpay', express.raw({ type: 'application/json' }), webhookController.handleRazorpayWebhook);
+
+// ─── JSON Parsers ───────────────────────────────────────
 app.use('/api/exams/save-progress', express.json({ limit: '2mb' }));
 app.use(express.json({ limit: '100kb' }));
 app.use(mongoSanitize()); // Prevent NoSQL Injection attacks
@@ -340,8 +346,8 @@ io.use(async (socket, next) => {
                 console.warn(`[Socket Auth] Stale session for ${decoded.email}. Force disconnecting.`);
                 return next(new Error('Session terminated! You logged in from another device.'));
             }
-            if (cachedSession.status === 'suspended' || cachedSession.status === 'deactivated') {
-                return next(new Error('Institution suspended.'));
+            if (cachedSession.status === 'suspended' || cachedSession.status === 'trial_expired' || cachedSession.status === 'payment_failed') {
+                return next(new Error(`Institution ${cachedSession.status.replace('_', ' ')}.`));
             }
             
             socket.user = {
@@ -359,8 +365,8 @@ io.use(async (socket, next) => {
                 console.error(`[Socket Auth] User not found: ${decoded.id}`);
                 return next(new Error('User account no longer exists.'));
             }
-            if (user.status === 'suspended' || user.status === 'deactivated') {
-                return next(new Error('Account suspended.'));
+            if (user.status === 'suspended' || user.status === 'trial_expired' || user.status === 'payment_failed') {
+                return next(new Error(`Institution ${user.status.replace('_', ' ')}.`));
             }
             // Validate sessionVersion against DB
             if (decoded.sessionVersion && user.sessionVersion !== decoded.sessionVersion) {
@@ -450,6 +456,7 @@ app.use('/api/upload', verifyToken, platformModeMiddleware, activityTracker, che
 
 // Public routes — NO verifyToken, rate limiter falls back to IP
 app.use('/api/public', globalLimiter, publicRoutes);
+app.use('/api/billing', billingRoutes);
 
 // ─── 404 Global Handler ──────────────────────────────────
 app.use((req, res, next) => {
@@ -1044,6 +1051,7 @@ async function bootstrap() {
                 workers.push(setupCodeEvaluationWorker(io));
                 workers.push(setupFrontendEvaluationWorker(io));
                 workers.push(setupInviteEmailWorker());
+                workers.push(setupBillingWorker());
                 workers.push(startIntelligenceWorker());
                 
                 // startAutoSubmitWorker requires io to emit events

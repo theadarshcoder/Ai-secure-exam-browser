@@ -3,6 +3,7 @@ const ExamSession = require('../models/ExamSession');
 const ExamAnswer = require('../models/ExamAnswer');
 const ExamInvite = require('../models/ExamInvite');
 const User = require('../models/User');
+const InstitutionUsage = require('../models/InstitutionUsage');
 const { getRedisClient } = require('../config/redis');
 const { executeCode } = require('../services/judge0');
 const { asyncHandler } = require('../middlewares/errorMiddleware');
@@ -130,6 +131,20 @@ exports.createExam = asyncHandler(async (req, res) => {
     });
 
     await exam.save();
+
+    // 📈 SaaS Usage Tracking: Increment Exams Count
+    try {
+        const instId = getTenantId(req);
+        if (instId) {
+            await InstitutionUsage.findOneAndUpdate(
+                { institutionId: instId },
+                { $inc: { examsUsed: 1 } },
+                { upsert: true }
+            );
+        }
+    } catch (usageErr) {
+        console.error('Failed to update institution usage for new exam:', usageErr);
+    }
 
     // Clear mentor exams cache
     await clearPattern(`mentor_exams_*`);

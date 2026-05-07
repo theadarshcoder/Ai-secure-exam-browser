@@ -21,9 +21,10 @@ router.post('/demo-requests/:id/reject', superAdminController.rejectDemoRequest)
 router.get('/institutions', superAdminController.getInstitutions);
 router.get('/institutions/:id', superAdminController.getInstitutionDetails);
 router.get('/institutions/:id/timeline', superAdminController.getInstitutionTimeline);
-router.patch('/institutions/:id/status', superAdminController.toggleInstitutionStatus);
+router.patch('/institutions/:id/status', superAdminController.updateInstitutionStatus);
 router.post('/institutions/:id/reset-admin', superAdminController.resetAdminPassword);
 router.post('/institutions/:id/add-admin', superAdminController.addInstitutionAdmin);
+router.patch('/institutions/:id/limits', superAdminController.updateInstitutionLimits);
 
 // Platform Governance & Settings
 router.get('/settings', platformController.getSettings);
