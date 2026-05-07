@@ -483,6 +483,9 @@ export default function AdminDashboard() {
   // Evaluation Modal state
   const [showEvalModal, setShowEvalModal] = useState(false);
   const [showPricingModal, setShowPricingModal] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState(null); // 'basic', 'pro', 'enterprise'
+  const [transactionId, setTransactionId] = useState('');
+  const [isSubmittingUpgrade, setIsSubmittingUpgrade] = useState(false);
   const [evalSessionData, setEvalSessionData] = useState(null);
   const [evalLoading, setEvalLoading] = useState(false);
 
@@ -637,6 +640,30 @@ export default function AdminDashboard() {
   const handleResolveHelp = (id) => {
     setHelpRequests(prev => prev.filter(r => r.id !== id));
     setNotifications(prev => prev.filter(n => n.id !== id));
+  };
+
+  // 💳 Handle Upgrade Request
+  const handleRequestUpgrade = async () => {
+    if (!transactionId.trim()) {
+      toast.error('Please enter your Transaction ID');
+      return;
+    }
+
+    setIsSubmittingUpgrade(true);
+    try {
+      const response = await api.post('/api/billing/request-upgrade', {
+        plan: selectedPlan,
+        transactionId: transactionId
+      });
+      toast.success(response.data.message || 'Upgrade request sent!');
+      setShowPricingModal(false);
+      setSelectedPlan(null);
+      setTransactionId('');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to submit request');
+    } finally {
+      setIsSubmittingUpgrade(false);
+    }
   };
 
   const fetchDataForTab = async (tab) => {
@@ -2696,78 +2723,144 @@ export default function AdminDashboard() {
             <div className="p-10">
               <div className="flex justify-between items-start mb-10">
                 <div>
-                  <h2 className="text-3xl font-black text-primary tracking-tight">Scale Your Vision</h2>
-                  <p className="text-muted text-[13px] font-medium mt-1">Select a plan that fits your institutional growth</p>
+                  <h2 className="text-3xl font-black text-primary tracking-tight">
+                    {selectedPlan ? `Complete ${selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)} Upgrade` : 'Scale Your Vision'}
+                  </h2>
+                  <p className="text-muted text-[13px] font-medium mt-1">
+                    {selectedPlan ? 'Confirm payment details to activate your new limits' : 'Select a plan that fits your institutional growth'}
+                  </p>
                 </div>
-                <button onClick={() => setShowPricingModal(false)} className="w-10 h-10 rounded-full bg-main border border-main flex items-center justify-center text-muted hover:text-primary transition-all">
+                <button 
+                  onClick={() => {
+                    setShowPricingModal(false);
+                    setSelectedPlan(null);
+                    setTransactionId('');
+                  }} 
+                  className="w-10 h-10 rounded-full bg-main border border-main flex items-center justify-center text-muted hover:text-primary transition-all"
+                >
                   <X size={20} />
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-                {/* Basic */}
-                <div className="bg-main/30 border border-main rounded-3xl p-8 hover:border-primary-500/30 transition-all flex flex-col">
-                  <div className="mb-6">
-                    <span className="px-3 py-1 bg-primary-500/10 text-primary-500 text-[9px] font-black uppercase tracking-widest rounded-full">Standard</span>
-                    <h3 className="text-xl font-bold text-primary mt-3">Basic Plan</h3>
-                    <p className="text-3xl font-black text-primary mt-2">₹4,999<span className="text-sm font-medium text-muted">/mo</span></p>
+              {!selectedPlan ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                  {/* Basic */}
+                  <div className="bg-main/30 border border-main rounded-3xl p-8 hover:border-primary-500/30 transition-all flex flex-col">
+                    <div className="mb-6">
+                      <span className="px-3 py-1 bg-primary-500/10 text-primary-500 text-[9px] font-black uppercase tracking-widest rounded-full">Standard</span>
+                      <h3 className="text-xl font-bold text-primary mt-3">Basic Plan</h3>
+                      <p className="text-3xl font-black text-primary mt-2">₹4,999<span className="text-sm font-medium text-muted">/mo</span></p>
+                    </div>
+                    <ul className="space-y-4 mb-8 flex-1">
+                      <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-emerald-500" /> 200 Students Cap</li>
+                      <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-emerald-500" /> 50 Global Exams</li>
+                      <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-emerald-500" /> Basic AI Proctoring</li>
+                    </ul>
+                    <button onClick={() => setSelectedPlan('basic')} className="w-full py-3 bg-white/5 border border-white/10 text-primary text-[11px] font-bold uppercase tracking-widest rounded-xl hover:bg-white/10 transition-all">Select Basic</button>
                   </div>
-                  <ul className="space-y-4 mb-8 flex-1">
-                    <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-emerald-500" /> 200 Students Cap</li>
-                    <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-emerald-500" /> 50 Global Exams</li>
-                    <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-emerald-500" /> Basic AI Proctoring</li>
-                  </ul>
-                  <button onClick={() => window.open('mailto:billing@vision.edu?subject=Upgrade to Basic Plan')} className="w-full py-3 bg-white/5 border border-white/10 text-primary text-[11px] font-bold uppercase tracking-widest rounded-xl hover:bg-white/10 transition-all">Select Basic</button>
-                </div>
 
-                {/* Pro */}
-                <div className="bg-primary-500/5 border-2 border-primary-500/20 rounded-3xl p-8 relative overflow-hidden flex flex-col scale-105 shadow-xl">
-                  <div className="absolute top-0 right-0 px-4 py-1 bg-primary-500 text-white text-[9px] font-black uppercase tracking-widest rounded-bl-xl">Best Value</div>
-                  <div className="mb-6">
-                    <span className="px-3 py-1 bg-primary-500/20 text-primary-500 text-[9px] font-black uppercase tracking-widest rounded-full">Recommended</span>
-                    <h3 className="text-xl font-bold text-primary mt-3">Pro Plan</h3>
-                    <p className="text-3xl font-black text-primary mt-2">₹9,999<span className="text-sm font-medium text-muted">/mo</span></p>
+                  {/* Pro */}
+                  <div className="bg-primary-500/5 border-2 border-primary-500/20 rounded-3xl p-8 relative overflow-hidden flex flex-col scale-105 shadow-xl">
+                    <div className="absolute top-0 right-0 px-4 py-1 bg-primary-500 text-white text-[9px] font-black uppercase tracking-widest rounded-bl-xl">Best Value</div>
+                    <div className="mb-6">
+                      <span className="px-3 py-1 bg-primary-500/20 text-primary-500 text-[9px] font-black uppercase tracking-widest rounded-full">Recommended</span>
+                      <h3 className="text-xl font-bold text-primary mt-3">Pro Plan</h3>
+                      <p className="text-3xl font-black text-primary mt-2">₹9,999<span className="text-sm font-medium text-muted">/mo</span></p>
+                    </div>
+                    <ul className="space-y-4 mb-8 flex-1">
+                      <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-primary-500" /> 1000 Students Cap</li>
+                      <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-primary-500" /> Unlimited Exams</li>
+                      <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-primary-500" /> Advanced AI Scan</li>
+                      <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-primary-500" /> Dedicated Support</li>
+                    </ul>
+                    <button onClick={() => setSelectedPlan('pro')} className="w-full py-3 bg-primary-500 text-white text-[11px] font-bold uppercase tracking-widest rounded-xl hover:bg-primary-600 transition-all shadow-lg shadow-primary-500/20">Get Started</button>
                   </div>
-                  <ul className="space-y-4 mb-8 flex-1">
-                    <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-primary-500" /> 1000 Students Cap</li>
-                    <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-primary-500" /> Unlimited Exams</li>
-                    <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-primary-500" /> Advanced AI Scan</li>
-                    <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-primary-500" /> Dedicated Support</li>
-                  </ul>
-                  <button onClick={() => window.open('mailto:billing@vision.edu?subject=Upgrade to Pro Plan')} className="w-full py-3 bg-primary-500 text-white text-[11px] font-bold uppercase tracking-widest rounded-xl hover:bg-primary-600 transition-all shadow-lg shadow-primary-500/20">Get Started</button>
-                </div>
 
-                {/* Enterprise */}
-                <div className="bg-main/30 border border-main rounded-3xl p-8 hover:border-primary-500/30 transition-all flex flex-col">
-                  <div className="mb-6">
-                    <span className="px-3 py-1 bg-emerald-500/10 text-emerald-500 text-[9px] font-black uppercase tracking-widest rounded-full">Custom</span>
-                    <h3 className="text-xl font-bold text-primary mt-3">Enterprise</h3>
-                    <p className="text-3xl font-black text-primary mt-2">Custom</p>
+                  {/* Enterprise */}
+                  <div className="bg-main/30 border border-main rounded-3xl p-8 hover:border-primary-500/30 transition-all flex flex-col">
+                    <div className="mb-6">
+                      <span className="px-3 py-1 bg-emerald-500/10 text-emerald-500 text-[9px] font-black uppercase tracking-widest rounded-full">Custom</span>
+                      <h3 className="text-xl font-bold text-primary mt-3">Enterprise</h3>
+                      <p className="text-3xl font-black text-primary mt-2">Custom</p>
+                    </div>
+                    <ul className="space-y-4 mb-8 flex-1">
+                      <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-emerald-500" /> Unlimited Capacity</li>
+                      <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-emerald-500" /> API Access</li>
+                      <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-emerald-500" /> White-Labeling</li>
+                    </ul>
+                    <button onClick={() => setSelectedPlan('enterprise')} className="w-full py-3 bg-white/5 border border-white/10 text-primary text-[11px] font-bold uppercase tracking-widest rounded-xl hover:bg-white/10 transition-all">Contact Sales</button>
                   </div>
-                  <ul className="space-y-4 mb-8 flex-1">
-                    <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-emerald-500" /> Unlimited Capacity</li>
-                    <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-emerald-500" /> API Access</li>
-                    <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-emerald-500" /> White-Labeling</li>
-                  </ul>
-                  <button onClick={() => window.open('mailto:billing@vision.edu?subject=Enterprise Custom Plan')} className="w-full py-3 bg-white/5 border border-white/10 text-primary text-[11px] font-bold uppercase tracking-widest rounded-xl hover:bg-white/10 transition-all">Contact Sales</button>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* Payment Details */}
+                    <div className="p-8 bg-main/40 border border-white/10 rounded-3xl">
+                      <h4 className="text-[12px] font-black text-primary-500 uppercase tracking-widest mb-6">1. Transfer Funds</h4>
+                      <div className="space-y-6">
+                        <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                          <p className="text-[10px] text-muted uppercase font-bold mb-1">UPI ID</p>
+                          <p className="text-lg font-mono text-primary flex items-center justify-between">
+                            vision@upi
+                            <button onClick={() => { navigator.clipboard.writeText('vision@upi'); toast.success('Copied!'); }} className="text-[10px] bg-primary-500/20 text-primary-500 px-2 py-1 rounded-md">Copy</button>
+                          </p>
+                        </div>
+                        <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                          <p className="text-[10px] text-muted uppercase font-bold mb-1">Bank Account</p>
+                          <p className="text-[13px] text-primary leading-relaxed">
+                            Bank: HDFC Bank<br />
+                            A/C: 50100234567890<br />
+                            IFSC: HDFC0001234
+                          </p>
+                        </div>
+                      </div>
+                    </div>
 
-              {/* Payment Info */}
-              <div className="p-6 bg-emerald-500/5 border border-emerald-500/20 rounded-3xl flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                    <CreditCard size={24} />
-                  </div>
-                  <div>
-                    <p className="text-[13px] font-bold text-primary uppercase tracking-tight">Manual Payment Option</p>
-                    <p className="text-[11px] text-muted">Pay via UPI: <span className="font-mono font-bold text-primary select-all">vision@upi</span> or Bank Transfer</p>
+                    {/* Verification Form */}
+                    <div className="p-8 bg-main/40 border border-white/10 rounded-3xl">
+                      <h4 className="text-[12px] font-black text-primary-500 uppercase tracking-widest mb-6">2. Provide Proof</h4>
+                      <div className="space-y-5">
+                        <div>
+                          <label className="text-[10px] text-muted uppercase font-bold block mb-2">Transaction ID / UTR Number</label>
+                          <input 
+                            type="text" 
+                            value={transactionId}
+                            onChange={(e) => setTransactionId(e.target.value)}
+                            placeholder="Ex: 1234567890"
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-primary text-sm focus:outline-none focus:border-primary-500 transition-all"
+                          />
+                        </div>
+                        <div className="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl">
+                          <p className="text-[11px] text-primary/80 italic">
+                            * Please ensure the amount matches your selected plan. Your upgrade will be active within 2-4 business hours after verification.
+                          </p>
+                        </div>
+                        <div className="flex gap-3">
+                          <button 
+                            onClick={() => setSelectedPlan(null)}
+                            className="flex-1 py-4 bg-white/5 text-primary text-[11px] font-bold uppercase tracking-widest rounded-xl hover:bg-white/10 transition-all"
+                          >
+                            Back
+                          </button>
+                          <button 
+                            onClick={handleRequestUpgrade}
+                            disabled={isSubmittingUpgrade}
+                            className="flex-[2] py-4 bg-primary-500 text-white text-[11px] font-bold uppercase tracking-widest rounded-xl hover:bg-primary-600 transition-all shadow-lg shadow-primary-500/20 flex items-center justify-center gap-2"
+                          >
+                            {isSubmittingUpgrade ? <RefreshCw className="animate-spin" size={14} /> : <Check size={14} />}
+                            Submit Request
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-[10px] font-bold text-muted uppercase mb-1">Step 2: Verification</p>
-                  <p className="text-[11px] text-emerald-500 font-medium">Send screenshot to <span className="underline">billing@vision.edu</span></p>
-                </div>
+              )}
+
+              {/* Status Note */}
+              <div className="mt-8 pt-8 border-t border-white/5 flex items-center gap-3 text-muted">
+                <Info size={16} />
+                <p className="text-[11px]">Need help? Reach out to support@vision.edu for assistance with your subscription.</p>
               </div>
             </div>
           </div>

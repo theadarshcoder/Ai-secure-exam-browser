@@ -46,23 +46,25 @@ exports.getSubscriptionStatus = asyncHandler(async (req, res) => {
     });
 });
 
-// ─── POST /api/billing/create-checkout ──────────────────
-// Placeholder for Razorpay/Stripe checkout session
-exports.createCheckout = asyncHandler(async (req, res) => {
-    const { planId, billingCycle } = req.body;
-    
-    if (!PLANS[planId.toUpperCase()]) {
-        throw new AppError('Invalid plan selected.', 400);
+// ─── POST /api/billing/request-upgrade ──────────────────
+// Handles manual payment submission with Transaction ID
+exports.requestUpgrade = asyncHandler(async (req, res) => {
+    const { plan, transactionId } = req.body;
+    const UpgradeRequest = require('../models/UpgradeRequest');
+
+    if (!plan || !transactionId) {
+        throw new AppError('Plan and Transaction ID are required', 400);
     }
 
-    // In a real implementation, you would:
-    // 1. Create a Stripe/Razorpay session
-    // 2. Return the checkout URL
-    
-    res.json({
-        message: 'Checkout session created (Mock)',
-        checkoutUrl: 'https://checkout.stripe.com/pay/mock_session',
-        planId,
-        billingCycle
+    const request = await UpgradeRequest.create({
+        institutionId: req.user.institutionId,
+        requestedBy: req.user.id,
+        plan,
+        transactionId
+    });
+
+    res.status(201).json({
+        message: 'Upgrade request submitted successfully. Our team will verify and activate your plan shortly.',
+        request
     });
 });

@@ -9,7 +9,7 @@ router.use(verifyToken, checkRole(['admin']));
 // GET /api/billing/status — Usage dashboard info
 router.get('/status', billingController.getSubscriptionStatus);
 
-// POST /api/billing/create-checkout — Start upgrade flow
-router.post('/create-checkout', billingController.createCheckout);
+// POST /api/billing/request-upgrade — Submit manual payment info
+router.post('/request-upgrade', billingController.requestUpgrade);
 
 module.exports = router;
