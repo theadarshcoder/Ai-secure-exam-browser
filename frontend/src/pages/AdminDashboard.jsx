@@ -9,7 +9,7 @@ import {
   Search, FileUp, UserPlus, Trash2, Eye,
   ShieldCheck, Activity, AlertOctagon,
   ChevronRight, LogOut, Bell, RefreshCw, Edit3,
-  BarChart3, Download, Clock, Check, X, Star, CheckCircle, AlertCircle, Plus, ScanFace, Radio, ShieldAlert, User, EyeOff, MessageCircle, AlertTriangle, OctagonX, TrendingUp, Sparkles, Inbox, ChevronDown
+  BarChart3, Download, Clock, Check, X, Star, CheckCircle, AlertCircle, Plus, ScanFace, Radio, ShieldAlert, User, EyeOff, MessageCircle, AlertTriangle, OctagonX, TrendingUp, Sparkles, Inbox, ChevronDown, CreditCard
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import PremiumSidebar from '../components/PremiumSidebar';
@@ -482,6 +482,7 @@ export default function AdminDashboard() {
 
   // Evaluation Modal state
   const [showEvalModal, setShowEvalModal] = useState(false);
+  const [showPricingModal, setShowPricingModal] = useState(false);
   const [evalSessionData, setEvalSessionData] = useState(null);
   const [evalLoading, setEvalLoading] = useState(false);
 
@@ -1659,7 +1660,7 @@ export default function AdminDashboard() {
               <p className="text-[11px] text-muted mt-0.5">Upgrade your plan to increase student and exam limits.</p>
             </div>
             <button 
-              onClick={() => window.open('mailto:billing@vision.edu?subject=Plan Upgrade Request&body=I would like to upgrade my institution plan.')}
+              onClick={() => setShowPricingModal(true)}
               className="px-6 py-2.5 bg-primary-500 text-white text-[11px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all rounded-xl shadow-lg shadow-primary-500/20 active:scale-95 flex items-center gap-2"
             >
               <Plus size={14} strokeWidth={2.5} /> Upgrade Now
@@ -2688,6 +2689,90 @@ export default function AdminDashboard() {
       />
 
 
+      {/* Pricing & Upgrade Modal */}
+      {showPricingModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-surface border border-white/10 rounded-[2.5rem] w-full max-w-4xl overflow-hidden shadow-2xl">
+            <div className="p-10">
+              <div className="flex justify-between items-start mb-10">
+                <div>
+                  <h2 className="text-3xl font-black text-primary tracking-tight">Scale Your Vision</h2>
+                  <p className="text-muted text-[13px] font-medium mt-1">Select a plan that fits your institutional growth</p>
+                </div>
+                <button onClick={() => setShowPricingModal(false)} className="w-10 h-10 rounded-full bg-main border border-main flex items-center justify-center text-muted hover:text-primary transition-all">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                {/* Basic */}
+                <div className="bg-main/30 border border-main rounded-3xl p-8 hover:border-primary-500/30 transition-all flex flex-col">
+                  <div className="mb-6">
+                    <span className="px-3 py-1 bg-primary-500/10 text-primary-500 text-[9px] font-black uppercase tracking-widest rounded-full">Standard</span>
+                    <h3 className="text-xl font-bold text-primary mt-3">Basic Plan</h3>
+                    <p className="text-3xl font-black text-primary mt-2">₹4,999<span className="text-sm font-medium text-muted">/mo</span></p>
+                  </div>
+                  <ul className="space-y-4 mb-8 flex-1">
+                    <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-emerald-500" /> 200 Students Cap</li>
+                    <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-emerald-500" /> 50 Global Exams</li>
+                    <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-emerald-500" /> Basic AI Proctoring</li>
+                  </ul>
+                  <button onClick={() => window.open('mailto:billing@vision.edu?subject=Upgrade to Basic Plan')} className="w-full py-3 bg-white/5 border border-white/10 text-primary text-[11px] font-bold uppercase tracking-widest rounded-xl hover:bg-white/10 transition-all">Select Basic</button>
+                </div>
+
+                {/* Pro */}
+                <div className="bg-primary-500/5 border-2 border-primary-500/20 rounded-3xl p-8 relative overflow-hidden flex flex-col scale-105 shadow-xl">
+                  <div className="absolute top-0 right-0 px-4 py-1 bg-primary-500 text-white text-[9px] font-black uppercase tracking-widest rounded-bl-xl">Best Value</div>
+                  <div className="mb-6">
+                    <span className="px-3 py-1 bg-primary-500/20 text-primary-500 text-[9px] font-black uppercase tracking-widest rounded-full">Recommended</span>
+                    <h3 className="text-xl font-bold text-primary mt-3">Pro Plan</h3>
+                    <p className="text-3xl font-black text-primary mt-2">₹9,999<span className="text-sm font-medium text-muted">/mo</span></p>
+                  </div>
+                  <ul className="space-y-4 mb-8 flex-1">
+                    <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-primary-500" /> 1000 Students Cap</li>
+                    <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-primary-500" /> Unlimited Exams</li>
+                    <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-primary-500" /> Advanced AI Scan</li>
+                    <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-primary-500" /> Dedicated Support</li>
+                  </ul>
+                  <button onClick={() => window.open('mailto:billing@vision.edu?subject=Upgrade to Pro Plan')} className="w-full py-3 bg-primary-500 text-white text-[11px] font-bold uppercase tracking-widest rounded-xl hover:bg-primary-600 transition-all shadow-lg shadow-primary-500/20">Get Started</button>
+                </div>
+
+                {/* Enterprise */}
+                <div className="bg-main/30 border border-main rounded-3xl p-8 hover:border-primary-500/30 transition-all flex flex-col">
+                  <div className="mb-6">
+                    <span className="px-3 py-1 bg-emerald-500/10 text-emerald-500 text-[9px] font-black uppercase tracking-widest rounded-full">Custom</span>
+                    <h3 className="text-xl font-bold text-primary mt-3">Enterprise</h3>
+                    <p className="text-3xl font-black text-primary mt-2">Custom</p>
+                  </div>
+                  <ul className="space-y-4 mb-8 flex-1">
+                    <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-emerald-500" /> Unlimited Capacity</li>
+                    <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-emerald-500" /> API Access</li>
+                    <li className="flex items-center gap-2 text-[12px] text-primary/80"><CheckCircle size={14} className="text-emerald-500" /> White-Labeling</li>
+                  </ul>
+                  <button onClick={() => window.open('mailto:billing@vision.edu?subject=Enterprise Custom Plan')} className="w-full py-3 bg-white/5 border border-white/10 text-primary text-[11px] font-bold uppercase tracking-widest rounded-xl hover:bg-white/10 transition-all">Contact Sales</button>
+                </div>
+              </div>
+
+              {/* Payment Info */}
+              <div className="p-6 bg-emerald-500/5 border border-emerald-500/20 rounded-3xl flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                    <CreditCard size={24} />
+                  </div>
+                  <div>
+                    <p className="text-[13px] font-bold text-primary uppercase tracking-tight">Manual Payment Option</p>
+                    <p className="text-[11px] text-muted">Pay via UPI: <span className="font-mono font-bold text-primary select-all">vision@upi</span> or Bank Transfer</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] font-bold text-muted uppercase mb-1">Step 2: Verification</p>
+                  <p className="text-[11px] text-emerald-500 font-medium">Send screenshot to <span className="underline">billing@vision.edu</span></p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
