@@ -51,6 +51,8 @@ exports.getSubscriptionStatus = asyncHandler(async (req, res) => {
 exports.requestUpgrade = asyncHandler(async (req, res) => {
     const { plan, transactionId } = req.body;
     const UpgradeRequest = require('../models/UpgradeRequest');
+    const Institution = require('../models/Institution');
+    const { sendUpgradeRequestAlert } = require('../services/emailService');
 
     if (!plan || !transactionId) {
         throw new AppError('Plan and Transaction ID are required', 400);
@@ -61,6 +63,18 @@ exports.requestUpgrade = asyncHandler(async (req, res) => {
         requestedBy: req.user.id,
         plan,
         transactionId
+    });
+
+    // 🚀 Send Email Alert to Vinit (Async)
+    Institution.findById(req.user.institutionId).then(inst => {
+        if (inst) {
+            sendUpgradeRequestAlert({
+                institutionName: inst.name,
+                plan,
+                transactionId,
+                requestedBy: req.user.email || req.user.name
+            }).catch(err => console.error('Upgrade Email Alert Failed:', err));
+        }
     });
 
     res.status(201).json({

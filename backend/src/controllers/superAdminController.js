@@ -539,3 +539,67 @@ exports.deleteInstitution = asyncHandler(async (req, res) => {
     }
 });
 
+/**
+ * 💎 Get all Upgrade Requests
+ */
+exports.getUpgradeRequests = asyncHandler(async (req, res) => {
+    const requests = await UpgradeRequest.find()
+        .populate('institutionId', 'name domain code')
+        .populate('requestedBy', 'name email')
+        .sort({ createdAt: -1 });
+
+    res.json(requests);
+});
+
+/**
+ * ✅ Process Upgrade Request (Approve/Reject)
+ */
+exports.processUpgradeRequest = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { status, notes } = req.body;
+
+    if (!['approved', 'rejected'].includes(status)) {
+        throw new Error('Invalid status. Use approved or rejected.');
+    }
+
+    const request = await UpgradeRequest.findById(id);
+    if (!request) throw new Error('Upgrade request not found');
+    if (request.status !== 'pending') throw new Error('Request already processed');
+
+    request.status = status;
+    request.notes = notes;
+    request.processedAt = new Date();
+    request.processedBy = req.user.id;
+    await request.save();
+
+    if (status === 'approved') {
+        const institution = await Institution.findById(request.institutionId);
+        if (institution) {
+            institution.plan = request.plan;
+            
+            // Auto-update limits based on plan
+            const planConfig = PLANS[request.plan.toUpperCase()];
+            if (planConfig) {
+                institution.maxStudents = planConfig.limits.maxStudents;
+                institution.maxMentors = planConfig.limits.maxMentors;
+                institution.maxExams = planConfig.limits.maxExams;
+            }
+            
+            await institution.save();
+            await clearCache(`admin_dashboard_stats_${request.institutionId}`);
+            
+            // Audit Log
+            await AuditLog.create({
+                performedBy: req.user.id,
+                action: 'UPGRADE_PLAN_APPROVED',
+                severity: 'info',
+                institutionId: request.institutionId,
+                actorRole: 'super_admin',
+                details: { plan: request.plan, requestId: id }
+            });
+        }
+    }
+
+    res.json({ message: `Request ${status} successfully`, request });
+});
+

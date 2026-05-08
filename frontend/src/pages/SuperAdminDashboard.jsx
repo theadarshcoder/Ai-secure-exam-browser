@@ -37,6 +37,7 @@ export default function SuperAdminDashboard() {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('demo-requests');
     const [demoRequests, setDemoRequests] = useState([]);
+    const [upgradeRequests, setUpgradeRequests] = useState([]);
     const [institutions, setInstitutions] = useState([]);
     const [stats, setStats] = useState({ totalInstitutions: 0, totalStudents: 0, totalExams: 0, pendingDemos: 0, activeTenants: 0, uptime: 0 });
     const [auditLogs, setAuditLogs] = useState([]);
@@ -47,6 +48,7 @@ export default function SuperAdminDashboard() {
 
     const navItems = [
         { id: 'demo-requests', label: 'Onboarding', icon: Inbox },
+        { id: 'upgrade-requests', label: 'Upgrades', icon: Database },
         { id: 'institutions', label: 'Institutions', icon: Building },
         { id: 'intelligence', label: 'Intelligence', icon: BarChart3 },
         { id: 'audit-trail', label: 'Audit Trail', icon: FileText },
@@ -83,6 +85,9 @@ export default function SuperAdminDashboard() {
                 const { data } = await api.get('/api/super-admin/demo-requests');
                 // 🛡️ Robust Parsing: Handle both direct arrays and paginated objects
                 setDemoRequests(Array.isArray(data) ? data : (data.requests || []));
+            } else if (activeTab === 'upgrade-requests') {
+                const { data } = await api.get('/api/super-admin/upgrade-requests');
+                setUpgradeRequests(Array.isArray(data) ? data : (data.requests || []));
             } else if (activeTab === 'institutions') {
                 const { data } = await api.get('/api/super-admin/institutions');
                 // 🛡️ Robust Parsing: Handle both direct arrays and paginated objects
@@ -109,6 +114,17 @@ export default function SuperAdminDashboard() {
             fetchStats();
         } catch (error) {
             toast.error(error.response?.data?.message || 'Provisioning failed');
+        }
+    };
+
+    const handleProcessUpgrade = async (id, status) => {
+        try {
+            await api.patch(`/api/super-admin/upgrade-requests/${id}`, { status });
+            toast.success(`Request ${status} successfully!`);
+            fetchData();
+            fetchStats();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to process upgrade');
         }
     };
 
@@ -262,6 +278,51 @@ export default function SuperAdminDashboard() {
                                                 </div>
                                             ))}
                                             {demoRequests.length === 0 && <div className="text-center py-20 text-muted italic">No access requests found.</div>}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {activeTab === 'upgrade-requests' && (
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <h2 className="text-xl font-bold text-primary tracking-tight">Plan Upgrade Requests</h2>
+                                            <Badge color="emerald">{upgradeRequests.filter(r => r.status === 'pending').length} Pending</Badge>
+                                        </div>
+                                        <div className="grid gap-4">
+                                            {upgradeRequests.map((req) => (
+                                                <div key={req._id} className="bg-surface border border-main rounded-2xl p-6 hover:shadow-lg transition-all group relative overflow-hidden">
+                                                    {req.status === 'pending' && <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />}
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-6">
+                                                            <div className="w-14 h-14 rounded-2xl bg-surface-hover border border-main flex items-center justify-center text-muted group-hover:text-primary-500 transition-colors">
+                                                                <Database size={28} />
+                                                            </div>
+                                                            <div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <h3 className="text-lg font-bold text-primary tracking-tight">{req.institutionId?.name || 'Unknown Institution'}</h3>
+                                                                    <Badge color="indigo">{req.plan} Plan</Badge>
+                                                                </div>
+                                                                <div className="flex gap-4 mt-2 text-[12px] font-medium text-muted">
+                                                                    <span className="flex items-center gap-1.5"><Users size={14} /> {req.requestedBy?.name || 'Unknown'}</span>
+                                                                    <span className="opacity-20">|</span>
+                                                                    <span className="font-mono bg-main px-2 py-0.5 rounded text-[10px]">TXN: {req.transactionId}</span>
+                                                                    <span className="opacity-20">|</span>
+                                                                    <span>{new Date(req.createdAt).toLocaleDateString()}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-3">
+                                                            {req.status === 'pending' ? (
+                                                                <>
+                                                                    <button onClick={() => handleProcessUpgrade(req._id, 'approved')} className="px-6 py-2.5 bg-emerald-500 text-white hover:bg-emerald-600 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-emerald-500/20">Approve</button>
+                                                                    <button onClick={() => handleProcessUpgrade(req._id, 'rejected')} className="px-6 py-2.5 bg-surface border border-main text-muted hover:text-rose-500 hover:border-rose-500/30 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all">Reject</button>
+                                                                </>
+                                                            ) : <Badge color={req.status === 'approved' ? 'emerald' : 'red'}>{req.status}</Badge>}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {upgradeRequests.length === 0 && <div className="text-center py-20 text-muted italic">No upgrade requests found.</div>}
                                         </div>
                                     </div>
                                 )}

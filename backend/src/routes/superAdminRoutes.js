@@ -17,6 +17,10 @@ router.get('/demo-requests', superAdminController.getDemoRequests);
 router.post('/demo-requests/:id/approve', superAdminController.approveDemoRequest);
 router.post('/demo-requests/:id/reject', superAdminController.rejectDemoRequest);
 
+// Upgrade Requests (Plan Upgrades)
+router.get('/upgrade-requests', superAdminController.getUpgradeRequests);
+router.patch('/upgrade-requests/:id', superAdminController.processUpgradeRequest);
+
 // Institutions
 router.get('/institutions', superAdminController.getInstitutions);
 router.get('/institutions/:id', superAdminController.getInstitutionDetails);

@@ -368,6 +368,32 @@ const sendUpgradeSuccessEmail = async ({ to, name, planName }) => {
     });
 };
 
+const sendUpgradeRequestAlert = async (details) => {
+    const adminEmail = 'vinitjangirr@gmail.com';
+    const { institutionName, plan, transactionId, requestedBy } = details;
+    
+    const htmlContent = `
+        <div style="padding: 24px; font-family: Arial, sans-serif; background-color: #f0fdf4; border: 1px solid #dcfce7; border-radius: 16px; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #15803d; border-bottom: 2px solid #dcfce7; padding-bottom: 10px;">🚨 New Upgrade Request</h2>
+            <div style="margin-top: 20px; line-height: 1.6;">
+                <p><strong>Institution:</strong> ${institutionName}</p>
+                <p><strong>Requested Plan:</strong> <span style="text-transform: uppercase; font-weight: bold; color: #10b981;">${plan}</span></p>
+                <p><strong>Transaction ID:</strong> <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px;">${transactionId}</code></p>
+                <p><strong>Requested By:</strong> ${requestedBy}</p>
+            </div>
+            <p style="margin-top: 30px; font-size: 12px; color: #666; font-style: italic;">
+                Please verify the payment and approve the request from the Super Admin dashboard.
+            </p>
+        </div>`;
+
+    return await sendBrevoEmail({
+        to: adminEmail,
+        subject: `💎 Upgrade Request: ${institutionName} (${plan.toUpperCase()})`,
+        htmlContent,
+        senderName: "Vision Billing Alerts"
+    });
+};
+
 module.exports = {
     sendInviteEmail,
     sendSubscriptionNotification,
@@ -378,5 +404,6 @@ module.exports = {
     sendPasswordSetupEmail,
     sendTrialEndingEmail,
     sendPaymentFailedEmail,
-    sendUpgradeSuccessEmail
+    sendUpgradeSuccessEmail,
+    sendUpgradeRequestAlert
 };

@@ -555,4 +555,26 @@ export const getStudentReport = async (studentId, page = 1, limit = 10) => {
     }
 };
 
+// ─────────────────────────────────────────────────────────
+// 💎 Upgrade & Billing Management (Super Admin)
+// ─────────────────────────────────────────────────────────
+
+export const getUpgradeRequests = async () => {
+    try {
+        const response = await api.get('/api/super-admin/upgrade-requests');
+        return response.data;
+    } catch (error) {
+        throw getErrorMessage(error);
+    }
+};
+
+export const processUpgradeRequest = async (id, status, notes = '') => {
+    try {
+        const response = await api.patch(`/api/super-admin/upgrade-requests/${id}`, { status, notes });
+        return response.data;
+    } catch (error) {
+        throw getErrorMessage(error);
+    }
+};
+
 export default api;
