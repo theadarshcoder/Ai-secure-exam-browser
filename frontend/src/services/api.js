@@ -64,7 +64,14 @@ const processQueue = (error, token = null) => {
 
 // Response interceptor for handling 401s and Silent Refresh
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // 🛡️ Standardized Response Unwrapping: If backend uses the { success, data, error } pattern,
+    // we unwrap the 'data' field so components get the actual payload directly.
+    if (response.data && response.data.success === true && response.data.data !== undefined) {
+      return { ...response, data: response.data.data };
+    }
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
 
