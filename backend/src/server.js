@@ -205,6 +205,7 @@ const allowedOrigins = new Set(
 if (process.env.NODE_ENV !== 'production') {
     allowedOrigins.add('http://127.0.0.1:5173');
     allowedOrigins.add('http://localhost:5174');
+    allowedOrigins.add('http://localhost:5175');
 }
 
 // 🚀 [STEP 2] Mount Health & Version Routes
@@ -305,6 +306,9 @@ const io = new Server(server, {
         threshold: 1024 // Only compress payloads larger than 1KB
     }
 });
+
+// 🛡️ Pass io to app for global access (Avoids circular dependency)
+app.set('socketio', io);
 
 // ─── Socket.IO Redis Adapter (Cluster Mode Fix) ────────────
 // PM2 Cluster mein har worker ka alag Socket.io instance hota hai.
@@ -506,8 +510,9 @@ io.on('connection', (socket) => {
     if (socket.user.role === 'super_admin') {
         socket.join('super_admin_global');
     } else {
-        // Tenant isolated roles
-        socket.join(`inst_${socket.user.institutionId}_${socket.user.role}`);
+        // Tenant isolated rooms
+        socket.join(`inst_${socket.user.institutionId}`); // Global room for all users of this college
+        socket.join(`inst_${socket.user.institutionId}_${socket.user.role}`); // Specific role room
     }
     socket.join(`user_${socket.user.id}`);
 
@@ -1070,36 +1075,15 @@ async function bootstrap() {
             startHealthMonitor(io);
             logger.info('🩺 [Health Monitor] Real-time Health Monitor Active');
 
-            // ─── 🚀 Start Background Workers ─────────────────────────────
-            if (process.env.DISABLE_WORKERS !== 'true' && process.env.DISABLE_INTERNAL_WORKERS !== 'true') {
-                try {
-                    logger.info('🚀 [BOOT] Initializing Background Workers...');
-                    workers.push(setupCodeEvaluationWorker(io, 5));
-                    workers.push(setupFrontendEvaluationWorker(io, 5));
-                    workers.push(setupNotificationWorker(5));
-                    workers.push(setupBillingWorker(1));
-                    workers.push(startIntelligenceWorker(3));
-                    
-                    startAutoSubmitWorker(io).then(worker => {
-                        workers.push(worker);
-                        logger.info('✅ [BOOT] All Background Workers Active');
-                        
-                        // 📊 [STEP 2] Startup Metrics Log
-                        logger.info({
-                            env: process.env.NODE_ENV,
-                            node: process.version,
-                            mongo: mongoose.connection.readyState === 1 ? 'CONNECTED' : 'DISCONNECTED',
-                            redis: getRedisClient() ? 'CONNECTED' : 'DISCONNECTED',
-                            workers: workers.length,
-                            version: process.env.npm_package_version || '1.0.0'
-                        }, '🔥 [SYSTEM] Vision Backend Startup Complete');
-                    }).catch(err => {
-                        logger.error({ err: err.message }, '❌ [BOOT] Failed to start AutoSubmit Worker');
-                    });
-                } catch (err) {
-                    logger.error({ err: err.message }, '❌ [BOOT] Worker Initialization Failed');
-                }
-            }
+
+            // 📊 [SYSTEM] Startup Metrics Log
+            logger.info({
+                env: process.env.NODE_ENV,
+                node: process.version,
+                mongo: mongoose.connection.readyState === 1 ? 'CONNECTED' : 'DISCONNECTED',
+                redis: getRedisClient() ? 'CONNECTED' : 'DISCONNECTED',
+                version: process.env.npm_package_version || '1.0.0'
+            }, '🔥 [SYSTEM] Vision Backend Startup Complete');
         });
 
     } catch (err) {
@@ -1180,5 +1164,5 @@ process.on('unhandledRejection', (reason, promise) => {
 // 🚀 Start the application
 bootstrap();
 
-module.exports = app; 
+module.exports = { app, io }; 
  

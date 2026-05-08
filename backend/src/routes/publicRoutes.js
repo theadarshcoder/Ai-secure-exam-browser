@@ -9,4 +9,8 @@ router.post('/demo-request', demoRequestLimiter, demoEmailLimiter, createDemoReq
 router.post('/verify-request', verifyDemoRequest);
 router.post('/set-password', setPassword);
 
+// 🌐 Public Platform Status (For Banner/Maintenance check)
+const platformController = require('../controllers/platformSettingsController');
+router.get('/platform/status', platformController.getPublicStatus);
+
 module.exports = router;

@@ -23,7 +23,7 @@ const { clearCache } = require('../services/cacheService');
  */
 exports.getPlatformStats = asyncHandler(async (req, res) => {
     const redis = getRedisClient();
-    const CACHE_KEY = 'platform:stats';
+    const CACHE_KEY = 'platform:stats:v2';
 
     try {
         const cachedStats = await redis.get(CACHE_KEY);
@@ -31,10 +31,10 @@ exports.getPlatformStats = asyncHandler(async (req, res) => {
             return res.json(JSON.parse(cachedStats));
         }
 
-        const [totalInstitutions, activeTenants, totalStudents, totalExams, pendingDemos] = await Promise.all([
+        const [totalInstitutions, activeTenants, totalUsers, totalExams, pendingDemos] = await Promise.all([
             Institution.countDocuments(),
-            Institution.countDocuments({ status: 'active' }),
-            User.countDocuments({ role: 'student' }),
+            Institution.countDocuments({ status: { $ne: 'suspended' } }),
+            User.countDocuments(),
             Exam.countDocuments().catch(() => 0),
             DemoRequest.countDocuments({ status: 'pending' })
         ]);
@@ -42,7 +42,7 @@ exports.getPlatformStats = asyncHandler(async (req, res) => {
         const stats = {
             totalInstitutions,
             activeTenants,
-            totalStudents,
+            totalUsers,
             totalExams,
             pendingDemos,
             uptime: process.uptime(),
@@ -223,10 +223,24 @@ exports.getInstitutionDetails = asyncHandler(async (req, res) => {
     const institution = await Institution.findById(id);
     if (!institution) throw new Error('Institution not found');
 
-    const admins = await User.find({ institutionId: id, role: 'admin' }).select('-password');
-    const settings = await InstitutionSettings.findOne({ institutionId: id });
+    const [admins, settings, studentCount, mentorCount, examCount] = await Promise.all([
+        User.find({ institutionId: id, role: 'admin' }).select('-password'),
+        InstitutionSettings.findOne({ institutionId: id }),
+        User.countDocuments({ institutionId: id, role: 'student' }),
+        User.countDocuments({ institutionId: id, role: 'mentor' }),
+        Exam.countDocuments({ institutionId: id })
+    ]);
 
-    res.json({ institution, admins, settings });
+    res.json({ 
+        institution, 
+        admins, 
+        settings,
+        usage: {
+            students: studentCount,
+            mentors: mentorCount,
+            exams: examCount
+        }
+    });
 });
 
 /**
@@ -601,5 +615,75 @@ exports.processUpgradeRequest = asyncHandler(async (req, res) => {
     }
 
     res.json({ message: `Request ${status} successfully`, request });
+});
+
+/**
+ * 🗑️ Delete Demo Request
+ */
+exports.deleteDemoRequest = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    await DemoRequest.findByIdAndDelete(id);
+    res.json({ success: true, message: 'Demo request deleted' });
+});
+
+/**
+ * 🗑️ Delete Upgrade Request
+ */
+exports.deleteUpgradeRequest = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    await UpgradeRequest.findByIdAndDelete(id);
+    res.json({ success: true, message: 'Upgrade request deleted' });
+});
+
+/**
+ * 🧠 Get Platform Intelligence Data
+ */
+exports.getIntelligenceData = asyncHandler(async (req, res) => {
+    // 1. Top Institutions by Activity (Exam Count)
+    const topInstitutions = await Exam.aggregate([
+        { $group: { _id: '$institutionId', examCount: { $sum: 1 } } },
+        { $sort: { examCount: -1 } },
+        { $limit: 5 },
+        {
+            $lookup: {
+                from: 'institutions',
+                localField: '_id',
+                foreignField: '_id',
+                as: 'institution'
+            }
+        },
+        { $unwind: '$institution' },
+        {
+            $project: {
+                name: '$institution.name',
+                code: '$institution.code',
+                examCount: 1
+            }
+        }
+    ]);
+
+    // 2. Security & Proctoring Snapshot (Last 30 Days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const [totalFlags, criticalAlerts] = await Promise.all([
+        AuditLog.countDocuments({ action: 'STUDENT_FLAGGED', createdAt: { $gte: thirtyDaysAgo } }),
+        AuditLog.countDocuments({ severity: 'critical', createdAt: { $gte: thirtyDaysAgo } })
+    ]);
+
+    // 3. User Distribution
+    const userRoles = await User.aggregate([
+        { $group: { _id: '$role', count: { $sum: 1 } } }
+    ]);
+
+    res.json({
+        topInstitutions,
+        security: {
+            totalFlags,
+            criticalAlerts,
+            integrityScore: Math.max(0, 100 - (criticalAlerts * 2)) // Simple formula
+        },
+        distribution: userRoles
+    });
 });
 

@@ -43,6 +43,12 @@ exports.updateMode = asyncHandler(async (req, res) => {
     const redis = getRedisClient();
     await redis.set('platform:mode', mode, 'EX', 60);
 
+    // 📢 Broadcast Mode Change via Socket.io
+    const io = req.app.get('io');
+    if (io) {
+        io.emit('platform_mode_change', { mode, reason });
+    }
+
     // 📜 Audit Log
     await AuditLog.create({
         performedBy: req.user.id,
@@ -85,4 +91,17 @@ exports.updateAnnouncement = asyncHandler(async (req, res) => {
     }
 
     res.json(settings);
+});
+
+/**
+ * 🌐 Get Public Platform Status (Unauthenticated)
+ */
+exports.getPublicStatus = asyncHandler(async (req, res) => {
+    const settings = await GlobalSettings.getSettings();
+    
+    // Only return non-sensitive fields
+    res.json({
+        platformMode: settings.platformMode,
+        announcement: settings.announcement?.isActive ? settings.announcement : null
+    });
 });

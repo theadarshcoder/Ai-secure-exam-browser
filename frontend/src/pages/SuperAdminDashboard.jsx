@@ -25,7 +25,8 @@ import {
     AlertCircle,
     CheckCircle2,
     RefreshCw,
-    X
+    X,
+    Trash2
 } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
@@ -41,6 +42,7 @@ export default function SuperAdminDashboard() {
     const [institutions, setInstitutions] = useState([]);
     const [stats, setStats] = useState({ totalInstitutions: 0, totalStudents: 0, totalExams: 0, pendingDemos: 0, activeTenants: 0, uptime: 0 });
     const [auditLogs, setAuditLogs] = useState([]);
+    const [intelligenceData, setIntelligenceData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [sidebarExpanded, setSidebarExpanded] = useState(true);
@@ -93,7 +95,8 @@ export default function SuperAdminDashboard() {
                 // 🛡️ Robust Parsing: Handle both direct arrays and paginated objects
                 setInstitutions(Array.isArray(data) ? data : (data.institutions || []));
             } else if (activeTab === 'intelligence') {
-                await fetchStats();
+                const { data } = await api.get('/api/super-admin/intelligence');
+                setIntelligenceData(data);
             } else if (activeTab === 'audit-trail') {
                 const { data } = await api.get('/api/super-admin/audit-logs');
                 setAuditLogs(Array.isArray(data) ? data : (data.logs || data.auditLogs || []));
@@ -117,6 +120,17 @@ export default function SuperAdminDashboard() {
         }
     };
 
+    const handleDeleteDemo = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this request permanently?')) return;
+        try {
+            await api.delete(`/api/super-admin/demo-requests/${id}`);
+            toast.success('Request deleted');
+            fetchData();
+        } catch (error) {
+            toast.error('Failed to delete request');
+        }
+    };
+
     const handleProcessUpgrade = async (id, status) => {
         try {
             await api.patch(`/api/super-admin/upgrade-requests/${id}`, { status });
@@ -125,6 +139,17 @@ export default function SuperAdminDashboard() {
             fetchStats();
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to process upgrade');
+        }
+    };
+
+    const handleDeleteUpgrade = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this upgrade request permanently?')) return;
+        try {
+            await api.delete(`/api/super-admin/upgrade-requests/${id}`);
+            toast.success('Upgrade request deleted');
+            fetchData();
+        } catch (error) {
+            toast.error('Failed to delete request');
         }
     };
 
@@ -214,7 +239,7 @@ export default function SuperAdminDashboard() {
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             {[
                                 { label: 'Active Tenants', val: stats.activeTenants, icon: Building, color: 'indigo' },
-                                { label: 'Platform Users', val: stats.totalStudents, icon: Users, color: 'emerald' },
+                                { label: 'Total Platform Users', val: stats.totalUsers, icon: Users, color: 'emerald' },
                                 { label: 'Exams Provisioned', val: stats.totalExams, icon: FileText, color: 'primary' },
                                 { label: 'Sys Uptime', val: formatUptime(stats.uptime), icon: Clock, color: 'amber' },
                             ].map((s, i) => (
@@ -272,7 +297,12 @@ export default function SuperAdminDashboard() {
                                                                     <button onClick={() => handleApprove(req._id)} className="px-6 py-2.5 bg-primary-500 text-white hover:bg-primary-600 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-primary-500/20">Provision Tenant</button>
                                                                     <button onClick={() => api.post(`/api/super-admin/demo-requests/${req._id}/reject`).then(fetchData)} className="px-6 py-2.5 bg-surface border border-main text-muted hover:text-rose-500 hover:border-rose-500/30 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all">Reject</button>
                                                                 </>
-                                                            ) : <Badge color={req.status === 'approved' ? 'emerald' : 'red'}>{req.status}</Badge>}
+                                                            ) : (
+                                                                <>
+                                                                    <Badge color={req.status === 'approved' ? 'emerald' : 'red'}>{req.status}</Badge>
+                                                                    <button onClick={() => handleDeleteDemo(req._id)} className="p-2.5 text-muted hover:text-rose-500 bg-surface border border-main rounded-xl transition-all"><Trash2 size={16} /></button>
+                                                                </>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -317,7 +347,12 @@ export default function SuperAdminDashboard() {
                                                                     <button onClick={() => handleProcessUpgrade(req._id, 'approved')} className="px-6 py-2.5 bg-emerald-500 text-white hover:bg-emerald-600 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-emerald-500/20">Approve</button>
                                                                     <button onClick={() => handleProcessUpgrade(req._id, 'rejected')} className="px-6 py-2.5 bg-surface border border-main text-muted hover:text-rose-500 hover:border-rose-500/30 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all">Reject</button>
                                                                 </>
-                                                            ) : <Badge color={req.status === 'approved' ? 'emerald' : 'red'}>{req.status}</Badge>}
+                                                            ) : (
+                                                                <>
+                                                                    <Badge color={req.status === 'approved' ? 'emerald' : 'red'}>{req.status}</Badge>
+                                                                    <button onClick={() => handleDeleteUpgrade(req._id)} className="p-2.5 text-muted hover:text-rose-500 bg-surface border border-main rounded-xl transition-all"><Trash2 size={16} /></button>
+                                                                </>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -378,59 +413,82 @@ export default function SuperAdminDashboard() {
 
                                 {activeTab === 'intelligence' && (
                                     <div className="space-y-8">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                            {/* Top Institutions by Activity */}
                                             <div className="bg-surface border border-main rounded-3xl p-8 space-y-6 shadow-sm">
-                                                <h3 className="text-lg font-bold text-primary flex items-center gap-3"><ShieldAlert size={20} className="text-rose-500" /> Platform Integrity</h3>
+                                                <h3 className="text-lg font-bold text-primary flex items-center gap-3"><Building size={20} className="text-indigo-500" /> Active Leaders</h3>
                                                 <div className="space-y-4">
-                                                    <div className="flex items-center justify-between p-4 bg-main/50 rounded-2xl border border-main">
-                                                        <div className="flex items-center gap-3">
-                                                            <Shield size={18} className="text-emerald-500" />
-                                                            <span className="text-sm font-bold text-primary">Tenant Isolation Guard</span>
+                                                    {intelligenceData?.topInstitutions?.length > 0 ? intelligenceData.topInstitutions.map((inst, i) => (
+                                                        <div key={inst._id} className="flex items-center justify-between p-4 bg-main/30 rounded-2xl border border-main group hover:border-indigo-500/30 transition-all">
+                                                            <div className="flex items-center gap-4">
+                                                                <div className="w-8 h-8 rounded-full bg-indigo-500/10 text-indigo-500 flex items-center justify-center font-black text-xs">#{i+1}</div>
+                                                                <div>
+                                                                    <p className="text-sm font-bold text-primary">{inst.name}</p>
+                                                                    <p className="text-[10px] font-medium text-muted uppercase tracking-widest">{inst.code}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p className="text-lg font-black text-primary tabular-nums">{inst.examCount}</p>
+                                                                <p className="text-[9px] font-bold text-muted uppercase">Exams Conducted</p>
+                                                            </div>
                                                         </div>
-                                                        <Badge color="emerald">Hardened</Badge>
-                                                    </div>
-                                                    <div className="flex items-center justify-between p-4 bg-main/50 rounded-2xl border border-main">
-                                                        <div className="flex items-center gap-3">
-                                                            <Database size={18} className="text-indigo-500" />
-                                                            <span className="text-sm font-bold text-primary">Encryption Layer</span>
-                                                        </div>
-                                                        <span className="text-[10px] font-black text-muted uppercase">AES-256-GCM</span>
-                                                    </div>
-                                                    <div className="flex items-center justify-between p-4 bg-main/50 rounded-2xl border border-main">
-                                                        <div className="flex items-center gap-3">
-                                                            <Activity size={18} className="text-amber-500" />
-                                                            <span className="text-sm font-bold text-primary">Middleware Governance</span>
-                                                        </div>
-                                                        <Badge color="emerald">Active</Badge>
-                                                    </div>
+                                                    )) : (
+                                                        <div className="py-12 text-center text-muted italic text-sm">Waiting for platform activity...</div>
+                                                    )}
                                                 </div>
                                             </div>
+
+                                            {/* Security & Proctoring Snapshot */}
                                             <div className="bg-surface border border-main rounded-3xl p-8 space-y-6 shadow-sm">
-                                                <h3 className="text-lg font-bold text-primary flex items-center gap-3"><BarChart3 size={20} className="text-primary-500" /> Infrastructure Load</h3>
+                                                <div className="flex items-center justify-between">
+                                                    <h3 className="text-lg font-bold text-primary flex items-center gap-3"><ShieldAlert size={20} className="text-rose-500" /> Proctoring Integrity</h3>
+                                                    <Badge color={intelligenceData?.security?.integrityScore > 90 ? 'emerald' : 'rose'}>{intelligenceData?.security?.integrityScore}% Clean</Badge>
+                                                </div>
                                                 <div className="space-y-6">
                                                     <div>
-                                                        <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-muted mb-2"><span>Database Connections</span><span>Healthy</span></div>
-                                                        <div className="h-2 bg-main rounded-full overflow-hidden"><div className="h-full bg-emerald-500 w-[24%] rounded-full shadow-[0_0_8px_rgba(16,185,129,0.4)]" /></div>
+                                                        <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-muted mb-2"><span>Global Integrity Score</span><span>{intelligenceData?.security?.integrityScore}%</span></div>
+                                                        <div className="h-2 bg-main rounded-full overflow-hidden">
+                                                            <motion.div 
+                                                                initial={{ width: 0 }}
+                                                                animate={{ width: `${intelligenceData?.security?.integrityScore || 0}%` }}
+                                                                className={`h-full rounded-full ${intelligenceData?.security?.integrityScore > 90 ? 'bg-emerald-500' : 'bg-rose-500'}`} 
+                                                            />
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-muted mb-2"><span>Worker Saturation</span><span>Low</span></div>
-                                                        <div className="h-2 bg-main rounded-full overflow-hidden"><div className="h-full bg-primary-500 w-[12%] rounded-full shadow-[0_0_8px_rgba(var(--primary-rgb),0.4)]" /></div>
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div className="p-4 bg-main/50 rounded-2xl border border-main">
+                                                            <p className="text-[9px] font-black text-muted uppercase mb-1">Total Flags (30d)</p>
+                                                            <p className="text-xl font-black text-primary">{intelligenceData?.security?.totalFlags || 0}</p>
+                                                        </div>
+                                                        <div className="p-4 bg-main/50 rounded-2xl border border-main">
+                                                            <p className="text-[9px] font-black text-muted uppercase mb-1">Critical Alerts</p>
+                                                            <p className="text-xl font-black text-rose-500">{intelligenceData?.security?.criticalAlerts || 0}</p>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-muted mb-2"><span>Redis Memory Ops</span><span>Optimal</span></div>
-                                                        <div className="h-2 bg-main rounded-full overflow-hidden"><div className="h-full bg-amber-500 w-[18%] rounded-full shadow-[0_0_8px_rgba(245,158,11,0.4)]" /></div>
+                                                </div>
+                                                <div className="p-4 bg-rose-500/5 border border-rose-500/10 rounded-2xl flex items-center gap-4">
+                                                    <div className="p-2 bg-rose-500/20 rounded-xl text-rose-500">
+                                                        <ShieldAlert size={18} />
                                                     </div>
+                                                    <p className="text-[10px] font-medium text-rose-600/80 leading-relaxed italic">
+                                                        System automatically monitors behavioral anomalies. Higher flags may indicate coordinated attempt patterns.
+                                                    </p>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        {/* Activity Snapshot Placeholder */}
-                                        <div className="bg-surface border border-main rounded-3xl p-8 text-center space-y-4">
-                                            <div className="w-16 h-16 bg-main rounded-2xl flex items-center justify-center mx-auto mb-4 border border-main">
-                                                <Activity size={32} className="text-primary-500" />
+                                        {/* Traffic/Usage intelligence Placeholder - Slightly more refined */}
+                                        <div className="bg-surface border border-main rounded-3xl p-12 text-center space-y-4">
+                                            <div className="w-16 h-16 bg-indigo-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-indigo-500/20">
+                                                <BarChart3 size={32} className="text-indigo-500" />
                                             </div>
-                                            <h3 className="text-lg font-bold text-primary">Traffic Intelligence Coming Soon</h3>
-                                            <p className="text-sm text-muted max-w-md mx-auto leading-relaxed">We are calibrating the real-time aggregation engine. Advanced traffic charts and heatmaps will be available in the next minor update.</p>
+                                            <h3 className="text-xl font-bold text-primary">Traffic Analytics Aggregating</h3>
+                                            <p className="text-sm text-muted max-w-lg mx-auto leading-relaxed">
+                                                We are calibrating the multi-tenant traffic engine. Time-series data and peak load maps will be available after the next data synchronization cycle.
+                                            </p>
+                                            <div className="flex items-center justify-center gap-2 text-[10px] font-black text-indigo-500 uppercase tracking-widest">
+                                                <RefreshCw size={12} className="animate-spin" /> Next Sync in 4h 12m
+                                            </div>
                                         </div>
                                     </div>
                                 )}

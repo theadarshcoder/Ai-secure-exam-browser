@@ -4,7 +4,7 @@ import api, { getErrorMessage } from '../services/api';
 import { 
   Shield, User, Lock as LockIcon, ShieldCheck, Webcam, MonitorCheck, Activity,
   Terminal, Video, BrainCircuit, Database, Server,
-  Globe, ScrollText, MapPin, AppWindow, AlertTriangle
+  Globe, ScrollText, MapPin, AppWindow, AlertTriangle, Star, Users
 } from 'lucide-react';
 // eslint-disable-next-line no-unused-vars
 import { motion, useMotionValue, useSpring, AnimatePresence } from 'framer-motion';
@@ -329,12 +329,12 @@ const LoginPage = () => {
         }
       }
 
-      // 🛡️ Fix Bug 3: Super Mentor redirection to mentor dashboard
+      // 🛡️ Redirection Logic: Redirect based on role
       const target = userData.role === 'student' 
         ? '/student' 
-        : (['mentor', 'super_mentor'].includes(userData.role) 
+        : (userData.role === 'mentor' 
           ? '/mentor' 
-          : (userData.role === 'super_admin' ? '/super-admin' : '/admin'));
+          : (['admin', 'super_mentor'].includes(userData.role) ? '/admin' : (userData.role === 'super_admin' ? '/super-admin' : '/admin')));
       navigate(target);
     } catch (err) {
       console.error('Login Error:', err);

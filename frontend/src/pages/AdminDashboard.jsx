@@ -9,7 +9,7 @@ import {
   Search, FileUp, UserPlus, Trash2, Eye,
   ShieldCheck, Activity, AlertOctagon,
   ChevronRight, LogOut, Bell, RefreshCw, Edit3,
-  BarChart3, Download, Clock, Check, X, Star, CheckCircle, AlertCircle, Plus, ScanFace, Radio, ShieldAlert, User, EyeOff, MessageCircle, AlertTriangle, OctagonX, TrendingUp, Sparkles, Inbox, ChevronDown, CreditCard, Info, Brain, Target
+  BarChart3, Download, Clock, Check, X, Star, CheckCircle, AlertCircle, Plus, ScanFace, Radio, ShieldAlert, User, EyeOff, MessageCircle, AlertTriangle, OctagonX, TrendingUp, Sparkles, Inbox, ChevronDown, CreditCard, Info, Brain, Target, Send
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import PremiumSidebar from '../components/PremiumSidebar';
@@ -461,8 +461,8 @@ export default function AdminDashboard() {
   const [userRole] = useState(sessionStorage.getItem('vision_role') || 'admin');
 
   // App States
-  const [loading, setLoading] = useState(false);
-  const [stats, setStats] = useState({ totalStudents: 0, activeExams: 0, systemHealth: '100%', totalViolations: 0 });
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ totalStudents: 0, activeExams: 0, totalExams: 0, systemHealth: '100%', totalViolations: 0 });
   const [subscription, setSubscription] = useState(null);
   const [auditLogs, setAuditLogs] = useState([]);
   const [helpRequests, setHelpRequests] = useState([]);
@@ -491,6 +491,13 @@ export default function AdminDashboard() {
   const [evalSessionData, setEvalSessionData] = useState(null);
   const [evalLoading, setEvalLoading] = useState(false);
 
+  // Demo Request Modal states
+  const [showDemoModal, setShowDemoModal] = useState(false);
+  const [demoStep, setDemoStep] = useState(1); // 1: Form, 2: OTP
+  const [demoLoading, setDemoLoading] = useState(false);
+  const [demoForm, setDemoForm] = useState({ name: '', email: '', institutionName: '', phone: '', website: '' });
+  const [demoOtp, setDemoOtp] = useState('');
+
 
   // Candidate eKYC states
   const [candidates, setCandidates] = useState([]);
@@ -518,13 +525,19 @@ export default function AdminDashboard() {
   const showConfirm = (msg, onConfirm) => setConfirmModal({ show: true, msg, onConfirm });
   const closeConfirm = () => setConfirmModal({ show: false, msg: '', onConfirm: null });
 
-  // Load Settings Exactly Once On Mount
+  // Load Core Data Exactly Once On Mount
   useEffect(() => {
-    getSettings().then(res => {
-      if (res && Object.keys(res).length > 0) {
-        setSettingsState(prev => ({ ...prev, ...res }));
+    Promise.all([
+      getSettings().catch(() => ({})),
+      getDashboardStats().catch(() => ({}))
+    ]).then(([settingsRes, statsRes]) => {
+      if (settingsRes && Object.keys(settingsRes).length > 0) {
+        setSettingsState(prev => ({ ...prev, ...settingsRes }));
       }
-    }).catch(() => console.log('Failed fetching early settings.'));
+      if (statsRes && statsRes.subscription) {
+        setSubscription(statsRes.subscription);
+      }
+    }).catch(() => console.log('Failed fetching early core data.'));
   }, []);
 
   useEffect(() => {
@@ -668,6 +681,42 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDemoSubmit = async (e) => {
+    e.preventDefault();
+    if (!demoForm.name || !demoForm.email || !demoForm.institutionName) {
+      toast.error('Please fill all required fields');
+      return;
+    }
+    setDemoLoading(true);
+    try {
+      await api.post('/api/public/demo-request', demoForm);
+      setDemoStep(2);
+      toast.success('Verification code sent to your email.');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to submit request');
+    } finally {
+      setDemoLoading(false);
+    }
+  };
+
+  const handleDemoVerify = async (e) => {
+    e.preventDefault();
+    if (!demoOtp) {
+      toast.error('Please enter the OTP');
+      return;
+    }
+    setDemoLoading(true);
+    try {
+      const res = await api.post('/api/public/verify-demo', { email: demoForm.email, otp: demoOtp });
+      toast.success(res.data.message || 'Verification successful!');
+      setShowDemoModal(false);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Verification failed');
+    } finally {
+      setDemoLoading(false);
+    }
+  };
+
   const fetchDataForTab = async (tab) => {
       setLoading(true);
       try {
@@ -703,7 +752,10 @@ export default function AdminDashboard() {
               const res = await getAdminResults();
               setAdminResults(res?.results || res || []);
           } else if (tab === 'Settings') {
-              // Settings are fetched independently on mount. No data required on tab switch.
+              // Ensure subscription data is fresh for billing section
+              getDashboardStats().then(res => {
+                  if (res.subscription) setSubscription(res.subscription);
+              }).catch(() => {});
           } else if (tab === 'Candidates') {
               const res = await getCandidates(candidateSearch).catch(() => []);
               setCandidates(res || []);
@@ -1069,7 +1121,7 @@ export default function AdminDashboard() {
 
   const visibleTabs = tabs.filter(t => t.access.includes(userRole));
 
-  // ────────── Tab Views ──────────
+  // ---------- Tab Views ----------
 
   const getTrialDaysRemaining = () => {
     if (!subscription?.trialEndsAt) return 0;
@@ -1082,23 +1134,23 @@ export default function AdminDashboard() {
   const STAT_CARDS = [
      { 
        label: 'Total Students', 
-       value: `${stats.totalStudents} / ${subscription?.limits?.maxStudents || 50}`, 
+       value: loading ? <div className="h-9 w-28 bg-white/5 animate-pulse rounded-xl" /> : `${stats.totalStudents} / ${subscription?.limits?.maxStudents || '--'}`, 
        icon: Users, 
-       sub: subscription?.plan === 'trial' ? 'Trial limit' : `${subscription?.plan?.toUpperCase()} Plan` 
+       sub: loading ? 'Synchronizing...' : (subscription?.plan === 'trial' ? 'Trial limit' : `${subscription?.plan?.toUpperCase() || 'STANDARD'} Plan`) 
      },
      { 
        label: 'Created Exams', 
-       value: `${stats.totalExams || 0} / ${subscription?.limits?.maxExams || 5}`, 
+       value: loading ? <div className="h-9 w-28 bg-white/5 animate-pulse rounded-xl" /> : `${stats.totalExams || 0} / ${subscription?.limits?.maxExams || '--'}`, 
        icon: FileText, 
-       sub: subscription?.plan === 'trial' ? 'Trial limit' : `${subscription?.plan?.toUpperCase()} Plan` 
+       sub: loading ? 'Synchronizing...' : (subscription?.plan === 'trial' ? 'Trial limit' : `${subscription?.plan?.toUpperCase() || 'STANDARD'} Plan`) 
      },
      { 
-       label: subscription?.plan === 'trial' ? 'Trial Mode' : 'Subscription', 
-       value: subscription?.plan === 'trial' ? `${getTrialDaysRemaining()} Days` : 'Active', 
+       label: loading ? 'Subscription' : (subscription?.plan === 'trial' ? 'Trial Mode' : 'Subscription'), 
+       value: loading ? <div className="h-9 w-28 bg-white/5 animate-pulse rounded-xl" /> : (subscription?.plan === 'trial' ? `${getTrialDaysRemaining()} Days` : 'Active'), 
        icon: Clock, 
-       sub: subscription?.plan === 'trial' ? 'Premium trial' : `${subscription?.plan?.toUpperCase()} Tier` 
+       sub: loading ? 'Synchronizing...' : (subscription?.plan === 'trial' ? 'Premium trial' : `${subscription?.plan?.toUpperCase() || 'STANDARD'} Tier`) 
      },
-     { label: 'Total Violations', value: stats.totalViolations, icon: AlertOctagon },
+     { label: 'Total Violations', value: loading ? <div className="h-9 w-16 bg-white/5 animate-pulse rounded-xl" /> : stats.totalViolations, icon: AlertOctagon },
   ];
 
   const renderOverview = () => (
@@ -1440,117 +1492,6 @@ export default function AdminDashboard() {
     </div>
   );
 
-  const renderCandidatesOld = () => (
-    <div className="space-y-10 ">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 bg-surface p-10 rounded-[2.5rem] border border-main shadow-2xl relative overflow-hidden">
-        <div className="flex items-center gap-8">
-           <div className="w-10 h-10 flex items-center justify-center text-primary-500">
-             <ScanFace size={28} strokeWidth={2.5} />
-           </div>
-           <div>
-             <h2 className="text-xl font-bold text-primary">Identity Registry</h2>
-             <p className="text-[11px] text-muted mt-1">E-KYC Verification & Biometric Status</p>
-           </div>
-        </div>
-        <div className="flex items-center gap-4">
-           <div className="hidden lg:flex bg-surface-hover p-1.5 rounded-2xl border border-main shadow-inner">
-             {[
-               { id: 'ALL', label: 'All' },
-               { id: 'PENDING', label: 'Pending' },
-               { id: 'VERIFIED', label: 'Verified' },
-               { id: 'ISSUES', label: 'Flags' }
-             ].map(f => (
-               <button 
-                 key={f.id}
-                 onClick={() => setCandidateFilter(f.id)}
-                 className={`px-6 py-2.5 rounded-xl text-[9px] font-black tracking-widest uppercase transition-all ${candidateFilter === f.id ? 'bg-surface text-primary-500 shadow-xl border border-main' : 'text-muted hover:text-primary'}`}
-               >
-                 {f.label}
-               </button>
-             ))}
-           </div>
-           <button 
-             onClick={handleVerifyAllCandidates}
-             disabled={verifyingAll}
-             className="px-8 py-3.5 bg-primary-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all rounded-2xl shadow-2xl shadow-primary-500/20 active:scale-95 disabled:opacity-50"
-           >
-             {verifyingAll ? 'Processing...' : 'Verify Registry'}
-           </button>
-        </div>
-      </div>
-
-      <DataTable 
-        loading={loading}
-        headers={['Candidate Principal', 'Identity Proof', 'Biometric Score', 'Status', 'Clearance']}
-        data={candidates.filter(c => {
-          if (candidateFilter === 'VERIFIED') return c.isVerified;
-          if (candidateFilter === 'PENDING') return !c.isVerified && !c.verificationIssue;
-          if (candidateFilter === 'ISSUES') return !!c.verificationIssue;
-          return true;
-        })}
-        renderRow={(c) => (
-          <tr key={c._id} className="hover:bg-surface-hover/50 transition-colors group/row last:border-0">
-            <td className="px-8 py-6">
-              <div className="flex flex-col">
-                <span className="font-black text-[13px] text-primary uppercase tracking-tight group-hover/row:text-primary-500 transition-colors">{c.name}</span>
-                <span className="text-[9px] font-black text-muted uppercase tracking-widest mt-1 opacity-40">{c.email}</span>
-              </div>
-            </td>
-            <td className="px-8 py-6">
-               <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-surface-hover border border-main overflow-hidden shadow-inner group/img cursor-pointer" onClick={() => setSelectedCandidate(c)}>
-                     <img src={c.profilePicture || 'https://ui-avatars.com/api/?name='+c.name} alt="Face" className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-500" />
-                  </div>
-                  <div className="w-12 h-12 rounded-xl bg-surface-hover border border-main overflow-hidden shadow-inner group/img cursor-pointer" onClick={() => setSelectedCandidate(c)}>
-                     <img src={c.idCardUrl || 'https://via.placeholder.com/150?text=ID+CARD'} alt="ID" className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-500" />
-                  </div>
-               </div>
-            </td>
-            <td className="px-8 py-6">
-               <div className="flex items-center gap-3">
-                  <div className="w-20 h-1.5 bg-main rounded-full overflow-hidden">
-                     <div className="h-full bg-emerald-500" style={{ width: '94%' }} />
-                  </div>
-                  <span className="text-[11px] font-black text-emerald-500 tabular-nums">94%</span>
-               </div>
-            </td>
-            <td className="px-8 py-6">
-               {c.verificationIssue ? (
-                 <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[9px] font-black border bg-red-500/10 text-red-500 border-red-500/20 uppercase tracking-widest">
-                   <AlertCircle size={10} strokeWidth={3} /> {c.verificationIssue}
-                 </span>
-               ) : c.isVerified ? (
-                 <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[9px] font-black border bg-emerald-500/10 text-emerald-500 border-emerald-500/20 uppercase tracking-widest">
-                   <ShieldCheck size={10} strokeWidth={3} /> Verified
-                 </span>
-               ) : (
-                 <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[9px] font-black border bg-amber-500/10 text-amber-500 border-amber-500/20 uppercase tracking-widest">
-                   <Clock size={10} strokeWidth={3} /> Pending Review
-                 </span>
-               )}
-            </td>
-            <td className="px-8 py-6">
-               <div className="flex items-center gap-4">
-                  <button 
-                    onClick={() => handleVerifyCandidate(c._id, !c.isVerified)}
-                    className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all active:scale-95 ${c.isVerified ? 'text-red-500 bg-red-500/10 border border-red-500/20' : 'text-emerald-500 bg-emerald-500/10 border border-emerald-500/20'}`}
-                    title={c.isVerified ? "Revoke Verification" : "Authorize Candidate"}
-                  >
-                    {c.isVerified ? <X size={18} strokeWidth={3} /> : <Check size={18} strokeWidth={3} />}
-                  </button>
-                  <button 
-                    onClick={() => setSelectedCandidate(c)}
-                    className="w-10 h-10 flex items-center justify-center text-muted/30 hover:text-primary-500 hover:bg-primary-500/10 border border-transparent hover:border-primary-500/20 rounded-xl transition-all active:scale-95"
-                  >
-                    <Eye size={18} strokeWidth={3} />
-                  </button>
-               </div>
-            </td>
-          </tr>
-        )}
-      />
-    </div>
-  );
 
   const renderExams = () => {
     const filteredExams = exams.filter(e => {
@@ -1563,7 +1504,7 @@ export default function AdminDashboard() {
         <div className="flex items-center justify-between bg-surface p-6 rounded-3xl border border-main shadow-sm relative overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
            <div className="flex items-center gap-12">
               <div className="relative z-10">
-                <h2 className="text-xl font-bold text-primary tracking-tight leading-none">Exam Library</h2>
+                <h2 className="text-xl font-bold text-primary tracking-tight leading-none">Assessment Hub</h2>
                 <p className="text-[12px] text-muted font-medium mt-1">Global assessment library orchestration</p>
               </div>
 
@@ -1666,7 +1607,19 @@ export default function AdminDashboard() {
     );
   };
 
-  const renderSettings = () => (
+  const renderSettings = () => {
+    if (!subscription) {
+      return (
+        <div className="max-w-4xl mx-auto pb-32 flex flex-col items-center justify-center h-64 gap-4 animate-in fade-in duration-500">
+           <div className="w-16 h-16 bg-primary-500/10 rounded-full flex items-center justify-center border border-primary-500/20">
+              <RefreshCw className="text-primary-500 animate-spin" size={24} />
+           </div>
+           <p className="text-[11px] font-black text-muted uppercase tracking-[0.2em]">Synchronizing License Status...</p>
+        </div>
+      );
+    }
+
+    return (
     <div className="max-w-4xl mx-auto pb-32 ">
       {/* Card 0: Billing & Subscription */}
       <div className="bg-surface border border-primary-500/20 rounded-2xl shadow-sm mb-6 overflow-hidden relative">
@@ -1853,6 +1806,7 @@ export default function AdminDashboard() {
       </div>
     </div>
   );
+};
 
   const renderAcademics = () => {
     // We use the dedicated students state here
@@ -2024,7 +1978,7 @@ export default function AdminDashboard() {
 
                  return (
                    <div className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[9px] font-bold border ${badgeStyle}`}>
-                     {(res.status === 'submitted' || res.status === 'evaluated') && <span className="mr-1">✅</span>}
+                     {(res.status === 'submitted' || res.status === 'evaluated') && <CheckCircle size={10} className="mr-1" />}
                      {label}
                    </div>
                  );
@@ -2265,7 +2219,7 @@ export default function AdminDashboard() {
                 <p className="text-sm font-bold text-slate-900 truncate">{c.name}</p>
                 <p className="text-[10px] text-slate-400 truncate mt-0.5">{c.email}</p>
                 {c.currentExam && (
-                  <p className="text-[9px] text-red-500 font-bold mt-2 truncate uppercase tracking-wide">📝 {c.currentExam}</p>
+                  <p className="text-[9px] text-red-500 font-bold mt-2 truncate uppercase tracking-wide">EXAM: {c.currentExam}</p>
                 )}
                 <div className="flex items-center justify-between mt-3">
                   <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
@@ -2351,9 +2305,14 @@ export default function AdminDashboard() {
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Joined: {new Date(selectedCandidate.createdAt).toLocaleDateString()}</p>
                 <p 
                   className={`text-xs font-bold mt-1 truncate ${selectedCandidate.isVerified ? 'text-[#22c55e]' : 'text-amber-600'}`}
-                  title={selectedCandidate.verificationIssue ? `Issue: ${selectedCandidate.verificationIssue}` : ''}
                 >
-                  {selectedCandidate.isVerified ? '✅ Identity Verified' : selectedCandidate.verificationIssue ? `⚠️ Issue: ${selectedCandidate.verificationIssue}` : '⏳ Pending Verification'}
+                  {selectedCandidate.isVerified ? (
+                    <span className="flex items-center gap-1.5"><CheckCircle size={12} /> Identity Verified</span>
+                  ) : selectedCandidate.verificationIssue ? (
+                    <span className="flex items-center gap-1.5"><AlertTriangle size={12} /> Issue: {selectedCandidate.verificationIssue}</span>
+                  ) : (
+                    <span className="flex items-center gap-1.5"><Clock size={12} /> Pending Verification</span>
+                  )}
                 </p>
               </div>
               <div className="flex gap-3 shrink-0 items-center">
@@ -2820,6 +2779,64 @@ export default function AdminDashboard() {
                     <button onClick={() => setSelectedPlan('enterprise')} className="w-full py-3 bg-white/5 border border-white/10 text-primary text-[11px] font-bold uppercase tracking-widest rounded-xl hover:bg-white/10 transition-all">Contact Sales</button>
                   </div>
                 </div>
+              ) : selectedPlan === 'enterprise' ? (
+                <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
+                  <div className="flex flex-col items-center text-center p-12 bg-main/40 border border-white/10 rounded-[2rem] relative overflow-hidden">
+                    <div className="absolute -top-24 -left-24 w-64 h-64 bg-primary-500/5 rounded-full blur-3xl" />
+                    <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl" />
+                    
+                    <div className="w-20 h-20 bg-primary-500/10 rounded-full flex items-center justify-center mb-6 relative z-10 border border-primary-500/20">
+                       <Brain size={36} className="text-primary-500" />
+                    </div>
+                    <h3 className="text-2xl font-black text-primary mb-3 relative z-10">Enterprise Intelligence</h3>
+                    <p className="text-muted text-[13px] font-medium max-w-lg mb-10 leading-relaxed relative z-10">
+                       Our Enterprise architecture is tailored for large-scale institutions requiring high-frequency proctoring, custom AI models, and deep infrastructure integration. Connect with our solution architects to begin your transition.
+                    </p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-xl mb-10 relative z-10">
+                       <a href="mailto:vinitjangirr@gmail.com" className="flex items-center gap-5 p-6 bg-surface border border-main rounded-2xl hover:border-primary-500/30 transition-all group text-left">
+                          <div className="w-12 h-12 rounded-xl bg-primary-500/10 flex items-center justify-center text-primary-500 group-hover:bg-primary-500 group-hover:text-white transition-all">
+                             <MessageCircle size={20} />
+                          </div>
+                          <div>
+                             <span className="text-[11px] font-black uppercase tracking-widest text-primary block">Email Sales</span>
+                             <span className="text-[10px] text-muted mt-1 font-medium">vinitjangirr@gmail.com</span>
+                          </div>
+                       </a>
+                       <a 
+                          href="#" 
+                          onClick={(e) => { 
+                            e.preventDefault(); 
+                            setDemoForm({
+                              name: userName,
+                              email: sessionStorage.getItem('vision_email') || '',
+                              institutionName: 'Current Institution',
+                              phone: '',
+                              website: ''
+                            });
+                            setShowDemoModal(true); 
+                            setDemoStep(1);
+                          }} 
+                          className="flex items-center gap-5 p-6 bg-surface border border-main rounded-2xl hover:border-primary-500/30 transition-all group text-left"
+                        >
+                          <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white transition-all">
+                             <Target size={20} />
+                          </div>
+                          <div>
+                             <span className="text-[11px] font-black uppercase tracking-widest text-primary block">Request Demo</span>
+                             <span className="text-[10px] text-muted mt-1 font-medium">Book a strategy call</span>
+                          </div>
+                       </a>
+                    </div>
+                    
+                    <button 
+                      onClick={() => setSelectedPlan(null)}
+                      className="px-10 py-3 bg-white/5 border border-white/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-white/10 transition-all relative z-10"
+                    >
+                      Return to Plans
+                    </button>
+                  </div>
+                </div>
               ) : (
                 <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -2889,9 +2906,123 @@ export default function AdminDashboard() {
               {/* Status Note */}
               <div className="mt-8 pt-8 border-t border-white/5 flex items-center gap-3 text-muted">
                 <Info size={16} />
-                <p className="text-[11px]">Need help? Reach out to support@vision.edu for assistance with your subscription.</p>
+                <p className="text-[11px]">Need help? Reach out to vinitjangirr@gmail.com for assistance with your subscription.</p>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Demo Request Modal */}
+      {showDemoModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => !demoLoading && setShowDemoModal(false)} />
+          <div className="relative w-full max-w-md bg-main border border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+             <div className="p-8">
+                <div className="flex justify-between items-start mb-6">
+                   <div>
+                      <h3 className="text-xl font-black text-primary uppercase tracking-tight">Request Demo</h3>
+                      <p className="text-[10px] font-bold text-muted uppercase tracking-widest mt-1">Book Your Strategy Session</p>
+                   </div>
+                   <button onClick={() => setShowDemoModal(false)} className="p-2 hover:bg-white/5 rounded-full transition-all text-muted hover:text-primary">
+                      <X size={20} />
+                   </button>
+                </div>
+
+                <div className="relative mb-8 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                   <div 
+                      className="absolute inset-y-0 left-0 bg-emerald-500 transition-all duration-500"
+                      style={{ width: demoStep === 1 ? '50%' : '100%' }}
+                   />
+                </div>
+
+                {demoStep === 1 ? (
+                   <form onSubmit={handleDemoSubmit} className="space-y-4">
+                      <div>
+                         <label className="block text-[10px] font-black text-muted uppercase tracking-widest mb-2 ml-1">Full Name</label>
+                         <input 
+                            type="text" 
+                            value={demoForm.name}
+                            onChange={e => setDemoForm({...demoForm, name: e.target.value})}
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 text-primary text-sm focus:outline-none focus:border-emerald-500/50 transition-all"
+                            placeholder="John Doe"
+                            required
+                         />
+                      </div>
+                      <div>
+                         <label className="block text-[10px] font-black text-muted uppercase tracking-widest mb-2 ml-1">Work Email</label>
+                         <input 
+                            type="email" 
+                            value={demoForm.email}
+                            onChange={e => setDemoForm({...demoForm, email: e.target.value})}
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 text-primary text-sm focus:outline-none focus:border-emerald-500/50 transition-all"
+                            placeholder="john@institution.com"
+                            required
+                         />
+                      </div>
+                      <div>
+                         <label className="block text-[10px] font-black text-muted uppercase tracking-widest mb-2 ml-1">Institution Name</label>
+                         <input 
+                            type="text" 
+                            value={demoForm.institutionName}
+                            onChange={e => setDemoForm({...demoForm, institutionName: e.target.value})}
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 text-primary text-sm focus:outline-none focus:border-emerald-500/50 transition-all"
+                            placeholder="University of Vision"
+                            required
+                         />
+                      </div>
+                      <div className="pt-4">
+                         <button 
+                            type="submit"
+                            disabled={demoLoading}
+                            className="w-full py-4 bg-emerald-500 text-white text-[11px] font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
+                         >
+                            {demoLoading ? <RefreshCw className="animate-spin" size={16} /> : <Send size={16} />}
+                            Send Verification Code
+                         </button>
+                      </div>
+                   </form>
+                ) : (
+                   <form onSubmit={handleDemoVerify} className="space-y-6">
+                      <div className="text-center mb-6">
+                         <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
+                            <ShieldCheck size={32} className="text-emerald-500" />
+                         </div>
+                         <p className="text-sm text-primary font-medium">Verify Your Identity</p>
+                         <p className="text-[11px] text-muted mt-1 leading-relaxed">We've sent a 6-digit code to {demoForm.email}</p>
+                      </div>
+                      
+                      <input 
+                         type="text" 
+                         maxLength={6}
+                         value={demoOtp}
+                         onChange={e => setDemoOtp(e.target.value.replace(/\D/g, ''))}
+                         className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-5 text-center text-2xl font-black tracking-[1em] text-primary focus:outline-none focus:border-emerald-500 transition-all"
+                         placeholder="000000"
+                         required
+                         autoFocus
+                      />
+
+                      <div className="space-y-3 pt-4">
+                         <button 
+                            type="submit"
+                            disabled={demoLoading}
+                            className="w-full py-4 bg-primary-500 text-white text-[11px] font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-primary-600 transition-all shadow-xl shadow-primary-500/20 flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
+                         >
+                            {demoLoading ? <RefreshCw className="animate-spin" size={16} /> : <Check size={16} />}
+                            Confirm & Request
+                         </button>
+                         <button 
+                            type="button"
+                            onClick={() => setDemoStep(1)}
+                            disabled={demoLoading}
+                            className="w-full py-3 text-muted hover:text-primary text-[10px] font-bold uppercase tracking-widest transition-all"
+                         >
+                            Back to Form
+                         </button>
+                      </div>
+                   </form>
+                )}
+             </div>
           </div>
         </div>
       )}
@@ -2900,3 +3031,5 @@ export default function AdminDashboard() {
 }
 
 
+
+ 

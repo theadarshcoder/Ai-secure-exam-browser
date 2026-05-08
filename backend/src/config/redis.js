@@ -37,12 +37,17 @@ const getRedisConnection = () => {
                 enableReadyCheck: false,
                 lazyConnect: true, // Only connect when needed
                 connectTimeout: 10000,
+                retryStrategy: (times) => {
+                    const delay = Math.min(times * 50, 2000);
+                    if (times > 10) return null; // Stop retrying after 10 attempts to prevent CPU spikes
+                    return delay;
+                },
                 reconnectOnError: (err) => {
                     const targetError = 'READONLY';
                     if (err.message.includes(targetError)) return true;
                 },
                 // 🛠️ Optimization for Limited Plans
-                maxIdleTime: 30000, // Close idle connections after 30s
+                maxIdleTime: 10000, // Faster cleanup of idle connections (10s)
                 enableKeepAlive: true,
                 keepAliveDelay: 1000
             });

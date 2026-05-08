@@ -263,7 +263,7 @@ const sendVerificationEmail = async ({ to, name, otp }) => {
 
             <div style="font-size: 13px; color: #6b7280; line-height: 1.5;">
                 <p style="margin-bottom: 8px;">If you did not make this request, you can safely ignore this email. No institution will be created without verification.</p>
-                <p>For support, contact us at <a href="mailto:support@vision.edu" style="color: #10b981; text-decoration: none;">support@vision.edu</a></p>
+                <p>For support, contact us at <a href="mailto:vinitjangirr@gmail.com" style="color: #10b981; text-decoration: none;">vinitjangirr@gmail.com</a></p>
             </div>
 
             <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #f3f4f6; font-size: 12px; color: #9ca3af; text-align: center;">

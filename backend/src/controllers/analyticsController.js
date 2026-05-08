@@ -17,7 +17,7 @@ exports.getStrategicAnalytics = async (req, res) => {
         // 🛡️ Isolation & RBAC
         const targetInstitution = req.user.role === 'super_admin' ? institutionId : req.user.institutionId;
         
-        const cacheKey = `strategic_stats_${targetInstitution || 'global'}_${examId || 'all'}_${startDate || 'none'}_${endDate || 'none'}`;
+        const cacheKey = `strategic_stats_v2_${targetInstitution || 'global'}_${examId || 'all'}_${startDate || 'none'}_${endDate || 'none'}`;
         const cachedData = await cacheService.getCache(cacheKey);
         
         if (cachedData) {

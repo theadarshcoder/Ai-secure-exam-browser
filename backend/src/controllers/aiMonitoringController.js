@@ -18,7 +18,7 @@ exports.getOperationalAnalytics = async (req, res) => {
         const targetInstitution = req.user.role === 'super_admin' ? institutionId : req.user.institutionId;
         
         // ⚡ Cache Key generation
-        const cacheKey = `ai_stats_${targetInstitution || 'global'}_${examId || 'all'}_${startDate || 'none'}_${endDate || 'none'}`;
+        const cacheKey = `ai_stats_v2_${targetInstitution || 'global'}_${examId || 'all'}_${startDate || 'none'}_${endDate || 'none'}`;
         const cachedData = await cacheService.getCache(cacheKey);
         
         if (cachedData) {

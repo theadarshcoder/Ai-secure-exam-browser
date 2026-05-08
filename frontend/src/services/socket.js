@@ -226,6 +226,9 @@ class SocketService {
       this.socket.off('ack_received', callback);
     }
   }
+  getSocket() {
+    return this.socket;
+  }
 }
 
 const socketService = new SocketService();

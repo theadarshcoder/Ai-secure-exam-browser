@@ -22,6 +22,10 @@ const startWorkers = async () => {
         await connectDB();
         await connectRedis();
 
+        const { Emitter } = require('@socket.io/redis-emitter');
+        const redisClient = getRedisClient();
+        const emitter = new Emitter(redisClient);
+
         // 2. Initialize Workers with Concurrency from ENV
         // Default concurrency values if not provided
         const concurrency = {
@@ -35,12 +39,12 @@ const startWorkers = async () => {
         // Real-time notifications from workers should eventually move to a dedicated Notification Queue 
         // that Web Nodes listen to, or use a Redis-based Socket.IO Emitter.
         const workers = [
-            setupCodeEvaluationWorker(null, concurrency.GRADING),
-            setupFrontendEvaluationWorker(null, concurrency.GRADING),
+            setupCodeEvaluationWorker(emitter, concurrency.GRADING),
+            setupFrontendEvaluationWorker(emitter, concurrency.GRADING),
             setupNotificationWorker(concurrency.NOTIFICATION),
             setupBillingWorker(2), // Billing is sensitive, low concurrency
             startIntelligenceWorker(concurrency.INTELLIGENCE),
-            await startAutoSubmitWorker(null) // io = null
+            await startAutoSubmitWorker(emitter) // io = null
         ];
 
         logger.info({ concurrency }, '✅ All background workers initialized.');

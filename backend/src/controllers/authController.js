@@ -162,19 +162,21 @@ exports.login = asyncHandler(async (req, res) => {
 
     // ✨ MASTER FEATURE: Role resolution logic
     let finalRole = user.role;
-    const ROLE_FAMILY = {
-        'super_mentor': 'mentor',
-        'super_admin': 'admin'
-    };
-
-    if (requestedRole && user.role !== requestedRole) {
+    
+    // 🛡️ Special Case: Super Mentor can login using the 'mentor' button
+    // But we must recover their full identity for redirection
+    if (user.role === 'super_mentor' && requestedRole === 'mentor') {
+        finalRole = 'super_mentor';
+    } else if (requestedRole && user.role !== requestedRole) {
+        const ROLE_FAMILY = {
+            'super_admin': 'admin'
+        };
         const family = ROLE_FAMILY[user.role];
         if (!family || family !== requestedRole) {
-            res.status(403);
-            const displayRole = user.role.charAt(0).toUpperCase() + user.role.slice(1);
-            throw new Error(`Your account is registered as '${displayRole}'. Please select the correct role to login.`);
+            return res.status(403).json({ 
+                error: `Access Denied: Your account role (${user.role}) is not compatible with the requested role (${requestedRole}).` 
+            });
         }
-        // ✨ Use the role they asked for for the response/token
         finalRole = requestedRole; 
     }
 

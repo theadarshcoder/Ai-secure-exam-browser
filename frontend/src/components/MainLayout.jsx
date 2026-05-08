@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import NetworkBanner from './NetworkBanner';
+import SystemModeBanner from './SystemModeBanner';
+
 const MainLayout = () => {
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -25,6 +27,7 @@ const MainLayout = () => {
 
   return (
     <div className="relative min-h-screen bg-slate-50 font-sans selection:bg-indigo-100">
+      <SystemModeBanner />
       <NetworkBanner />
       <main className="relative z-10">
         <Outlet />

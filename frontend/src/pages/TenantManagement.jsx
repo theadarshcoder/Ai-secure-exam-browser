@@ -377,18 +377,51 @@ export default function TenantManagement() {
                                 <div className="bg-surface border border-main rounded-3xl p-8 space-y-6 shadow-sm">
                                     <h3 className="text-lg font-bold text-primary flex items-center gap-3"><Activity size={20} className="text-emerald-500" /> Instance Limits</h3>
                                     <div className="space-y-5">
+                                        {/* Students */}
                                         <div>
-                                            <div className="flex justify-between text-[11px] font-bold text-muted mb-2"><span>STUDENT CAPACITY</span><span className="text-primary">{institution.maxStudents}</span></div>
-                                            <div className="h-2 bg-main rounded-full overflow-hidden"><div className="h-full bg-primary-500 w-[70%] rounded-full shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]" /></div>
+                                            <div className="flex justify-between text-[11px] font-bold text-muted mb-2">
+                                                <span>STUDENT CAPACITY</span>
+                                                <span className="text-primary font-black">{details.usage?.students || 0} / {institution.maxStudents}</span>
+                                            </div>
+                                            <div className="h-2 bg-main rounded-full overflow-hidden">
+                                                <motion.div 
+                                                    initial={{ width: 0 }}
+                                                    animate={{ width: `${Math.min(100, ((details.usage?.students || 0) / institution.maxStudents) * 100)}%` }}
+                                                    className="h-full bg-primary-500 rounded-full shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]" 
+                                                />
+                                            </div>
                                         </div>
+
+                                        {/* Exams */}
                                         <div>
-                                            <div className="flex justify-between text-[11px] font-bold text-muted mb-2"><span>EXAM CAPACITY</span><span className="text-primary">{institution.maxExams || 50}</span></div>
-                                            <div className="h-2 bg-main rounded-full overflow-hidden"><div className="h-full bg-indigo-500 w-[50%] rounded-full shadow-[0_0_8px_rgba(99,102,241,0.5)]" /></div>
+                                            <div className="flex justify-between text-[11px] font-bold text-muted mb-2">
+                                                <span>EXAM CAPACITY</span>
+                                                <span className="text-primary font-black">{details.usage?.exams || 0} / {institution.maxExams || 50}</span>
+                                            </div>
+                                            <div className="h-2 bg-main rounded-full overflow-hidden">
+                                                <motion.div 
+                                                    initial={{ width: 0 }}
+                                                    animate={{ width: `${Math.min(100, ((details.usage?.exams || 0) / (institution.maxExams || 50)) * 100)}%` }}
+                                                    className="h-full bg-indigo-500 rounded-full shadow-[0_0_8px_rgba(99,102,241,0.5)]" 
+                                                />
+                                            </div>
                                         </div>
+
+                                        {/* Mentors */}
                                         <div>
-                                            <div className="flex justify-between text-[11px] font-bold text-muted mb-2"><span>MENTOR CAPACITY</span><span className="text-primary">{institution.maxMentors}</span></div>
-                                            <div className="h-2 bg-main rounded-full overflow-hidden"><div className="h-full bg-emerald-500 w-[40%] rounded-full shadow-[0_0_8px_rgba(16,185,129,0.5)]" /></div>
+                                            <div className="flex justify-between text-[11px] font-bold text-muted mb-2">
+                                                <span>MENTOR CAPACITY</span>
+                                                <span className="text-primary font-black">{details.usage?.mentors || 0} / {institution.maxMentors}</span>
+                                            </div>
+                                            <div className="h-2 bg-main rounded-full overflow-hidden">
+                                                <motion.div 
+                                                    initial={{ width: 0 }}
+                                                    animate={{ width: `${Math.min(100, ((details.usage?.mentors || 0) / institution.maxMentors) * 100)}%` }}
+                                                    className="h-full bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.5)]" 
+                                                />
+                                            </div>
                                         </div>
+
                                         <div className="pt-4 border-t border-main">
                                             <div className="flex justify-between items-center">
                                                 <span className="text-xs font-bold text-muted">SUBSCRIPTION PLAN</span>

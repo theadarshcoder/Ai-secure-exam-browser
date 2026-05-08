@@ -16,10 +16,12 @@ router.get('/queues', healthController.getQueueStats);
 router.get('/demo-requests', superAdminController.getDemoRequests);
 router.post('/demo-requests/:id/approve', superAdminController.approveDemoRequest);
 router.post('/demo-requests/:id/reject', superAdminController.rejectDemoRequest);
+router.delete('/demo-requests/:id', superAdminController.deleteDemoRequest);
 
 // Upgrade Requests (Plan Upgrades)
 router.get('/upgrade-requests', superAdminController.getUpgradeRequests);
 router.patch('/upgrade-requests/:id', superAdminController.processUpgradeRequest);
+router.delete('/upgrade-requests/:id', superAdminController.deleteUpgradeRequest);
 
 // Institutions
 router.get('/institutions', superAdminController.getInstitutions);
@@ -39,6 +41,7 @@ router.patch('/settings/announcement', platformController.updateAnnouncement);
 
 // Platform Intelligence
 router.get('/stats', superAdminController.getPlatformStats);
+router.get('/intelligence', superAdminController.getIntelligenceData);
 router.get('/audit-logs', superAdminController.getGlobalLogs);
 
 module.exports = router;
