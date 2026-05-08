@@ -296,13 +296,16 @@ const LoginPage = () => {
         deviceId
       });
 
-      // 🛡️ Robust Response Parsing: Handle both nested 'user' object and flat legacy structure
-      const responseData = response.data;
+      // 🛡️ Robust Response Parsing: Handle nested 'data' from responseStandardizer and flat formats
+      const body = response.data;
+      const responseData = (body && body.success && body.data) ? body.data : body;
+      
       const accessToken = responseData.accessToken;
       const refreshToken = responseData.refreshToken;
       const userData = responseData.user || responseData;
 
       if (!accessToken || !userData) {
+          console.error('Login Data Mismatch:', { body, responseData });
           throw new Error('Invalid authentication response from server.');
       }
 
