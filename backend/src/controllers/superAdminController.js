@@ -4,6 +4,14 @@ const DemoRequest = require('../models/DemoRequest');
 const AuditLog = require('../models/AuditLog');
 const InstitutionSettings = require('../models/InstitutionSettings'); 
 const Exam = require('../models/Exam');
+const ExamSession = require('../models/ExamSession');
+const ExamAnswer = require('../models/ExamAnswer');
+const ExamInvite = require('../models/ExamInvite');
+const InstitutionUsage = require('../models/InstitutionUsage');
+const Subscription = require('../models/Subscription');
+const Invoice = require('../models/Invoice');
+const UpgradeRequest = require('../models/UpgradeRequest');
+
 const mongoose = require('mongoose');
 const { asyncHandler } = require('../middlewares/errorMiddleware');
 const { getRedisClient } = require('../config/redis');
@@ -410,12 +418,14 @@ exports.addInstitutionAdmin = asyncHandler(async (req, res) => {
     res.json({ message: 'Admin added successfully', adminId: newAdmin._id, tempPassword: randomPassword });
 });
 
+const PLANS = require('../config/plans');
+
 /**
  * 📊 Update Institution Usage Limits (Upgrade License)
  */
 exports.updateInstitutionLimits = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { maxStudents, maxMentors, plan } = req.body;
+    let { maxStudents, maxMentors, maxExams, plan } = req.body;
 
     const institution = await Institution.findById(id);
     if (!institution) {
@@ -426,11 +436,23 @@ exports.updateInstitutionLimits = asyncHandler(async (req, res) => {
     const oldLimits = { 
         maxStudents: institution.maxStudents, 
         maxMentors: institution.maxMentors, 
+        maxExams: institution.maxExams,
         plan: institution.plan 
     };
 
+    // 🔄 Auto-apply plan defaults if plan is changed and limits are not explicitly provided
+    if (plan && plan !== institution.plan) {
+        const planConfig = PLANS[plan.toUpperCase()];
+        if (planConfig) {
+            maxStudents = maxStudents || planConfig.limits.maxStudents;
+            maxMentors = maxMentors || planConfig.limits.maxMentors;
+            maxExams = maxExams || planConfig.limits.maxExams;
+        }
+    }
+
     if (maxStudents) institution.maxStudents = maxStudents;
     if (maxMentors) institution.maxMentors = maxMentors;
+    if (maxExams) institution.maxExams = maxExams;
     if (plan) institution.plan = plan;
 
     await institution.save();
@@ -445,8 +467,75 @@ exports.updateInstitutionLimits = asyncHandler(async (req, res) => {
         severity: 'warning',
         institutionId: id,
         actorRole: 'super_admin',
-        details: { oldLimits, newLimits: { maxStudents, maxMentors, plan } }
+        details: { oldLimits, newLimits: { maxStudents, maxMentors, maxExams, plan } }
     });
 
     res.json({ message: 'Institution limits updated successfully', institution });
 });
+
+/**
+ * 🗑️ Hard Delete Institution (Cascaded Cleanup)
+ * Super Admin manually wipes an institution and all its data.
+ * This is IRREVERSIBLE and frees up emails for re-registration.
+ */
+exports.deleteInstitution = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const institution = await Institution.findById(id).session(session);
+        if (!institution) {
+            res.status(404);
+            throw new Error('Institution not found');
+        }
+
+        // 1. Identify all users and sessions for cleanup
+        const userIds = await User.find({ institutionId: id }).session(session).distinct('_id');
+        const sessionIds = await ExamSession.find({ institutionId: id }).session(session).distinct('_id');
+
+        // 2. Delete Exam-related data
+        await ExamAnswer.deleteMany({ sessionId: { $in: sessionIds } }).session(session);
+        await ExamSession.deleteMany({ institutionId: id }).session(session);
+        await ExamInvite.deleteMany({ institutionId: id }).session(session);
+        await Exam.deleteMany({ institutionId: id }).session(session);
+
+        // 3. Delete Billing & Subscription data
+        await Subscription.deleteMany({ institutionId: id }).session(session);
+        await Invoice.deleteMany({ institutionId: id }).session(session);
+        await UpgradeRequest.deleteMany({ institutionId: id }).session(session);
+        await InstitutionUsage.deleteMany({ institutionId: id }).session(session);
+
+        // 4. Delete Infrastructure data
+        await InstitutionSettings.deleteMany({ institutionId: id }).session(session);
+        await AuditLog.deleteMany({ institutionId: id }).session(session);
+
+        // 5. Delete all Users associated with this institution
+        // This is what frees up the email addresses
+        await User.deleteMany({ institutionId: id }).session(session);
+
+        // 6. Finally, delete the Institution itself
+        await Institution.findByIdAndDelete(id).session(session);
+
+        // 7. Clear Caches
+        await clearCache(`inst_access:${id}`);
+        await clearCache(`admin_dashboard_stats_${id}`);
+
+        await session.commitTransaction();
+        session.endSession();
+
+        res.json({ 
+            success: true,
+            message: `Institution '${institution.name}' and all associated data have been permanently deleted.` 
+        });
+    } catch (error) {
+        await session.abortTransaction();
+        session.endSession();
+        console.error('Institution deletion failed:', error);
+        res.status(400).json({ 
+            success: false, 
+            message: error.message || 'Failed to delete institution' 
+        });
+    }
+});
+

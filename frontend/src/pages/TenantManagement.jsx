@@ -44,7 +44,11 @@ export default function TenantManagement() {
     const [newAdminForm, setNewAdminForm] = useState({ name: '', email: '' });
     const [submittingAdmin, setSubmittingAdmin] = useState(false);
     const [resetPasswordModal, setResetPasswordModal] = useState({ isOpen: false, adminId: '', customPassword: '' });
-    const [upgradeModal, setUpgradeModal] = useState({ isOpen: false, maxStudents: 0, maxMentors: 0, plan: '' });
+    const [upgradeModal, setUpgradeModal] = useState({ isOpen: false, maxStudents: 0, maxMentors: 0, maxExams: 0, plan: '' });
+    const [menuOpen, setMenuOpen] = useState(false);
+    const [deleteConfirmText, setDeleteConfirmText] = useState('');
+    const [showDeleteFinal, setShowDeleteFinal] = useState(false);
+
 
     useEffect(() => {
         fetchData();
@@ -134,6 +138,7 @@ export default function TenantManagement() {
             await api.patch(`/api/super-admin/institutions/${id}/limits`, {
                 maxStudents: upgradeModal.maxStudents,
                 maxMentors: upgradeModal.maxMentors,
+                maxExams: upgradeModal.maxExams,
                 plan: upgradeModal.plan
             });
             toast.success('License limits upgraded successfully');
@@ -143,6 +148,35 @@ export default function TenantManagement() {
             toast.error('Failed to upgrade limits');
         }
     };
+
+    const handleDeleteTenant = () => {
+        setConfirmDialog({
+            isOpen: true,
+            title: 'Delete Institution?',
+            message: `Are you sure you want to PERMANENTLY delete ${details.institution.name}? This action is irreversible and will wipe all associated data, including users, exams, and results.`,
+            isDestructive: true,
+            action: () => {
+                // First confirmation passed, now show the second final confirmation with text input
+                setTimeout(() => setShowDeleteFinal(true), 400);
+            }
+        });
+    };
+
+    const submitFinalDelete = async (e) => {
+        if (e) e.preventDefault();
+        if (deleteConfirmText !== details.institution.name) {
+            return toast.error('Institution name mismatch');
+        }
+
+        try {
+            const { data } = await api.delete(`/api/super-admin/institutions/${id}`);
+            toast.success(data.message);
+            navigate('/super-admin');
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to delete institution');
+        }
+    };
+
 
     const Badge = ({ children, color }) => {
         const styles = {
@@ -239,8 +273,49 @@ export default function TenantManagement() {
                                 ) : (
                                     <button onClick={handleToggleStatus} className="flex items-center gap-2 px-6 py-3 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all"><Power size={16} /> Activate Tenant</button>
                                 )}
-                                <button className="p-3 bg-surface border border-main text-muted hover:text-primary rounded-2xl transition-all shadow-sm"><MoreVertical size={20} /></button>
+                                
+                                <div className="relative">
+                                    <button 
+                                        onClick={() => setMenuOpen(!menuOpen)}
+                                        className={`p-3 bg-surface border border-main text-muted hover:text-primary rounded-2xl transition-all shadow-sm ${menuOpen ? 'bg-main ring-2 ring-primary-500/20' : ''}`}
+                                    >
+                                        <MoreVertical size={20} />
+                                    </button>
+                                    
+                                    <AnimatePresence>
+                                        {menuOpen && (
+                                            <>
+                                                <motion.div 
+                                                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                                                    className="fixed inset-0 z-40"
+                                                    onClick={() => setMenuOpen(false)}
+                                                />
+                                                <motion.div 
+                                                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                                                    className="absolute right-0 mt-2 w-48 bg-surface border border-main rounded-2xl shadow-2xl z-50 overflow-hidden"
+                                                >
+                                                    <div className="p-2 space-y-1">
+                                                        <button 
+                                                            onClick={() => { setMenuOpen(false); handleDeleteTenant(); }}
+                                                            className="w-full px-4 py-3 text-left text-[11px] font-black uppercase tracking-widest text-rose-500 hover:bg-rose-500/10 rounded-xl flex items-center gap-3 transition-colors"
+                                                        >
+                                                            <ShieldAlert size={16} /> Delete Tenant
+                                                        </button>
+                                                        <button 
+                                                            className="w-full px-4 py-3 text-left text-[11px] font-black uppercase tracking-widest text-muted hover:bg-main rounded-xl flex items-center gap-3 transition-colors opacity-50 cursor-not-allowed"
+                                                        >
+                                                            <Database size={16} /> Export Data
+                                                        </button>
+                                                    </div>
+                                                </motion.div>
+                                            </>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
                             </div>
+
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -307,6 +382,10 @@ export default function TenantManagement() {
                                             <div className="h-2 bg-main rounded-full overflow-hidden"><div className="h-full bg-primary-500 w-[70%] rounded-full shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]" /></div>
                                         </div>
                                         <div>
+                                            <div className="flex justify-between text-[11px] font-bold text-muted mb-2"><span>EXAM CAPACITY</span><span className="text-primary">{institution.maxExams || 50}</span></div>
+                                            <div className="h-2 bg-main rounded-full overflow-hidden"><div className="h-full bg-indigo-500 w-[50%] rounded-full shadow-[0_0_8px_rgba(99,102,241,0.5)]" /></div>
+                                        </div>
+                                        <div>
                                             <div className="flex justify-between text-[11px] font-bold text-muted mb-2"><span>MENTOR CAPACITY</span><span className="text-primary">{institution.maxMentors}</span></div>
                                             <div className="h-2 bg-main rounded-full overflow-hidden"><div className="h-full bg-emerald-500 w-[40%] rounded-full shadow-[0_0_8px_rgba(16,185,129,0.5)]" /></div>
                                         </div>
@@ -322,6 +401,7 @@ export default function TenantManagement() {
                                                 isOpen: true, 
                                                 maxStudents: institution.maxStudents, 
                                                 maxMentors: institution.maxMentors, 
+                                                maxExams: institution.maxExams || 50,
                                                 plan: institution.plan 
                                             })} 
                                             className="w-full py-3 bg-indigo-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20 transition-all active:scale-95"
@@ -585,13 +665,40 @@ export default function TenantManagement() {
                                             className="w-full bg-main border border-main text-primary rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500/50 transition-all"
                                         />
                                     </div>
+                                    <div className="space-y-2 col-span-2">
+                                        <label className="text-xs font-bold text-muted uppercase tracking-widest pl-1">Exam Capacity</label>
+                                        <input 
+                                            type="number" 
+                                            required
+                                            value={upgradeModal.maxExams}
+                                            onChange={(e) => setUpgradeModal({...upgradeModal, maxExams: e.target.value})}
+                                            className="w-full bg-main border border-main text-primary rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500/50 transition-all"
+                                        />
+                                    </div>
                                 </div>
                                 
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-muted uppercase tracking-widest pl-1">Subscription Plan</label>
                                     <select 
                                         value={upgradeModal.plan}
-                                        onChange={(e) => setUpgradeModal({...upgradeModal, plan: e.target.value})}
+                                        onChange={(e) => {
+                                            const newPlan = e.target.value;
+                                            const defaults = {
+                                                trial: { students: 50, mentors: 2, exams: 5 },
+                                                free: { students: 20, mentors: 1, exams: 2 },
+                                                basic: { students: 200, mentors: 5, exams: 20 },
+                                                pro: { students: 1000, mentors: 20, exams: 100 },
+                                                enterprise: { students: 10000, mentors: 100, exams: 1000 }
+                                            };
+                                            const planDefaults = defaults[newPlan] || {};
+                                            setUpgradeModal({
+                                                ...upgradeModal, 
+                                                plan: newPlan,
+                                                maxStudents: planDefaults.students || upgradeModal.maxStudents,
+                                                maxMentors: planDefaults.mentors || upgradeModal.maxMentors,
+                                                maxExams: planDefaults.exams || upgradeModal.maxExams
+                                            });
+                                        }}
                                         className="w-full bg-main border border-main text-primary rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500/50 transition-all appearance-none"
                                     >
                                         <option value="trial">Trial Mode</option>
@@ -615,6 +722,67 @@ export default function TenantManagement() {
                     </div>
                 )}
             </AnimatePresence>
+
+            {/* Final Delete Confirmation Modal (Second Confirmation) */}
+            <AnimatePresence>
+                {showDeleteFinal && (
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                        <motion.div 
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/80 backdrop-blur-md"
+                        />
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.9, y: 40 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 40 }}
+                            className="relative w-full max-w-lg bg-surface border-2 border-rose-500/30 rounded-[2.5rem] p-10 shadow-[0_0_50px_rgba(244,63,94,0.2)]"
+                        >
+                            <div className="w-20 h-20 rounded-3xl bg-rose-500/10 text-rose-500 flex items-center justify-center mb-8 border border-rose-500/20 shadow-inner mx-auto animate-pulse">
+                                <ShieldAlert size={40} />
+                            </div>
+                            
+                            <h3 className="text-3xl font-black text-center text-primary mb-4 tracking-tighter">Critical Confirmation</h3>
+                            <p className="text-muted text-center leading-relaxed mb-8 text-sm">
+                                You are about to delete <span className="text-rose-500 font-bold underline">{details.institution.name}</span>. 
+                                This will erase all student data, exam records, and proctoring logs. 
+                                <br/><br/>
+                                To confirm, please type the institution name below:
+                            </p>
+
+                            <form onSubmit={submitFinalDelete} className="space-y-6">
+                                <div className="space-y-2">
+                                    <input 
+                                        type="text" 
+                                        autoFocus
+                                        value={deleteConfirmText}
+                                        onChange={(e) => setDeleteConfirmText(e.target.value)}
+                                        placeholder={details.institution.name}
+                                        className="w-full bg-main border-2 border-rose-500/20 text-primary rounded-2xl px-6 py-4 focus:outline-none focus:border-rose-500 transition-all text-center font-bold tracking-tight text-lg shadow-inner"
+                                    />
+                                </div>
+                                
+                                <div className="flex gap-4">
+                                    <button 
+                                        type="button"
+                                        onClick={() => { setShowDeleteFinal(false); setDeleteConfirmText(''); }}
+                                        className="flex-1 py-4 bg-main text-primary hover:bg-surface-hover border border-main rounded-2xl text-xs font-black uppercase tracking-widest transition-all"
+                                    >
+                                        I changed my mind
+                                    </button>
+                                    <button 
+                                        type="submit"
+                                        disabled={deleteConfirmText !== details.institution.name}
+                                        className="flex-1 py-4 bg-rose-500 hover:bg-rose-600 disabled:opacity-30 disabled:grayscale text-white rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-xl shadow-rose-500/20"
+                                    >
+                                        Confirm & Wipe All Data
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
+

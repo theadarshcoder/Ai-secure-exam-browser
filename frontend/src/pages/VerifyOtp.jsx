@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
+import api from '../services/api';
 import { Loader2, CheckCircle2, XCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -48,7 +48,7 @@ const VerifyOtp = () => {
 
         setStatus('verifying');
         try {
-            const response = await axios.post('http://localhost:5001/api/public/verify-request', {
+            const response = await api.post('/api/public/verify-request', {
                 email,
                 otp: otpValue
             });

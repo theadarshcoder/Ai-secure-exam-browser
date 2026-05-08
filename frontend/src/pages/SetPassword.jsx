@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import axios from 'axios';
+import api from '../services/api';
 import { Loader2, CheckCircle2, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -27,7 +27,7 @@ const SetPassword = () => {
 
         setStatus('submitting');
         try {
-            const response = await axios.post('http://localhost:5001/api/public/set-password', {
+            const response = await api.post('/api/public/set-password', {
                 token,
                 password
             });

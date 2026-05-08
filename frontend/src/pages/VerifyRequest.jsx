@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../services/api';
 import { Loader2, CheckCircle2, XCircle, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -21,7 +21,7 @@ const VerifyRequest = () => {
             }
 
             try {
-                const response = await axios.get(`http://localhost:5001/api/public/verify-request?token=${token}`);
+                const response = await api.get(`/api/public/verify-request?token=${token}`);
                 
                 if (response.data.success) {
                     setStatus('success');

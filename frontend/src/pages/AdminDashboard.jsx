@@ -1080,9 +1080,24 @@ export default function AdminDashboard() {
   };
 
   const STAT_CARDS = [
-     { label: 'Total Students', value: `${stats.totalStudents} / 50`, icon: Users, sub: 'Trial limit' },
-     { label: 'Created Exams', value: `${stats.totalExams || 0} / 5`, icon: FileText, sub: 'Trial limit' },
-     { label: 'Trial Mode', value: `${getTrialDaysRemaining()} Days`, icon: Clock, sub: 'Premium trial' },
+     { 
+       label: 'Total Students', 
+       value: `${stats.totalStudents} / ${subscription?.limits?.maxStudents || 50}`, 
+       icon: Users, 
+       sub: subscription?.plan === 'trial' ? 'Trial limit' : `${subscription?.plan?.toUpperCase()} Plan` 
+     },
+     { 
+       label: 'Created Exams', 
+       value: `${stats.totalExams || 0} / ${subscription?.limits?.maxExams || 5}`, 
+       icon: FileText, 
+       sub: subscription?.plan === 'trial' ? 'Trial limit' : `${subscription?.plan?.toUpperCase()} Plan` 
+     },
+     { 
+       label: subscription?.plan === 'trial' ? 'Trial Mode' : 'Subscription', 
+       value: subscription?.plan === 'trial' ? `${getTrialDaysRemaining()} Days` : 'Active', 
+       icon: Clock, 
+       sub: subscription?.plan === 'trial' ? 'Premium trial' : `${subscription?.plan?.toUpperCase()} Tier` 
+     },
      { label: 'Total Violations', value: stats.totalViolations, icon: AlertOctagon },
   ];
 
@@ -1667,23 +1682,31 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="p-4 bg-main/50 rounded-2xl border border-main">
               <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1">Student Limit</p>
-              <h4 className="text-xl font-black text-primary">{stats.totalStudents} / 50</h4>
+              <h4 className="text-xl font-black text-primary">{stats.totalStudents} / {subscription?.limits?.maxStudents || 50}</h4>
               <div className="h-1.5 bg-main rounded-full mt-2 overflow-hidden">
-                <div className="h-full bg-primary-500 rounded-full" style={{ width: `${Math.min(100, (stats.totalStudents / 50) * 100)}%` }} />
+                <div className="h-full bg-primary-500 rounded-full" style={{ width: `${Math.min(100, (stats.totalStudents / (subscription?.limits?.maxStudents || 50)) * 100)}%` }} />
               </div>
             </div>
             <div className="p-4 bg-main/50 rounded-2xl border border-main">
               <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1">Exam Limit</p>
-              <h4 className="text-xl font-black text-primary">{stats.totalExams || 0} / 5</h4>
+              <h4 className="text-xl font-black text-primary">{stats.totalExams || 0} / {subscription?.limits?.maxExams || 5}</h4>
               <div className="h-1.5 bg-main rounded-full mt-2 overflow-hidden">
-                <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.min(100, ((stats.totalExams || 0) / 5) * 100)}%` }} />
+                <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.min(100, ((stats.totalExams || 0) / (subscription?.limits?.maxExams || 5)) * 100)}%` }} />
               </div>
             </div>
-            <div className="p-4 bg-main/50 rounded-2xl border border-main">
-              <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1">Trial Period</p>
-              <h4 className="text-xl font-black text-primary">{getTrialDaysRemaining()} Days</h4>
-              <p className="text-[9px] text-muted font-bold mt-1 uppercase tracking-tight italic">Expires {subscription?.trialEndsAt ? new Date(subscription.trialEndsAt).toLocaleDateString() : 'N/A'}</p>
-            </div>
+            {subscription?.plan === 'trial' ? (
+              <div className="p-4 bg-main/50 rounded-2xl border border-main">
+                <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1">Trial Period</p>
+                <h4 className="text-xl font-black text-primary">{getTrialDaysRemaining()} Days</h4>
+                <p className="text-[9px] text-muted font-bold mt-1 uppercase tracking-tight italic">Expires {subscription?.trialEndsAt ? new Date(subscription.trialEndsAt).toLocaleDateString() : 'N/A'}</p>
+              </div>
+            ) : (
+              <div className="p-4 bg-primary-500/5 rounded-2xl border border-primary-500/20">
+                <p className="text-[10px] font-bold text-primary-500 uppercase tracking-widest mb-1">Plan Status</p>
+                <h4 className="text-xl font-black text-primary uppercase">{subscription?.plan}</h4>
+                <p className="text-[9px] text-muted font-bold mt-1 uppercase tracking-tight italic">Your {subscription?.plan} tier is active.</p>
+              </div>
+            )}
           </div>
           <div className="flex items-center justify-between pt-4 border-t border-main">
             <div>

@@ -25,6 +25,8 @@ router.patch('/institutions/:id/status', superAdminController.updateInstitutionS
 router.post('/institutions/:id/reset-admin', superAdminController.resetAdminPassword);
 router.post('/institutions/:id/add-admin', superAdminController.addInstitutionAdmin);
 router.patch('/institutions/:id/limits', superAdminController.updateInstitutionLimits);
+router.delete('/institutions/:id', superAdminController.deleteInstitution);
+
 
 // Platform Governance & Settings
 router.get('/settings', platformController.getSettings);

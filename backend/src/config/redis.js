@@ -35,10 +35,16 @@ const getRedisConnection = () => {
             redisInstance = new IORedis(redisUrl, {
                 maxRetriesPerRequest: null, // Required for BullMQ
                 enableReadyCheck: false,
+                lazyConnect: true, // Only connect when needed
+                connectTimeout: 10000,
                 reconnectOnError: (err) => {
                     const targetError = 'READONLY';
                     if (err.message.includes(targetError)) return true;
                 },
+                // 🛠️ Optimization for Limited Plans
+                maxIdleTime: 30000, // Close idle connections after 30s
+                enableKeepAlive: true,
+                keepAliveDelay: 1000
             });
         }
 
@@ -72,7 +78,12 @@ const createNewConnection = () => {
             redisOptions: { maxRetriesPerRequest: null, enableReadyCheck: false }
         });
     } else {
-        return new IORedis(redisUrl, { maxRetriesPerRequest: null, enableReadyCheck: false });
+        return new IORedis(redisUrl, { 
+            maxRetriesPerRequest: null, 
+            enableReadyCheck: false,
+            lazyConnect: true,
+            maxIdleTime: 30000 
+        });
     }
 };
 

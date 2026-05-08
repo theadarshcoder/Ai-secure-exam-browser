@@ -109,7 +109,7 @@ exports.getDashboardStats = asyncHandler(async (req, res) => {
     ]);
 
     const institution = await Institution.findById(institutionId)
-        .select('plan trialEndsAt status')
+        .select('plan trialEndsAt status maxStudents maxExams maxMentors')
         .lean();
 
     const result = { 
@@ -122,7 +122,12 @@ exports.getDashboardStats = asyncHandler(async (req, res) => {
         subscription: {
             plan: institution?.plan || 'trial',
             trialEndsAt: institution?.trialEndsAt,
-            status: institution?.status
+            status: institution?.status,
+            limits: {
+                maxStudents: institution?.maxStudents || 200,
+                maxExams: institution?.maxExams || 50,
+                maxMentors: institution?.maxMentors || 10
+            }
         }
     };
 
