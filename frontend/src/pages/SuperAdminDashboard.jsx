@@ -81,15 +81,17 @@ export default function SuperAdminDashboard() {
         try {
             if (activeTab === 'demo-requests') {
                 const { data } = await api.get('/api/super-admin/demo-requests');
-                setDemoRequests(data);
+                // 🛡️ Robust Parsing: Handle both direct arrays and paginated objects
+                setDemoRequests(Array.isArray(data) ? data : (data.requests || []));
             } else if (activeTab === 'institutions') {
                 const { data } = await api.get('/api/super-admin/institutions');
-                setInstitutions(data);
+                // 🛡️ Robust Parsing: Handle both direct arrays and paginated objects
+                setInstitutions(Array.isArray(data) ? data : (data.institutions || []));
             } else if (activeTab === 'intelligence') {
                 await fetchStats();
             } else if (activeTab === 'audit-trail') {
                 const { data } = await api.get('/api/super-admin/audit-logs');
-                setAuditLogs(data);
+                setAuditLogs(Array.isArray(data) ? data : (data.logs || data.auditLogs || []));
             }
         } catch (error) {
             toast.error('Failed to load platform data');
