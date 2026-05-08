@@ -17,7 +17,7 @@ const createLimiter = (options) => {
         standardHeaders: true,
         legacyHeaders: false,
         store: redisClient ? new RedisStore({
-            sendCommand: (...args) => redisClient.sendCommand(args),
+            sendCommand: (...args) => redisClient.call(...args),
             prefix: `rate-limit:${options.category}:`
         }) : undefined, // Fallback to memory if Redis is down
         handler: (req, res) => {

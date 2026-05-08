@@ -21,7 +21,20 @@ const violationSchema = new mongoose.Schema({
         default: 'medium'
     },
     details: { type: String, default: '' },
-    timestamp: { type: Date, default: Date.now }
+    timestamp: { type: Date, default: Date.now },
+    
+    // 🛡️ Enterprise AI Governance
+    aiConfidence: { type: Number, default: 1.0 }, // 0.0 to 1.0
+    reviewStatus: {
+        status: { 
+            type: String, 
+            enum: ['pending', 'confirmed', 'false_positive'], 
+            default: 'pending' 
+        },
+        reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        reviewedAt: { type: Date },
+        reason: { type: String, default: '' }
+    }
 }, { _id: true });
 
 // questionResultSchema removed — now managed by ExamAnswer model
@@ -167,9 +180,17 @@ examSessionSchema.index({ startedAt: -1 });
 
 // Composite index for student dashboard queries
 examSessionSchema.index({ student: 1, status: 1 });
+examSessionSchema.index({ student: 1, exam: 1, status: 1 });
 
 // Tenant isolation indexes
 examSessionSchema.index({ institutionId: 1, status: 1 });
 examSessionSchema.index({ institutionId: 1, exam: 1, student: 1 });
+
+// 🚀 Performance Foundation: Governance & Monitoring Composite Indexes
+// Optimized for: Dashboard filtering by status and risk sorting
+examSessionSchema.index({ institutionId: 1, status: 1, riskScore: -1 });
+
+// Optimized for: Live cockpit monitoring (latest activity)
+examSessionSchema.index({ institutionId: 1, exam: 1, lastHeartbeat: -1 });
 
 module.exports = mongoose.model('ExamSession', examSessionSchema);

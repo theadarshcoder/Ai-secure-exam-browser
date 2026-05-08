@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import api, { getErrorMessage } from '../services/api';
 import { 
   Shield, User, Lock as LockIcon, ShieldCheck, Webcam, MonitorCheck, Activity,
   Terminal, Video, BrainCircuit, Database, Server,
@@ -327,8 +327,7 @@ const LoginPage = () => {
       navigate(target);
     } catch (err) {
       console.error('Login Error:', err);
-      const rawErr = err.response?.data?.error;
-      setError((typeof rawErr === 'string' ? rawErr : null) || err.response?.data?.message || 'Authorization failed. Please check your identity or secure key.');
+      setError(getErrorMessage(err));
     } finally {
       setIsAuthenticating(false);
     }

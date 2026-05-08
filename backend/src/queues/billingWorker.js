@@ -1,10 +1,10 @@
 const { Worker } = require('bullmq');
-const { redisUrl } = require('../config/redis');
 const billingService = require('../services/billingService');
 const reconciliationService = require('../services/reconciliationService');
 const ProcessedWebhook = require('../models/ProcessedWebhook');
 const logger = require('../utils/logger');
 const { RETRY_STRATEGIES, moveToDLQ } = require('../utils/queueHardening');
+const { getRedisConnection } = require('../config/redis');
 
 /**
  * 🛠️ Billing Worker
@@ -12,7 +12,7 @@ const { RETRY_STRATEGIES, moveToDLQ } = require('../utils/queueHardening');
  * This is where the actual state changes happen after a verified webhook or timer.
  */
 
-const setupBillingWorker = () => {
+const setupBillingWorker = (concurrency = 2) => {
     const worker = new Worker('billing-queue', async (job) => {
         const { type, eventId, eventType, provider, payload, institutionId } = job.data;
         
@@ -81,8 +81,8 @@ const setupBillingWorker = () => {
             throw error;
         }
     }, {
-        connection: { url: redisUrl },
-        concurrency: 5,
+        connection: getRedisConnection(),
+        concurrency: parseInt(concurrency),
         settings: {
             backoffStrategies: {
                 ...RETRY_STRATEGIES.CONSERVATIVE.backoff

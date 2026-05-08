@@ -6,6 +6,7 @@ import api, {
   runCodingQuestion,
   requestHelp,
   getSettings,
+  getErrorMessage,
 } from "../services/api";
 import { loader } from "@monaco-editor/react";
 const Editor = lazy(() => import("@monaco-editor/react"));
@@ -3097,7 +3098,7 @@ const { examId } = useParams();
             setTerminated({ reason: "Session paused by supervisor." });
             setTimeout(() => navigate("/student"), 100);
           } catch (err) {
-            setExitError(typeof err === "string" ? err : (err.message || "Incorrect Password"));
+            setExitError(getErrorMessage(err));
           }
         }}
       />

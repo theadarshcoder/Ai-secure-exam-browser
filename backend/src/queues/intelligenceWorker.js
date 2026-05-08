@@ -17,7 +17,7 @@ const connection = getRedisConnection();
  * Both use the shared `computeStudentIntelligence()` function
  * and write to the SAME cache key format.
  */
-const startIntelligenceWorker = () => {
+const startIntelligenceWorker = (concurrency = 3) => {
     const worker = new Worker('intelligence_queue', async (job) => {
         const { trackQueueMetric } = require('../utils/monitor');
         const startProcessing = Date.now();
@@ -50,7 +50,7 @@ const startIntelligenceWorker = () => {
         }
     }, { 
         connection,
-        concurrency: 5, 
+        concurrency: parseInt(concurrency), 
         limiter: {
             max: 50, // 🏎️ Increased for load testing
             duration: 1000 

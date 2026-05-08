@@ -32,8 +32,8 @@ const addFrontendEvaluationJob = async (jobData) => {
 };
 
 // 2. Setup Worker (Consumer)
-const setupFrontendEvaluationWorker = (io) => {
-    if (!io) {
+const setupFrontendEvaluationWorker = (io, concurrency = 5) => {
+    if (!io && process.env.DISABLE_WORKERS !== 'true') {
         console.warn('⚠️ [Worker] Socket.IO instance missing. Frontend worker results will not be broadcasted.');
     }
 
@@ -75,7 +75,7 @@ const setupFrontendEvaluationWorker = (io) => {
         }
     }, {
         connection: getRedisConnection(),
-        concurrency: 5,
+        concurrency: parseInt(concurrency),
         lockDuration: 35000 // Slightly longer than job timeout
     });
 

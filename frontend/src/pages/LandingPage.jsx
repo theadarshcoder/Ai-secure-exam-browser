@@ -8,7 +8,7 @@ import {
 import VisionLogo from '../components/VisionLogo';
 import { ThemeToggle } from '../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import api, { getErrorMessage } from '../services/api';
 import toast from 'react-hot-toast';
 
 // --- Static Metadata & Configuration ---
@@ -1373,7 +1373,7 @@ const CredTrustFooter = () => {
       setMessage('');
       setIsFocused(false);
     } catch (err) {
-      setError(err.response?.data?.error || err.message || 'Failed to subscribe');
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -1645,7 +1645,7 @@ const DemoRequestModal = ({ isOpen, onClose }) => {
       toast.success('Verification code sent!');
       setStep(1);
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to send code');
+      toast.error(getErrorMessage(error));
     } finally {
       setSubmitting(false);
     }
@@ -1671,7 +1671,7 @@ const DemoRequestModal = ({ isOpen, onClose }) => {
         toast.success('Verified! Account created.');
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Invalid code');
+      toast.error(getErrorMessage(error));
     } finally {
       setSubmitting(false);
     }

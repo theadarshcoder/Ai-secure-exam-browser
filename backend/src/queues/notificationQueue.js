@@ -60,7 +60,7 @@ const dispatchBulkNotifications = async (jobs) => {
     logger.info({ count: bulkJobs.length }, `📨 [Notification Queue] ${bulkJobs.length} bulk notifications added`);
 };
 
-const setupNotificationWorker = () => {
+const setupNotificationWorker = (concurrency = 5) => {
     const worker = new Worker('Notifications', async (job) => {
         const { name, data } = job;
         
@@ -94,7 +94,7 @@ const setupNotificationWorker = () => {
         return result;
     }, {
         connection,
-        concurrency: 5 // Higher concurrency for non-billing tasks
+        concurrency: parseInt(concurrency)
     });
 
     worker.on('failed', (job, err) => {

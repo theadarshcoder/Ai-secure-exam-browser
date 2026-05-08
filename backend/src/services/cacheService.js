@@ -10,10 +10,20 @@ const logger = require('../utils/logger');
 const SESSION_PREFIX = 'session:';
 const DEFAULT_TTL = 86400; // 24 hours in seconds (matching JWT expiry)
 
-// --- Added for Phase 2 Optimization ---
+// 🚀 Performance Foundation: Standardized TTLs
 const TTL_ACTIVE_SESSION = 21600; // 6 hours for ongoing exams
-const TTL_API_CACHE = 60; // 60 seconds for dashboard data
-const TTL_EXAM_CACHE = 3600; // 1 hour for exam definition caching
+const TTL_API_CACHE = 60;       // 60 seconds for dashboard data
+const TTL_EXAM_CACHE = 600;      // 10 minutes for exam definition caching
+const TTL_INSTITUTION_CACHE = 1800; // 30 minutes for institution config
+const TTL_ANALYTICS_CACHE = 3600; // 1 hour for high-level intelligence
+
+// --- Observability Helper ---
+const trackCacheStatus = (key, hit) => {
+    if (process.env.NODE_ENV === 'development') {
+        const color = hit ? '\x1b[32m[HIT]\x1b[0m' : '\x1b[31m[MISS]\x1b[0m';
+        console.log(`📡 Redis Cache ${color}: ${key}`);
+    }
+};
 
 // --- Tenant Isolation Helper ---
 const instKey = (institutionId, suffix) => institutionId ? `inst:${institutionId}:${suffix}` : suffix;
@@ -105,7 +115,9 @@ const getCache = async (key) => {
     if (!redis) return null;
     try {
         const data = await redis.get(key);
-        return data ? JSON.parse(data) : null;
+        const result = data ? JSON.parse(data) : null;
+        trackCacheStatus(key, !!result);
+        return result;
     } catch (err) {
         logger.warn({ err: err.message, key }, `⚠️  Redis: Failed to get cache for ${key}`);
         return null;
@@ -257,5 +269,7 @@ module.exports = {
     TTL_ACTIVE_SESSION,
     TTL_API_CACHE,
     TTL_EXAM_CACHE,
+    TTL_INSTITUTION_CACHE,
+    TTL_ANALYTICS_CACHE,
     instKey
 };

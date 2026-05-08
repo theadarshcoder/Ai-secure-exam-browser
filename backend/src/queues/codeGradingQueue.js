@@ -32,8 +32,8 @@ const addCodeEvaluationJob = async (jobData) => {
 };
 
 // 2. Setup Worker (Consumer)
-const setupCodeEvaluationWorker = (io) => {
-    if (!io) {
+const setupCodeEvaluationWorker = (io, concurrency = 5) => {
+    if (!io && process.env.DISABLE_WORKERS !== 'true') {
         console.warn('⚠️ [Worker] Socket.IO instance missing. Worker results will not be broadcasted.');
     }
 
@@ -103,7 +103,7 @@ const setupCodeEvaluationWorker = (io) => {
         }
     }, { 
         connection,
-        concurrency: 5 
+        concurrency: parseInt(concurrency)
     });
 
     worker.on('completed', (job) => {

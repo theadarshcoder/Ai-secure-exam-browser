@@ -21,6 +21,8 @@ import VerifyInvite from './pages/VerifyInvite';
 import StudentIntelligenceDashboard from './pages/StudentIntelligenceDashboard';
 import MentorLiveMonitoring from './pages/MentorLiveMonitoring';
 import VerifyOtp from './pages/VerifyOtp';
+import AiMonitoringDashboard from './pages/Admin/AiMonitoringDashboard';
+import InstitutionAnalytics from './pages/Admin/InstitutionAnalytics';
 
 import SetPassword from './pages/SetPassword';
 
@@ -132,10 +134,20 @@ export default function AppRouter() {
           <Route path="/verify" element={<VerifyInvite />} />
           <Route path="/verify-otp" element={<VerifyOtp />} />
           <Route path="/set-password" element={<SetPassword />} />
-          
           <Route path="/admin" element={
             <ProtectedRoute allowedRoles={['admin', 'super_mentor']}>
               <AdminDashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/ai-monitoring" element={
+            <ProtectedRoute allowedRoles={['admin', 'super_admin', 'super_mentor']}>
+              <AiMonitoringDashboard />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/admin/analytics" element={
+            <ProtectedRoute allowedRoles={['admin', 'super_admin', 'super_mentor']}>
+              <InstitutionAnalytics />
             </ProtectedRoute>
           } />
           

@@ -130,7 +130,7 @@ api.interceptors.response.use(
 );
 
 // 🛡️ Robust Error Parsing (Bug 5 Fix + Phase 5 Governance)
-const getErrorMessage = (error) => {
+export const getErrorMessage = (error) => {
     const errData = error.response?.data;
     if (!errData) return error.message || 'System error occurred. Please try again later.';
     
@@ -497,13 +497,52 @@ export const resendInvite = async (examId, email) => {
     }
 };
 
-// Student Intelligence Report
+// ─────────────────────────────────────────────────────────
+// 🛡️ AI Monitoring & Governance APIs
+// ─────────────────────────────────────────────────────────
+
+export const getStrategicAnalytics = async (params) => {
+    try {
+        const response = await api.get('/api/v1/analytics/strategic', { params });
+        return response.data?.data || response.data;
+    } catch (error) {
+        throw getErrorMessage(error);
+    }
+};
+
+export const getAIAnalytics = async (params) => {
+    try {
+        const response = await api.get('/api/v1/ai-monitoring/analytics', { params });
+        return response.data?.data || response.data;
+    } catch (error) {
+        throw getErrorMessage(error);
+    }
+};
+
+export const reviewViolation = async (reviewData) => {
+    try {
+        const response = await api.patch('/api/v1/ai-monitoring/review-violation', reviewData);
+        return response.data;
+    } catch (error) {
+        throw getErrorMessage(error);
+    }
+};
+
+export const toggleAIFeatures = async (governanceData) => {
+    try {
+        const response = await api.post('/api/v1/ai-monitoring/governance/toggle', governanceData);
+        return response.data;
+    } catch (error) {
+        throw getErrorMessage(error);
+    }
+};
+
+
+
 export const getStudentReport = async (studentId, page = 1, limit = 10) => {
     try {
-        const response = await api.get(`/api/admin/students/${studentId}/report`, {
-            params: { page, limit }
-        });
-        return response.data;
+        const response = await api.get(`/api/admin/students/${studentId}/report`, { params: { page, limit } });
+        return response.data?.data || response.data;
     } catch (error) {
         throw getErrorMessage(error);
     }

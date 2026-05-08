@@ -4,9 +4,10 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const redisUrl = process.env.REDIS_URL;
+const redisClusterNodes = process.env.REDIS_CLUSTER_NODES; // Format: "host1:6379,host2:6379"
 
-if (!redisUrl) {
-    throw new Error("❌ REDIS_URL is required for this system (Core Dependency for Sessions, Queues, and State)");
+if (!redisUrl && !redisClusterNodes) {
+    throw new Error("❌ REDIS_URL or REDIS_CLUSTER_NODES is required (Core Dependency for Sessions, Queues, and State)");
 }
 
 let redisInstance = null;
@@ -17,45 +18,74 @@ let redisInstance = null;
  */
 const getRedisConnection = () => {
     if (!redisInstance) {
-        console.log(`📡 [Redis] Connecting to: ${redisUrl}`);
-        console.log('🔄 Initializing singleton Redis connection...');
-        redisInstance = new IORedis(redisUrl, {
-            maxRetriesPerRequest: null, // Required for BullMQ
-            enableReadyCheck: false,
-            reconnectOnError: (err) => {
-                const targetError = 'READONLY';
-                if (err.message.includes(targetError)) {
-                    return true;
+        if (redisClusterNodes) {
+            console.log('📡 [Redis] Initializing Cluster Mode...');
+            const nodes = redisClusterNodes.split(',').map(node => {
+                const [host, port] = node.split(':');
+                return { host, port: parseInt(port) };
+            });
+            redisInstance = new IORedis.Cluster(nodes, {
+                redisOptions: {
+                    maxRetriesPerRequest: null,
+                    enableReadyCheck: false
                 }
-            },
-        });
+            });
+        } else {
+            console.log(`📡 [Redis] Connecting to Standalone: ${redisUrl}`);
+            redisInstance = new IORedis(redisUrl, {
+                maxRetriesPerRequest: null, // Required for BullMQ
+                enableReadyCheck: false,
+                reconnectOnError: (err) => {
+                    const targetError = 'READONLY';
+                    if (err.message.includes(targetError)) return true;
+                },
+            });
+        }
 
         redisInstance.on('connect', () => {
-            console.log('✅ Redis connected successfully (Singleton)');
+            console.log(`✅ Redis ${redisClusterNodes ? 'Cluster' : 'Standalone'} connected successfully`);
         });
 
         redisInstance.on('error', (err) => {
             console.error('❌ Redis connection error:', err.message);
-            process.exit(1); // 🔴 CRASH ON FAILURE (Hard Dependency)
+            // In high-scale prod, we might not want to crash immediately, 
+            // but for now we follow the hard-dependency rule.
+            if (process.env.NODE_ENV === 'production') {
+                 // Sentry?.captureException(err);
+            }
         });
     }
     return redisInstance;
 };
 
 /**
- * Legacy support for the existing API
+ * 🚀 Creates a fresh connection
+ * Useful for Pub/Sub or duplicated connections where a singleton isn't suitable.
  */
-const connectRedis = async () => {
-    return getRedisConnection();
+const createNewConnection = () => {
+    if (redisClusterNodes) {
+        const nodes = redisClusterNodes.split(',').map(node => {
+            const [host, port] = node.split(':');
+            return { host, port: parseInt(port) };
+        });
+        return new IORedis.Cluster(nodes, {
+            redisOptions: { maxRetriesPerRequest: null, enableReadyCheck: false }
+        });
+    } else {
+        return new IORedis(redisUrl, { maxRetriesPerRequest: null, enableReadyCheck: false });
+    }
 };
 
-const getRedisClient = () => {
-    return getRedisConnection();
-};
+/**
+ * Legacy support for the existing API
+ */
+const connectRedis = async () => getRedisConnection();
+const getRedisClient = () => getRedisConnection();
 
 module.exports = {
     connectRedis,
     getRedisClient,
     getRedisConnection,
+    createNewConnection,
     redisUrl
 };

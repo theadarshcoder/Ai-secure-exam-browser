@@ -9,7 +9,7 @@ import {
   Search, FileUp, UserPlus, Trash2, Eye,
   ShieldCheck, Activity, AlertOctagon,
   ChevronRight, LogOut, Bell, RefreshCw, Edit3,
-  BarChart3, Download, Clock, Check, X, Star, CheckCircle, AlertCircle, Plus, ScanFace, Radio, ShieldAlert, User, EyeOff, MessageCircle, AlertTriangle, OctagonX, TrendingUp, Sparkles, Inbox, ChevronDown, CreditCard, Info
+  BarChart3, Download, Clock, Check, X, Star, CheckCircle, AlertCircle, Plus, ScanFace, Radio, ShieldAlert, User, EyeOff, MessageCircle, AlertTriangle, OctagonX, TrendingUp, Sparkles, Inbox, ChevronDown, CreditCard, Info, Brain, Target
 } from 'lucide-react';
 import VisionLogo from '../components/VisionLogo';
 import PremiumSidebar from '../components/PremiumSidebar';
@@ -17,6 +17,8 @@ import SlidingTabBar from '../components/SlidingTabBar';
 import ToggleSwitch from '../components/ToggleSwitch';
 import { ThemeToggle } from '../contexts/ThemeContext';
 import BouncingDotLoader from '../components/BouncingDotLoader';
+import AiMonitoringDashboard from './Admin/AiMonitoringDashboard';
+import InstitutionAnalytics from './Admin/InstitutionAnalytics';
 import CSVHelper from '../components/CSVHelper';
 import api, { 
   getDashboardStats, 
@@ -1059,6 +1061,8 @@ export default function AdminDashboard() {
     { id: 'Candidates', label: 'Candidates', icon: ScanFace, access: ['admin', 'super_mentor'], section: 'User Management' },
     { id: 'Exams', label: 'Exam Library', icon: FileText, access: ['admin', 'super_mentor'], section: 'Management' },
     { id: 'Results', label: 'Results & Reports', icon: BarChart3, access: ['admin', 'super_mentor'], section: 'Intelligence & Oversight' },
+    { id: 'AiGovernance', label: 'AI Governance', icon: Brain, access: ['admin', 'super_mentor'], section: 'Intelligence & Oversight' },
+    { id: 'StrategicAnalytics', label: 'Institutional Intelligence', icon: Target, access: ['admin', 'super_mentor'], section: 'Intelligence & Oversight' },
     { id: 'Academics', label: 'Academic Insights', icon: TrendingUp, access: ['admin', 'super_mentor', 'mentor'], section: 'Intelligence & Oversight' },
     { id: 'Settings', label: 'System Settings', icon: Settings, access: ['admin'], section: 'Platform' },
   ];
@@ -2495,6 +2499,8 @@ export default function AdminDashboard() {
       case 'Candidates': return renderCandidates();
       case 'Exams': return renderExams();
       case 'Results': return renderResults();
+      case 'AiGovernance': return <AiMonitoringDashboard />;
+      case 'StrategicAnalytics': return <InstitutionAnalytics />;
       case 'Academics': return renderAcademics();
       case 'Settings': return renderSettings();
       default: return null;

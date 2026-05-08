@@ -4,40 +4,70 @@
 // ═══════════════════════════════════════════════════════════
 
 const axios = require('axios');
+const nodemailer = require('nodemailer');
 const logger = require('../utils/logger');
 
 /**
  * Send an email using Brevo HTTP API.
  */
-const sendBrevoEmail = async ({ to, subject, htmlContent, senderName }) => {
-    if (!process.env.BREVO_API_KEY) {
-        throw new Error('BREVO_API_KEY is missing! Please add it to your environment variables.');
+const sendEmail = async ({ to, subject, htmlContent, senderName }) => {
+    // 🛡️ Priority 1: Brevo API (Cloud Scaling)
+    if (process.env.BREVO_API_KEY) {
+        try {
+            const response = await axios.post('https://api.brevo.com/v3/smtp/email', {
+                sender: { 
+                    name: senderName || "Vision Exam Platform", 
+                    email: process.env.EMAIL_USER 
+                },
+                to: [{ email: to }],
+                subject: subject,
+                htmlContent: htmlContent
+            }, {
+                headers: {
+                    'api-key': process.env.BREVO_API_KEY,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            logger.info({ to, messageId: response.data.messageId }, `📧 [Brevo SUCCESS]: Sent to ${to}`);
+            return { success: true, id: response.data.messageId };
+        } catch (error) {
+            const errorMsg = error.response?.data?.message || error.message;
+            logger.error({ err: errorMsg, to, subject }, '❌ [Brevo FAILED]');
+            // Fallback to SMTP if configured
+        }
     }
 
-    try {
-        const response = await axios.post('https://api.brevo.com/v3/smtp/email', {
-            sender: { 
-                name: senderName || "Vision Exam Platform", 
-                email: process.env.EMAIL_USER 
-            },
-            to: [{ email: to }],
-            subject: subject,
-            htmlContent: htmlContent
-        }, {
-            headers: {
-                'api-key': process.env.BREVO_API_KEY,
-                'Content-Type': 'application/json'
-            }
-        });
+    // 🛡️ Priority 2: Nodemailer/SMTP (Local/Legacy Fallback)
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+        try {
+            const transporter = nodemailer.createTransport({
+                service: 'gmail',
+                auth: {
+                    user: process.env.EMAIL_USER,
+                    pass: process.env.EMAIL_PASS
+                }
+            });
 
-        logger.info({ to, messageId: response.data.messageId }, `📧 [Brevo SUCCESS]: Sent to ${to}`);
-        return { success: true, id: response.data.messageId };
-    } catch (error) {
-        const errorMsg = error.response?.data?.message || error.message;
-        logger.error({ err: errorMsg, to, subject }, '❌ [Brevo FAILED]');
-        return { success: false, error: errorMsg };
+            const info = await transporter.sendMail({
+                from: `"${senderName || 'Vision Exam Platform'}" <${process.env.EMAIL_USER}>`,
+                to,
+                subject,
+                html: htmlContent
+            });
+
+            logger.info({ to, messageId: info.messageId }, `📧 [SMTP SUCCESS]: Sent to ${to}`);
+            return { success: true, id: info.messageId };
+        } catch (error) {
+            logger.error({ err: error.message, to }, '❌ [SMTP FAILED]');
+            return { success: false, error: error.message };
+        }
     }
+
+    throw new Error('Email configuration missing! Please add BREVO_API_KEY or EMAIL_USER/PASS to .env');
 };
+
+const sendBrevoEmail = sendEmail;
 
 /**
  * Send an exam invite email to a student.

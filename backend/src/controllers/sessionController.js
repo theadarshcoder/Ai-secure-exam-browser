@@ -3,6 +3,7 @@ const User = require('../models/User');
 const Setting = require('../models/Setting');
 const { asyncHandler } = require('../middlewares/errorMiddleware');
 const { getRiskInfo } = require('../utils/helpers');
+const { getTenantFilter } = require('../utils/tenantFilter');
 
 
 // ═══════════════════════════════════════════════════════════
@@ -137,13 +138,24 @@ exports.getViolationHistory = asyncHandler(async (req, res) => {
 // ═══════════════════════════════════════════════════════════
 exports.getFlaggedStudents = asyncHandler(async (req, res) => {
     const { examId } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    let limit = parseInt(req.query.limit) || 20;
+    limit = Math.min(limit, 100);
+    const skip = (page - 1) * limit;
 
-    const sessions = await ExamSession.find(getTenantFilter(req, { 
+    const query = getTenantFilter(req, { 
         exam: examId,
         'violations.0': { $exists: true }   
-    }))
+    });
+
+    const sessions = await ExamSession.find(query)
         .populate('student', 'name email')
-        .sort({ tabSwitchCount: -1 });
+        .sort({ tabSwitchCount: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+    const total = await ExamSession.countDocuments(query);
 
     const flaggedStudents = sessions.map(s => {
         const { risk, score } = getRiskInfo(s.violations.length);
@@ -166,7 +178,9 @@ exports.getFlaggedStudents = asyncHandler(async (req, res) => {
 
     res.json({
         examId,
-        totalFlagged: flaggedStudents.length,
-        students: flaggedStudents
+        totalFlagged: total,
+        students: flaggedStudents,
+        page,
+        pages: Math.ceil(total / limit)
     });
 });

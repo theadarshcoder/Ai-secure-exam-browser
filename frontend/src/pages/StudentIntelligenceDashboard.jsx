@@ -124,7 +124,8 @@ const StudentIntelligenceDashboard = () => {
                 heightLeft -= pageHeight;
             }
 
-            pdf.save(`VISION_INTEL_${report.student.info.name.toUpperCase().replace(/\s+/g, '_')}.pdf`);
+            const fileName = `VISION_INTEL_${(report?.student?.info?.name || 'CANDIDATE').toUpperCase().replace(/\s+/g, '_')}.pdf`;
+            pdf.save(fileName);
             toast.success("Intelligence Dossier Exported.", { id: loadingToast });
         } catch (error) {
             console.error("PDF Export Failure Technical Details:", error);
@@ -142,7 +143,11 @@ const StudentIntelligenceDashboard = () => {
 
     if (!report) return <div className="text-center text-red-500 mt-10">Intelligence data not found.</div>;
 
-    const { student, intelligence, insights, timelineData = [], pagination } = report;
+    const student = report?.student || {};
+    const intelligence = report?.intelligence || {};
+    const insights = report?.insights || {};
+    const timelineData = report?.timelineData || [];
+    const pagination = report?.pagination || {};
     
     // Prepare chart data (reversed to show chronological order)
     const chartData = (timelineData || []).slice().reverse().map(item => ({
@@ -258,15 +263,15 @@ const StudentIntelligenceDashboard = () => {
                         <div className="flex flex-col items-start md:items-end text-left md:text-right pl-0 md:pl-10 md:border-l border-main">
                             <span className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1">Risk Level</span>
                             <div className={`font-semibold text-[13px] flex items-center gap-1.5 ${
-                                intelligence.riskLevel === 'High' ? 'text-red-500' : 
-                                intelligence.riskLevel === 'Medium' ? 'text-amber-500' : 
+                                intelligence?.riskLevel === 'High' ? 'text-red-500' : 
+                                intelligence?.riskLevel === 'Medium' ? 'text-amber-500' : 
                                 'text-emerald-500'
                             }`}>
                                 <div className={`w-1.5 h-1.5 rounded-full ${
-                                    intelligence.riskLevel === 'High' ? 'bg-red-500' : 
-                                    intelligence.riskLevel === 'Medium' ? 'bg-amber-500' : 'bg-emerald-500'
+                                    intelligence?.riskLevel === 'High' ? 'bg-red-500' : 
+                                    intelligence?.riskLevel === 'Medium' ? 'bg-amber-500' : 'bg-emerald-500'
                                 }`} />
-                                {intelligence.riskLevel} Risk
+                                {intelligence?.riskLevel || 'Low'} Risk
                             </div>
                         </div>
                     </div>
@@ -276,25 +281,25 @@ const StudentIntelligenceDashboard = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 border-b border-main pb-6">
                     <StatCard 
                         title="Exams Taken" 
-                        value={student.overview.totalExams} 
+                        value={student?.overview?.totalExams || 0} 
                         icon={<Calendar size={16} />}
                         sub="Lifetime attempts"
                     />
                     <StatCard 
                         title="Avg Score" 
-                        value={`${student.overview.avgPercentage}%`} 
+                        value={`${student?.overview?.avgPercentage || 0}%`} 
                         icon={<Award size={16} />}
                         sub="Overall accuracy"
                     />
                     <StatCard 
                         title="Success Rate" 
-                        value={`${student.overview.passRate}%`} 
+                        value={`${student?.overview?.passRate || 0}%`} 
                         icon={<TrendingUp size={16} />}
                         sub="Pass percentage"
                     />
                     <StatCard 
                         title="Risk Score" 
-                        value={intelligence.riskScore} 
+                        value={intelligence?.riskScore || 0} 
                         icon={<AlertTriangle size={16} />}
                         sub="Behavioral index"
                     />

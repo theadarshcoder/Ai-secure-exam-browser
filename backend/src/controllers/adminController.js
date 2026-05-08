@@ -202,10 +202,26 @@ exports.getAllMentors = asyncHandler(async (req, res) => {
 });
 
 exports.getAllAdmins = asyncHandler(async (req, res) => {
+    const page = parseInt(req.query.page) || 1;
+    let limit = parseInt(req.query.limit) || 20;
+    limit = Math.min(limit, 100);
+    const skip = (page - 1) * limit;
+
     const admins = await User.find(getTenantFilter(req, { role: 'admin' }))
         .select('-password')
-        .sort({ createdAt: -1 });
-    res.json(admins);
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+    const total = await User.countDocuments(getTenantFilter(req, { role: 'admin' }));
+
+    res.json({
+        admins,
+        total,
+        page,
+        pages: Math.ceil(total / limit)
+    });
 });
 
 exports.deleteStudent = asyncHandler(async (req, res) => {
@@ -422,13 +438,28 @@ exports.bulkDeleteUsers = asyncHandler(async (req, res) => {
 // Global Settings
 // ═══════════════════════════════════════════════════════════
 exports.getSettings = asyncHandler(async (req, res) => {
+    const institutionId = req.user.institutionId;
+    const cacheKey = `inst_settings:${institutionId}`;
+
+    // 1. Try Cache
+    const cached = await getCache(cacheKey);
+    if (cached) return res.json(cached);
+
     let setting = await Setting.findOne(getTenantFilter(req));
-    if (!setting) setting = await Setting.create({ institutionId: req.user.institutionId });
+    if (!setting) {
+        setting = await Setting.create({ institutionId: institutionId });
+    }
+
+    // 2. Set Cache (30 mins)
+    await setCache(cacheKey, setting, 1800);
+
     res.json(setting);
 });
 
 exports.saveSettings = asyncHandler(async (req, res) => {
+    const institutionId = req.user.institutionId;
     let setting = await Setting.findOne(getTenantFilter(req));
+    
     if (setting) {
         setting.maxTabSwitches = req.body.maxTabSwitches ?? setting.maxTabSwitches;
         setting.forceFullscreen = req.body.forceFullscreen ?? setting.forceFullscreen;
@@ -440,11 +471,12 @@ exports.saveSettings = asyncHandler(async (req, res) => {
         setting.anomalyThreshold = req.body.anomalyThreshold ?? setting.anomalyThreshold;
         await setting.save();
     } else {
-        setting = await Setting.create({ ...req.body, institutionId: req.user.institutionId });
+        setting = await Setting.create({ ...req.body, institutionId: institutionId });
     }
     
-    // 🛡️ Invalidate Cache so the next rule-engine check picks up new settings
-    await clearCache('global_settings');
+    // 🛡️ Invalidate Caches
+    await clearCache(`inst_settings:${institutionId}`);
+    await clearCache('global_settings'); // Compatibility with older logic
 
     res.json({ message: 'Settings saved successfully', settings: setting });
 });

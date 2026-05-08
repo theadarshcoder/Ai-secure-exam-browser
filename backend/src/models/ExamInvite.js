@@ -77,4 +77,7 @@ ExamInviteSchema.index({ tokenHash: 1 });
 // Tenant-scoped queries
 ExamInviteSchema.index({ institutionId: 1, exam: 1 });
 
+// 🚀 Performance Foundation: Funnel Analytics Index
+ExamInviteSchema.index({ institutionId: 1, status: 1, createdAt: -1 });
+
 module.exports = mongoose.model('ExamInvite', ExamInviteSchema);

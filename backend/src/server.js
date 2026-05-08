@@ -18,7 +18,7 @@ const User = require('./models/User');
 const Exam = require('./models/Exam');
 const ExamSession = require('./models/ExamSession');
 const Setting = require('./models/Setting');
-const { connectRedis, getRedisClient, redisUrl } = require('./config/redis');
+const { connectRedis, getRedisClient, redisUrl, createNewConnection } = require('./config/redis');
 const { createAdapter } = require('@socket.io/redis-adapter');
 const IORedis = require('ioredis');
 const { RedisStore } = require('rate-limit-redis');
@@ -52,6 +52,8 @@ const aiRoutes = require('./routes/aiRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 const publicRoutes = require('./routes/publicRoutes');
 const billingRoutes = require('./routes/billingRoutes');
+const aiMonitoringRoutes = require('./routes/aiMonitoringRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
 const { setupCodeEvaluationWorker } = require('./queues/codeGradingQueue');
 const { setupFrontendEvaluationWorker } = require('./queues/frontendGradingQueue');
 const { setupNotificationWorker } = require('./queues/notificationQueue');
@@ -309,9 +311,10 @@ const io = new Server(server, {
 // Bina Redis Adapter ke, agar student Worker-1 par connected hai
 // aur event Worker-2 se emit hota hai, toh student ko event NAHI milega.
 // Redis Pub/Sub is gap ko bridge karta hai — sabhi workers ek broadcast receive karte hain.
+// Redis Pub/Sub is gap ko bridge karta hai — sabhi workers ek broadcast receive karte hain.
 try {
     const pubClient = getRedisClient();
-    const subClient = pubClient.duplicate();
+    const subClient = createNewConnection(); // Cluster compatibility fix
     io.adapter(createAdapter(pubClient, subClient));
     logger.info('🔗 [Socket.IO] Redis Adapter active — Cluster broadcasting enabled');
 } catch (adapterErr) {
@@ -459,6 +462,8 @@ v1Router.use('/ai', featureFlagGuard('AI_ENABLED'), verifyToken, platformModeMid
 v1Router.use('/upload', verifyToken, platformModeMiddleware, activityTracker, checkInstitutionActive, globalLimiter, uploadRoutes);
 v1Router.use('/public', globalLimiter, publicRoutes);
 v1Router.use('/billing', featureFlagGuard('BILLING_ENABLED'), billingRoutes);
+v1Router.use('/ai-monitoring', verifyToken, aiMonitoringRoutes);
+v1Router.use('/analytics', verifyToken, analyticsRoutes);
 
 // Mount V1 Router
 app.use('/api/v1', v1Router);
@@ -1066,14 +1071,14 @@ async function bootstrap() {
             logger.info('🩺 [Health Monitor] Real-time Health Monitor Active');
 
             // ─── 🚀 Start Background Workers ─────────────────────────────
-            if (process.env.DISABLE_INTERNAL_WORKERS !== 'true') {
+            if (process.env.DISABLE_WORKERS !== 'true' && process.env.DISABLE_INTERNAL_WORKERS !== 'true') {
                 try {
                     logger.info('🚀 [BOOT] Initializing Background Workers...');
-                    workers.push(setupCodeEvaluationWorker(io));
-                    workers.push(setupFrontendEvaluationWorker(io));
-                    workers.push(setupNotificationWorker());
-                    workers.push(setupBillingWorker());
-                    workers.push(startIntelligenceWorker());
+                    workers.push(setupCodeEvaluationWorker(io, 5));
+                    workers.push(setupFrontendEvaluationWorker(io, 5));
+                    workers.push(setupNotificationWorker(5));
+                    workers.push(setupBillingWorker(1));
+                    workers.push(startIntelligenceWorker(3));
                     
                     startAutoSubmitWorker(io).then(worker => {
                         workers.push(worker);

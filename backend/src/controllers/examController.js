@@ -148,6 +148,9 @@ exports.createExam = asyncHandler(async (req, res) => {
 
     // Clear mentor exams cache
     await clearPattern(`mentor_exams_*`);
+    
+    // 🚀 Performance Foundation: Cache Invalidation for global exam list (if applicable)
+    await clearCache('active_exams_metadata');
 
     res.status(201).json({
         message: 'Exam Created!',
@@ -302,6 +305,9 @@ exports.updateExam = asyncHandler(async (req, res) => {
     // Clear mentor exams cache
     await clearPattern(`mentor_exams_*`);
 
+    // 🚀 Performance Foundation: Explicit Invalidation of Exam Definition
+    await clearCache(`exam_student_view:${examId}`);
+
     res.json({ message: 'Exam updated successfully', exam });
 });
 
@@ -327,6 +333,7 @@ exports.togglePublishResults = asyncHandler(async (req, res) => {
 
     // ⚡ CRITICAL: Clear all student dashboard caches to reflect result visibility change immediately
     await clearPattern('active_exams_user_*');
+    await clearCache(`exam_student_view:${examId}`);
 
     res.json({ 
         message: exam.resultsPublished ? 'Results published to students.' : 'Results hidden from students.', 
@@ -356,6 +363,7 @@ exports.deleteExam = asyncHandler(async (req, res) => {
 
     // Clear mentor exams cache
     await clearPattern(`mentor_exams_*`);
+    await clearCache(`exam_student_view:${examId}`);
 
     res.json({ message: 'Exam deleted successfully' });
 });
@@ -470,7 +478,14 @@ exports.getMentorExams = asyncHandler(async (req, res) => {
 // ─────────────── GET /api/exams/:id ───────────────
 // Load exam for student (STRIPS correct answers for security)
 exports.getExamById = asyncHandler(async (req, res) => {
-    const exam = await Exam.findOne(getTenantFilter(req, { _id: req.params.id }))
+    const examId = req.params.id;
+    const cacheKey = `exam_student_view:${examId}`;
+
+    // 1. Try Cache First
+    const cached = await getCache(cacheKey);
+    if (cached) return res.json(cached);
+
+    const exam = await Exam.findOne(getTenantFilter(req, { _id: examId }))
         .select('-questions.correctOption -questions.expectedAnswer -questions.testCases.expectedOutput')
         .populate('creator', 'name')
         .lean();
@@ -515,7 +530,7 @@ exports.getExamById = asyncHandler(async (req, res) => {
         requireIDVerification: true
     };
 
-    res.json({
+    const result = {
         id: exam._id,
         title: exam.title,
         category: exam.category,
@@ -525,7 +540,12 @@ exports.getExamById = asyncHandler(async (req, res) => {
         creator: exam.creator?.name,
         questions: sanitizedQuestions,
         settings: globalSettings
-    });
+    };
+
+    // 2. Set Cache (10 minutes)
+    await setCache(cacheKey, result, 600); 
+
+    res.json(result);
 });
 
 // ─────────────── GET /api/exams/mentor/:id ───────────────

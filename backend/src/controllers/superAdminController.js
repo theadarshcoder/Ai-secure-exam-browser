@@ -53,8 +53,25 @@ exports.getPlatformStats = asyncHandler(async (req, res) => {
  * 📬 Get all demo requests
  */
 exports.getDemoRequests = asyncHandler(async (req, res) => {
-    const requests = await DemoRequest.find().sort({ createdAt: -1 });
-    res.json(requests);
+    const page = parseInt(req.query.page) || 1;
+    let limit = parseInt(req.query.limit) || 20;
+    limit = Math.min(limit, 100);
+    const skip = (page - 1) * limit;
+
+    const requests = await DemoRequest.find()
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+    const total = await DemoRequest.countDocuments();
+
+    res.json({
+        requests,
+        total,
+        page,
+        pages: Math.ceil(total / limit)
+    });
 });
 
 /**
@@ -169,8 +186,25 @@ exports.rejectDemoRequest = asyncHandler(async (req, res) => {
  * 🏢 Get all institutions
  */
 exports.getInstitutions = asyncHandler(async (req, res) => {
-    const institutions = await Institution.find().sort({ createdAt: -1 });
-    res.json(institutions);
+    const page = parseInt(req.query.page) || 1;
+    let limit = parseInt(req.query.limit) || 20;
+    limit = Math.min(limit, 100);
+    const skip = (page - 1) * limit;
+
+    const institutions = await Institution.find()
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+    const total = await Institution.countDocuments();
+
+    res.json({
+        institutions,
+        total,
+        page,
+        pages: Math.ceil(total / limit)
+    });
 });
 
 /**
