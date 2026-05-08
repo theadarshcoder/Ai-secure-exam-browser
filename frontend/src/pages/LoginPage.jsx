@@ -296,15 +296,23 @@ const LoginPage = () => {
         deviceId
       });
 
-      const { accessToken, refreshToken, user: userData } = response.data;
+      // 🛡️ Robust Response Parsing: Handle both nested 'user' object and flat legacy structure
+      const responseData = response.data;
+      const accessToken = responseData.accessToken;
+      const refreshToken = responseData.refreshToken;
+      const userData = responseData.user || responseData;
+
+      if (!accessToken || !userData) {
+          throw new Error('Invalid authentication response from server.');
+      }
 
       // Store real session data
       sessionStorage.setItem('vision_token', accessToken);
       localStorage.setItem('vision_refresh_token', refreshToken);
-      sessionStorage.setItem('vision_id', userData.id || userData._id);
-      sessionStorage.setItem('vision_role', userData.role);
-      sessionStorage.setItem('vision_email', userData.email);
-      sessionStorage.setItem('vision_name', userData.name);
+      sessionStorage.setItem('vision_id', userData.id || userData._id || responseData.id);
+      sessionStorage.setItem('vision_role', userData.role || responseData.role);
+      sessionStorage.setItem('vision_email', userData.email || responseData.email);
+      sessionStorage.setItem('vision_name', userData.name || responseData.name);
 
       // Trigger full screen for candidate (student) if needed
       if (userData.role === 'student') {
