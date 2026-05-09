@@ -1760,7 +1760,6 @@ const { examId } = useParams();
           setIsTabViolation(true);
         }
       }
-      }
     };
 
     const handleResize = () => {
