@@ -1054,6 +1054,52 @@ const { examId } = useParams();
   const isFetchingRef = useRef(false);
   const [sessionId, setSessionId] = useState(null);
 
+  // 🛡️ All State moved to top to avoid Temporal Dead Zone (Bug Fix)
+  const [submitted, setSubmitted] = useState(false);
+  const [terminated, setTerminated] = useState(null);
+  const [secondsLeft, setSecondsLeft] = useState(TOTAL_SECONDS);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [rawQuestions, setRawQuestions] = useState([]);
+  const [shuffleSeed, setShuffleSeed] = useState(null);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [stream, setStream] = useState(null);
+  const [currentQ, setCurrentQ] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [markedForReview, setMarkedForReview] = useState({});
+  const [visited, setVisited] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [blockReason, setBlockReason] = useState("");
+  const [isTabViolation, setIsTabViolation] = useState(false);
+  const [broadcastMessage, setBroadcastMessage] = useState(null);
+  const [activeWarning, setActiveWarning] = useState(null);
+  const [helpStatus, setHelpStatus] = useState("idle");
+  const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [faceBoxes, setFaceBoxes] = useState([]);
+  const [executionResultsByQuestion, setExecutionResultsByQuestion] = useState({});
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [showExitPrompt, setShowExitPrompt] = useState(false);
+  const [isFAQOpen, setIsFAQOpen] = useState(false);
+  const [exitPassword, setExitPassword] = useState("");
+  const [exitError, setExitError] = useState("");
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [terminateCountdown, setTerminateCountdown] = useState(8);
+  const [tabSwitchCount, setTabSwitchCount] = useState(0);
+  const [needsInteraction, setNeedsInteraction] = useState(!document.fullscreenElement);
+  const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const [isOffline, setIsOffline] = useState(!window.navigator.onLine);
+  const [selectedLanguages, setSelectedLanguages] = useState({});
+  const [settings, setSettings] = useState(null);
+  const [headerAlert, setHeaderAlert] = useState(null);
+  const [helpCooldown, setHelpCooldown] = useState(0);
+  const [aiModel, setAiModel] = useState(null);
+  const [isAIInitializing, setIsAIInitializing] = useState(false);
+  const [endTime, setEndTime] = useState(null);
+  const [camError, setCamError] = useState(false);
+
   // 🛡️ NAVIGATION SECURITY: Prevent Back Button & Accidental Exit
   useEffect(() => {
     // 1. Push state to prevent back navigation
@@ -1115,9 +1161,8 @@ const { examId } = useParams();
     return () => clearInterval(heartbeatInterval);
   }, [examId]);
 
-  const [rawQuestions, setRawQuestions] = useState([]);
-  const [shuffleSeed, setShuffleSeed] = useState(null);
-  const [isInitializing, setIsInitializing] = useState(true);
+  const [rawQuestions, setRawQuestions] = useState([]); // Already moved to top
+  const [isInitializing, setIsInitializing] = useState(true); // Already moved to top
 
     const getProcessedQuestions = useCallback((rawQs, seed) => {
     if (!rawQs.length || !seed) return [];
@@ -1160,44 +1205,7 @@ const { examId } = useParams();
   const questions = useMemo(() => {
     return getProcessedQuestions(rawQuestions, shuffleSeed);
   }, [rawQuestions, shuffleSeed, getProcessedQuestions]);
-  const [secondsLeft, setSecondsLeft] = useState(TOTAL_SECONDS);
-  const [endTime, setEndTime] = useState(null);
-  const [cameraActive, setCameraActive] = useState(false); // false until stream is confirmed active
-  const [stream, setStream] = useState(null);
-  const [currentQ, setCurrentQ] = useState(0); // Shuffled array index
-  const [answers, setAnswers] = useState({}); // Keyed by ORIGINAL question index/ID
-  const [markedForReview, setMarkedForReview] = useState({}); // Keyed by ORIGINAL index
-  const [visited, setVisited] = useState({}); // Keyed by ORIGINAL index
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const isSubmittingRef = useRef(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [modelsLoaded, setModelsLoaded] = useState(false);
-  const [faceBoxes, setFaceBoxes] = useState([]);
-  const [isExecuting, setIsExecuting] = useState(false);
-  const [executionResultsByQuestion, setExecutionResultsByQuestion] = useState(
-    {},
-  );
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [showExitPrompt, setShowExitPrompt] = useState(false);
-  const [isFAQOpen, setIsFAQOpen] = useState(false);
-  const [exitPassword, setExitPassword] = useState("");
-  const [exitError, setExitError] = useState("");
-  const [rating, setRating] = useState(0);
-  const [hoverRating, setHoverRating] = useState(0);
-  const [terminated, setTerminated] = useState(null);
-  const [terminateCountdown, setTerminateCountdown] = useState(8);
-  const [tabSwitchCount, setTabSwitchCount] = useState(0);
-  const [needsInteraction, setNeedsInteraction] = useState(
-    !document.fullscreenElement,
-  );
-  const [isFullscreen, setIsFullscreen] = useState(
-    !!document.fullscreenElement,
-  );
-  const [cooldownSeconds, setCooldownSeconds] = useState(0);
-  const [isOffline, setIsOffline] = useState(!window.navigator.onLine);
-  const [selectedLanguages, setSelectedLanguages] = useState({});
-  const [confidence] = useState(98);
-  const [broadcastMessage, setBroadcastMessage] = useState(null);
+  // State variables moved to top to prevent TDZ ReferenceErrors
   
   // 🚀 Auto-dismiss live announcement after 15 seconds
   useEffect(() => {
