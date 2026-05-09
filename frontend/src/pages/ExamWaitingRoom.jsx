@@ -182,7 +182,18 @@ export default function ExamWaitingRoom() {
     const fetchExam = async () => {
       try {
         const response = await api.get(`/api/exams/${examId}`);
-        setExam(response.data);
+        const examData = response.data;
+        
+        // 🛡️ REDIRECT: If student is already in a session, push them back to the cockpit
+        // This prevents staying in the waiting room if they click 'Back' or refresh
+        const activeStatuses = ['in_progress', 'paused', 'flagged', 'pending_review'];
+        if (examData.sessionStatus && activeStatuses.includes(examData.sessionStatus)) {
+            console.log('🔄 Active session detected. Redirecting to cockpit...');
+            navigate(`/exam/${examId}`);
+            return;
+        }
+
+        setExam(examData);
       } catch (err) {
         const cached = JSON.parse(localStorage.getItem('published_exams_v2') || 'null');
         const exams = (cached && Array.isArray(cached.data)) ? cached.data : [];
@@ -323,6 +334,9 @@ export default function ExamWaitingRoom() {
                 value={exitPassword}
                 onChange={e => setExitPassword(e.target.value)}
                 placeholder="Password"
+                autocomplete="new-password"
+                spellcheck="false"
+                data-lpignore="true"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-center text-slate-900 font-mono tracking-widest mb-6 outline-none focus:border-slate-900 transition-all text-sm"
               />
               <div className="flex gap-3">

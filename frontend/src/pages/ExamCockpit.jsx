@@ -402,6 +402,9 @@ const ExitModal = React.memo(
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Supervisor Password"
+                autocomplete="new-password"
+                spellcheck="false"
+                data-lpignore="true"
                 className="w-full bg-surface-hover border border-main rounded-xl px-4 py-3.5 text-center text-primary font-mono text-[14px] tracking-[0.4em] focus:outline-none focus:border-[#1e2235] focus:ring-4 focus:ring-[#1e2235]/10 transition-all"
               />
               {error && (
@@ -1050,6 +1053,37 @@ const { examId } = useParams();
   const examLoadedRef = useRef(false);
   const isFetchingRef = useRef(false);
   const [sessionId, setSessionId] = useState(null);
+
+  // 🛡️ NAVIGATION SECURITY: Prevent Back Button & Accidental Exit
+  useEffect(() => {
+    // 1. Push state to prevent back navigation
+    window.history.pushState(null, null, window.location.href);
+    
+    const handlePopState = () => {
+      // Push state again to keep user on this page
+      window.history.pushState(null, null, window.location.href);
+      toast.error('Navigation Blocked: Accessing the lobby during a live exam is prohibited.', { 
+        id: 'nav-lock',
+        icon: '🚫'
+      });
+    };
+
+    // 2. Warn before tab close or refresh
+    const handleBeforeUnload = (e) => {
+      if (submitted || terminated) return;
+      e.preventDefault();
+      e.returnValue = 'Security Alert: Leaving this page will NOT pause your exam timer. Are you sure?';
+      return e.returnValue;
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [submitted, terminated]);
 
   // 💓 HEARTBEAT SYSTEM (V4 Hardened)
   const heartbeatFailCountRef = useRef(0);
@@ -1726,12 +1760,46 @@ const { examId } = useParams();
           setIsTabViolation(true);
         }
       }
+      }
+    };
+
+    const handleResize = () => {
+      if (submitted || terminated) return;
+      // If we are not in fullscreen and size changes, it's likely a split-screen or window resize attempt
+      if (!document.fullscreenElement) {
+        logIncident("Screen Manipulation", "medium", "Window resized or split-screen detected.");
+        setIsTabViolation(true);
+      }
+    };
+
+    const handleWindowBlur = () => {
+      if (submitted || terminated) return;
+      logIncident("Window Focus Lost", "medium", "Student shifted focus away from the exam window.");
+      setIsTabViolation(true);
+    };
+
+    const blockPrint = (e) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P')) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        toast.error('Security Violation: Printing is disabled during the exam.', { id: 'print-block' });
+      }
+    };
+
+    const blockDragDrop = (e) => {
+      e.preventDefault();
+      return false;
     };
 
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     document.addEventListener("keydown", blockShortcuts);
+    document.addEventListener("keydown", blockPrint);
     document.addEventListener("contextmenu", blockContextMenu);
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("blur", handleWindowBlur);
+    window.addEventListener("resize", handleResize);
+    document.addEventListener("dragstart", blockDragDrop);
+    document.addEventListener("drop", blockDragDrop);
 
     // Auto-check initially (though it will stay blocked, the overlay handles the reset)
     if (!document.fullscreenElement) {
@@ -1741,8 +1809,13 @@ const { examId } = useParams();
     return () => {
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
       document.removeEventListener("keydown", blockShortcuts);
+      document.removeEventListener("keydown", blockPrint);
       document.removeEventListener("contextmenu", blockContextMenu);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("blur", handleWindowBlur);
+      window.removeEventListener("resize", handleResize);
+      document.removeEventListener("dragstart", blockDragDrop);
+      document.removeEventListener("drop", blockDragDrop);
     };
   }, [logIncident, exam, submitted, terminated]);
 
@@ -2620,7 +2693,13 @@ const { examId } = useParams();
     );
 
   return (
-    <div className="h-screen w-full bg-page relative font-sans text-primary overflow-hidden">
+    <div 
+      className="h-screen w-full bg-page relative font-sans text-primary overflow-hidden select-none"
+      onCopy={(e) => e.preventDefault()}
+      onPaste={(e) => e.preventDefault()}
+      onCut={(e) => e.preventDefault()}
+      onContextMenu={(e) => e.preventDefault()}
+    >
       {/* 1. LAYER BASE: Content with Blur Wrapper */}
       <div
         className={`flex flex-col h-full w-full bg-page transition-all duration-700 ${isTabViolation || !isFullscreen ? "blur-xl grayscale pointer-events-none" : ""}`}

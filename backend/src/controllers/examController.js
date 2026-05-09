@@ -24,6 +24,12 @@ const { getTenantFilter, getTenantId } = require('../utils/tenantFilter');
 // Mentor/Admin creates a new exam and saves it to MongoDB
 exports.createExam = asyncHandler(async (req, res) => {
     const { title, category, duration, totalMarks, passingMarks, questions, scheduledDate, status, negativeMarks } = req.body;
+    
+    // Status validation
+    if (status && !['draft', 'published', 'completed'].includes(status)) {
+        res.status(400);
+        throw new Error('Invalid exam status.');
+    }
 
     if (req.user.role === 'super_admin') {
         res.status(403);
@@ -169,6 +175,12 @@ exports.createExam = asyncHandler(async (req, res) => {
 exports.updateExam = asyncHandler(async (req, res) => {
     const examId = req.params.id;
     let { title, category, duration, totalMarks, passingMarks, questions, scheduledDate, status, negativeMarks } = req.body;
+    
+    // Status validation
+    if (status && !['draft', 'published', 'completed'].includes(status)) {
+        res.status(400);
+        throw new Error('Invalid exam status.');
+    }
 
     const exam = await Exam.findOne(getTenantFilter(req, { _id: examId }));
 
@@ -454,7 +466,8 @@ exports.getMentorExams = asyncHandler(async (req, res) => {
         id: exam._id,
         name: exam.title,
         category: exam.category,
-        status: exam.status === 'published' ? 'live' : 'draft',
+        status: exam.status === 'published' ? 'live' : (exam.status === 'completed' ? 'completed' : 'draft'),
+
         time: exam.scheduledDate,
         questionsCount: exam.questions ? exam.questions.length : 0,
         duration: exam.duration,
@@ -530,6 +543,12 @@ exports.getExamById = asyncHandler(async (req, res) => {
         requireIDVerification: true
     };
 
+    // 🛡️ Check if student already has an active session
+    const existingSession = await ExamSession.findOne({ 
+        exam: examId, 
+        student: req.user.id 
+    }).select('status');
+
     const result = {
         id: exam._id,
         title: exam.title,
@@ -539,7 +558,8 @@ exports.getExamById = asyncHandler(async (req, res) => {
         startTime: exam.scheduledDate,
         creator: exam.creator?.name,
         questions: sanitizedQuestions,
-        settings: globalSettings
+        settings: globalSettings,
+        sessionStatus: existingSession ? existingSession.status : null
     };
 
     // 2. Set Cache (10 minutes)
@@ -669,33 +689,48 @@ exports.startExam = asyncHandler(async (req, res) => {
         await session.save();
 
         const redisClient = getRedisClient();
-        let liveAnswers = session.answers;
+        let liveAnswers = {};
         let liveQuestionStates = session.questionStates;
-        
+        let hydratedFromRedis = false;
+
         // Use absolute endTime for remaining time
         let liveRemainingTime = Math.max(0, Math.floor((endTimeMs - currentTime) / 1000));
         let liveIndex = session.currentQuestionIndex;
+        
+        const cacheKey = `exam_session:${examId}:${studentId}`;
 
         if (redisClient) {
-            const cacheKey = `exam_session:${examId}:${studentId}`;
             const cachedData = await redisClient.hgetall(cacheKey);
             
             if (cachedData && Object.keys(cachedData).length > 0) {
                 try {
-                    liveAnswers = cachedData.answers ? JSON.parse(cachedData.answers) : liveAnswers;
+                    liveAnswers = cachedData.answers ? JSON.parse(cachedData.answers) : {};
                     liveQuestionStates = cachedData.questionStates ? JSON.parse(cachedData.questionStates) : liveQuestionStates;
                     liveRemainingTime = cachedData.remainingTimeSeconds ? parseInt(cachedData.remainingTimeSeconds) : liveRemainingTime;
                     liveIndex = cachedData.currentQuestionIndex ? parseInt(cachedData.currentQuestionIndex) : liveIndex;
+                    hydratedFromRedis = true;
                 } catch (parseErr) {
                     console.error('⚠️ Redis Hash parsing error in startExam:', parseErr.message);
                 }
-            } else {
-                const savedAnswers = await ExamAnswer.find({ sessionId: session._id });
-                liveAnswers = {};
-                savedAnswers.forEach(a => {
-                    liveAnswers[a.questionId] = a.code ? { answer: a.answer, code: a.code } : a.answer;
-                });
-                await redisClient.hset(cacheKey, 'answers', JSON.stringify(liveAnswers), 'currentQuestionIndex', (liveIndex ?? 0).toString(), 'questionStates', JSON.stringify(liveQuestionStates), 'remainingTimeSeconds', (liveRemainingTime ?? 0).toString());
+            }
+        }
+
+        // 🛡️ Fallback: If not hydrated from Redis (Redis down or empty), pull from DB
+        if (!hydratedFromRedis) {
+            const savedAnswers = await ExamAnswer.find({ sessionId: session._id });
+            savedAnswers.forEach(a => {
+                liveAnswers[a.questionId] = a.code ? { answer: a.answer, code: a.code } : a.answer;
+            });
+
+            // Backfill Redis if available
+            if (redisClient) {
+                await redisClient.hset(
+                    cacheKey, 
+                    'answers', JSON.stringify(liveAnswers), 
+                    'currentQuestionIndex', (liveIndex ?? 0).toString(), 
+                    'questionStates', JSON.stringify(liveQuestionStates), 
+                    'remainingTimeSeconds', (liveRemainingTime ?? 0).toString()
+                );
                 await redisClient.expire(cacheKey, 86400);
             }
         }
@@ -726,13 +761,20 @@ exports.startExam = asyncHandler(async (req, res) => {
     
     // 🛡️ Strict Global Deadline Enforcement
     if (exam.scheduledDate) {
-        const strictDeadlineMs = new Date(exam.scheduledDate).getTime() + (exam.duration * 60 * 1000);
+        const scheduledStartMs = new Date(exam.scheduledDate).getTime();
+        const strictDeadlineMs = scheduledStartMs + (exam.duration * 60 * 1000);
         const nowMs = Date.now();
         
-        // If the scheduled exam window has already fully passed
+        // 🛡️ Guard 1: Prevent Early Start (with 1-min grace for sync lag)
+        if (nowMs < (scheduledStartMs - 60000)) {
+            res.status(400);
+            throw new Error(`This exam is scheduled to start at ${new Date(exam.scheduledDate).toLocaleTimeString()}. Please wait.`);
+        }
+
+        // 🛡️ Guard 2: If the scheduled exam window has already fully passed
         if (nowMs >= strictDeadlineMs) {
             res.status(400);
-            throw new Error('This exam has expired and is no longer available.');
+            throw new Error('This exam session has expired and is no longer available.');
         }
 
         // Cap the student's end time to the global strict deadline
@@ -1247,42 +1289,39 @@ exports.resumeExam = asyncHandler(async (req, res) => {
     await session.save();
 
     const redisClient = getRedisClient();
-    let liveAnswers = session.answers;
+    let liveAnswers = {};
     let liveQuestionStates = session.questionStates;
     let liveRemainingTime = Math.max(0, Math.floor((endTimeMs - currentTime) / 1000));
     let liveIndex = session.currentQuestionIndex;
+    let hydratedFromRedis = false;
+
+    const cacheKey = `exam_session:${examId}:${studentId}`;
 
     if (redisClient) {
-        const cacheKey = `exam_session:${examId}:${studentId}`;
-        
-        // 🛡️ Fix 42: Performance - Pull metadata selectively if only certain fields needed
-        // For resume, we still need most fields, but let's at least use try/catch effectively
         const cachedData = await redisClient.hgetall(cacheKey);
         
         if (cachedData && Object.keys(cachedData).length > 0) {
             try {
-                liveAnswers = cachedData.answers ? JSON.parse(cachedData.answers) : liveAnswers;
-            } catch (e) {
-                console.error('[Integrity] Redis answers corruption:', e.message);
-            }
-
-            try {
+                liveAnswers = cachedData.answers ? JSON.parse(cachedData.answers) : {};
                 liveQuestionStates = cachedData.questionStates ? JSON.parse(cachedData.questionStates) : liveQuestionStates;
+                liveRemainingTime = cachedData.remainingTimeSeconds ? parseInt(cachedData.remainingTimeSeconds) : liveRemainingTime;
+                liveIndex = cachedData.currentQuestionIndex ? parseInt(cachedData.currentQuestionIndex) : liveIndex;
+                hydratedFromRedis = true;
             } catch (e) {
-                console.error('[Integrity] Redis states corruption:', e.message);
+                console.error('[Integrity] Redis data corruption in resumeExam:', e.message);
             }
+        }
+    }
 
-            liveRemainingTime = cachedData.remainingTimeSeconds ? parseInt(cachedData.remainingTimeSeconds) : liveRemainingTime;
-            liveIndex = cachedData.currentQuestionIndex ? parseInt(cachedData.currentQuestionIndex) : liveIndex;
-        } else {
-            // FALLBACK: Hydrate from ExamAnswer collection
-            const savedAnswers = await ExamAnswer.find({ sessionId: session._id });
-            liveAnswers = {};
-            savedAnswers.forEach(a => {
-                liveAnswers[a.questionId] = a.code ? { answer: a.answer, code: a.code } : a.answer;
-            });
+    // 🛡️ Fallback: If not hydrated from Redis (Redis down or empty), pull from DB
+    if (!hydratedFromRedis) {
+        const savedAnswers = await ExamAnswer.find({ sessionId: session._id });
+        savedAnswers.forEach(a => {
+            liveAnswers[a.questionId] = a.code ? { answer: a.answer, code: a.code } : a.answer;
+        });
 
-            // Backfill Redis
+        // Backfill Redis if available
+        if (redisClient) {
             await redisClient.hset(
                 cacheKey, 
                 'answers', JSON.stringify(liveAnswers), 
@@ -1317,12 +1356,7 @@ exports.resumeExam = asyncHandler(async (req, res) => {
             creator: exam.creator?.name,
             questions: safeQuestions
         },
-        answers: liveAnswers,
-        currentQuestionIndex: liveIndex,
-        questionStates: liveQuestionStates,
-        remainingTimeSeconds: liveRemainingTime,
-        status: session.status,
-        lastSeq: session.lastSeq || 0 // Fix 1: Sync sequence to prevent desync
+        lastSeq: session.lastSeq || 0
     });
 });
 
@@ -1337,24 +1371,27 @@ exports.submitExam = asyncHandler(async (req, res) => {
         throw new Error('Exam not found');
     }
 
-    const session = await ExamSession.findOne({ exam: examId, student: studentId });
+    // 🛡️ Atomic Submission Lock: Prevents double-submission race conditions
+    // We lock the session by moving it to 'pending_review' status immediately.
+    // Only sessions in 'in_progress', 'paused', or 'flagged' can be submitted.
+    const session = await ExamSession.findOneAndUpdate(
+        { 
+            exam: examId, 
+            student: studentId, 
+            status: { $in: ['in_progress', 'paused', 'flagged'] } 
+        },
+        { $set: { status: 'pending_review' } }, // Initial lock
+        { new: true }
+    );
+
     if (!session) {
+        const check = await ExamSession.findOne({ exam: examId, student: studentId });
+        if (check && ['submitted', 'auto_submitted', 'pending_review'].includes(check.status)) {
+            res.status(400);
+            throw new Error('This exam has already been submitted or is being processed.');
+        }
         res.status(404);
-        throw new Error('Active session not found');
-    }
-
-    // 🛡️ RUNTIME SECURITY: Continuous Verification (Softened for Web)
-    const fingerprint = {
-        userAgent: req.headers['user-agent'],
-        platform: req.headers['x-fingerprint-platform'] || 'web',
-        width: req.headers['x-fingerprint-width'] || '0',
-        height: req.headers['x-fingerprint-height'] || '0'
-    };
-
-    // Bug Fix: Submission Lock (Guardrail 3)
-    if (session.status === 'submitted' || session.status === 'auto_submitted') {
-        res.status(400);
-        throw new Error(`This exam cannot be submitted. Status: ${session.status}`);
+        throw new Error('Active exam session not found or already submitted.');
     }
 
     // ⏱️ Fix: Server-Side Timer Validation
@@ -1425,6 +1462,12 @@ exports.getSessionDetail = asyncHandler(async (req, res) => {
     if (!exam) {
         res.status(404);
         throw new Error('Associated exam not found');
+    }
+
+    // 🛡️ Ownership Check: Creator, Institution Admin, or Super Admin
+    if (exam.creator.toString() !== req.user.id && req.user.role !== 'admin' && req.user.role !== 'super_admin') {
+        res.status(403);
+        throw new Error('Access denied. You can only view details for your own exams.');
     }
 
     // Fetch all answers for this session (Bug Fix: Relational Join)
@@ -1511,17 +1554,6 @@ exports.evaluateSession = asyncHandler(async (req, res) => {
         throw new Error('Invalid evaluation data. Grades are required.');
     }
 
-    // 🛡️ Integrity Check: Filter out manual marks for MCQ questions
-    const mcqGrades = grades.filter(g => {
-        const q = exam.questions.id(g.questionId);
-        return q && q.type === 'mcq';
-    });
-
-    if (mcqGrades.length > 0) {
-        res.status(400);
-        throw new Error('Integrity Violation: MCQ questions cannot be manually graded. They must be auto-evaluated.');
-    }
-
     const session = await ExamSession.findById(sessionId).populate('exam');
     if (!session) {
         res.status(404);
@@ -1532,6 +1564,23 @@ exports.evaluateSession = asyncHandler(async (req, res) => {
     if (!exam) {
         res.status(404);
         throw new Error('Associated exam not found');
+    }
+
+    // 🛡️ Ownership Check: Creator, Institution Admin, or Super Admin
+    if (exam.creator.toString() !== req.user.id && req.user.role !== 'admin' && req.user.role !== 'super_admin') {
+        res.status(403);
+        throw new Error('Access denied. You can only evaluate submissions for your own exams.');
+    }
+
+    // 🛡️ Integrity Check: Filter out manual marks for MCQ questions
+    const mcqGrades = grades.filter(g => {
+        const q = exam.questions.id(g.questionId);
+        return q && q.type === 'mcq';
+    });
+
+    if (mcqGrades.length > 0) {
+        res.status(400);
+        throw new Error('Integrity Violation: MCQ questions cannot be manually graded. They must be auto-evaluated.');
     }
 
     // Apply mentor grades to ExamAnswer collection
@@ -1704,6 +1753,18 @@ exports.logIncident = asyncHandler(async (req, res) => {
 // ─────────────── GET /api/exams/submissions/:examId ───────────────
 // Mentors view all submissions for a specific exam
 exports.getExamSubmissions = asyncHandler(async (req, res) => {
+    const exam = await Exam.findById(req.params.examId);
+    if (!exam) {
+        res.status(404);
+        throw new Error('Exam not found');
+    }
+
+    // 🛡️ Ownership Check: Creator, Institution Admin, or Super Admin
+    if (exam.creator.toString() !== req.user.id && req.user.role !== 'admin' && req.user.role !== 'super_admin') {
+        res.status(403);
+        throw new Error('Access denied. You can only view submissions for your own exams.');
+    }
+
     const sessions = await ExamSession.find({ exam: req.params.examId })
         .populate('student', 'name email')
         .sort({ submittedAt: -1 });
@@ -1897,12 +1958,18 @@ exports.getMentorStats = asyncHandler(async (req, res) => {
 
 // System-wide statistics for Administrators
 exports.getAdminStats = asyncHandler(async (req, res) => {
-    const cacheKey = 'admin_stats_global';
+    const institutionId = req.user.institutionId;
+    const cacheKey = `admin_stats_${institutionId || 'global'}`;
     const cached = await getCache(cacheKey);
     if (cached) return res.json(cached);
 
-    // 1. Heavy Aggregate: Get stats for ALL exams in one go
+    // Filter to ensure multi-tenancy security
+    const filter = getTenantFilter(req);
+
+    // 1. Heavy Aggregate: Get stats for ALL exams of this institution in one go
+    // [Optimized]: Using single aggregation + $group to avoid N+1 query issue
     const examStats = await ExamSession.aggregate([
+        { $match: filter },
         {
             $group: {
                 _id: '$exam',
@@ -1928,8 +1995,8 @@ exports.getAdminStats = asyncHandler(async (req, res) => {
         }
     });
 
-    // 2. Fetch Exams with creator info
-    const allExams = await Exam.find({})
+    // 2. Fetch Exams with creator info (filtered by tenant)
+    const allExams = await Exam.find(filter)
         .select('title category duration totalMarks status scheduledDate questions creator')
         .populate('creator', 'name')
         .sort({ createdAt: -1 })
@@ -1951,8 +2018,8 @@ exports.getAdminStats = asyncHandler(async (req, res) => {
         };
     });
 
-    // 3. Active Sessions Snapshot
-    const activeSessions = await ExamSession.find({ status: 'in_progress' })
+    // 3. Active Sessions Snapshot (filtered by tenant)
+    const activeSessions = await ExamSession.find({ ...filter, status: 'in_progress' })
         .populate('student', 'name email')
         .populate('exam', 'title')
         .sort({ startedAt: -1 })
@@ -2370,10 +2437,22 @@ exports.runFrontendCode = asyncHandler(async (req, res) => {
 exports.terminateSession = asyncHandler(async (req, res) => {
     const { sessionId } = req.params;
 
-    const session = await ExamSession.findById(sessionId);
+    const session = await ExamSession.findById(sessionId).populate('exam');
     if (!session) {
         res.status(404);
         throw new Error('Session not found');
+    }
+
+    const exam = session.exam;
+    if (!exam) {
+        res.status(404);
+        throw new Error('Associated exam not found');
+    }
+
+    // 🛡️ Ownership Check: Creator, Institution Admin, or Super Admin
+    if (exam.creator.toString() !== req.user.id && req.user.role !== 'admin' && req.user.role !== 'super_admin') {
+        res.status(403);
+        throw new Error('Access denied. You can only terminate sessions for your own exams.');
     }
 
     if (session.status === 'submitted' || session.status === 'auto_submitted') {

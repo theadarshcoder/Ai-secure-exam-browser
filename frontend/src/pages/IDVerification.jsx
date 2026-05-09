@@ -156,6 +156,21 @@ export default function IDVerification() {
   };
 
   useEffect(() => {
+    // 🛡️ REDIRECT: If student is already in an active session, skip verification and go to cockpit
+    const checkActiveSession = async () => {
+      try {
+        const response = await api.get(`/api/exams/${examId}`);
+        const activeStatuses = ['in_progress', 'paused', 'flagged', 'pending_review'];
+        if (response.data.sessionStatus && activeStatuses.includes(response.data.sessionStatus)) {
+            console.log('🔄 Active session found in ID verification. Redirecting to cockpit...');
+            navigate(`/exam/${examId}`);
+        }
+      } catch (err) {
+        console.warn('Redirect check failed:', err.message);
+      }
+    };
+    checkActiveSession();
+
     startCamera();
     const loadModels = async () => {
       try {
@@ -169,7 +184,7 @@ export default function IDVerification() {
       if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
       document.body.style.overflow = 'auto';
     };
-  }, []);
+  }, [examId]);
 
   useEffect(() => {
     if (videoRef.current && stream) {
