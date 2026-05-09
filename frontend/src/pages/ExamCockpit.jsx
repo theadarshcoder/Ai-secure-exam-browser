@@ -1152,6 +1152,12 @@ const { examId } = useParams();
         // Only terminate on 403 (admin block) AND after 2 consecutive failures
         // to avoid false triggers from a single network blip
         if (err.response?.status === 403 && heartbeatFailCountRef.current >= 2) {
+          // 🛡️ Fix: If already blocked, don't terminate/auto-submit (Keep them on block screen)
+          if (isBlocked) {
+            console.log("🛡️ Heartbeat 403 suppressed: Student is currently in BLOCKED state.");
+            return;
+          }
+          
           toast.error('Security Breach: Secure environment lost.', { duration: 5000 });
           setTerminated({ reason: "Environment verification failed." });
         }
@@ -1160,7 +1166,7 @@ const { examId } = useParams();
     }, 30000); // 30 Seconds
 
     return () => clearInterval(heartbeatInterval);
-  }, [examId]);
+  }, [examId, submitted, terminated, isBlocked]);
 
   // Duplicate declarations removed
 
