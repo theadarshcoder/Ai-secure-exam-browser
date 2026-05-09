@@ -1378,7 +1378,7 @@ exports.submitExam = asyncHandler(async (req, res) => {
         { 
             exam: examId, 
             student: studentId, 
-            status: { $in: ['in_progress', 'paused', 'flagged'] } 
+            status: { $in: ['in_progress', 'paused', 'flagged', 'blocked'] } 
         },
         { $set: { status: 'pending_review' } }, // Initial lock
         { new: true }
