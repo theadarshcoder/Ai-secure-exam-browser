@@ -1052,6 +1052,7 @@ const { examId } = useParams();
   const [exam, setExam] = useState(null);
   const examLoadedRef = useRef(false);
   const isFetchingRef = useRef(false);
+  const isSubmittingRef = useRef(false);
   const [sessionId, setSessionId] = useState(null);
 
   // 🛡️ All State moved to top to avoid Temporal Dead Zone (Bug Fix)
