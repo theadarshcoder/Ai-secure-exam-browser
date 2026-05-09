@@ -14,10 +14,11 @@ const sendEmail = async ({ to, subject, htmlContent, senderName }) => {
     // 🛡️ Priority 1: Brevo API (Cloud Scaling)
     if (process.env.BREVO_API_KEY) {
         try {
+            const senderEmail = process.env.EMAIL_USER || 'vision@vision-platform.com';
             const response = await axios.post('https://api.brevo.com/v3/smtp/email', {
                 sender: { 
                     name: senderName || "Vision Exam Platform", 
-                    email: process.env.EMAIL_USER 
+                    email: senderEmail
                 },
                 to: [{ email: to }],
                 subject: subject,
@@ -36,6 +37,8 @@ const sendEmail = async ({ to, subject, htmlContent, senderName }) => {
             logger.error({ err: errorMsg, to, subject }, '❌ [Brevo FAILED]');
             // Fallback to SMTP if configured
         }
+    } else {
+        logger.warn('⚠️  [Brevo] API Key missing, skipping Brevo service.');
     }
 
     // 🛡️ Priority 2: Nodemailer/SMTP (Local/Legacy Fallback)

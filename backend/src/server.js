@@ -1084,6 +1084,24 @@ async function bootstrap() {
                 redis: getRedisClient() ? 'CONNECTED' : 'DISCONNECTED',
                 version: process.env.npm_package_version || '1.0.0'
             }, '🔥 [SYSTEM] Vision Backend Startup Complete');
+
+            // 🤖 [INTERNAL WORKERS] Auto-start workers if enabled (Best for Render Free Tier)
+            if (process.env.START_INTERNAL_WORKERS === 'true') {
+                logger.info('⚙️  [Internal Workers] Initializing background processors...');
+                try {
+                    const notificationWorker = setupNotificationWorker(5);
+                    const autoSubmitWorker = startAutoSubmitWorker(io); // Pass io for real-time alerts
+                    
+                    workers.push(notificationWorker);
+                    // autoSubmitWorker might be a promise or return something, adjust if needed
+                    
+                    logger.info('✅ [Internal Workers] Notification & Auto-Submit workers started locally.');
+                } catch (workerErr) {
+                    logger.error({ err: workerErr.message }, '❌ [Internal Workers] Failed to start');
+                }
+            } else {
+                logger.info('ℹ️  [Internal Workers] Disabled. Ensure standalone worker.js is running.');
+            }
         });
 
     } catch (err) {
