@@ -23,10 +23,11 @@ const VerifyRequest = () => {
             try {
                 const response = await api.get(`/api/public/verify-request?token=${token}`);
                 
-                if (response.data.success) {
+                // 🛡️ Fix: Handle unwrapped response from api.js interceptor
+                if (response.data?.success || response.status === 200) {
                     setStatus('success');
-                    setMessage(response.data.message);
-                    setInstitutionName(response.data.data?.institutionName || '');
+                    setMessage(response.data.message || 'Verification successful!');
+                    setInstitutionName(response.data.institutionName || response.data.data?.institutionName || '');
                     toast.success('Email verified successfully!');
                 }
             } catch (error) {

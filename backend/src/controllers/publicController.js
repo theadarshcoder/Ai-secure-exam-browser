@@ -124,10 +124,25 @@ const verifyDemoRequest = async (req, res) => {
     session.startTransaction();
 
     try {
-        const { email, otp } = req.body; // Expecting email and otp in body
+        let { email, otp } = req.body;
 
         if (!email || !otp) {
             return res.status(400).json({ error: 'Email and OTP are required.' });
+        }
+
+        email = email.trim().toLowerCase();
+
+        // 🛡️ 0. Idempotency Check: If user already exists, verification was likely successful already
+        const existingUser = await User.findOne({ email }).session(session);
+        if (existingUser) {
+            console.log(`📦 [Verification] User ${email} already exists. Returning success (Idempotency).`);
+            await session.commitTransaction();
+            session.endSession();
+            return res.status(200).json({
+                success: true,
+                message: 'Your account is already verified! Please check your email to set your password.',
+                data: { path: 'auto' }
+            });
         }
 
         // 🛡️ 1. Hash incoming OTP
@@ -147,14 +162,14 @@ const verifyDemoRequest = async (req, res) => {
             await IntelligenceLog.create([{
                 type: 'SECURITY',
                 severity: 'medium',
-                message: 'Failed verification attempt (Expired or Invalid)',
-                details: { ip: req.ip, userAgent: req.headers['user-agent'] }
+                message: 'Failed verification attempt (Expired, Invalid, or Already Processed)',
+                details: { email, ip: req.ip, userAgent: req.headers['user-agent'] }
             }], { session });
             
             await session.commitTransaction();
             return res.status(400).json({ 
-                error: 'Invalid or expired verification link.',
-                code: 'VERIFICATION_EXPIRED'
+                error: 'Invalid or expired verification code.',
+                code: 'VERIFICATION_INVALID'
             });
         }
 

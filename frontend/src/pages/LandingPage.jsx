@@ -1666,7 +1666,9 @@ const DemoRequestModal = ({ isOpen, onClose }) => {
         email: formData.email,
         otp: otp.join('')
       });
-      if (response.data.success) {
+      // 🛡️ Fix: Handle unwrapped response from api.js interceptor
+      // If success is true, the interceptor might have unwrapped 'data' into 'response.data'
+      if (response.data?.success || response.status === 200 || response.status === 201) {
         setStep(2);
         toast.success('Verified! Account created.');
       }
@@ -1729,10 +1731,26 @@ const DemoRequestModal = ({ isOpen, onClose }) => {
             <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
               <Check className="w-10 h-10 text-emerald-500" />
             </div>
-            <h2 className="text-2xl font-bold text-white mb-2">Welcome Aboard!</h2>
-            <p className="text-zinc-400 text-sm mb-8">Your trial account for {formData.institutionName} is ready. Check your email to set your password.</p>
-            <button onClick={() => window.location.href = '/login'} className="w-full bg-white text-black font-bold py-4 rounded-2xl hover:bg-zinc-200 transition-all">
-              Go to Login
+            <h2 className="text-2xl font-bold text-white mb-2">Check Your Email! 📧</h2>
+            <p className="text-zinc-400 text-sm mb-8 leading-relaxed">
+              Verification successful! We've sent a password setup link to <br/>
+              <span className="text-white font-medium">{formData.email}</span>. <br/>
+              Please check your inbox (and spam) to complete your setup.
+            </p>
+            <button 
+              onClick={() => {
+                const isGmail = formData.email.toLowerCase().includes('gmail.com');
+                window.open(isGmail ? 'https://mail.google.com' : 'https://outlook.live.com', '_blank');
+              }} 
+              className="w-full bg-white text-black font-bold py-4 rounded-2xl hover:bg-zinc-200 transition-all flex items-center justify-center gap-2"
+            >
+              Open Your Inbox
+            </button>
+            <button 
+              onClick={() => window.location.href = '/login'} 
+              className="w-full mt-4 text-zinc-500 text-xs hover:text-zinc-300 transition-colors"
+            >
+              Already set your password? Login here
             </button>
           </div>
         )}

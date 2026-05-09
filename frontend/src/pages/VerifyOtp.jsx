@@ -53,10 +53,12 @@ const VerifyOtp = () => {
                 otp: otpValue
             });
 
-            if (response.data.success) {
+            // 🛡️ Fix: Handle unwrapped response from api.js interceptor
+            if (response.data?.success || response.status === 200) {
                 setStatus('success');
-                setMessage(response.data.message);
-                setInstitutionName(response.data.data?.institutionName || '');
+                setMessage(response.data.message || 'Verification successful!');
+                // If unwrapped, institutionName is in response.data directly
+                setInstitutionName(response.data.institutionName || response.data.data?.institutionName || '');
                 toast.success('Account provisioned successfully!');
             }
         } catch (error) {
