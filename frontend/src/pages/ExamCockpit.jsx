@@ -45,6 +45,7 @@ import StudentMessageModal from "../components/StudentMessageModal";
 import FAQBot from "../components/FAQBot";
 import * as faceapi from "@vladmandic/face-api";
 import DOMPurify from "dompurify";
+import { marked } from "marked";
 import VisionLogo from "../components/VisionLogo";
 import AnimatedStatusIcon from "../components/AnimatedStatusIcon";
 import storageService from "../services/storageService";
@@ -494,19 +495,12 @@ const ObjectivePanel = React.memo(
             {question?.marks || 10} Marks
           </div>
         </div>
-        <h2 className="text-xl font-medium text-primary leading-snug tracking-tight mb-6"
-          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(question?.questionText || '') }}
+        <div 
+          className="prose prose-sm text-muted leading-relaxed space-y-4 max-w-none"
+          dangerouslySetInnerHTML={{ 
+            __html: DOMPurify.sanitize(marked.parse(question?.questionText || '')) 
+          }}
         />
-        <div className="prose prose-invert prose-sm text-muted leading-relaxed space-y-4">
-          <p>
-            Implement the solution according to constraints. Standard
-            input/output is supported.
-          </p>
-          <ul className="list-disc pl-5 text-[12px] font-semibold space-y-1">
-            <li>Ensure code is optimized.</li>
-            <li>Handle edge cases (empty input, null, etc).</li>
-          </ul>
-        </div>
       </div>
     </div>
   ),

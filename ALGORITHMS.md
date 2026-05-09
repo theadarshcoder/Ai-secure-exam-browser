@@ -481,18 +481,9 @@ File: utils/helpers.js → parseLeetCode()
     Step 5 → Auto-assigns marks based on difficulty: Easy = 2, Medium = 5, Hard = 10.
 
 
-### 8.2 CodeChef HTML Scraper
-
-File: utils/helpers.js → parseCodeChef()
-
-    Step 1 → Fetches the problem page HTML using a browser-like User-Agent header.
-    Step 2 → Uses Cheerio to extract the problem title and statement.
-    Step 3 → If the URL is a course link (/learn/course/), it auto-converts to
-             the public practice URL.
-    Step 4 → Validates that the extracted content is at least 50 characters long.
-
 
 ---
+
 
 
 ## 9. BACKGROUND JOB PROCESSING

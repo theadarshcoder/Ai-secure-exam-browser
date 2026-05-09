@@ -108,7 +108,7 @@ router.get('/mentor/:id', verifyToken, checkRole(['admin', 'super_mentor', 'ment
 router.patch('/:id/status', verifyToken, checkRole(['admin', 'super_mentor', 'mentor']), examController.updateExamStatus);
 router.post('/import-questions/:id', verifyToken, checkRole(['admin', 'super_mentor', 'mentor']), examController.importQuestions);
 
-// 🔗 Import from External Link (LeetCode/CodeChef)
+// 🔗 Import from External Link (LeetCode)
 router.post('/import-from-link', verifyToken, checkRole(['admin', 'super_mentor', 'mentor']), importLimiter, examController.importQuestionFromLink);
 
 // Legacy endpoint for backward compatibility (MOVED UP to prevent shadowing by :id)

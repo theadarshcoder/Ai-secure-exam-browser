@@ -7,7 +7,7 @@ const InstitutionUsage = require('../models/InstitutionUsage');
 const { getRedisClient } = require('../config/redis');
 const { executeCode } = require('../services/judge0');
 const { asyncHandler } = require('../middlewares/errorMiddleware');
-const { getTimeAgo, parseLeetCode, parseCodeChef } = require('../utils/helpers');
+const { getTimeAgo, parseLeetCode } = require('../utils/helpers');
 const { gradeMCQ, gradeCoding, gradeShortAnswer, wrapStudentCode } = require('../services/gradingService');
 const { addCodeEvaluationJob } = require('../queues/codeGradingQueue');
 const { addFrontendEvaluationJob } = require('../queues/frontendGradingQueue');
@@ -2236,13 +2236,12 @@ exports.importQuestions = asyncHandler(async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
-//  🚀 Multi-Platform Question Import (LeetCode / CodeChef)
+//  🚀 Multi-Platform Question Import (LeetCode Only)
 // ═══════════════════════════════════════════════════════════
 
 // The Parser Registry — easy to extend with new platforms
 const parsers = {
     leetcode: parseLeetCode,
-    codechef: parseCodeChef,
 };
 
 /**
@@ -2250,7 +2249,6 @@ const parsers = {
  */
 const detectPlatform = (url) => {
     if (url.includes('leetcode.com')) return 'leetcode';
-    if (url.includes('codechef.com')) return 'codechef';
     return null; 
 };
 
@@ -2270,7 +2268,7 @@ exports.importQuestionFromLink = asyncHandler(async (req, res) => {
     const platform = detectPlatform(url);
     if (!platform || !parsers[platform]) {
         res.status(400);
-        throw new Error("Unsupported platform. Currently supporting LeetCode & CodeChef.");
+        throw new Error("Unsupported platform. Currently supporting LeetCode only.");
     }
 
     // 2. Redis Caching Layer (Check if already parsed recently)
@@ -2299,9 +2297,7 @@ exports.importQuestionFromLink = asyncHandler(async (req, res) => {
         // 4. Save to Cache (Expires in 24 hours)
         if (redisClient) {
             try {
-                await redisClient.set(cacheKey, JSON.stringify(questionData), {
-                    EX: 86400 // 24 hours
-                });
+                await redisClient.set(cacheKey, JSON.stringify(questionData), 'EX', 86400); // 24 hours
             } catch (cacheErr) {
                 console.warn("⚠️ Redis cache write failure:", cacheErr.message);
             }

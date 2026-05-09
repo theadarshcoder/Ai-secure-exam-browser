@@ -65,6 +65,8 @@ const SuccessModal = ({ isOpen, examId, onInvite, onReturn }) => {
   );
 };
 import api from '../services/api';
+import DOMPurify from 'dompurify';
+import { marked } from 'marked';
 import { Navbar } from '../components/Navbar';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -1958,7 +1960,7 @@ export default function CreateExam() {
                 </div>
                 <div>
                   <h3 className="text-[14px] font-bold text-primary">Import from URL</h3>
-                  <p className="text-[11px] text-muted">LeetCode &amp; CodeChef supported</p>
+                  <p className="text-[11px] text-muted">LeetCode platform supported</p>
                 </div>
               </div>
               <button
@@ -1987,10 +1989,6 @@ export default function CreateExam() {
                 <div className="flex items-center gap-1.5 px-2.5 py-1 bg-surface-hover border border-main rounded-lg">
                   <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
                   <span className="text-[10px] font-medium text-muted">LeetCode</span>
-                </div>
-                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-surface-hover border border-main rounded-lg">
-                  <div className="w-1.5 h-1.5 rounded-full bg-primary-500" />
-                  <span className="text-[10px] font-medium text-muted">CodeChef</span>
                 </div>
               </div>
             </div>
@@ -2068,13 +2066,25 @@ export default function CreateExam() {
               {/* Problem Content Editor */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                 <div className="space-y-4">
-                  <label className={LABEL_BASE + " ml-1"}>Problem Statement</label>
-                  <textarea 
-                    value={previewQuestion.questionText} 
-                    onChange={e => setPreviewQuestion({...previewQuestion, questionText: e.target.value})}
-                    placeholder="Problem text..."
-                    className={INPUT_BASE + " h-[450px] resize-none font-mono text-sm p-8 leading-relaxed bg-surface-hover/30 border-main focus:border-indigo-500/50 shadow-inner"} 
-                  />
+                  <div className="flex items-center justify-between ml-1">
+                    <label className={LABEL_BASE}>Problem Statement (Markdown)</label>
+                    <span className="text-[9px] font-black text-indigo-500/50 uppercase tracking-widest">Supports **Bold**, # Heading, etc.</span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4">
+                    <textarea 
+                      value={previewQuestion.questionText} 
+                      onChange={e => setPreviewQuestion({...previewQuestion, questionText: e.target.value})}
+                      placeholder="Problem text..."
+                      className={INPUT_BASE + " h-[250px] resize-none font-mono text-sm p-8 leading-relaxed bg-surface-hover/30 border-main focus:border-indigo-500/50 shadow-inner"} 
+                    />
+                    <div className="space-y-2">
+                       <label className={LABEL_BASE + " ml-1 opacity-50"}>Live Rendering Preview</label>
+                       <div 
+                        className="h-[250px] overflow-y-auto p-8 border border-main rounded-xl bg-page/50 prose prose-sm max-w-none prose-invert"
+                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(previewQuestion.questionText || '')) }}
+                       />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-8">

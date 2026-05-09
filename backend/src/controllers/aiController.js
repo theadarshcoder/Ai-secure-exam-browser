@@ -211,7 +211,8 @@ ${shortCount} Short Answer questions. Each MUST have this exact structure:
 ${codingCount} Coding questions. Each MUST have this exact structure:
 {
   "type": "coding",
-  "questionText": "Clear programming problem statement with input/output format",
+  "title": "A short, descriptive title (e.g., 'Two Sum')",
+  "questionText": "Detailed problem statement using Markdown (e.g., # Description, **Bold**, 1. Lists, etc.). Include input/output format.",
   "language": "javascript",
   "initialCode": "// Write your solution here\\n",
   "testCases": [
@@ -220,6 +221,7 @@ ${codingCount} Coding questions. Each MUST have this exact structure:
   ],
   "marks": 5
 }
+- Use Markdown (#, ##, **, -, 1.) extensively for a professional look.
 - Provide at least 2 test cases (1 visible, 1 hidden)
 - Input/output should be string format (as if from stdin/stdout)
 - Problems should be solvable in 15-30 minutes
@@ -323,6 +325,7 @@ function sanitizeQuestion(q, index) {
         return {
             ...base,
             type: 'coding',
+            title: String(q.title || q.questionText.split('\n')[0].replace(/[#*]/g, '').trim()).substring(0, 100),
             language: q.language || 'javascript',
             initialCode: q.initialCode || '// Write your solution here\n',
             testCases,
