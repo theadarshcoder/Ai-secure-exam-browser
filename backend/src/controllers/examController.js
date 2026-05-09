@@ -31,7 +31,7 @@ exports.createExam = asyncHandler(async (req, res) => {
         throw new Error('Invalid exam status.');
     }
 
-    if (req.user.role === 'super_admin') {
+    if ((req.user.role || '').toLowerCase() === 'super_admin') {
         res.status(403);
         throw new Error('Super Admin cannot create exams directly. Please use an institution admin account.');
     }

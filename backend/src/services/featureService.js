@@ -41,19 +41,23 @@ const getQuotaStatus = async (institutionId, resourceType) => {
 
     // Expiry Check
     const now = new Date();
-    if (sub.status === 'expired' || sub.currentPeriodEnd < now) {
+    if (sub.status === 'expired' || (sub.currentPeriodEnd && sub.currentPeriodEnd < now)) {
         return { isBlocked: true, reason: 'SUBSCRIPTION_EXPIRED', used: 0, limit: 0, percentage: 100 };
     }
 
-    const limit = plan.limits[resourceType] || 0;
-    const used = usage ? (usage[resourceType] || 0) : 0;
+    // 🛡️ Fix: Correct Field Mapping for Usage vs Limits
+    const mapping = {
+        student: { limit: 'maxStudents', used: 'studentsUsed' },
+        exam: { limit: 'maxExams', used: 'examsUsed' },
+        mentor: { limit: 'maxMentors', used: 'mentorsUsed' },
+        aiMinutes: { limit: 'aiMinutes', used: 'aiMinutesUsed' }
+    };
+
+    const config = mapping[resourceType] || { limit: resourceType, used: resourceType };
     
-    // Special handling for Student Invites in bulkInvite logic (maxStudents)
-    const normalizedResourceType = resourceType === 'student' ? 'maxStudents' : 
-                                  resourceType === 'exam' ? 'maxExams' : 
-                                  resourceType === 'mentor' ? 'maxMentors' : resourceType;
+    const actualLimit = plan.limits[config.limit] || 0;
+    const used = usage ? (usage[config.used] || 0) : 0;
     
-    const actualLimit = plan.limits[normalizedResourceType] || limit;
     const percentage = actualLimit === Infinity ? 0 : Math.min(100, (used / actualLimit) * 100);
 
     return {

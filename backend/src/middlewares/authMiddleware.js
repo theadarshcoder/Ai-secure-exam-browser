@@ -132,9 +132,14 @@ const verifyToken = async (req, res, next) => {
 
 const checkRole = (requiredRoles) => {
     return (req, res, next) => {
-        const roles = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
-        if (!roles.includes(req.user.role)) {
-            return res.status(403).json({ message: `Access denied for ${req.user.role}. This route requires one of: ${roles.join(', ')}` });
+        const roles = (Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles]).map(r => r.toLowerCase());
+        const userRole = (req.user.role || '').toLowerCase();
+
+        if (!roles.includes(userRole)) {
+            return res.status(403).json({ 
+                message: `Access denied for ${req.user.role}. This route requires one of: ${roles.join(', ')}`,
+                code: 'FORBIDDEN_ROLE'
+            });
         }
         next();
     };

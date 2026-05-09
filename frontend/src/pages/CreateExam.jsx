@@ -1049,8 +1049,8 @@ export default function CreateExam() {
       if (err.response) {
         // Server rejected the request Ã¢â‚¬â€ do NOT show success
         console.error('Server side rejection:', err.response.data);
-        const rawError = err.response.data.error;
-        const errorMsg = (typeof rawError === 'string' ? rawError : null) || err.response.data.message || 'Validation failed';
+        const errorData = err.response.data.error;
+        const errorMsg = (typeof errorData === 'string' ? errorData : errorData?.message) || err.response.data.message || 'Validation failed';
         addToast(`Failed to publish exam: ${errorMsg}`, 'error');
         setPublishStatus('error');
         setTimeout(() => setPublishStatus('idle'), 2000);
