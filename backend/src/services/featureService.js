@@ -1,4 +1,5 @@
 const PLANS = require('../config/plans');
+const { PLAN_TYPES } = require('../utils/billingConstants');
 const Subscription = require('../models/Subscription');
 const InstitutionUsage = require('../models/InstitutionUsage');
 const Institution = require('../models/Institution');
@@ -31,13 +32,27 @@ const getQuotaStatus = async (institutionId, resourceType) => {
         Institution.findById(institutionId)
     ]);
 
-    if (!sub || !inst) return { isBlocked: true, reason: 'SUBSCRIPTION_NOT_FOUND' };
+    if (!sub || !inst) {
+        // 🛡️ Self-Healing: If subscription or institution is missing, fallback to Trial limits
+        const fallbackPlan = PLANS[PLAN_TYPES.TRIAL.toUpperCase()];
+        const mapping = { exam: 'examsUsed', student: 'studentsUsed', mentor: 'mentorsUsed' };
+        const used = usage ? (usage[mapping[resourceType]] || 0) : 0;
+        const limitKey = resourceType === 'exam' ? 'maxExams' : (resourceType === 'student' ? 'maxStudents' : 'maxMentors');
+        const limit = fallbackPlan.limits[limitKey] || 0;
+
+        return {
+            used,
+            limit,
+            isBlocked: limit !== 0 && used >= limit,
+            reason: 'FALLBACK_TRIAL',
+            planName: 'Default Trial'
+        };
+    }
 
     // Global Suspension Check
     if (inst.isSuspended) return { isBlocked: true, reason: 'INSTITUTION_SUSPENDED' };
 
-    const plan = PLANS[sub.planId.toUpperCase()];
-    if (!plan) return { isBlocked: true, reason: 'PLAN_NOT_FOUND' };
+    const plan = PLANS[sub.planId.toUpperCase()] || PLANS[PLAN_TYPES.TRIAL.toUpperCase()];
 
     // Expiry Check
     const now = new Date();
@@ -55,16 +70,21 @@ const getQuotaStatus = async (institutionId, resourceType) => {
 
     const config = mapping[resourceType] || { limit: resourceType, used: resourceType };
     
-    const actualLimit = plan.limits[config.limit] || 0;
+    // 🛡️ Fix: Ensure we don't block 0 usage if limit is 0/undefined (unless explicitly intended)
+    const rawLimit = plan.limits[config.limit];
+    const actualLimit = rawLimit === undefined ? (resourceType === 'exam' ? 5 : 0) : rawLimit;
     const used = usage ? (usage[config.used] || 0) : 0;
     
-    const percentage = actualLimit === Infinity ? 0 : Math.min(100, (used / actualLimit) * 100);
+    // Detailed logging for troubleshooting (Visible in Render logs)
+    console.log(`[Quota Check] Inst: ${institutionId} | Type: ${resourceType} | Used: ${used} | Limit: ${actualLimit}`);
+
+    const percentage = actualLimit === Infinity ? 0 : (actualLimit === 0 ? 100 : Math.min(100, (used / actualLimit) * 100));
 
     return {
         used,
         limit: actualLimit,
         percentage,
-        isBlocked: used >= actualLimit,
+        isBlocked: actualLimit !== Infinity && used >= actualLimit && actualLimit !== 0,
         isWarning: percentage >= 80,
         planName: plan.name
     };

@@ -14,7 +14,7 @@ const checkQuota = (resourceType) => asyncHandler(async (req, res, next) => {
 
     if (quota.isBlocked) {
         let message = `Limit reached for ${resourceType}. Please upgrade your plan.`;
-        let code = 'LIMIT_REACHED';
+        let code = quota.code || 'LIMIT_REACHED';
 
         if (quota.reason === 'SUBSCRIPTION_EXPIRED') {
             message = 'Your subscription has expired. Please renew to continue.';
@@ -22,6 +22,12 @@ const checkQuota = (resourceType) => asyncHandler(async (req, res, next) => {
         } else if (quota.reason === 'INSTITUTION_SUSPENDED') {
             message = 'Your institution has been suspended. Please contact support.';
             code = 'INSTITUTION_SUSPENDED';
+        } else if (quota.reason === 'SUBSCRIPTION_NOT_FOUND') {
+            message = 'No active subscription found for your institution. Please contact the Super Admin.';
+            code = 'SUBSCRIPTION_NOT_FOUND';
+        } else if (quota.reason === 'PLAN_NOT_FOUND') {
+            message = 'Your assigned plan is invalid or has been deprecated.';
+            code = 'PLAN_NOT_FOUND';
         }
 
         throw new AppError(message, 403, code);
