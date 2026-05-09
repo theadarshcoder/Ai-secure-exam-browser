@@ -1161,8 +1161,7 @@ const { examId } = useParams();
     return () => clearInterval(heartbeatInterval);
   }, [examId]);
 
-  const [rawQuestions, setRawQuestions] = useState([]); // Already moved to top
-  const [isInitializing, setIsInitializing] = useState(true); // Already moved to top
+  // Duplicate declarations removed
 
     const getProcessedQuestions = useCallback((rawQs, seed) => {
     if (!rawQs.length || !seed) return [];
@@ -1216,17 +1215,7 @@ const { examId } = useParams();
       return () => clearTimeout(timer);
     }
   }, [broadcastMessage]);
-  const [helpStatus, setHelpStatus] = useState("idle");
-  const [isTabViolation, setIsTabViolation] = useState(false);
-  const [isBlocked, setIsBlocked] = useState(false);
-  const [blockReason, setBlockReason] = useState("");
-  const [activeWarning, setActiveWarning] = useState(null);
-  const [camError, setCamError] = useState(false);
-  const [settings, setSettings] = useState(null);
-  const [headerAlert, setHeaderAlert] = useState(null);
-  const [helpCooldown, setHelpCooldown] = useState(0); 
-  const [aiModel, setAiModel] = useState(null); // 🧠 AI Proctoring Model
-  const [isAIInitializing, setIsAIInitializing] = useState(false);
+  // Duplicate declarations removed
   const initEndTime = useRef(Date.now() + 5000); // 🛡️ Anchor for violation grace period
 
   // Layout state
