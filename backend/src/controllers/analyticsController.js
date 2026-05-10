@@ -12,12 +12,12 @@ const logger = require('../utils/logger');
  */
 exports.getStrategicAnalytics = async (req, res) => {
     try {
-        const { examId, institutionId, startDate, endDate } = req.query;
+        const { examId, institutionId, startDate, endDate, range } = req.query;
         
         // 🛡️ Isolation & RBAC
         const targetInstitution = req.user.role === 'super_admin' ? institutionId : req.user.institutionId;
         
-        const cacheKey = `strategic_stats_v2_${targetInstitution || 'global'}_${examId || 'all'}_${startDate || 'none'}_${endDate || 'none'}`;
+        const cacheKey = `strategic_stats_v3_${targetInstitution || 'global'}_${examId || 'all'}_${startDate || 'none'}_${endDate || 'none'}_${range || 'none'}`;
         const cachedData = await cacheService.getCache(cacheKey);
         
         if (cachedData) {
@@ -29,9 +29,20 @@ exports.getStrategicAnalytics = async (req, res) => {
         if (examId) match.exam = new mongoose.Types.ObjectId(examId);
         
         const dateFilter = {};
-        if (startDate || endDate) {
-            if (startDate) dateFilter.$gte = new Date(startDate);
+        if (startDate || endDate || range) {
+            if (startDate) {
+                dateFilter.$gte = new Date(startDate);
+            } else if (range) {
+                const now = new Date();
+                if (range === '7d') dateFilter.$gte = new Date(now.setDate(now.getDate() - 7));
+                else if (range === '30d') dateFilter.$gte = new Date(now.setDate(now.getDate() - 30));
+                else if (range === '90d') dateFilter.$gte = new Date(now.setDate(now.getDate() - 90));
+            }
             if (endDate) dateFilter.$lte = new Date(endDate);
+
+            if (Object.keys(dateFilter).length > 0) {
+                match.createdAt = dateFilter;
+            }
         }
 
         // 1. 🏗️ Usage Growth (Monthly creation) - 24h Cache recommended but for now 1h is okay

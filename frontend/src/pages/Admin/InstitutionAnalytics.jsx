@@ -51,8 +51,10 @@ const InstitutionAnalytics = () => {
             setLoading(true);
             const { data: res } = await api.get(`/api/v1/analytics/strategic?range=${dateRange}`);
             
-            if (res.success && res.data) {
-                const b = res.data;
+            // 🛡️ Fix: Handle unwrapped response from standardized api interceptor
+            // In the new api.js, res is already the 'data' field of the response.
+            if (res && (res.funnel || res.growth)) {
+                const b = res;
                 
                 // Transform Backend Data to Frontend Logic
                 const transformedData = {
@@ -67,12 +69,14 @@ const InstitutionAnalytics = () => {
                     ],
                     // Merge Growth Data
                     trends: b.growth?.users?.map((u, i) => {
-                        const e = b.growth.exams[i] || { count: 0 };
+                        const e = b.growth?.exams?.[i] || { count: 0 };
                         const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                        const month = u._id?.month || 1;
+                        const year = u._id?.year || new Date().getFullYear();
                         return {
-                            date: `${monthNames[u._id.month - 1]} ${u._id.year}`,
-                            users: u.count,
-                            exams: e.count
+                            date: `${monthNames[month - 1]} ${year}`,
+                            users: u.count || 0,
+                            exams: e.count || 0
                         };
                     }) || []
                 };

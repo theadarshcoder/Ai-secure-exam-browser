@@ -10,6 +10,7 @@ const axios = require('axios');
 const mongoose = require('mongoose');
 const { getCache, setCache, clearCache, TTL_API_CACHE } = require('../services/cacheService');
 const { getTenantFilter } = require('../utils/tenantFilter');
+const logger = require('../utils/logger');
 
 // ═══════════════════════════════════════════════════════════
 // Fetch all exam results and sessions for Admin/Mentor Dashboard
@@ -100,12 +101,12 @@ exports.getDashboardStats = asyncHandler(async (req, res) => {
     if (cached) return res.json(cached);
 
     const [totalExams, totalAttempts, liveExams, liveStudents, totalViolations, totalStudents] = await Promise.all([
-        Exam.countDocuments(getTenantFilter(req)).lean(),
-        ExamSession.countDocuments(getTenantFilter(req)).lean(),
-        Exam.countDocuments(getTenantFilter(req, { status: 'published' })).lean(),
-        ExamSession.countDocuments(getTenantFilter(req, { status: 'in_progress' })).lean(),
-        ExamSession.countDocuments(getTenantFilter(req, { 'violations.0': { $exists: true } })).lean(),
-        User.countDocuments(getTenantFilter(req, { role: 'student' })).lean()
+        Exam.countDocuments(getTenantFilter(req)),
+        ExamSession.countDocuments(getTenantFilter(req)),
+        Exam.countDocuments(getTenantFilter(req, { status: 'published' })),
+        ExamSession.countDocuments(getTenantFilter(req, { status: 'in_progress' })),
+        ExamSession.countDocuments(getTenantFilter(req, { 'violations.0': { $exists: true } })),
+        User.countDocuments(getTenantFilter(req, { role: 'student' }))
     ]);
 
     const institution = await Institution.findById(institutionId)
@@ -456,46 +457,71 @@ exports.bulkDeleteUsers = asyncHandler(async (req, res) => {
 // ═══════════════════════════════════════════════════════════
 exports.getSettings = asyncHandler(async (req, res) => {
     const institutionId = req.user.institutionId;
-    const cacheKey = `inst_settings:${institutionId}`;
+    
+    if (!institutionId) {
+        logger.warn({ user: req.user.email }, 'getSettings: institutionId missing in user session');
+        return res.status(400).json({ success: false, message: 'Institutional context missing.' });
+    }
 
-    // 1. Try Cache
+    const cacheKey = `inst_settings:${institutionId}`;
     const cached = await getCache(cacheKey);
     if (cached) return res.json(cached);
 
-    let setting = await Setting.findOne(getTenantFilter(req));
-    if (!setting) {
-        setting = await Setting.create({ institutionId: institutionId });
-    }
+    // 🛡️ Atomic Get/Create
+    let setting = await Setting.findOneAndUpdate(
+        { institutionId: institutionId },
+        { $setOnInsert: { institutionId: institutionId } },
+        { new: true, upsert: true, runValidators: true }
+    );
 
-    // 2. Set Cache (30 mins)
     await setCache(cacheKey, setting, 1800);
-
     res.json(setting);
 });
 
 exports.saveSettings = asyncHandler(async (req, res) => {
     const institutionId = req.user.institutionId;
-    let setting = await Setting.findOne(getTenantFilter(req));
     
-    if (setting) {
-        setting.maxTabSwitches = req.body.maxTabSwitches ?? setting.maxTabSwitches;
-        setting.forceFullscreen = req.body.forceFullscreen ?? setting.forceFullscreen;
-        setting.allowLateSubmissions = req.body.allowLateSubmissions ?? setting.allowLateSubmissions;
-        setting.enableWebcam = req.body.enableWebcam ?? setting.enableWebcam;
-        setting.disableCopyPaste = req.body.disableCopyPaste ?? setting.disableCopyPaste;
-        setting.requireIDVerification = req.body.requireIDVerification ?? setting.requireIDVerification;
-        setting.exitPassword = req.body.exitPassword !== undefined ? req.body.exitPassword : setting.exitPassword;
-        setting.anomalyThreshold = req.body.anomalyThreshold ?? setting.anomalyThreshold;
-        await setting.save();
-    } else {
-        setting = await Setting.create({ ...req.body, institutionId: institutionId });
+    if (!institutionId) {
+        logger.error({ user: req.user.email }, 'saveSettings: Critical failure - institutionId missing');
+        return res.status(400).json({ success: false, message: 'Settings cannot be saved without institutional context.' });
     }
-    
-    // 🛡️ Invalidate Caches
-    await clearCache(`inst_settings:${institutionId}`);
-    await clearCache('global_settings'); // Compatibility with older logic
 
-    res.json({ message: 'Settings saved successfully', settings: setting });
+    // Strip out sensitive or restricted fields from body
+    const { _id, institutionId: _, __v, createdAt, updatedAt, ...updateData } = req.body;
+
+    try {
+        logger.info({ institutionId }, `💾 [DB] Saving settings for institution ${institutionId}`);
+        
+        const setting = await Setting.findOneAndUpdate(
+            { institutionId: institutionId },
+            { $set: updateData },
+            { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
+        );
+        
+        // 🛡️ Invalidate Caches
+        await clearCache(`inst_settings:${institutionId}`);
+        await clearCache('global_settings'); 
+
+        res.json({ message: 'Settings saved successfully', settings: setting });
+    } catch (err) {
+        logger.error({ err: err.message, institutionId }, '❌ [DB] saveSettings Conflict/Error');
+        
+        // If it's a 11000 error, we try one more time with a simple update to be absolutely sure
+        if (err.code === 11000) {
+            const retrySetting = await Setting.findOneAndUpdate(
+                { institutionId: institutionId },
+                { $set: updateData },
+                { new: true, runValidators: true }
+            );
+            
+            if (retrySetting) {
+                await clearCache(`inst_settings:${institutionId}`);
+                return res.json({ message: 'Settings saved successfully', settings: retrySetting });
+            }
+        }
+        
+        throw err; // Let error middleware handle other cases
+    }
 });
 
 // ═══════════════════════════════════════════════════════════

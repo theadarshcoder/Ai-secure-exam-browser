@@ -553,7 +553,14 @@ io.on('connection', (socket) => {
             }
 
             logger.info(`[SCALING] Socket Re-Auth: ${decoded.email}`);
-            socket.user = { id: decoded.id, email: decoded.email, role: decoded.role };
+            
+            // 🛡️ Preserve critical properties like institutionId
+            socket.user = { 
+                id: decoded.id, 
+                email: decoded.email, 
+                role: decoded.role,
+                institutionId: decoded.institutionId || socket.user.institutionId // Maintain existing if missing in token
+            };
             socket.expiresAt = decoded.exp * 1000;
 
             if (watchdogTimer) {

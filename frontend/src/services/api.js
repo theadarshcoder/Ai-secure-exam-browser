@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
+import socketService from './socket';
 
 const API_BASE_URL = window.location.hostname === 'localhost' 
   ? (import.meta.env.VITE_API_URL || 'http://localhost:5001')
@@ -102,6 +103,9 @@ api.interceptors.response.use(
         api.defaults.headers.common.Authorization = `Bearer ${data.accessToken}`;
         
         processQueue(null, data.accessToken);
+        
+        // 🛡️ Sync new token with active socket connection
+        socketService.reAuth(data.accessToken);
         
         originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
         return api(originalRequest);
