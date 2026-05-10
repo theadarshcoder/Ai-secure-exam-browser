@@ -38,6 +38,7 @@ import toast from 'react-hot-toast';
 const InstitutionAnalytics = () => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [dateRange, setDateRange] = useState('30d');
     const [dropdownOpen, setDropdownOpen] = useState(false);
 
@@ -76,16 +77,20 @@ const InstitutionAnalytics = () => {
                     }) || []
                 };
                 setData(transformedData);
+                setError(null);
+            } else {
+                setError("No data received from intelligence core");
             }
         } catch (error) {
             console.error("Strategic Analytics fetch failed:", error);
+            setError("Failed to sync live analytics. Please check your connection.");
             toast.error("Failed to sync live analytics");
         } finally {
             setLoading(false);
         }
     };
 
-    if (loading || !data) return (
+    if (loading) return (
         <div className="flex items-center justify-center min-h-[60vh]">
             <div className="flex flex-col items-center gap-6">
                 <div className="relative">
@@ -96,6 +101,26 @@ const InstitutionAnalytics = () => {
                     <p className="text-primary font-black text-sm uppercase tracking-[0.3em]">Institutional Intelligence</p>
                     <p className="text-muted text-[10px] mt-1 uppercase font-bold">Aggregating Behavioral Data...</p>
                 </div>
+            </div>
+        </div>
+    );
+
+    if (error || !data) return (
+        <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="flex flex-col items-center gap-6 bg-surface/30 border border-main p-12 rounded-[2.5rem] max-w-md text-center">
+                <div className="w-20 h-20 bg-rose-500/10 rounded-3xl flex items-center justify-center border border-rose-500/20 shadow-inner">
+                    <AlertCircle className="text-rose-500" size={40} />
+                </div>
+                <div>
+                    <h3 className="text-xl font-black text-primary uppercase">Analytics Unavailable</h3>
+                    <p className="text-sm text-muted mt-2 font-medium">{error || "No intelligence data found for this period."}</p>
+                </div>
+                <button 
+                    onClick={fetchAnalytics}
+                    className="mt-4 px-8 py-3 bg-primary-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-primary-600 transition-all active:scale-95"
+                >
+                    Retry Synthesis
+                </button>
             </div>
         </div>
     );

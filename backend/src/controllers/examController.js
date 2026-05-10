@@ -414,7 +414,7 @@ exports.getActiveExams = asyncHandler(async (req, res) => {
     }).select('exam').lean();
     const submittedExamIds = new Set(submittedSessions.map(s => s.exam.toString()));
 
-    const globalSettings = await Setting.findOne() || {
+    const globalSettings = await Setting.findOne(getTenantFilter(req)) || {
         maxTabSwitches: 5,
         forceFullscreen: true,
         allowLateSubmissions: false,
@@ -543,7 +543,7 @@ exports.getExamById = asyncHandler(async (req, res) => {
         return safe;
     });
 
-    const globalSettings = await Setting.findOne() || {
+    const globalSettings = await Setting.findOne(getTenantFilter(req)) || {
         maxTabSwitches: 5,
         forceFullscreen: true,
         allowLateSubmissions: false,
@@ -638,7 +638,7 @@ exports.startExam = asyncHandler(async (req, res) => {
 
     const { examId } = req.body;
     const studentId = req.user.id;
-    const globalSettings = await Setting.findOne() || {
+    const globalSettings = await Setting.findOne(getTenantFilter(req)) || {
         maxTabSwitches: 5,
         forceFullscreen: true,
         allowLateSubmissions: false,
@@ -1735,7 +1735,7 @@ exports.logIncident = asyncHandler(async (req, res) => {
     session.riskScore = Math.min((session.riskScore || 0) + delta, 100);
 
     // 🛡️ Cheating Protection Enforcement
-    const globalSettings = await Setting.findOne() || { maxTabSwitches: 5 };
+    const globalSettings = await Setting.findOne(getTenantFilter(req)) || { maxTabSwitches: 5 };
     if (session.tabSwitchCount >= globalSettings.maxTabSwitches && session.status === 'in_progress') {
         session.status = 'blocked';
         session.blockReason = 'Excessive tab switching detected by system proctor';
@@ -2638,7 +2638,7 @@ exports.exitExam = asyncHandler(async (req, res) => {
         throw new Error(`Cannot exit. Exam is not in progress. Status: ${session.status}`);
     }
 
-    const globalSettings = await Setting.findOne();
+    const globalSettings = await Setting.findOne(getTenantFilter(req));
     if (!globalSettings || !globalSettings.exitPassword) {
         res.status(500);
         throw new Error('Server misconfiguration: Supervisor exit password is not set.');

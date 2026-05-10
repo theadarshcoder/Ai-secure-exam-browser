@@ -1,6 +1,13 @@
 const mongoose = require('mongoose');
 
 const settingSchema = new mongoose.Schema({
+    institutionId: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Institution',
+        unique: true,
+        required: true,
+        index: true
+    },
     maxTabSwitches: { type: Number, default: 5 },
     maxViolations: { type: Number, default: 5 }, // New: Max total cheating flags allowed
     backgroundLimitSeconds: { type: Number, default: 10 }, // New: Max duration allowed outside the tab
