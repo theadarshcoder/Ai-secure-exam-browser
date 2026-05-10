@@ -1,0 +1,12 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://vision-live.pages.dev/sitemap.xml
+
+# Block sensitive areas
+Disallow: /admin/
+Disallow: /super-admin/
+Disallow: /exam-cockpit/
+Disallow: /api/
