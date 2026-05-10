@@ -2533,75 +2533,82 @@ export default function AdminDashboard() {
                   )}
                 </button>
 
-                {showNotifDropdown && (
-                  <div className="absolute right-0 top-14 w-80 bg-surface rounded-2xl shadow-xl z-50 overflow-hidden" style={{ border: '1px solid #1f1f1f' }}>
-                    
-                    {/* Header */}
-                    <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #1f1f1f' }}>
-                      <div className="flex items-center gap-2">
-                        <Bell size={13} className="text-muted" />
-                        <span className="text-[11px] font-bold text-primary">Notifications</span>
-                        {notifications.filter(n => n.unread).length > 0 && (
-                          <span className="text-[9px] font-bold bg-primary-500 text-white px-1.5 py-0.5 rounded-full">
-                            {notifications.filter(n => n.unread).length}
-                          </span>
+                <AnimatePresence>
+                  {showNotifDropdown && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute right-0 top-14 w-80 bg-surface rounded-2xl shadow-xl z-50 overflow-hidden" 
+                      style={{ border: '1px solid #1f1f1f' }}
+                    >
+                      {/* Header */}
+                      <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #1f1f1f' }}>
+                        <div className="flex items-center gap-2">
+                          <Bell size={13} className="text-muted" />
+                          <span className="text-[11px] font-bold text-primary">Notifications</span>
+                          {notifications.filter(n => n.unread).length > 0 && (
+                            <span className="text-[9px] font-bold bg-primary-500 text-white px-1.5 py-0.5 rounded-full">
+                              {notifications.filter(n => n.unread).length}
+                            </span>
+                          )}
+                        </div>
+                        {notifications.length > 0 && (
+                          <button
+                            onClick={handleClearNotifications}
+                            className="text-[10px] font-medium text-muted hover:text-primary transition-colors"
+                          >
+                            Clear all
+                          </button>
                         )}
                       </div>
-                      {notifications.length > 0 && (
-                        <button
-                          onClick={handleClearNotifications}
-                          className="text-[10px] font-medium text-muted hover:text-primary transition-colors"
-                        >
-                          Clear all
-                        </button>
-                      )}
-                    </div>
 
-                    {/* Body */}
-                    <div className="max-h-72 overflow-y-auto custom-scrollbar">
-                      {notifications.length === 0 ? (
-                        <div className="py-10 flex flex-col items-center gap-2">
-                          <Bell size={20} className="text-muted opacity-25" />
-                          <p className="text-[11px] text-muted font-medium">No notifications</p>
-                        </div>
-                      ) : (
-                        notifications.map((n) => (
-                          <div key={n.id} className={`px-4 py-3 hover:bg-surface-hover transition-colors ${n.unread ? 'bg-primary-500/[0.03]' : ''}`} style={{ borderBottom: '1px solid #1f1f1f' }}>
-                            <div className="flex gap-3 items-start">
-                              <div className={`w-7 h-7 rounded-lg shrink-0 flex items-center justify-center ${
-                                n.type === 'help' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-primary-500/10 text-primary-500'
-                              }`}>
-                                {n.type === 'help'
-                                  ? <MessageCircle size={13} strokeWidth={2.5} />
-                                  : <AlertTriangle size={13} strokeWidth={2.5} />
-                                }
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between gap-2 mb-0.5">
-                                  <p className="text-[11px] font-semibold text-primary truncate">
-                                    {n.type === 'help' ? 'Support Request' : 'Security Alert'}
-                                  </p>
-                                  <span className="text-[10px] text-muted shrink-0">
-                                    {n.timestamp ? new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now'}
-                                  </span>
-                                </div>
-                                <p className="text-[11px] font-medium text-primary truncate">
-                                  {n.type === 'help' ? n.studentName : (n.studentName || n.studentId)}
-                                </p>
-                                <p className="text-[10px] text-muted truncate mt-0.5">
-                                  {n.type === 'help' ? n.message : `Violation: ${n.type}`}
-                                </p>
-                              </div>
-                              {n.unread && (
-                                <div className="w-1.5 h-1.5 rounded-full bg-primary-500 shrink-0 mt-1.5" />
-                              )}
-                            </div>
+                      {/* Body */}
+                      <div className="max-h-72 overflow-y-auto custom-scrollbar">
+                        {notifications.length === 0 ? (
+                          <div className="py-10 flex flex-col items-center gap-2">
+                            <Bell size={20} className="text-muted opacity-25" />
+                            <p className="text-[11px] text-muted font-medium">No notifications</p>
                           </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
+                        ) : (
+                          notifications.map((n) => (
+                            <div key={n.id} className={`px-4 py-3 hover:bg-surface-hover transition-colors ${n.unread ? 'bg-primary-500/[0.03]' : ''}`} style={{ borderBottom: '1px solid #1f1f1f' }}>
+                              <div className="flex gap-3 items-start">
+                                <div className={`w-7 h-7 rounded-lg shrink-0 flex items-center justify-center ${
+                                  n.type === 'help' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-primary-500/10 text-primary-500'
+                                }`}>
+                                  {n.type === 'help'
+                                    ? <MessageCircle size={13} strokeWidth={2.5} />
+                                    : <AlertTriangle size={13} strokeWidth={2.5} />
+                                  }
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between gap-2 mb-0.5">
+                                    <p className="text-[11px] font-semibold text-primary truncate">
+                                      {n.type === 'help' ? 'Support Request' : 'Security Alert'}
+                                    </p>
+                                    <span className="text-[10px] text-muted shrink-0">
+                                      {n.timestamp ? new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now'}
+                                    </span>
+                                  </div>
+                                  <p className="text-[11px] font-medium text-primary truncate">
+                                    {n.type === 'help' ? n.studentName : (n.studentName || n.studentId)}
+                                  </p>
+                                  <p className="text-[10px] text-muted truncate mt-0.5">
+                                    {n.type === 'help' ? n.message : `Violation: ${n.type}`}
+                                  </p>
+                                </div>
+                                {n.unread && (
+                                  <div className="w-1.5 h-1.5 rounded-full bg-primary-500 shrink-0 mt-1.5" />
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
               </div>
 

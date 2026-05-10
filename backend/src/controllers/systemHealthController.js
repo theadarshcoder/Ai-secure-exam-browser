@@ -106,15 +106,15 @@ exports.getQueueStats = asyncHandler(async (req, res) => {
     const { autoSubmitQueue } = require('../queues/autoSubmitWorker');
 
     const queues = [
-        { name: 'Code Evaluation', queue: codeEvaluationQueue },
-        { name: 'Frontend Evaluation', queue: frontendEvaluationQueue },
-        { name: 'Invite Email', queue: notificationQueue },
-        { name: 'Intelligence', queue: intelligenceQueue },
-        { name: 'Auto Submit', queue: autoSubmitQueue }
+        { name: 'Code Evaluation', id: 'code-evaluation', queue: codeEvaluationQueue },
+        { name: 'Frontend Evaluation', id: 'frontend-evaluation', queue: frontendEvaluationQueue },
+        { name: 'Invite Email', id: 'invite-email', queue: notificationQueue },
+        { name: 'Intelligence', id: 'intelligence', queue: intelligenceQueue },
+        { name: 'Auto Submit', id: 'auto-submit', queue: autoSubmitQueue }
     ];
-
+    
     const stats = await Promise.all(queues.map(async (q) => {
-        if (!q.queue) return { name: q.name, active: 0, waiting: 0, failed: 0, completed: 0 };
+        if (!q.queue) return { name: q.name, id: q.id, active: 0, waiting: 0, failed: 0, completed: 0 };
         
         const [active, waiting, failed, completed] = await Promise.all([
             q.queue.getActiveCount(),
@@ -125,6 +125,7 @@ exports.getQueueStats = asyncHandler(async (req, res) => {
 
         return {
             name: q.name,
+            id: q.id,
             active,
             waiting,
             failed,
@@ -133,4 +134,43 @@ exports.getQueueStats = asyncHandler(async (req, res) => {
     }));
 
     res.json(stats);
+});
+
+/**
+ * 🔄 Retry Failed Jobs in a specific queue
+ */
+exports.retryQueueJobs = asyncHandler(async (req, res) => {
+    const { queueId } = req.params;
+    
+    const { codeEvaluationQueue } = require('../queues/codeGradingQueue');
+    const { frontendEvaluationQueue } = require('../queues/frontendGradingQueue');
+    const { notificationQueue } = require('../queues/notificationQueue');
+    const { intelligenceQueue } = require('../queues/intelligenceQueue');
+    const { autoSubmitQueue } = require('../queues/autoSubmitWorker');
+
+    const queueMap = {
+        'code-evaluation': codeEvaluationQueue,
+        'frontend-evaluation': frontendEvaluationQueue,
+        'invite-email': notificationQueue,
+        'intelligence': intelligenceQueue,
+        'auto-submit': autoSubmitQueue
+    };
+
+    const queue = queueMap[queueId];
+    if (!queue) {
+        res.status(404);
+        throw new Error(`Queue ${queueId} not found`);
+    }
+
+    // BullMQ: Get failed jobs and retry them
+    const failedJobs = await queue.getFailed();
+    if (failedJobs.length > 0) {
+        await Promise.all(failedJobs.map(job => job.retry()));
+    }
+
+    res.json({ 
+        success: true, 
+        message: `Successfully retried ${failedJobs.length} failed jobs in ${queueId} queue.`,
+        retriedCount: failedJobs.length 
+    });
 });

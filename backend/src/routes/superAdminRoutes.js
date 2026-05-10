@@ -11,6 +11,7 @@ router.use(verifyToken, checkRole(['super_admin']));
 // Platform Monitoring & Health
 router.get('/health', healthController.getSystemHealth);
 router.get('/queues', healthController.getQueueStats);
+router.post('/queues/:queueId/retry', healthController.retryQueueJobs);
 
 // Demo Requests
 router.get('/demo-requests', superAdminController.getDemoRequests);

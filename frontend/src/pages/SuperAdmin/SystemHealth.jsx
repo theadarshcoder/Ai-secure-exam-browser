@@ -55,6 +55,18 @@ export default function SystemHealth() {
         }
     };
 
+    const handleRetryQueue = async (queueId) => {
+        try {
+            const { data } = await api.post(`/api/super-admin/queues/${queueId}/retry`);
+            if (data.success) {
+                toast.success(data.message);
+                fetchData(); // Refresh stats
+            }
+        } catch (error) {
+            toast.error('Failed to retry queue jobs');
+        }
+    };
+
     if (loading) {
         return (
             <div className="h-screen bg-main flex items-center justify-center">
@@ -262,6 +274,7 @@ export default function SystemHealth() {
                                                     <td className="px-6 py-4 text-right">
                                                         <button 
                                                             disabled={q.failed === 0}
+                                                            onClick={() => handleRetryQueue(q.id)}
                                                             className={`p-2 rounded-xl transition-all ${q.failed > 0 ? 'text-primary-500 hover:bg-primary-500/10' : 'text-muted opacity-30'}`}
                                                             title="Retry Failed Jobs"
                                                         >

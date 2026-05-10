@@ -47,6 +47,7 @@ export default function SuperAdminDashboard() {
     const [searchQuery, setSearchQuery] = useState('');
     const [sidebarExpanded, setSidebarExpanded] = useState(true);
     const [userName] = useState(sessionStorage.getItem('vision_name') || 'Platform Owner');
+    const [showNotifDropdown, setShowNotifDropdown] = useState(false);
 
     const navItems = [
         { id: 'demo-requests', label: 'Onboarding', icon: Inbox },
@@ -225,10 +226,75 @@ export default function SuperAdminDashboard() {
                             <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">v1.5.0 — Managed</span>
                         </div>
                         <ThemeToggle />
-                        <button className="relative p-2 text-muted hover:text-primary transition-colors">
-                            <Bell size={20} />
-                            <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-rose-500 rounded-full border border-surface" />
-                        </button>
+                        <div className="relative">
+                            <button 
+                                onClick={() => setShowNotifDropdown(!showNotifDropdown)}
+                                className="w-10 h-10 rounded-xl bg-main border border-main flex items-center justify-center text-muted hover:text-primary transition-all active:scale-95 relative"
+                            >
+                                <Bell size={20} />
+                                {(stats.pendingDemos > 0 || upgradeRequests.filter(r => r.status === 'pending').length > 0) && (
+                                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 rounded-full border-2 border-surface animate-pulse" />
+                                )}
+                            </button>
+
+                            <AnimatePresence>
+                                {showNotifDropdown && (
+                                    <motion.div 
+                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        className="absolute right-0 top-14 w-80 bg-surface border border-main rounded-2xl shadow-2xl z-50 overflow-hidden"
+                                    >
+                                        <div className="px-5 py-4 border-b border-main bg-surface-hover/30 flex items-center justify-between">
+                                            <span className="text-xs font-bold text-primary flex items-center gap-2">
+                                                <Bell size={14} className="text-primary-500" /> Notifications
+                                            </span>
+                                            {(stats.pendingDemos > 0 || upgradeRequests.filter(r => r.status === 'pending').length > 0) && (
+                                                <Badge color="amber">Action Required</Badge>
+                                            )}
+                                        </div>
+                                        <div className="max-h-96 overflow-y-auto custom-scrollbar">
+                                            {stats.pendingDemos > 0 && (
+                                                <button 
+                                                    onClick={() => { setActiveTab('demo-requests'); setShowNotifDropdown(false); }}
+                                                    className="w-full px-5 py-4 hover:bg-surface-hover/50 flex items-start gap-4 transition-all text-left border-b border-main"
+                                                >
+                                                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+                                                        <Inbox size={20} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[13px] font-bold text-primary">Pending Onboarding</p>
+                                                        <p className="text-[11px] text-muted mt-0.5">{stats.pendingDemos} institutions waiting for approval.</p>
+                                                    </div>
+                                                </button>
+                                            )}
+                                            {upgradeRequests.filter(r => r.status === 'pending').length > 0 && (
+                                                <button 
+                                                    onClick={() => { setActiveTab('upgrade-requests'); setShowNotifDropdown(false); }}
+                                                    className="w-full px-5 py-4 hover:bg-surface-hover/50 flex items-start gap-4 transition-all text-left border-b border-main"
+                                                >
+                                                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                                                        <Database size={20} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[13px] font-bold text-primary">Upgrade Requests</p>
+                                                        <p className="text-[11px] text-muted mt-0.5">{upgradeRequests.filter(r => r.status === 'pending').length} organizations requesting plan upgrades.</p>
+                                                    </div>
+                                                </button>
+                                            )}
+                                            {stats.pendingDemos === 0 && upgradeRequests.filter(r => r.status === 'pending').length === 0 && (
+                                                <div className="py-12 text-center text-muted">
+                                                    <div className="w-12 h-12 rounded-full bg-surface-hover flex items-center justify-center mx-auto mb-3 opacity-20">
+                                                        <CheckCircle2 size={24} />
+                                                    </div>
+                                                    <p className="text-xs font-medium">All caught up!</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
                     </div>
                 </header>
 

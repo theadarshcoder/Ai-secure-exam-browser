@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import socketService from '../services/socket';
 import {
@@ -476,6 +477,7 @@ export default function MentorDashboard() {
     sessionStorage.setItem('mentor_dashboard_tab', activeTab);
   }, [activeTab]);
   const [userName] = useState(sessionStorage.getItem('vision_name') || 'Mentor');
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   
   // Live data states
   const [loading, setLoading] = useState(false);
@@ -1592,14 +1594,83 @@ export default function MentorDashboard() {
           <div className="flex items-center gap-5">
             <div className="relative ml-2 flex items-center gap-2">
               <ThemeToggle />
-              <button className="w-10 h-10 rounded-xl bg-main border border-main flex items-center justify-center text-muted hover:text-primary transition-all active:scale-95 relative">
-                 <Bell size={20} />
-                 {violations.length > 0 && (
-                   <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-main animate-pulse">
-                     {violations.length}
-                   </span>
-                 )}
-              </button>
+              <div className="relative">
+                <button 
+                  onClick={() => setShowNotifDropdown(!showNotifDropdown)}
+                  className="w-10 h-10 rounded-xl bg-main border border-main flex items-center justify-center text-muted hover:text-primary transition-all active:scale-95 relative"
+                >
+                  <Bell size={20} />
+                  {(violations.length > 0 || helpRequests.length > 0) && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-main animate-pulse">
+                      {violations.length + helpRequests.length}
+                    </span>
+                  )}
+                </button>
+
+                <AnimatePresence>
+                  {showNotifDropdown && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute right-0 top-14 w-80 bg-surface border border-main rounded-2xl shadow-2xl z-50 overflow-hidden"
+                    >
+                      <div className="px-5 py-4 border-b border-main bg-surface-hover/30 flex items-center justify-between">
+                        <span className="text-xs font-bold text-primary flex items-center gap-2">
+                          <Bell size={14} className="text-primary-500" /> Notifications
+                        </span>
+                        {(violations.length > 0 || helpRequests.length > 0) && (
+                          <button 
+                            onClick={() => { setViolations([]); setHelpRequests([]); setShowNotifDropdown(false); }}
+                            className="text-[10px] font-medium text-muted hover:text-primary transition-colors"
+                          >
+                            Clear all
+                          </button>
+                        )}
+                      </div>
+                      <div className="max-h-96 overflow-y-auto custom-scrollbar">
+                        {helpRequests.map(req => (
+                          <div key={req.id} className="p-4 hover:bg-surface-hover/50 border-b border-main flex items-start gap-4 transition-all">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                              <MessageSquare size={14} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="text-[11px] font-bold text-primary truncate">Help Request</p>
+                                <span className="text-[9px] text-muted shrink-0">{new Date(req.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              </div>
+                              <p className="text-[11px] font-medium text-primary mt-0.5 truncate">{req.studentName}</p>
+                              <p className="text-[10px] text-muted truncate mt-0.5">"{req.message}"</p>
+                            </div>
+                          </div>
+                        ))}
+                        {violations.map(v => (
+                          <div key={v.id} className="p-4 hover:bg-surface-hover/50 border-b border-main flex items-start gap-4 transition-all">
+                            <div className="w-8 h-8 rounded-lg bg-red-500/10 text-red-500 flex items-center justify-center shrink-0">
+                              <AlertTriangle size={14} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="text-[11px] font-bold text-primary truncate">{v.type}</p>
+                                <span className="text-[9px] text-muted shrink-0">{v.time}</span>
+                              </div>
+                              <p className="text-[11px] font-medium text-primary mt-0.5 truncate">{v.student}</p>
+                            </div>
+                          </div>
+                        ))}
+                        {violations.length === 0 && helpRequests.length === 0 && (
+                          <div className="py-12 text-center text-muted">
+                            <div className="w-12 h-12 rounded-full bg-surface-hover flex items-center justify-center mx-auto mb-3 opacity-20">
+                              <CheckCircle2 size={24} />
+                            </div>
+                            <p className="text-xs font-medium">All systems normal</p>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
 
             </div>
           </div>

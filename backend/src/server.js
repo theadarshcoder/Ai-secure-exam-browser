@@ -455,7 +455,7 @@ app.use('/admin/queues', verifyToken, checkRole(['super_admin']), serverAdapter.
 // ─── 🚀 [STEP 5] API V1 Versioning Foundation ──────────────────
 const v1Router = express.Router();
 
-v1Router.use('/auth', authLimiter, authRoutes);
+v1Router.use('/auth', authLimiter, platformModeMiddleware, authRoutes);
 v1Router.use('/exams/save-progress', verifyToken, platformModeMiddleware, activityTracker, autoSaveLimiter);
 v1Router.use('/exams', verifyToken, platformModeMiddleware, activityTracker, checkInstitutionActive, examRoutes);
 v1Router.use('/admin', verifyToken, platformModeMiddleware, activityTracker, checkInstitutionActive, globalLimiter, adminRoutes);
@@ -465,9 +465,9 @@ v1Router.use('/session', verifyToken, platformModeMiddleware, activityTracker, c
 v1Router.use('/ai', featureFlagGuard('AI_ENABLED'), verifyToken, platformModeMiddleware, activityTracker, checkInstitutionActive, globalLimiter, aiRoutes);
 v1Router.use('/upload', verifyToken, platformModeMiddleware, activityTracker, checkInstitutionActive, globalLimiter, uploadRoutes);
 v1Router.use('/public', globalLimiter, publicRoutes);
-v1Router.use('/billing', featureFlagGuard('BILLING_ENABLED'), billingRoutes);
-v1Router.use('/ai-monitoring', verifyToken, aiMonitoringRoutes);
-v1Router.use('/analytics', verifyToken, analyticsRoutes);
+v1Router.use('/billing', featureFlagGuard('BILLING_ENABLED'), platformModeMiddleware, billingRoutes);
+v1Router.use('/ai-monitoring', verifyToken, platformModeMiddleware, aiMonitoringRoutes);
+v1Router.use('/analytics', verifyToken, platformModeMiddleware, analyticsRoutes);
 
 // Mount V1 Router
 app.use('/api/v1', v1Router);
@@ -506,7 +506,9 @@ io.on('connection', (socket) => {
         logger.info({ socketId: socket.id, email: socket.user?.email }, `Disconnected: ${socket.id}`);
     });
     
-    // Join role-specific and user-specific rooms for targeted broadcasting
+    // Join global role-specific and user-specific rooms for targeted broadcasting
+    socket.join(`role_${socket.user.role}`);
+    
     if (socket.user.role === 'super_admin') {
         socket.join('super_admin_global');
     } else {
