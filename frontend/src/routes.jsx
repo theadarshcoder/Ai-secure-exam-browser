@@ -3,9 +3,9 @@ import { useEffect, lazy, Suspense } from 'react';
 import MainLayout from './components/MainLayout';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import LoadingFallback from './components/LoadingFallback';
+import LandingPage from './pages/LandingPage';
 
-// 🚀 Performance: Lazy Load all major page components
-const LandingPage = lazy(() => import('./pages/LandingPage'));
+// 🚀 Performance: Lazy Load all major page components (except LandingPage for instant first paint)
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const MentorDashboard = lazy(() => import('./pages/MentorDashboard'));
