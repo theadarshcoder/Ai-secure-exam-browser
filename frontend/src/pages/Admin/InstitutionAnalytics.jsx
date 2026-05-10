@@ -85,7 +85,7 @@ const InstitutionAnalytics = () => {
         }
     };
 
-    if (loading && !data) return (
+    if (loading || !data) return (
         <div className="flex items-center justify-center min-h-[60vh]">
             <div className="flex flex-col items-center gap-6">
                 <div className="relative">
@@ -237,7 +237,7 @@ const InstitutionAnalytics = () => {
                                 <div className="h-4 bg-main/50 rounded-xl overflow-hidden border border-main/50">
                                     <motion.div 
                                         initial={{ width: 0 }}
-                                        animate={{ width: `${(step.value / data.funnel[0].value) * 100}%` }}
+                                        animate={{ width: `${(step.value / (data.funnel?.[0]?.value || 1)) * 100}%` }}
                                         transition={{ duration: 1.5, delay: i * 0.2 }}
                                         className={`h-full rounded-xl shadow-lg ${
                                             i === 0 ? 'bg-primary-500' : 
@@ -261,7 +261,9 @@ const InstitutionAnalytics = () => {
                             <span className="text-[10px] font-black text-primary uppercase tracking-widest">Conversion Intelligence</span>
                         </div>
                         <p className="text-[11px] text-muted leading-relaxed font-medium">
-                            Based on current throughput, your institution has a <span className="text-primary-500 font-bold">{(data.funnel[2].value / data.funnel[0].value * 100).toFixed(1)}%</span> final completion efficiency.
+                            Based on current throughput, your institution has a <span className="text-primary-500 font-bold">
+                                {((data.funnel?.[2]?.value || 0) / (data.funnel?.[0]?.value || 1) * 100).toFixed(1)}%
+                            </span> final completion efficiency.
                         </p>
                     </div>
                 </div>
