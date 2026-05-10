@@ -155,6 +155,9 @@ exports.createExam = asyncHandler(async (req, res) => {
     // Clear mentor exams cache
     await clearPattern(`mentor_exams_*`);
     
+    // Clear dashboard stats cache
+    await clearCache(`admin_dashboard_stats_${getTenantId(req)}`);
+
     // 🚀 Performance Foundation: Cache Invalidation for global exam list (if applicable)
     await clearCache('active_exams_metadata');
 
@@ -317,6 +320,9 @@ exports.updateExam = asyncHandler(async (req, res) => {
     // Clear mentor exams cache
     await clearPattern(`mentor_exams_*`);
 
+    // Clear dashboard stats cache
+    await clearCache(`admin_dashboard_stats_${getTenantId(req)}`);
+
     // 🚀 Performance Foundation: Explicit Invalidation of Exam Definition
     await clearCache(`exam_student_view:${examId}`);
 
@@ -376,6 +382,9 @@ exports.deleteExam = asyncHandler(async (req, res) => {
     // Clear mentor exams cache
     await clearPattern(`mentor_exams_*`);
     await clearCache(`exam_student_view:${examId}`);
+
+    // Clear dashboard stats cache
+    await clearCache(`admin_dashboard_stats_${getTenantId(req)}`);
 
     res.json({ message: 'Exam deleted successfully' });
 });

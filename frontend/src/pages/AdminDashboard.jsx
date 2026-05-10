@@ -729,6 +729,7 @@ export default function AdminDashboard() {
               ]);
               setStats({
                   totalStudents: res.totalStudents || 0,
+                  totalExams: res.totalExams || 0,
                   activeExams: res.liveExams || 0,
                   systemHealth: '100%',
                   totalViolations: res.flaggedSessions || 0

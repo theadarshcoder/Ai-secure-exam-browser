@@ -244,6 +244,9 @@ exports.deleteStudent = asyncHandler(async (req, res) => {
         details: { name: deletedStudent.name, email: deletedStudent.email }
     });
     
+    // Clear dashboard stats cache
+    await clearCache(`admin_dashboard_stats_${req.user.institutionId}`);
+    
     res.json({ message: 'Student removed successfully!' });
 });
 
@@ -261,6 +264,9 @@ exports.deleteMentor = asyncHandler(async (req, res) => {
         action: 'DELETE_MENTOR',
         details: { name: deletedMentor.name, email: deletedMentor.email }
     });
+    
+    // Clear dashboard stats cache
+    await clearCache(`admin_dashboard_stats_${req.user.institutionId}`);
     
     res.json({ message: 'Mentor removed successfully!' });
 });
@@ -420,6 +426,9 @@ exports.bulkImportUsers = asyncHandler(async (req, res) => {
         await User.insertMany(validUsersToInsert, { ordered: false });
     }
 
+    // Clear dashboard stats cache
+    await clearCache(`admin_dashboard_stats_${req.user.institutionId}`);
+
     res.json({ message: 'Bulk import processed', results });
 });
 
@@ -436,6 +445,9 @@ exports.bulkDeleteUsers = asyncHandler(async (req, res) => {
         _id: { $in: filteredIds },
         role: { $ne: 'admin' } // Never delete admin accounts via bulk operation
     });
+    // Clear dashboard stats cache
+    await clearCache(`admin_dashboard_stats_${req.user.institutionId}`);
+
     res.json({ message: `${result.deletedCount} users deleted successfully` });
 });
 
