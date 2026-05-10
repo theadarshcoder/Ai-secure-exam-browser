@@ -1,30 +1,32 @@
 import { BrowserRouter, Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import MainLayout from './components/MainLayout';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
-import LandingPage from './pages/LandingPage';
-import LoginPage from './pages/LoginPage';
-import AdminDashboard from './pages/AdminDashboard';
-import MentorDashboard from './pages/MentorDashboard';
-import StudentDashboard from './pages/StudentDashboard';
-import SuperAdminDashboard from './pages/SuperAdminDashboard';
-import TenantManagement from './pages/TenantManagement';
-import PlatformSettings from './pages/SuperAdmin/PlatformSettings';
-import SystemHealth from './pages/SuperAdmin/SystemHealth';
-import ExamCockpit from './pages/ExamCockpit';
-import CreateExam from './pages/CreateExam';
-import IDVerification from './pages/IDVerification';
-import ExamWaitingRoom from './pages/ExamWaitingRoom';
-import SessionMonitor from './pages/SessionMonitor';
-import StudentResult from './pages/StudentResult';
-import VerifyInvite from './pages/VerifyInvite';
-import StudentIntelligenceDashboard from './pages/StudentIntelligenceDashboard';
-import MentorLiveMonitoring from './pages/MentorLiveMonitoring';
-import VerifyOtp from './pages/VerifyOtp';
-import AiMonitoringDashboard from './pages/Admin/AiMonitoringDashboard';
-import InstitutionAnalytics from './pages/Admin/InstitutionAnalytics';
+import LoadingFallback from './components/LoadingFallback';
 
-import SetPassword from './pages/SetPassword';
+// 🚀 Performance: Lazy Load all major page components
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const MentorDashboard = lazy(() => import('./pages/MentorDashboard'));
+const StudentDashboard = lazy(() => import('./pages/StudentDashboard'));
+const SuperAdminDashboard = lazy(() => import('./pages/SuperAdminDashboard'));
+const TenantManagement = lazy(() => import('./pages/TenantManagement'));
+const PlatformSettings = lazy(() => import('./pages/SuperAdmin/PlatformSettings'));
+const SystemHealth = lazy(() => import('./pages/SuperAdmin/SystemHealth'));
+const ExamCockpit = lazy(() => import('./pages/ExamCockpit'));
+const CreateExam = lazy(() => import('./pages/CreateExam'));
+const IDVerification = lazy(() => import('./pages/IDVerification'));
+const ExamWaitingRoom = lazy(() => import('./pages/ExamWaitingRoom'));
+const SessionMonitor = lazy(() => import('./pages/SessionMonitor'));
+const StudentResult = lazy(() => import('./pages/StudentResult'));
+const VerifyInvite = lazy(() => import('./pages/VerifyInvite'));
+const StudentIntelligenceDashboard = lazy(() => import('./pages/StudentIntelligenceDashboard'));
+const MentorLiveMonitoring = lazy(() => import('./pages/MentorLiveMonitoring'));
+const VerifyOtp = lazy(() => import('./pages/VerifyOtp'));
+const AiMonitoringDashboard = lazy(() => import('./pages/Admin/AiMonitoringDashboard'));
+const InstitutionAnalytics = lazy(() => import('./pages/Admin/InstitutionAnalytics'));
+const SetPassword = lazy(() => import('./pages/SetPassword'));
 
 const ThemeEnforcer = () => {
   const { pathname } = useLocation();
@@ -127,126 +129,128 @@ export default function AppRouter() {
     <ThemeProvider>
     <BrowserRouter>
       <ThemeEnforcer />
-      <Routes>
-        <Route element={<MainLayout />}>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginRedirect />} />
-          <Route path="/verify" element={<VerifyInvite />} />
-          <Route path="/verify-otp" element={<VerifyOtp />} />
-          <Route path="/set-password" element={<SetPassword />} />
-          <Route path="/admin" element={
-            <ProtectedRoute allowedRoles={['admin', 'super_mentor']}>
-              <AdminDashboard />
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/ai-monitoring" element={
-            <ProtectedRoute allowedRoles={['admin', 'super_admin', 'super_mentor']}>
-              <AiMonitoringDashboard />
-            </ProtectedRoute>
-          } />
+      <Suspense fallback={<LoadingFallback />}>
+        <Routes>
+          <Route element={<MainLayout />}>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<LoginRedirect />} />
+            <Route path="/verify" element={<VerifyInvite />} />
+            <Route path="/verify-otp" element={<VerifyOtp />} />
+            <Route path="/set-password" element={<SetPassword />} />
+            <Route path="/admin" element={
+              <ProtectedRoute allowedRoles={['admin', 'super_mentor']}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/ai-monitoring" element={
+              <ProtectedRoute allowedRoles={['admin', 'super_admin', 'super_mentor']}>
+                <AiMonitoringDashboard />
+              </ProtectedRoute>
+            } />
 
-          <Route path="/admin/analytics" element={
-            <ProtectedRoute allowedRoles={['admin', 'super_admin', 'super_mentor']}>
-              <InstitutionAnalytics />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/super-admin" element={
-            <ProtectedRoute allowedRoles={['super_admin']}>
-              <SuperAdminDashboard />
-            </ProtectedRoute>
-          } />
+            <Route path="/admin/analytics" element={
+              <ProtectedRoute allowedRoles={['admin', 'super_admin', 'super_mentor']}>
+                <InstitutionAnalytics />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/super-admin" element={
+              <ProtectedRoute allowedRoles={['super_admin']}>
+                <SuperAdminDashboard />
+              </ProtectedRoute>
+            } />
 
-          <Route path="/super-admin/institutions/:id" element={
-            <ProtectedRoute allowedRoles={['super_admin']}>
-              <TenantManagement />
-            </ProtectedRoute>
-          } />
+            <Route path="/super-admin/institutions/:id" element={
+              <ProtectedRoute allowedRoles={['super_admin']}>
+                <TenantManagement />
+              </ProtectedRoute>
+            } />
 
-          <Route path="/super-admin/settings" element={
-            <ProtectedRoute allowedRoles={['super_admin']}>
-              <PlatformSettings />
-            </ProtectedRoute>
-          } />
+            <Route path="/super-admin/settings" element={
+              <ProtectedRoute allowedRoles={['super_admin']}>
+                <PlatformSettings />
+              </ProtectedRoute>
+            } />
 
-          <Route path="/super-admin/health" element={
-            <ProtectedRoute allowedRoles={['super_admin']}>
-              <SystemHealth />
-            </ProtectedRoute>
-          } />
-          
-          
-          <Route path="/mentor" element={
-            <ProtectedRoute allowedRoles={['mentor', 'admin', 'super_mentor']}>
-              <MentorDashboard />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/mentor/create-exam" element={
-            <ProtectedRoute allowedRoles={['mentor', 'admin', 'super_mentor']}>
-              <CreateExam />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/mentor/exam/:examId/monitoring" element={
-            <ProtectedRoute allowedRoles={['mentor', 'admin', 'super_mentor']}>
-              <MentorLiveMonitoring />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/student" element={
-            <ProtectedRoute allowedRoles={['student']}>
-              <StudentDashboard />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/candidate" element={
-            <ProtectedRoute allowedRoles={['student']}>
-              <StudentDashboard />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/exam/:examId" element={
-            <ProtectedRoute allowedRoles={['student']}>
-              <ExamCockpit />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/exam/:examId/verify" element={
-            <ProtectedRoute allowedRoles={['student']}>
-              <IDVerification />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/exam/:examId/waiting" element={
-            <ProtectedRoute allowedRoles={['student']}>
-              <ExamWaitingRoom />
-            </ProtectedRoute>
-          } />
+            <Route path="/super-admin/health" element={
+              <ProtectedRoute allowedRoles={['super_admin']}>
+                <SystemHealth />
+              </ProtectedRoute>
+            } />
+            
+            
+            <Route path="/mentor" element={
+              <ProtectedRoute allowedRoles={['mentor', 'admin', 'super_mentor']}>
+                <MentorDashboard />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/mentor/create-exam" element={
+              <ProtectedRoute allowedRoles={['mentor', 'admin', 'super_mentor']}>
+                <CreateExam />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/mentor/exam/:examId/monitoring" element={
+              <ProtectedRoute allowedRoles={['mentor', 'admin', 'super_mentor']}>
+                <MentorLiveMonitoring />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/student" element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <StudentDashboard />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/candidate" element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <StudentDashboard />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/exam/:examId" element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <ExamCockpit />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/exam/:examId/verify" element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <IDVerification />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/exam/:examId/waiting" element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <ExamWaitingRoom />
+              </ProtectedRoute>
+            } />
 
-          <Route path="/exam/:examId/result" element={
-            <ProtectedRoute allowedRoles={['student']}>
-              <StudentResult />
-            </ProtectedRoute>
-          } />
+            <Route path="/exam/:examId/result" element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <StudentResult />
+              </ProtectedRoute>
+            } />
 
-          <Route path="/admin/students/:studentId/intelligence" element={
-            <ProtectedRoute allowedRoles={['admin', 'super_mentor', 'mentor']}>
-              <StudentIntelligenceDashboard />
-            </ProtectedRoute>
-          } />
-          
-          {/* Dashboard Redirect */}
-          <Route path="/dashboard" element={
-            <ProtectedRoute>
-              <DashboardRedirect />
-            </ProtectedRoute>
-          } />
+            <Route path="/admin/students/:studentId/intelligence" element={
+              <ProtectedRoute allowedRoles={['admin', 'super_mentor', 'mentor']}>
+                <StudentIntelligenceDashboard />
+              </ProtectedRoute>
+            } />
+            
+            {/* Dashboard Redirect */}
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <DashboardRedirect />
+              </ProtectedRoute>
+            } />
 
-          {/* Catch-all 404 */}
-          <Route path="*" element={<NotFound />} />
-        </Route>
-      </Routes>
+            {/* Catch-all 404 */}
+            <Route path="*" element={<NotFound />} />
+          </Route>
+        </Routes>
+      </Suspense>
     </BrowserRouter>
     </ThemeProvider>
   );

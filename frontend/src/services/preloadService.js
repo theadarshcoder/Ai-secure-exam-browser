@@ -10,6 +10,24 @@ window.__VISION_AI_ENGINE__ = window.__VISION_AI_ENGINE__ || {
 const ENGINE = window.__VISION_AI_ENGINE__;
 
 /**
+ * 🛠️ Utility: Dynamically Load Script
+ */
+const loadScript = (src) => {
+    return new Promise((resolve, reject) => {
+        if (document.querySelector(`script[src="${src}"]`)) {
+            resolve();
+            return;
+        }
+        const script = document.createElement('script');
+        script.src = src;
+        script.async = true;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+    });
+};
+
+/**
  * 🚀 Monaco Worker Pre-warm: Fetches CDN assets and initializes workers
  */
 export const preloadMonaco = async () => {
@@ -20,7 +38,6 @@ export const preloadMonaco = async () => {
             },
             'vs/nls': { availableLanguages: { '*': 'en' } }
         });
-        // This triggers the loader initialization without mounting the editor
         await loader.init();
         console.log("🎨 Monaco: Workers Pre-warmed");
     } catch (err) {
@@ -38,18 +55,24 @@ export const preloadAIModels = async () => {
     console.log("🧠 AI: Pre-warming background engine...");
 
     try {
-        // Ensure cocoSsd is available on window (loaded via index.html scripts)
-        if (!window.cocoSsd) {
-            console.warn("🧠 AI: coco-ssd script not found on window yet.");
-            ENGINE.isPrewarming = false;
-            return;
+        // 🚀 Step 1: Ensure TensorFlow & COCO-SSD are loaded
+        // Safety Check: Avoid double loading or memory leaks
+        if (!window.tf) {
+            console.log("🧠 AI: Loading TensorFlow Core...");
+            await loadScript("https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js");
         }
 
-        // 1. Load Model
+        if (!window.cocoSsd) {
+            console.log("🧠 AI: Loading COCO-SSD Model Bundle...");
+            await loadScript("https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js");
+        }
+
+        // 2. Load Model
+        console.log("🧠 AI: Initializing Object Detection Model...");
         const model = await window.cocoSsd.load();
         ENGINE.model = model;
 
-        // 2. Dummy Inference (Warm up shaders/kernels)
+        // 3. Dummy Inference (Warm up shaders/kernels)
         const dummyCanvas = document.createElement("canvas");
         dummyCanvas.width = 10;
         dummyCanvas.height = 10;
@@ -74,10 +97,10 @@ export const prewarmAll = () => {
         // Staged loading to avoid main thread choke
         await preloadMonaco();
         
-        // Wait another bit for AI
+        // Wait another bit for AI to ensure main thread is free
         setTimeout(() => {
             preloadAIModels().catch(() => {});
-        }, 1000);
+        }, 1500);
     });
 };
 

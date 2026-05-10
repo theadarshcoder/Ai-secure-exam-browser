@@ -46,6 +46,7 @@ import FAQBot from "../components/FAQBot";
 import * as faceapi from "@vladmandic/face-api";
 import DOMPurify from "dompurify";
 import { marked } from "marked";
+import preloadService from "../services/preloadService";
 import VisionLogo from "../components/VisionLogo";
 import AnimatedStatusIcon from "../components/AnimatedStatusIcon";
 import storageService from "../services/storageService";
@@ -2531,24 +2532,24 @@ const { examId } = useParams();
         setModelsLoaded(true);
         setIsAIInitializing(false);
       } else {
-        // Fallback for non-pre-warmed sessions
+        // Fallback for non-pre-warmed sessions (e.g. direct link entry)
         setIsAIInitializing(true);
-        setTimeout(async () => {
-          if (!window.cocoSsd || aiModel) {
-            setIsAIInitializing(false);
-            return;
-          }
+        const initAI = async () => {
           try {
-            await new Promise(r => setTimeout(r, 500)); // Brief yield
-            const model = await window.cocoSsd.load();
-            setAiModel(model);
-            setModelsLoaded(true);
+            console.log("🚀 Cockpit: Lazy loading AI engine...");
+            await preloadService.preloadAIModels();
+            const updatedEngine = preloadService.getEngine();
+            if (updatedEngine.model) {
+              setAiModel(updatedEngine.model);
+              setModelsLoaded(true);
+            }
           } catch (err) {
-            console.error("AI load failed", err);
+            console.error("AI lazy load failed", err);
           } finally {
             setIsAIInitializing(false);
           }
-        }, 1500); // Drastically reduced delay
+        };
+        initAI();
       }
 
     } catch (err) {
