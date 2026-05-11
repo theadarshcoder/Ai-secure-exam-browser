@@ -273,7 +273,7 @@ const SessionReportModal = ({ sessionData, onClose, onRefresh }) => {
                   {q.type === 'mcq' && q.options && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                       {q.options.map((opt, oi) => {
-                        const isCorrect = oi === q.correctChoice;
+                        const isCorrect = oi === q.correctOption;
                         const isStudent = oi === q.studentChoice;
                         return (
                           <div key={oi} className={`px-5 py-4 rounded-2xl text-[11px] flex items-center gap-4 border transition-all ${

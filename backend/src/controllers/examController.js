@@ -1835,7 +1835,7 @@ exports.getStudentResult = asyncHandler(async (req, res) => {
         const result = ans.result || {};
         
         // Remove Sensitive Correct Data
-        delete result.correctChoice;
+        delete result.correctOption;
         if (result.testCaseResults) {
             result.testCaseResults = result.testCaseResults.map(tc => {
                 const safeTC = { ...tc };
