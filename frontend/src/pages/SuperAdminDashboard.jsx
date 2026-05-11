@@ -188,7 +188,7 @@ export default function SuperAdminDashboard() {
  rose: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
  };
  return (
- <span className={`px-2.5 py-1 rounded-lg text-xs font-medium border tracking-wider ${styles[color] || 'bg-slate-500/10 text-slate-500 border-slate-500/20'}`}>
+ <span className={`px-2.5 py-1 rounded-lg text-sm font-medium border tracking-wider ${styles[color] || 'bg-slate-500/10 text-slate-500 border-slate-500/20'}`}>
  {children}
  </span>
  );
@@ -216,7 +216,7 @@ export default function SuperAdminDashboard() {
 
  <main className="flex-1 flex flex-col h-screen overflow-hidden">
  <header className="h-14 bg-surface/80 backdrop-blur-md border-b border-main flex items-center justify-between px-8 shrink-0">
- <div className="flex items-center gap-3 text-sm font-semibold text-muted">
+ <div className="flex items-center gap-3 text-base font-semibold text-muted">
  <span className="hover:text-primary transition-colors cursor-pointer">Platform Engine</span>
  <ChevronRight size={14} className="opacity-40" />
  <span className="text-primary font-semibold capitalize">{activeTab.replace('-', ' ')}</span>
@@ -248,7 +248,7 @@ export default function SuperAdminDashboard() {
                                         className="absolute right-0 top-14 w-80 bg-surface border border-main rounded-2xl shadow-2xl z-50 overflow-hidden"
                                     >
                                         <div className="px-5 py-4 border-b border-main bg-surface-hover/30 flex items-center justify-between">
-                                            <span className="text-xs font-bold text-primary flex items-center gap-2">
+                                            <span className="text-sm font-bold text-primary flex items-center gap-2">
                                                 <Bell size={14} className="text-primary-500" /> Notifications
                                             </span>
                                             {(stats.pendingDemos > 0 || upgradeRequests.filter(r => r.status === 'pending').length > 0) && (
@@ -289,7 +289,7 @@ export default function SuperAdminDashboard() {
                                                     <div className="w-12 h-12 rounded-full bg-surface-hover flex items-center justify-center mx-auto mb-3 opacity-20">
                                                         <CheckCircle2 size={24} />
                                                     </div>
-                                                    <p className="text-xs font-medium">All caught up!</p>
+                                                    <p className="text-sm font-medium">All caught up!</p>
                                                 </div>
                                             )}
                                         </div>
@@ -319,7 +319,7 @@ export default function SuperAdminDashboard() {
  <p className="text-[10px] font-medium text-muted uppercase tracking-tight mt-1 opacity-70">Live platform count</p>
  </div>
  </div>
- <p className="text-xl font-medium text-primary tabular-nums tracking-tight">{s.val}</p>
+ <p className="text-2xl font-medium text-primary tabular-nums tracking-tight">{s.val}</p>
  </div>
  ))}
  </div>
@@ -335,7 +335,7 @@ export default function SuperAdminDashboard() {
  {activeTab === 'demo-requests' && (
  <div className="space-y-4">
  <div className="flex items-center justify-between">
- <h2 className="text-xl font-semibold text-primary">Access Requests</h2>
+ <h2 className="text-2xl font-semibold text-primary">Access Requests</h2>
  <Badge color="amber">{demoRequests.filter(r => r.status === 'pending').length} Pending</Badge>
  </div>
  <div className="grid gap-4">
@@ -348,8 +348,8 @@ export default function SuperAdminDashboard() {
  <Inbox size={18} />
  </div>
  <div>
- <h3 className="text-sm font-medium text-primary">{req.institutionName}</h3>
- <div className="flex gap-3 mt-1 text-xs text-muted">
+ <h3 className="text-base font-medium text-primary">{req.institutionName}</h3>
+ <div className="flex gap-3 mt-1 text-sm text-muted">
  <span className="flex items-center gap-1"><Users size={11} /> {req.name}</span>
  <span className="opacity-20">|</span>
  <span>{req.email}</span>
@@ -363,8 +363,8 @@ export default function SuperAdminDashboard() {
  <div className="flex items-center gap-2">
  {req.status === 'pending' ? (
  <>
- <button onClick={() => handleApprove(req._id)} className="px-4 py-1.5 bg-primary-500 text-white hover:bg-primary-600 rounded-lg text-xs font-medium transition-all active:scale-95">Provision Tenant</button>
- <button onClick={() => api.post(`/api/super-admin/demo-requests/${req._id}/reject`).then(fetchData)} className="px-4 py-1.5 bg-surface border border-main text-muted hover:text-rose-500 hover:border-rose-500/30 rounded-lg text-xs font-medium transition-all">Reject</button>
+ <button onClick={() => handleApprove(req._id)} className="px-4 py-1.5 bg-primary-500 text-white hover:bg-primary-600 rounded-lg text-sm font-medium transition-all active:scale-95">Provision Tenant</button>
+ <button onClick={() => api.post(`/api/super-admin/demo-requests/${req._id}/reject`).then(fetchData)} className="px-4 py-1.5 bg-surface border border-main text-muted hover:text-rose-500 hover:border-rose-500/30 rounded-lg text-sm font-medium transition-all">Reject</button>
  </>
  ) : (
  <>
@@ -384,7 +384,7 @@ export default function SuperAdminDashboard() {
  {activeTab === 'upgrade-requests' && (
  <div className="space-y-4">
  <div className="flex items-center justify-between">
- <h2 className="text-xl font-semibold text-primary">Plan Upgrade Requests</h2>
+ <h2 className="text-2xl font-semibold text-primary">Plan Upgrade Requests</h2>
  <Badge color="emerald">{upgradeRequests.filter(r => r.status === 'pending').length} Pending</Badge>
  </div>
  <div className="grid gap-4">
@@ -398,10 +398,10 @@ export default function SuperAdminDashboard() {
  </div>
  <div>
  <div className="flex items-center gap-2">
- <h3 className="text-sm font-medium text-primary">{req.institutionId?.name || 'Unknown Institution'}</h3>
+ <h3 className="text-base font-medium text-primary">{req.institutionId?.name || 'Unknown Institution'}</h3>
  <Badge color="indigo">{req.plan} Plan</Badge>
  </div>
- <div className="flex gap-3 mt-1 text-xs text-muted">
+ <div className="flex gap-3 mt-1 text-sm text-muted">
  <span className="flex items-center gap-1"><Users size={11} /> {req.requestedBy?.name || 'Unknown'}</span>
  <span className="opacity-20">|</span>
  <span className="font-mono bg-main px-1.5 py-0.5 rounded text-[10px]">TXN: {req.transactionId}</span>
@@ -413,8 +413,8 @@ export default function SuperAdminDashboard() {
  <div className="flex items-center gap-2">
  {req.status === 'pending' ? (
  <>
- <button onClick={() => handleProcessUpgrade(req._id, 'approved')} className="px-4 py-1.5 bg-emerald-500 text-white hover:bg-emerald-600 rounded-lg text-xs font-medium transition-all active:scale-95">Approve</button>
- <button onClick={() => handleProcessUpgrade(req._id, 'rejected')} className="px-4 py-1.5 bg-surface border border-main text-muted hover:text-rose-500 hover:border-rose-500/30 rounded-lg text-xs font-medium transition-all">Reject</button>
+ <button onClick={() => handleProcessUpgrade(req._id, 'approved')} className="px-4 py-1.5 bg-emerald-500 text-white hover:bg-emerald-600 rounded-lg text-sm font-medium transition-all active:scale-95">Approve</button>
+ <button onClick={() => handleProcessUpgrade(req._id, 'rejected')} className="px-4 py-1.5 bg-surface border border-main text-muted hover:text-rose-500 hover:border-rose-500/30 rounded-lg text-sm font-medium transition-all">Reject</button>
  </>
  ) : (
  <>
@@ -434,7 +434,7 @@ export default function SuperAdminDashboard() {
  {activeTab === 'institutions' && (
  <div className="space-y-4">
  <div className="flex items-center justify-between">
- <h2 className="text-xl font-semibold text-primary">Tenant Infrastructure</h2>
+ <h2 className="text-2xl font-semibold text-primary">Tenant Infrastructure</h2>
  <div className="flex items-center gap-3 bg-surface border border-main rounded-xl px-4 py-2">
  <Search size={16} className="text-muted" />
  <input 
@@ -442,7 +442,7 @@ export default function SuperAdminDashboard() {
  placeholder="Search code, domain, name..." 
  value={searchQuery}
  onChange={(e) => setSearchQuery(e.target.value)}
- className="bg-transparent border-none focus:outline-none text-sm text-primary placeholder:text-muted/40 w-64" 
+ className="bg-transparent border-none focus:outline-none text-base text-primary placeholder:text-muted/40 w-64" 
  />
  </div>
  </div>
@@ -466,10 +466,10 @@ export default function SuperAdminDashboard() {
  </div>
  <div>
  <div className="flex items-center gap-2">
- <h3 className="text-sm font-medium text-primary">{inst.name}</h3>
+ <h3 className="text-base font-medium text-primary">{inst.name}</h3>
  <Badge color={inst.status === 'active' ? 'emerald' : 'red'}>{inst.status}</Badge>
  </div>
- <div className="flex gap-3 mt-1 text-xs text-muted">
+ <div className="flex gap-3 mt-1 text-sm text-muted">
  <span className="font-mono bg-main px-1.5 py-0.5 rounded text-[10px]">{inst.code}</span>
  <span className="opacity-20">|</span>
  <span>{inst.domain}</span>
@@ -479,7 +479,7 @@ export default function SuperAdminDashboard() {
  </div>
  </div>
  <div className="flex items-center gap-2">
- <button onClick={() => navigate(`/super-admin/institutions/${inst._id}`)} className="px-4 py-1.5 bg-surface border border-main text-primary hover:bg-surface-hover rounded-lg text-xs font-medium transition-all shadow-sm">Manage</button>
+ <button onClick={() => navigate(`/super-admin/institutions/${inst._id}`)} className="px-4 py-1.5 bg-surface border border-main text-primary hover:bg-surface-hover rounded-lg text-sm font-medium transition-all shadow-sm">Manage</button>
  <button onClick={() => handleToggleStatus(inst)} className={`p-2 rounded-lg transition-all border ${inst.status === 'active' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'}`}><Power size={15} /></button>
  </div>
  </div>
@@ -499,27 +499,27 @@ export default function SuperAdminDashboard() {
  <div className="px-6 py-5 border-b border-main flex items-center gap-2.5">
  <Building size={15} className="text-primary-500" />
  <div>
- <h3 className="text-sm font-medium text-primary">Active Leaders</h3>
- <p className="text-xs text-muted mt-0.5">Top institutions by exam activity</p>
+ <h3 className="text-base font-medium text-primary">Active Leaders</h3>
+ <p className="text-sm text-muted mt-0.5">Top institutions by exam activity</p>
  </div>
  </div>
  <div className="divide-y divide-main">
  {intelligenceData?.topInstitutions?.length > 0 ? intelligenceData.topInstitutions.map((inst, i) => (
  <div key={inst._id} className="flex items-center justify-between px-6 py-4 hover:bg-surface-hover/50 transition-colors group">
  <div className="flex items-center gap-4">
- <span className="text-xs font-medium text-muted tabular-nums w-5 text-right shrink-0">{i + 1}.</span>
+ <span className="text-sm font-medium text-muted tabular-nums w-5 text-right shrink-0">{i + 1}.</span>
  <div>
- <p className="text-sm font-medium text-primary leading-tight">{inst.name}</p>
- <p className="text-xs text-muted mt-0.5 font-mono">{inst.code}</p>
+ <p className="text-base font-medium text-primary leading-tight">{inst.name}</p>
+ <p className="text-sm text-muted mt-0.5 font-mono">{inst.code}</p>
  </div>
  </div>
  <div className="text-right">
- <p className="text-xl font-medium text-primary tabular-nums">{inst.examCount}</p>
+ <p className="text-2xl font-medium text-primary tabular-nums">{inst.examCount}</p>
  <p className="text-[10px] uppercase tracking-wider text-muted mt-0.5">Exams</p>
  </div>
  </div>
  )) : (
- <div className="py-16 text-center text-muted text-sm">Waiting for platform activity...</div>
+ <div className="py-16 text-center text-muted text-base">Waiting for platform activity...</div>
  )}
  </div>
  </div>
@@ -530,8 +530,8 @@ export default function SuperAdminDashboard() {
  <div className="flex items-center gap-2.5">
  <ShieldAlert size={15} className="text-rose-400" />
  <div>
- <h3 className="text-sm font-medium text-primary">Proctoring Integrity</h3>
- <p className="text-xs text-muted mt-0.5">Global security snapshot</p>
+ <h3 className="text-base font-medium text-primary">Proctoring Integrity</h3>
+ <p className="text-sm text-muted mt-0.5">Global security snapshot</p>
  </div>
  </div>
  <Badge color={intelligenceData?.security?.integrityScore > 90 ? 'emerald' : 'rose'}>
@@ -543,8 +543,8 @@ export default function SuperAdminDashboard() {
  {/* Score Bar */}
  <div>
  <div className="flex justify-between items-center mb-3">
- <span className="text-xs text-muted">Global Integrity Score</span>
- <span className="text-xl font-medium text-primary tabular-nums">{intelligenceData?.security?.integrityScore}%</span>
+ <span className="text-sm text-muted">Global Integrity Score</span>
+ <span className="text-2xl font-medium text-primary tabular-nums">{intelligenceData?.security?.integrityScore}%</span>
  </div>
  <div className="h-2 bg-main rounded-full overflow-hidden">
  <motion.div
@@ -560,18 +560,18 @@ export default function SuperAdminDashboard() {
  <div className="grid grid-cols-2 gap-4">
  <div className="p-4 bg-main/40 rounded-xl border border-main">
  <p className="text-[11px] uppercase tracking-wider text-muted mb-2">Total Flags (30d)</p>
- <p className="text-2xl font-medium text-primary tabular-nums">{intelligenceData?.security?.totalFlags || 0}</p>
+ <p className="text-3xl font-medium text-primary tabular-nums">{intelligenceData?.security?.totalFlags || 0}</p>
  </div>
  <div className="p-4 bg-main/40 rounded-xl border border-main">
  <p className="text-[11px] uppercase tracking-wider text-muted mb-2">Critical Alerts</p>
- <p className="text-2xl font-medium text-rose-500 tabular-nums">{intelligenceData?.security?.criticalAlerts || 0}</p>
+ <p className="text-3xl font-medium text-rose-500 tabular-nums">{intelligenceData?.security?.criticalAlerts || 0}</p>
  </div>
  </div>
 
  {/* Info Banner */}
  <div className="flex items-start gap-3 p-4 bg-rose-500/5 border border-rose-500/10 rounded-xl">
  <ShieldAlert size={16} className="text-rose-500 mt-0.5 shrink-0" />
- <p className="text-xs text-rose-600/80 leading-relaxed">
+ <p className="text-sm text-rose-600/80 leading-relaxed">
  System automatically monitors behavioral anomalies. Higher flags may indicate coordinated attempt patterns.
  </p>
  </div>
@@ -586,7 +586,7 @@ export default function SuperAdminDashboard() {
  <BarChart3 size={24} className="text-primary-500" />
  </div>
  <div>
- <h3 className="text-sm font-medium text-primary">Traffic Analytics Aggregating</h3>
+ <h3 className="text-base font-medium text-primary">Traffic Analytics Aggregating</h3>
  <p className="text-[11px] text-muted max-w-md mx-auto leading-relaxed mt-2">
  We are calibrating the multi-tenant traffic engine. Time-series data and peak load maps will be available after the next data synchronization cycle.
  </p>
@@ -602,7 +602,7 @@ export default function SuperAdminDashboard() {
  {activeTab === 'audit-trail' && (
  <div className="bg-surface border border-main rounded-xl overflow-hidden shadow-sm flex flex-col h-[calc(100vh-320px)]">
  <div className="px-5 py-4 border-b border-main bg-surface-hover/30 flex items-center justify-between shrink-0">
- <h3 className="text-sm font-medium text-primary flex items-center gap-2"><FileText size={16} className="text-primary-500" /> Global Event Stream</h3>
+ <h3 className="text-base font-medium text-primary flex items-center gap-2"><FileText size={16} className="text-primary-500" /> Global Event Stream</h3>
  <button onClick={fetchData} className="flex items-center gap-2 px-3 py-1.5 bg-main border border-main rounded-lg text-[11px] font-medium hover:text-primary-500 transition-all">
  <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
  Refresh Stream
