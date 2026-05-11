@@ -250,10 +250,10 @@
   background-color: var(--header-bg) !important;
 }
 
-[data-theme="dark"] .hover:bg-slate-50:hover,
-[data-theme="dark"] .hover:bg-gray-50:hover,
-[data-theme="dark"] .hover:bg-zinc-50:hover,
-[data-theme="dark"] .hover:bg-white\/5:hover {
+[data-theme="dark"] .hover\:bg-slate-50:hover,
+[data-theme="dark"] .hover\:bg-gray-50:hover,
+[data-theme="dark"] .hover\:bg-zinc-50:hover,
+[data-theme="dark"] .hover\:bg-white\/5:hover {
   background-color: var(--bg-surface-hover) !important;
 }
 

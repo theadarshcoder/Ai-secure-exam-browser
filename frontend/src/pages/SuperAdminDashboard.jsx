@@ -222,7 +222,6 @@ export default function SuperAdminDashboard() {
  <span className="text-primary font-semibold capitalize">{activeTab.replace('-', ' ')}</span>
  </div>
 
-<<<<<<< HEAD
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/20">
                             <Activity size={12} className="text-emerald-500 animate-pulse" />
@@ -300,17 +299,6 @@ export default function SuperAdminDashboard() {
                         </div>
                     </div>
                 </header>
-=======
- <div className="flex items-center gap-4">
->>>>>>> ea70359 (Fix redirect loops and UI affordances in navigation and modals)
-
- <ThemeToggle />
- <button onClick={() => toast('No new alerts at this time.', { icon: '🔔' })} className="relative p-2 text-muted hover:text-primary transition-colors active:scale-95">
- <Bell size={20} />
- <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-rose-500 rounded-full border border-surface" />
- </button>
- </div>
- </header>
 
  <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-main/50">
  <div className="max-w-6xl mx-auto space-y-8">
