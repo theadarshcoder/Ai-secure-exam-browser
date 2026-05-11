@@ -1167,7 +1167,7 @@ const { examId } = useParams();
         }
         // Do NOT terminate on network errors (no response), just log
       }
-    }, 30000); // 30 Seconds
+    }, 45000); // 45 Seconds (Increased from 30s to reduce server load and rate-limit pressure)
 
     return () => clearInterval(heartbeatInterval);
   }, [examId, submitted, terminated, isBlocked]);
