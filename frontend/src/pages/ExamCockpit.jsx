@@ -58,13 +58,16 @@ import {
 } from "@codesandbox/sandpack-react";
 
 // 🚀 Fix 45: High-Performance Monaco Loading (CDN Optimization)
-loader.config({
-  paths: {
-    vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs'
-  },
-  'vs/nls': { availableLanguages: { '*': 'en' } }
-});
-loader.init();
+// Configured via preloadService if available, but enforced here for safety
+if (typeof window !== 'undefined') {
+  loader.config({
+    paths: {
+      vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs'
+    },
+    'vs/nls': { availableLanguages: { '*': 'en' } }
+  });
+}
+
 
 /* ────────────────────────────────────────────── Config ────────────────────────────────────────────── */
 
