@@ -261,7 +261,12 @@ export default function PremiumSidebar({
                 )}
 
                 <motion.button
-                  onClick={() => setActiveTab(item.id)}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (item.onClick) item.onClick();
+                    else setActiveTab(item.id);
+                  }}
                   whileTap={{ scale: 0.96 }}
                   title={!expanded ? item.label : undefined}
                   style={{
@@ -269,7 +274,7 @@ export default function PremiumSidebar({
                     display: 'flex',
                     alignItems: 'center',
                     gap: 6,
-                    padding: expanded ? '8px 12px' : '8px 0',
+                    padding: expanded ? '6px 12px' : '6px 0',
                     justifyContent: expanded ? 'flex-start' : 'center',
                     borderRadius: 8,
                     border: 'none',
@@ -397,9 +402,9 @@ export default function PremiumSidebar({
                          initial="hide"
                          animate="show"
                          exit="hide"
-                         className="text-[10px] font-black uppercase tracking-widest text-primary group-hover/btn:text-red-500 transition-colors whitespace-nowrap"
+                         className="text-xs font-medium text-primary group-hover/btn:text-red-500 transition-colors whitespace-nowrap"
                        >
-                         Sign Out
+                         Sign out
                        </motion.span>
                      )}
                    </AnimatePresence>
@@ -412,10 +417,11 @@ export default function PremiumSidebar({
          {/* User info */}
          <div 
            onClick={() => setShowProfileMenu(!showProfileMenu)}
-           className={`flex items-center gap-3 cursor-pointer rounded-xl transition-all hover:bg-surface border border-transparent hover:border-main hover:shadow-sm ${showProfileMenu ? 'bg-surface border-main shadow-sm' : ''}`} 
-           style={{ padding: expanded ? '8px' : '8px 0', justifyContent: expanded ? 'flex-start' : 'center' }}
+           className={`flex items-center gap-3 cursor-pointer rounded-xl transition-all hover:bg-surface-hover/60 p-2 ${showProfileMenu ? 'bg-surface-hover/60' : ''}`}
+           style={{ justifyContent: expanded ? 'flex-start' : 'center' }}
          >
-           <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black uppercase text-[11px] shadow-sm transition-all shrink-0 bg-surface border border-main text-primary">
+           {/* Avatar */}
+           <div className="w-8 h-8 rounded-lg flex items-center justify-center font-semibold uppercase text-[11px] shrink-0 bg-primary-500/15 text-primary-500 border border-primary-500/25">
              {userName.charAt(0)}
            </div>
            <AnimatePresence>
@@ -425,12 +431,12 @@ export default function PremiumSidebar({
                  initial="hide"
                  animate="show"
                  exit="hide"
-                 className="overflow-hidden"
+                 className="overflow-hidden min-w-0"
                >
-                 <p className="text-[10px] font-black transition-colors uppercase tracking-tight leading-none text-primary">
+                 <p className="text-xs font-semibold text-primary leading-none truncate">
                    {userName}
                  </p>
-                 <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-muted mt-1">
+                 <p className="text-[10px] text-muted mt-0.5 uppercase tracking-wider truncate">
                    {userRole.replace('_', ' ')}
                  </p>
                </motion.div>

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Building, 
     ChevronLeft, 
+    ChevronRight, 
     Lock, 
     Key, 
     RefreshCw, 
@@ -22,7 +23,10 @@ import {
     AlertCircle,
     CheckCircle2,
     X,
-    Plus
+    Plus,
+    ShieldCheck,
+    Fingerprint,
+    Zap
 } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
@@ -186,7 +190,7 @@ export default function TenantManagement() {
             indigo: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
         };
         return (
-            <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border uppercase tracking-wider ${styles[color] || 'bg-slate-500/10 text-slate-500 border-slate-500/20'}`}>
+            <span className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold border uppercase tracking-wider ${styles[color] || 'bg-slate-500/10 text-slate-500 border-slate-500/20'}`}>
                 {children}
             </span>
         );
@@ -204,7 +208,7 @@ export default function TenantManagement() {
         return (
             <div className="h-screen bg-main flex flex-col items-center justify-center space-y-4">
                 <RefreshCw size={40} className="text-primary-500 animate-spin" />
-                <p className="text-xs font-black uppercase tracking-widest text-muted">Syncing Platform Metadata...</p>
+                <p className="text-xs font-semibold uppercase tracking-widest text-muted">Syncing Platform Metadata...</p>
             </div>
         );
     }
@@ -217,69 +221,84 @@ export default function TenantManagement() {
                 expanded={sidebarExpanded}
                 onToggle={setSidebarExpanded}
                 navItems={[
-                    { id: 'back', label: 'Go Back', icon: ChevronLeft },
+                    { 
+                        id: 'back', 
+                        label: 'Go Back', 
+                        icon: ChevronLeft, 
+                        onClick: () => {
+                            sessionStorage.setItem('sa_active_tab', 'institutions');
+                            navigate('/super-admin');
+                        }
+                    },
                 ]}
                 activeTab={null}
                 setActiveTab={() => navigate('/super-admin')}
                 userName={userName}
                 userRole="super_admin"
                 onLogout={() => { sessionStorage.clear(); window.location.href = '/login'; }}
-                brandLabel="TENANT"
+                brandLabel="VISION"
             />
 
             <main className="flex-1 flex flex-col h-screen overflow-hidden">
                 <header className="h-14 bg-surface/80 backdrop-blur-md border-b border-main flex items-center justify-between px-8 shrink-0 relative z-40">
-                    <div className="flex items-center gap-3 text-sm font-semibold text-muted">
-                        <Building size={16} className="text-indigo-500" />
-                        <span>Platform Engine</span>
-                        <ChevronLeft size={14} className="opacity-30" />
-                        <span className="text-primary font-bold">{institution.name}</span>
+                    <div className="flex items-center gap-3 text-sm font-medium text-muted">
+                        <span className="hover:text-primary transition-colors cursor-pointer" onClick={() => {
+                            sessionStorage.setItem('sa_active_tab', 'institutions');
+                            navigate('/super-admin');
+                        }}>Platform Engine</span>
+                        <ChevronRight size={14} className="opacity-40" />
+                        <span className="text-primary font-semibold">{institution.name}</span>
                     </div>
 
                     <div className="flex items-center gap-4">
                         <ThemeToggle />
-                        <button onClick={() => navigate('/super-admin')} className="p-2 text-muted hover:text-primary transition-colors">
+                        <button onClick={() => {
+                            sessionStorage.setItem('sa_active_tab', 'institutions');
+                            navigate('/super-admin');
+                        }} className="p-2 text-muted hover:text-primary transition-colors">
                             <X size={20} />
                         </button>
                     </div>
                 </header>
 
-                <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-main/50">
-                    <div className="max-w-6xl mx-auto space-y-8">
+                <div className="flex-1 overflow-y-auto p-5 custom-scrollbar bg-main/50">
+                    <div className="space-y-4">
                         
                         {/* Hero Header */}
-                        <div className="bg-surface border border-main rounded-3xl p-8 shadow-sm flex items-center justify-between">
-                            <div className="flex items-center gap-6">
-                                <div className="w-20 h-20 rounded-3xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center border border-indigo-500/20 shadow-inner">
-                                    <Building size={40} />
+                        <div className="bg-surface border border-main rounded-xl p-4 shadow-sm flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-primary-500/10 text-primary-500 flex items-center justify-center border border-primary-500/20">
+                                    <Building size={24} />
                                 </div>
                                 <div>
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <h1 className="text-3xl font-black text-primary tracking-tighter">{institution.name}</h1>
-                                        <Badge color={institution.status === 'active' ? 'emerald' : 'red'}>{institution.status}</Badge>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <h1 className="text-lg font-medium text-primary tracking-tight">{institution.name}</h1>
+                                        <Badge color={institution.status === 'active' ? 'emerald' : 'red'}>
+                                            <span className="text-[9px] uppercase font-bold">{institution.status}</span>
+                                        </Badge>
                                     </div>
-                                    <div className="flex gap-4 text-xs font-bold text-muted">
-                                        <span className="flex items-center gap-1.5"><Globe size={14} /> {institution.domain}</span>
-                                        <span className="opacity-20">|</span>
-                                        <span className="flex items-center gap-1.5"><Terminal size={14} /> ID: {institution.code}</span>
-                                        <span className="opacity-20">|</span>
-                                        <span className="flex items-center gap-1.5"><Clock size={14} /> Since {new Date(institution.createdAt).toLocaleDateString()}</span>
+                                    <div className="flex gap-3 text-[10px] font-medium text-muted">
+                                        <span className="flex items-center gap-1"><Globe size={13} /> {institution.domain}</span>
+                                        <span className="flex items-center gap-1 opacity-50">•</span>
+                                        <span className="flex items-center gap-1"><Terminal size={13} /> ID: {institution.code}</span>
+                                        <span className="flex items-center gap-1 opacity-50">•</span>
+                                        <span className="flex items-center gap-1"><Clock size={13} /> Since {new Date(institution.createdAt).toLocaleDateString()}</span>
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex gap-3">
+                            <div className="flex gap-2">
                                 {institution.status === 'active' ? (
-                                    <button onClick={handleToggleStatus} className="flex items-center gap-2 px-6 py-3 bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 border border-rose-500/20 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all"><Power size={16} /> Suspend Tenant</button>
+                                    <button onClick={handleToggleStatus} className="flex items-center gap-2 px-4 py-2 bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 border border-rose-500/20 rounded-lg text-[10px] font-semibold uppercase tracking-wider transition-all"><Power size={13} /> Suspend Tenant</button>
                                 ) : (
-                                    <button onClick={handleToggleStatus} className="flex items-center gap-2 px-6 py-3 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all"><Power size={16} /> Activate Tenant</button>
+                                    <button onClick={handleToggleStatus} className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-lg text-[10px] font-semibold uppercase tracking-wider transition-all"><Power size={13} /> Activate Tenant</button>
                                 )}
                                 
                                 <div className="relative">
                                     <button 
                                         onClick={() => setMenuOpen(!menuOpen)}
-                                        className={`p-3 bg-surface border border-main text-muted hover:text-primary rounded-2xl transition-all shadow-sm ${menuOpen ? 'bg-main ring-2 ring-primary-500/20' : ''}`}
+                                        className={`p-2 bg-surface border border-main text-muted hover:text-primary rounded-lg transition-all ${menuOpen ? 'bg-main ring-1 ring-primary-500/20' : ''}`}
                                     >
-                                        <MoreVertical size={20} />
+                                        <MoreVertical size={16} />
                                     </button>
                                     
                                     <AnimatePresence>
@@ -296,17 +315,19 @@ export default function TenantManagement() {
                                                     exit={{ opacity: 0, scale: 0.95, y: 10 }}
                                                     className="absolute right-0 mt-2 w-48 bg-surface border border-main rounded-2xl shadow-2xl z-50 overflow-hidden"
                                                 >
-                                                    <div className="p-2 space-y-1">
+                                                    <div className="p-1.5 space-y-0.5">
                                                         <button 
                                                             onClick={() => { setMenuOpen(false); handleDeleteTenant(); }}
-                                                            className="w-full px-4 py-3 text-left text-[11px] font-black uppercase tracking-widest text-rose-500 hover:bg-rose-500/10 rounded-xl flex items-center gap-3 transition-colors"
+                                                            className="w-full px-3 py-2 text-left text-[11px] font-medium text-rose-500 hover:bg-rose-500/10 rounded-lg flex items-center gap-2.5 transition-colors group"
                                                         >
-                                                            <ShieldAlert size={16} /> Delete Tenant
+                                                            <ShieldAlert size={14} className="group-hover:scale-110 transition-transform" /> 
+                                                            <span>Delete Institution</span>
                                                         </button>
                                                         <button 
-                                                            className="w-full px-4 py-3 text-left text-[11px] font-black uppercase tracking-widest text-muted hover:bg-main rounded-xl flex items-center gap-3 transition-colors opacity-50 cursor-not-allowed"
+                                                            className="w-full px-3 py-2 text-left text-[11px] font-medium text-muted hover:bg-main rounded-lg flex items-center gap-2.5 transition-colors opacity-40 cursor-not-allowed"
                                                         >
-                                                            <Database size={16} /> Export Data
+                                                            <Database size={14} /> 
+                                                            <span>Export Platform Data</span>
                                                         </button>
                                                     </div>
                                                 </motion.div>
@@ -318,32 +339,36 @@ export default function TenantManagement() {
 
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                             
-                            {/* Left Column: Admins & Config */}
-                            <div className="lg:col-span-2 space-y-8">
-                                <section className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <h3 className="text-[12px] font-black uppercase tracking-[0.2em] text-muted flex items-center gap-2"><Lock size={14} /> Institutional Admins</h3>
-                                        <button onClick={() => setAddAdminModalOpen(true)} className="text-[10px] font-black uppercase tracking-widest text-primary-500 hover:underline flex items-center gap-1.5"><Key size={12} /> Add New Admin</button>
-
+                            <div className="lg:col-span-2 space-y-4">
+                                <section className="space-y-3">
+                                    <div className="flex items-center justify-between px-1">
+                                        <h3 className="text-[11px] font-medium text-muted flex items-center gap-2"><Lock size={13} /> Institutional Admins</h3>
+                                        <button 
+                                            type="button"
+                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setAddAdminModalOpen(true); }} 
+                                            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-primary-500/5 text-primary-500 border border-primary-500/20 rounded-lg text-[10px] font-semibold uppercase tracking-wider hover:bg-primary-500/10 transition-all active:scale-95 shadow-sm"
+                                        >
+                                            <Plus size={13} /> Add New Admin
+                                        </button>
                                     </div>
-                                    <div className="grid gap-4">
+                                    <div className="grid gap-3">
                                         {admins.map(admin => (
-                                            <div key={admin._id} className="bg-surface border border-main rounded-2xl p-6 flex items-center justify-between group hover:border-primary-500/20 transition-all shadow-sm">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 rounded-2xl bg-main border border-main flex items-center justify-center font-bold text-primary shadow-inner text-xl">{admin.name.charAt(0)}</div>
+                                            <div key={admin._id} className="bg-surface border border-main rounded-xl p-4 flex items-center justify-between group hover:border-primary-500/20 transition-all shadow-sm">
+                                                <div className="flex items-center gap-3.5">
+                                                    <div className="w-10 h-10 rounded-xl bg-main border border-main flex items-center justify-center font-semibold text-primary shadow-inner text-lg">{admin.name.charAt(0)}</div>
                                                     <div>
                                                         <div className="flex items-center gap-2">
-                                                            <p className="text-base font-bold text-primary">{admin.name}</p>
-                                                            {admin.status === 'invited' && <Badge color="amber">Invited</Badge>}
+                                                            <p className="text-sm font-medium text-primary">{admin.name}</p>
+                                                            {admin.status === 'invited' && <Badge color="amber"><span className="text-[10px] font-medium">Invited</span></Badge>}
                                                         </div>
-                                                        <p className="text-xs text-muted font-medium">{admin.email}</p>
+                                                        <p className="text-[11px] text-muted">{admin.email}</p>
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-3">
-                                                    <Badge color="indigo">Super Admin</Badge>
-                                                    <button onClick={() => handleResetPassword(admin._id)} className="p-2.5 bg-surface border border-main text-muted hover:text-rose-500 hover:border-rose-500/20 rounded-xl transition-all shadow-sm" title="Reset Credentials"><RefreshCw size={18} /></button>
+                                                    <Badge color="indigo"><span className="text-[10px] font-medium">Admin</span></Badge>
+                                                    <button onClick={() => handleResetPassword(admin._id)} className="p-2 bg-surface border border-main text-muted hover:text-primary-500 hover:border-primary-500/20 rounded-lg transition-all" title="Reset Credentials"><RefreshCw size={14} /></button>
                                                 </div>
                                             </div>
                                         ))}
@@ -351,117 +376,117 @@ export default function TenantManagement() {
                                 </section>
 
                                 {/* Institution Timeline */}
-                                <section className="bg-surface border border-main rounded-3xl p-8 space-y-6 shadow-sm">
-                                    <h3 className="text-lg font-bold text-primary flex items-center gap-3"><History size={20} className="text-indigo-500" /> Activity Timeline</h3>
-                                    <div className="relative space-y-6 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-main">
+                                <section className="bg-surface border border-main rounded-xl p-4 space-y-4 shadow-sm">
+                                    <h3 className="text-sm font-medium text-primary flex items-center gap-2"><History size={15} className="text-primary-500" /> Activity Timeline</h3>
+                                    <div className="relative space-y-5 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[1px] before:bg-main">
                                         {timeline.map((log, i) => (
-                                            <div key={i} className="relative pl-10 group">
-                                                <div className="absolute left-0 top-1 w-6 h-6 rounded-full bg-surface border border-main flex items-center justify-center z-10 group-hover:border-primary-500 transition-colors">
+                                            <div key={i} className="relative pl-8 group">
+                                                <div className="absolute left-0 top-1 w-5.5 h-5.5 rounded-full bg-surface border border-main flex items-center justify-center z-10 group-hover:border-primary-500 transition-colors">
                                                     <TimelineIcon action={log.action} />
                                                 </div>
                                                 <div className="flex items-center justify-between">
-                                                    <p className="text-sm font-bold text-primary">{log.action.replace(/_/g, ' ')}</p>
-                                                    <span className="text-[10px] font-bold text-muted uppercase tabular-nums">{new Date(log.createdAt).toLocaleString()}</span>
+                                                    <p className="text-[12px] font-medium text-primary leading-none">{log.action.replace(/_/g, ' ')}</p>
+                                                    <span className="text-[10px] text-muted tabular-nums leading-none">{new Date(log.createdAt).toLocaleString()}</span>
                                                 </div>
-                                                <p className="text-xs text-muted mt-1">Performed by: <span className="font-semibold">{log.performedBy?.name || 'System'}</span></p>
-                                                {log.details?.reason && <p className="text-xs text-rose-500/70 italic mt-1 font-medium leading-relaxed">Reason: {log.details.reason}</p>}
+                                                <p className="text-[11px] text-muted mt-0.5">By: <span className="font-medium text-primary/80">{log.performedBy?.name || 'System'}</span></p>
+                                                {log.details?.reason && <p className="text-[11px] text-rose-500/80 italic mt-0.5 font-medium leading-relaxed">Reason: {log.details.reason}</p>}
                                             </div>
                                         ))}
-                                        {timeline.length === 0 && <p className="text-center py-4 text-muted italic text-sm">No activity recorded yet.</p>}
+                                        {timeline.length === 0 && <p className="text-center py-4 text-muted italic text-xs">No activity recorded yet.</p>}
                                     </div>
                                 </section>
                             </div>
 
                             {/* Right Column: Limits & Health */}
-                            <div className="space-y-6">
-                                <div className="bg-surface border border-main rounded-3xl p-8 space-y-6 shadow-sm">
-                                    <h3 className="text-lg font-bold text-primary flex items-center gap-3"><Activity size={20} className="text-emerald-500" /> Instance Limits</h3>
-                                    <div className="space-y-5">
+                            <div className="space-y-4">
+                                <div className="bg-surface border border-main rounded-xl p-5 space-y-5 shadow-sm">
+                                    <h3 className="text-sm font-medium text-primary flex items-center gap-2"><Activity size={15} className="text-primary-500" /> Instance Limits</h3>
+                                    <div className="space-y-4">
                                         {/* Students */}
                                         <div>
-                                            <div className="flex justify-between text-[11px] font-bold text-muted mb-2">
+                                            <div className="flex justify-between text-[11px] font-medium text-muted mb-1.5 tracking-tight">
                                                 <span>STUDENT CAPACITY</span>
-                                                <span className="text-primary font-black">{details.usage?.students || 0} / {institution.maxStudents}</span>
+                                                <span className="text-primary font-semibold tabular-nums">{details.usage?.students || 0} / {institution.maxStudents}</span>
                                             </div>
-                                            <div className="h-2 bg-main rounded-full overflow-hidden">
+                                            <div className="h-1 bg-main rounded-full overflow-hidden">
                                                 <motion.div 
                                                     initial={{ width: 0 }}
                                                     animate={{ width: `${Math.min(100, ((details.usage?.students || 0) / institution.maxStudents) * 100)}%` }}
-                                                    className="h-full bg-primary-500 rounded-full shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]" 
+                                                    className="h-full bg-primary-500 rounded-full" 
                                                 />
                                             </div>
                                         </div>
 
                                         {/* Exams */}
                                         <div>
-                                            <div className="flex justify-between text-[11px] font-bold text-muted mb-2">
-                                                <span>EXAM CAPACITY</span>
-                                                <span className="text-primary font-black">{details.usage?.exams || 0} / {institution.maxExams || 50}</span>
+                                            <div className="flex justify-between text-[11px] font-medium text-muted mb-1.5 tracking-tight">
+                                                <span>EXAM SLOTS</span>
+                                                <span className="text-primary font-semibold tabular-nums">{details.usage?.exams || 0} / {institution.maxExams || 50}</span>
                                             </div>
-                                            <div className="h-2 bg-main rounded-full overflow-hidden">
+                                            <div className="h-1 bg-main rounded-full overflow-hidden">
                                                 <motion.div 
                                                     initial={{ width: 0 }}
                                                     animate={{ width: `${Math.min(100, ((details.usage?.exams || 0) / (institution.maxExams || 50)) * 100)}%` }}
-                                                    className="h-full bg-indigo-500 rounded-full shadow-[0_0_8px_rgba(99,102,241,0.5)]" 
+                                                    className="h-full bg-primary-500/60 rounded-full" 
                                                 />
                                             </div>
                                         </div>
 
                                         {/* Mentors */}
                                         <div>
-                                            <div className="flex justify-between text-[11px] font-bold text-muted mb-2">
+                                            <div className="flex justify-between text-[11px] font-medium text-muted mb-1.5 tracking-tight">
                                                 <span>MENTOR CAPACITY</span>
-                                                <span className="text-primary font-black">{details.usage?.mentors || 0} / {institution.maxMentors}</span>
+                                                <span className="text-primary font-semibold tabular-nums">{details.usage?.mentors || 0} / {institution.maxMentors}</span>
                                             </div>
-                                            <div className="h-2 bg-main rounded-full overflow-hidden">
+                                            <div className="h-1 bg-main rounded-full overflow-hidden">
                                                 <motion.div 
                                                     initial={{ width: 0 }}
                                                     animate={{ width: `${Math.min(100, ((details.usage?.mentors || 0) / institution.maxMentors) * 100)}%` }}
-                                                    className="h-full bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.5)]" 
+                                                    className="h-full bg-primary-500/30 rounded-full" 
                                                 />
                                             </div>
                                         </div>
 
-                                        <div className="pt-4 border-t border-main">
+                                        <div className="pt-3 border-t border-main">
                                             <div className="flex justify-between items-center">
-                                                <span className="text-xs font-bold text-muted">SUBSCRIPTION PLAN</span>
-                                                <Badge color="indigo">{institution.plan}</Badge>
+                                                <span className="text-[11px] font-medium text-muted uppercase tracking-tight">Subscription Plan</span>
+                                                <Badge color="primary"><span className="text-[10px] font-medium">{institution.plan}</span></Badge>
                                             </div>
                                         </div>
                                     </div>
-                                        <button 
-                                            onClick={() => setUpgradeModal({ 
-                                                isOpen: true, 
-                                                maxStudents: institution.maxStudents, 
-                                                maxMentors: institution.maxMentors, 
-                                                maxExams: institution.maxExams || 50,
-                                                plan: institution.plan 
-                                            })} 
-                                            className="w-full py-3 bg-indigo-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20 transition-all active:scale-95"
-                                        >
-                                            Upgrade License
-                                        </button>
+                                    <button 
+                                        onClick={() => setUpgradeModal({ 
+                                            isOpen: true, 
+                                            maxStudents: institution.maxStudents, 
+                                            maxMentors: institution.maxMentors, 
+                                            maxExams: institution.maxExams || 50,
+                                            plan: institution.plan 
+                                        })} 
+                                        className="w-full py-2 bg-primary-500 text-white rounded-lg text-[11px] font-semibold uppercase tracking-wider hover:bg-primary-600 transition-all active:scale-95 shadow-sm"
+                                    >
+                                        Upgrade License
+                                    </button>
                                 </div>
 
                                 {/* System Config (Condensed) */}
-                                <section className="bg-surface border border-main rounded-3xl p-6 space-y-4 shadow-sm">
-                                    <h3 className="text-sm font-bold text-primary flex items-center gap-2"><Server size={16} className="text-indigo-500" /> System Logic</h3>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="p-3 bg-main/50 rounded-xl border border-main text-center">
-                                            <p className="text-[9px] font-black text-muted uppercase tracking-widest mb-1">Tabs</p>
-                                            <p className="text-sm font-bold text-primary">{settings?.maxTabSwitches || 5}</p>
+                                <section className="bg-surface border border-main rounded-xl p-4 space-y-3 shadow-sm">
+                                    <h3 className="text-xs font-medium text-primary flex items-center gap-2"><Server size={14} className="text-primary-500" /> System Logic</h3>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="p-2 bg-main/50 rounded-lg border border-main text-center">
+                                            <p className="text-[9px] font-bold text-muted uppercase tracking-wider mb-0.5">Tabs</p>
+                                            <p className="text-xs font-semibold text-primary">{settings?.maxTabSwitches || 5}</p>
                                         </div>
-                                        <div className="p-3 bg-main/50 rounded-xl border border-main text-center">
-                                            <p className="text-[9px] font-black text-muted uppercase tracking-widest mb-1">Auto-Submit</p>
-                                            <p className="text-sm font-bold text-primary">60s</p>
+                                        <div className="p-2 bg-main/50 rounded-lg border border-main text-center">
+                                            <p className="text-[9px] font-bold text-muted uppercase tracking-wider mb-0.5">Auto-Submit</p>
+                                            <p className="text-xs font-semibold text-primary">60s</p>
                                         </div>
                                     </div>
                                 </section>
 
-                                <div className="bg-surface border border-main rounded-3xl p-8 space-y-4 shadow-sm">
-                                    <h3 className="text-sm font-bold text-primary flex items-center gap-2"><ShieldAlert size={16} className="text-amber-500" /> Compliance Status</h3>
-                                    <div className="p-4 bg-amber-500/5 border border-amber-500/10 rounded-2xl">
-                                        <p className="text-[11px] text-amber-600 font-medium leading-relaxed">This tenant is compliant with all platform-level proctoring standards. No security breaches reported.</p>
+                                <div className="bg-surface border border-main rounded-xl p-4 space-y-3 shadow-sm">
+                                    <h3 className="text-xs font-medium text-primary flex items-center gap-2"><ShieldAlert size={14} className="text-amber-500" /> Compliance Status</h3>
+                                    <div className="p-3 bg-amber-500/5 border border-amber-500/10 rounded-lg">
+                                        <p className="text-[10px] text-amber-600 font-medium leading-relaxed">This tenant is compliant with platform-level standards. No breaches reported.</p>
                                     </div>
                                 </div>
                             </div>
@@ -483,17 +508,17 @@ export default function TenantManagement() {
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="relative w-full max-w-md bg-surface border border-main rounded-3xl p-8 shadow-2xl"
+                            className="relative w-full max-w-sm bg-surface border border-main rounded-xl p-6 shadow-2xl"
                         >
-                            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-6 border shadow-inner ${confirmDialog.isDestructive ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 'bg-primary-500/10 text-primary-500 border-primary-500/20'}`}>
-                                <AlertCircle size={32} />
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-5 border shadow-inner ${confirmDialog.isDestructive ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 'bg-primary-500/10 text-primary-500 border-primary-500/20'}`}>
+                                <AlertCircle size={24} />
                             </div>
-                            <h3 className="text-2xl font-black text-primary mb-3">{confirmDialog.title}</h3>
-                            <p className="text-muted leading-relaxed mb-8">{confirmDialog.message}</p>
-                            <div className="flex justify-end gap-3">
+                            <h3 className="text-lg font-medium text-primary mb-2">{confirmDialog.title}</h3>
+                            <p className="text-xs text-muted leading-relaxed mb-6">{confirmDialog.message}</p>
+                            <div className="flex justify-end gap-2">
                                 <button 
                                     onClick={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
-                                    className="px-6 py-3 bg-main text-primary hover:bg-surface-hover border border-main rounded-xl text-xs font-black uppercase tracking-widest transition-all"
+                                    className="px-4 py-2 bg-main text-primary hover:bg-surface-hover border border-main rounded-lg text-[11px] font-medium uppercase tracking-wider transition-all"
                                 >
                                     Cancel
                                 </button>
@@ -502,9 +527,9 @@ export default function TenantManagement() {
                                         confirmDialog.action();
                                         setConfirmDialog({ ...confirmDialog, isOpen: false });
                                     }}
-                                    className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg text-white ${confirmDialog.isDestructive ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/20' : 'bg-primary-500 hover:bg-primary-600 shadow-primary-500/20'}`}
+                                    className={`px-4 py-2 rounded-lg text-[11px] font-medium uppercase tracking-wider transition-all shadow-lg text-white ${confirmDialog.isDestructive ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/20' : 'bg-primary-500 hover:bg-primary-600 shadow-primary-500/20'}`}
                                 >
-                                    Confirm Action
+                                    Confirm
                                 </button>
                             </div>
                         </motion.div>
@@ -525,45 +550,50 @@ export default function TenantManagement() {
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="relative w-full max-w-md bg-surface border border-main rounded-3xl p-8 shadow-2xl"
+                            className="relative w-full max-w-sm bg-surface border border-main rounded-xl p-6 shadow-2xl"
                         >
                             <button 
+                                type="button"
                                 onClick={() => setResetPasswordModal({ isOpen: false, adminId: '', customPassword: '' })}
-                                className="absolute top-6 right-6 p-2 text-muted hover:text-primary hover:bg-main rounded-full transition-all"
+                                className="absolute top-4 right-4 p-1.5 text-muted hover:text-primary hover:bg-main rounded-full transition-all"
                             >
-                                <X size={20} />
+                                <X size={16} />
                             </button>
 
-                            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6 border shadow-inner bg-amber-500/10 text-amber-500 border-amber-500/20">
-                                <Key size={32} />
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="text-amber-500 py-1">
+                                    <Fingerprint size={32} strokeWidth={1.5} />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-medium text-primary leading-tight">Reset Password</h3>
+                                    <p className="text-[11px] text-muted font-medium mt-0.5">Update Institutional Credentials</p>
+                                </div>
                             </div>
-                            <h3 className="text-2xl font-black text-primary mb-3">Reset Password</h3>
-                            <p className="text-muted leading-relaxed mb-6 text-sm">Enter a custom password below, or leave it blank to auto-generate a secure key.</p>
                             
-                            <form onSubmit={submitPasswordReset} className="space-y-6">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-muted uppercase tracking-widest pl-1">New Password (Optional)</label>
+                            <form onSubmit={submitPasswordReset} className="space-y-5">
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-semibold text-muted uppercase tracking-wider pl-0.5">New Password (Optional)</label>
                                     <input 
                                         type="text" 
                                         value={resetPasswordModal.customPassword}
                                         onChange={(e) => setResetPasswordModal({...resetPasswordModal, customPassword: e.target.value})}
-                                        placeholder="Leave blank to auto-generate"
-                                        className="w-full bg-main border border-main text-primary rounded-xl px-4 py-3 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-all placeholder:text-muted/40"
+                                        placeholder="Leave blank for auto-key"
+                                        className="w-full bg-main border border-main text-primary rounded-lg px-3.5 py-2.5 text-xs focus:outline-none focus:border-amber-500/50 transition-all placeholder:text-muted/40"
                                     />
                                 </div>
-                                <div className="flex justify-end gap-3 pt-2 border-t border-main">
+                                <div className="flex justify-end gap-2 pt-1 border-t border-main">
                                     <button 
                                         type="button"
                                         onClick={() => setResetPasswordModal({ isOpen: false, adminId: '', customPassword: '' })}
-                                        className="px-6 py-3 bg-main text-primary hover:bg-surface-hover border border-main rounded-xl text-xs font-black uppercase tracking-widest transition-all"
+                                        className="px-4 py-2 bg-main text-primary hover:bg-surface-hover border border-main rounded-lg text-[11px] font-medium uppercase tracking-wider transition-all"
                                     >
                                         Cancel
                                     </button>
                                     <button 
                                         type="submit"
-                                        className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-amber-500/20"
+                                        className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[11px] font-medium uppercase tracking-wider transition-all shadow-lg shadow-amber-500/20"
                                     >
-                                        Reset Credentials
+                                        Update Credentials
                                     </button>
                                 </div>
                             </form>
@@ -585,57 +615,58 @@ export default function TenantManagement() {
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="relative w-full max-w-lg bg-surface border border-main rounded-3xl p-8 shadow-2xl"
+                            className="relative w-full max-w-md bg-surface border border-main rounded-xl p-6 shadow-2xl"
                         >
                             <button 
+                                type="button"
                                 onClick={() => !submittingAdmin && setAddAdminModalOpen(false)}
-                                className="absolute top-6 right-6 p-2 text-muted hover:text-primary hover:bg-main rounded-full transition-all"
+                                className="absolute top-4 right-4 p-1.5 text-muted hover:text-primary hover:bg-main rounded-full transition-all"
                             >
-                                <X size={20} />
+                                <X size={16} />
                             </button>
                             
-                            <div className="flex items-center gap-4 mb-8">
-                                <div className="w-14 h-14 rounded-2xl bg-primary-500/10 text-primary-500 flex items-center justify-center border border-primary-500/20 shadow-inner">
-                                    <Plus size={28} />
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="text-primary-500 py-1">
+                                    <ShieldCheck size={32} strokeWidth={1.5} />
                                 </div>
                                 <div>
-                                    <h3 className="text-2xl font-black text-primary">Add Administrator</h3>
-                                    <p className="text-xs font-bold text-muted uppercase tracking-widest mt-1">Provision New Institutional Access</p>
+                                    <h3 className="text-lg font-medium text-primary leading-tight">Add Administrator</h3>
+                                    <p className="text-[11px] text-muted font-medium mt-0.5">Provision Institutional Access</p>
                                 </div>
                             </div>
 
-                            <form onSubmit={handleAddAdmin} className="space-y-6">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-muted uppercase tracking-widest pl-1">Full Name</label>
+                            <form onSubmit={handleAddAdmin} className="space-y-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-semibold text-muted uppercase tracking-wider pl-0.5">Full Name</label>
                                     <input 
                                         type="text" 
                                         required
                                         value={newAdminForm.name}
                                         onChange={(e) => setNewAdminForm({...newAdminForm, name: e.target.value})}
                                         placeholder="e.g. Adarsh Sharma"
-                                        className="w-full bg-main border border-main text-primary rounded-xl px-4 py-3 focus:outline-none focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/50 transition-all placeholder:text-muted/40"
+                                        className="w-full bg-main border border-main text-primary rounded-lg px-3.5 py-2.5 text-xs focus:outline-none focus:border-primary-500/50 transition-all placeholder:text-muted/40"
                                     />
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-muted uppercase tracking-widest pl-1">Email Address</label>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-semibold text-muted uppercase tracking-wider pl-0.5">Email Address</label>
                                     <input 
                                         type="email" 
                                         required
                                         value={newAdminForm.email}
                                         onChange={(e) => setNewAdminForm({...newAdminForm, email: e.target.value})}
                                         placeholder="admin@institution.edu"
-                                        className="w-full bg-main border border-main text-primary rounded-xl px-4 py-3 focus:outline-none focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/50 transition-all placeholder:text-muted/40"
+                                        className="w-full bg-main border border-main text-primary rounded-lg px-3.5 py-2.5 text-xs focus:outline-none focus:border-primary-500/50 transition-all placeholder:text-muted/40"
                                     />
                                 </div>
                                 
-                                <div className="pt-4 border-t border-main">
+                                <div className="pt-3 border-t border-main">
                                     <button 
                                         type="submit"
                                         disabled={submittingAdmin}
-                                        className="w-full py-4 bg-primary-500 hover:bg-primary-600 text-white rounded-xl text-sm font-black uppercase tracking-widest transition-all shadow-lg shadow-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                        className="w-full py-2.5 bg-primary-500 hover:bg-primary-600 text-white rounded-lg text-xs font-semibold uppercase tracking-wider transition-all shadow-lg shadow-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                     >
-                                        {submittingAdmin ? <RefreshCw className="animate-spin" size={18} /> : <Key size={18} />}
-                                        {submittingAdmin ? 'Provisioning...' : 'Provision Administrator'}
+                                        {submittingAdmin ? <RefreshCw className="animate-spin" size={14} /> : <Key size={14} />}
+                                        {submittingAdmin ? 'Provisioning...' : 'Add Administrator'}
                                     </button>
                                 </div>
                             </form>
@@ -657,61 +688,62 @@ export default function TenantManagement() {
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="relative w-full max-w-md bg-surface border border-main rounded-3xl p-8 shadow-2xl"
+                            className="relative w-full max-w-sm bg-surface border border-main rounded-xl p-6 shadow-2xl"
                         >
                             <button 
+                                type="button"
                                 onClick={() => setUpgradeModal({ ...upgradeModal, isOpen: false })}
-                                className="absolute top-6 right-6 p-2 text-muted hover:text-primary hover:bg-main rounded-full transition-all"
+                                className="absolute top-4 right-4 p-1.5 text-muted hover:text-primary hover:bg-main rounded-full transition-all"
                             >
-                                <X size={20} />
+                                <X size={16} />
                             </button>
                             
-                            <div className="flex items-center gap-4 mb-8">
-                                <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center border border-indigo-500/20 shadow-inner">
-                                    <Server size={28} />
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="text-primary-500 py-1">
+                                    <Zap size={32} strokeWidth={1.5} />
                                 </div>
                                 <div>
-                                    <h3 className="text-2xl font-black text-primary">Upgrade License</h3>
-                                    <p className="text-xs font-bold text-muted uppercase tracking-widest mt-1">Adjust Institution Capacity</p>
+                                    <h3 className="text-lg font-medium text-primary leading-tight">License Config</h3>
+                                    <p className="text-[11px] text-muted font-medium mt-0.5">Adjust Tenant Capacity</p>
                                 </div>
                             </div>
 
-                            <form onSubmit={handleUpgradeLimits} className="space-y-6">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-muted uppercase tracking-widest pl-1">Student Capacity</label>
+                            <form onSubmit={handleUpgradeLimits} className="space-y-5">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-semibold text-muted uppercase tracking-wider pl-0.5">Students</label>
                                         <input 
                                             type="number" 
                                             required
                                             value={upgradeModal.maxStudents}
                                             onChange={(e) => setUpgradeModal({...upgradeModal, maxStudents: e.target.value})}
-                                            className="w-full bg-main border border-main text-primary rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500/50 transition-all"
+                                            className="w-full bg-main border border-main text-primary rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-primary-500/50 transition-all"
                                         />
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-muted uppercase tracking-widest pl-1">Mentor Capacity</label>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-semibold text-muted uppercase tracking-wider pl-0.5">Mentors</label>
                                         <input 
                                             type="number" 
                                             required
                                             value={upgradeModal.maxMentors}
                                             onChange={(e) => setUpgradeModal({...upgradeModal, maxMentors: e.target.value})}
-                                            className="w-full bg-main border border-main text-primary rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500/50 transition-all"
+                                            className="w-full bg-main border border-main text-primary rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-primary-500/50 transition-all"
                                         />
                                     </div>
-                                    <div className="space-y-2 col-span-2">
-                                        <label className="text-xs font-bold text-muted uppercase tracking-widest pl-1">Exam Capacity</label>
+                                    <div className="space-y-1.5 col-span-2">
+                                        <label className="text-[10px] font-semibold text-muted uppercase tracking-wider pl-0.5">Exam Slots</label>
                                         <input 
                                             type="number" 
                                             required
                                             value={upgradeModal.maxExams}
                                             onChange={(e) => setUpgradeModal({...upgradeModal, maxExams: e.target.value})}
-                                            className="w-full bg-main border border-main text-primary rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500/50 transition-all"
+                                            className="w-full bg-main border border-main text-primary rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-primary-500/50 transition-all"
                                         />
                                     </div>
                                 </div>
                                 
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-muted uppercase tracking-widest pl-1">Subscription Plan</label>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-semibold text-muted uppercase tracking-wider pl-0.5">Subscription Plan</label>
                                     <select 
                                         value={upgradeModal.plan}
                                         onChange={(e) => {
@@ -732,7 +764,7 @@ export default function TenantManagement() {
                                                 maxExams: planDefaults.exams || upgradeModal.maxExams
                                             });
                                         }}
-                                        className="w-full bg-main border border-main text-primary rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500/50 transition-all appearance-none"
+                                        className="w-full bg-main border border-main text-primary rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-primary-500/50 transition-all appearance-none"
                                     >
                                         <option value="trial">Trial Mode</option>
                                         <option value="free">Free Tier</option>
@@ -742,10 +774,10 @@ export default function TenantManagement() {
                                     </select>
                                 </div>
 
-                                <div className="pt-4 border-t border-main">
+                                <div className="pt-3 border-t border-main">
                                     <button 
                                         type="submit"
-                                        className="w-full py-4 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl text-sm font-black uppercase tracking-widest transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2"
+                                        className="w-full py-2.5 bg-primary-500 hover:bg-primary-600 text-white rounded-lg text-xs font-semibold uppercase tracking-wider transition-all shadow-lg shadow-primary-500/20 flex items-center justify-center gap-2"
                                     >
                                         Update Subscription
                                     </button>
@@ -765,49 +797,47 @@ export default function TenantManagement() {
                             className="absolute inset-0 bg-black/80 backdrop-blur-md"
                         />
                         <motion.div 
-                            initial={{ opacity: 0, scale: 0.9, y: 40 }}
+                            initial={{ opacity: 0, scale: 0.95, y: 40 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.9, y: 40 }}
-                            className="relative w-full max-w-lg bg-surface border-2 border-rose-500/30 rounded-[2.5rem] p-10 shadow-[0_0_50px_rgba(244,63,94,0.2)]"
+                            exit={{ opacity: 0, scale: 0.95, y: 40 }}
+                            className="relative w-full max-w-md bg-surface border border-rose-500/20 rounded-xl p-8 shadow-2xl"
                         >
-                            <div className="w-20 h-20 rounded-3xl bg-rose-500/10 text-rose-500 flex items-center justify-center mb-8 border border-rose-500/20 shadow-inner mx-auto animate-pulse">
-                                <ShieldAlert size={40} />
+                            <div className="w-16 h-16 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center mb-6 border border-rose-500/20 shadow-inner mx-auto">
+                                <ShieldAlert size={32} />
                             </div>
                             
-                            <h3 className="text-3xl font-black text-center text-primary mb-4 tracking-tighter">Critical Confirmation</h3>
-                            <p className="text-muted text-center leading-relaxed mb-8 text-sm">
-                                You are about to delete <span className="text-rose-500 font-bold underline">{details.institution.name}</span>. 
-                                This will erase all student data, exam records, and proctoring logs. 
+                            <h3 className="text-xl font-medium text-center text-primary mb-3">Critical Confirmation</h3>
+                            <p className="text-muted text-center leading-relaxed mb-6 text-xs">
+                                You are about to permanently delete <span className="text-rose-500 font-bold underline">{details.institution.name}</span>. 
+                                This action is irreversible and wipes all records.
                                 <br/><br/>
-                                To confirm, please type the institution name below:
+                                Type the institution name to confirm:
                             </p>
 
-                            <form onSubmit={submitFinalDelete} className="space-y-6">
-                                <div className="space-y-2">
-                                    <input 
-                                        type="text" 
-                                        autoFocus
-                                        value={deleteConfirmText}
-                                        onChange={(e) => setDeleteConfirmText(e.target.value)}
-                                        placeholder={details.institution.name}
-                                        className="w-full bg-main border-2 border-rose-500/20 text-primary rounded-2xl px-6 py-4 focus:outline-none focus:border-rose-500 transition-all text-center font-bold tracking-tight text-lg shadow-inner"
-                                    />
-                                </div>
+                            <form onSubmit={submitFinalDelete} className="space-y-5">
+                                <input 
+                                    type="text" 
+                                    autoFocus
+                                    value={deleteConfirmText}
+                                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                                    placeholder={details.institution.name}
+                                    className="w-full bg-main border border-main text-primary rounded-lg px-4 py-3 focus:outline-none focus:border-rose-500 transition-all text-center font-medium text-sm"
+                                />
                                 
-                                <div className="flex gap-4">
+                                <div className="flex gap-3">
                                     <button 
                                         type="button"
                                         onClick={() => { setShowDeleteFinal(false); setDeleteConfirmText(''); }}
-                                        className="flex-1 py-4 bg-main text-primary hover:bg-surface-hover border border-main rounded-2xl text-xs font-black uppercase tracking-widest transition-all"
+                                        className="flex-1 py-2.5 bg-main text-primary hover:bg-surface-hover border border-main rounded-lg text-[11px] font-medium uppercase tracking-wider transition-all"
                                     >
-                                        I changed my mind
+                                        Cancel
                                     </button>
                                     <button 
                                         type="submit"
                                         disabled={deleteConfirmText !== details.institution.name}
-                                        className="flex-1 py-4 bg-rose-500 hover:bg-rose-600 disabled:opacity-30 disabled:grayscale text-white rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-xl shadow-rose-500/20"
+                                        className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 disabled:opacity-30 text-white rounded-lg text-[11px] font-medium uppercase tracking-wider transition-all shadow-lg shadow-rose-500/20"
                                     >
-                                        Confirm & Wipe All Data
+                                        Wipe Data
                                     </button>
                                 </div>
                             </form>

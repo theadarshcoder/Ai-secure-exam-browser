@@ -102,6 +102,17 @@
     --color-primary-900: #365314;
   }
 
+  /* ── Smooth theme switching ── */
+  html.theme-transitioning,
+  html.theme-transitioning *,
+  html.theme-transitioning *::before,
+  html.theme-transitioning *::after {
+    transition:
+      background-color 200ms ease,
+      border-color 200ms ease,
+      color 150ms ease !important;
+  }
+
 
   html,
   body {
@@ -167,6 +178,9 @@
 
 @layer utilities {
   .border-main {
+    border-color: var(--border-main);
+  }
+  .divide-main > * + * {
     border-color: var(--border-main);
   }
 }
