@@ -2500,9 +2500,10 @@ exports.heartbeat = asyncHandler(async (req, res) => {
     }
 
     // 🛡️ Strict State Validation (Replay Attack Prevention)
-    if (session.status !== 'in_progress' && session.status !== 'paused') {
+    // Allow: in_progress, paused, and flagged (suspicious but not yet blocked)
+    if (!['in_progress', 'paused', 'flagged'].includes(session.status)) {
         res.status(403);
-        throw new Error(`Heartbeat ignored. Exam is not in progress or paused. Status: ${session.status}`);
+        throw new Error(`Heartbeat ignored. Invalid session status: ${session.status}`);
     }
 
     const now = new Date();

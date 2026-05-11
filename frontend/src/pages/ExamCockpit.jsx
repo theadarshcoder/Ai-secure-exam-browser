@@ -1262,10 +1262,13 @@ const { examId } = useParams();
         // Handle commands
         if (action === 'BLOCK') {
             setIsBlocked(true);
+            heartbeatFailCountRef.current = 0; // 🛡️ Reset counter to prevent stale failures triggering termination
             setBlockReason(message || "Your screen has been blocked by an administrator.");
         } else if (action === 'UNBLOCK') {
             setIsBlocked(false);
+            heartbeatFailCountRef.current = 0; // 🛡️ Fresh start after unblock
         } else if (action === 'TERMINATE') {
+
             setTerminated({ reason: message || "Exam terminated by administrator." });
         } else if (type === 'direct') {
             // plain direct message (show in top bar)
@@ -1337,6 +1340,7 @@ const { examId } = useParams();
     // 🛡️ Proctoring: Real-time Block/Unblock Handlers
     socket.on("force_block_screen", (data) => {
       console.log("🔒 Received force_block_screen:", data);
+      heartbeatFailCountRef.current = 0; // 🛡️ Protect session state
       setBlockReason(data.reason || "");
       setIsBlocked(true);
       toast.error(data.reason || "Your screen has been blocked by an administrator.", { 
@@ -1345,12 +1349,15 @@ const { examId } = useParams();
       });
     });
 
+
     socket.on("unblock_screen", () => {
       console.log("🔓 Received unblock_screen");
+      heartbeatFailCountRef.current = 0; // 🛡️ Resume with fresh retries
       setIsBlocked(false);
       toast.dismiss("force-block-toast");
       toast.success("Screen unblocked by supervisor. You may resume.", { duration: 5000 });
     });
+
 
     // 🛡️ Sync Socket if Token Refreshed
     socketService.reAuth();
