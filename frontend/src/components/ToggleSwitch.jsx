@@ -43,9 +43,9 @@ const ToggleSwitch = ({ checked, onChange, size = 'md', disabled = false }) => {
         opacity: disabled ? 0.45 : 1,
       }}
       animate={{
-        backgroundColor: checked ? '#10b981' : '#d1d5db',
+        backgroundColor: checked ? '#84cc16' : '#d1d5db',
         boxShadow: checked
-          ? '0 0 0 3px rgba(16,185,129,0.18), 0 2px 8px rgba(16,185,129,0.25)'
+          ? '0 0 0 3px rgba(132,204,22,0.18), 0 2px 8px rgba(132,204,22,0.25)'
           : '0 1px 3px rgba(0,0,0,0.10)',
       }}
       transition={{ duration: 0.22, ease: 'easeInOut' }}

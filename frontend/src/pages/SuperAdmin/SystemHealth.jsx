@@ -96,9 +96,39 @@ export default function SystemHealth() {
         </div>
     );
 
+    const AIEnginesCard = ({ geminiStatus, groqStatus }) => {
+        const isAllUp = geminiStatus === 'up' && groqStatus === 'up';
+        const isSomeUp = geminiStatus === 'up' || groqStatus === 'up';
+        
+        return (
+            <div className="bg-surface border border-main rounded-xl p-4 flex items-center justify-between shadow-sm hover:shadow-md transition-all gap-3">
+                <div className="flex items-center gap-3">
+                    <BarChart className="text-blue-500 shrink-0" size={16} />
+                    <div>
+                        <h3 className="text-sm font-medium text-primary leading-tight">AI Engines</h3>
+                        <div className="flex items-center gap-3 mt-0.5">
+                            <div className="flex items-center gap-1.5">
+                                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${geminiStatus === 'up' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+                                <span className="text-[10px] uppercase tracking-wide text-muted">Gemini</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${groqStatus === 'up' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+                                <span className="text-[10px] uppercase tracking-wide text-muted">Groq</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div className="text-right shrink-0">
+                    <p className="text-[10px] text-muted uppercase tracking-wide">Latency</p>
+                    <p className="text-sm font-medium text-primary tabular-nums mt-0.5">{health?.ai?.latency || 0}ms</p>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="flex h-screen bg-main font-sans text-primary select-none antialiased">
-            <PremiumSidebar
+            <PremiumSidebar 
                 expanded={sidebarExpanded}
                 onToggle={setSidebarExpanded}
                 navItems={[
@@ -140,10 +170,11 @@ export default function SystemHealth() {
                     <div className="space-y-6">
                         
                         {/* Core Infrastructure */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
                             <StatCard title="MongoDB Cluster" status={health?.database?.status} latency={health?.database?.latency || 0} icon={Database} color="emerald" />
                             <StatCard title="Redis Cache" status={health?.cache?.status} latency={health?.cache?.latency || 0} icon={Zap} color="amber" />
                             <StatCard title="Judge0 Engine" status={health?.judge0?.status} latency={health?.judge0?.latency || 0} icon={Terminal} color="indigo" />
+                            <AIEnginesCard geminiStatus={health?.ai?.gemini} groqStatus={health?.ai?.groq} />
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

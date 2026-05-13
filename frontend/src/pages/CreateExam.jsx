@@ -4,57 +4,60 @@ import { ThemeToggle } from '../contexts/ThemeContext';
 // Success Modal
 const SuccessModal = ({ isOpen, examId, onInvite, onReturn }) => {
   const examLink = `${window.location.origin}/exam/${examId}`;
+  const [copied, setCopied] = React.useState(false);
   
+  const handleCopy = () => {
+    navigator.clipboard.writeText(examLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
         <motion.div 
-          initial={{ opacity: 0, x: 20, y: -20, scale: 0.95 }}
-          animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
-          exit={{ opacity: 0, x: 20, y: -20, scale: 0.95 }}
-          className="fixed top-24 right-8 z-[200] w-[300px] bg-surface rounded-2xl shadow-2xl border border-main p-5 overflow-hidden backdrop-blur-xl bg-surface/90"
+          initial={{ opacity: 0, y: -10, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -10, scale: 0.97 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+          className="fixed top-20 right-8 z-[200] w-[320px] bg-surface border border-main rounded-2xl shadow-2xl overflow-hidden"
         >
-          {/* Success Indicator */}
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-9 h-9 bg-primary-500/10 rounded-xl flex items-center justify-center text-primary-500 shrink-0">
-              <CheckCircle size={18} strokeWidth={3} />
+          {/* Header */}
+          <div className="flex items-center gap-3 px-5 pt-5 pb-4">
+            <div className="w-9 h-9 bg-emerald-500/10 rounded-xl flex items-center justify-center shrink-0 border border-emerald-500/20">
+              <CheckCircle size={18} className="text-emerald-500" strokeWidth={2.5} />
             </div>
             <div>
-              <h2 className="text-[13px] font-black text-primary tracking-tight">System Published</h2>
-              <p className="text-[9px] text-muted font-bold uppercase tracking-wider opacity-60">Protocol Active</p>
+              <h2 className="text-[13px] font-bold text-primary">Exam Published</h2>
+              <p className="text-[10px] text-muted font-medium mt-0.5">Live and accepting submissions</p>
             </div>
           </div>
 
-          {/* Compact Link Box */}
-          <div className="mb-5 bg-surface-hover/50 p-3 rounded-xl border border-main">
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-[8px] font-black text-muted uppercase tracking-[0.2em]">Exam Link</label>
+          {/* Link Box */}
+          <div className="mx-5 mb-4 bg-surface-hover/50 px-3.5 py-3 rounded-xl border border-main">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[9px] text-muted font-semibold uppercase tracking-wider">Exam Link</span>
               <button 
-                onClick={() => { 
-                  navigator.clipboard.writeText(examLink); 
-                }}
-                className="flex items-center gap-1 text-[8px] font-black text-primary-500 uppercase tracking-widest hover:opacity-70 transition-opacity"
+                onClick={handleCopy}
+                className="flex items-center gap-1 text-[9px] font-semibold text-primary-500 uppercase tracking-wider hover:opacity-70 transition-opacity"
               >
-                <Copy size={10} /> Copy
+                <Copy size={10} /> {copied ? 'Copied!' : 'Copy'}
               </button>
             </div>
-            <div className="font-mono text-[9px] text-primary truncate opacity-80">
-              {examLink}
-            </div>
+            <p className="font-mono text-[10px] text-primary truncate">{examLink}</p>
           </div>
 
-          {/* Action Row */}
-          <div className="flex items-center gap-2">
+          {/* Actions */}
+          <div className="flex items-center gap-2 px-5 pb-5">
             <button 
               onClick={onInvite}
-              className="flex-1 h-9 bg-primary-500 text-white font-black rounded-xl hover:bg-primary-600 transition-all flex items-center justify-center gap-1.5 shadow-md shadow-primary-500/20 active:scale-95 uppercase tracking-widest text-[9px]"
+              className="flex-1 h-9 bg-primary-500 text-white text-[10px] font-semibold rounded-xl hover:bg-primary-600 transition-all flex items-center justify-center gap-1.5 shadow-md shadow-primary-500/20 active:scale-95 uppercase tracking-wider"
             >
-              <Users size={12} />
-              Invite
+              <Users size={13} /> Invite
             </button>
             <button 
               onClick={onReturn}
-              className="flex-1 h-9 bg-surface border border-main text-muted font-black hover:text-primary rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-95 text-[9px] uppercase tracking-widest"
+              className="flex-1 h-9 bg-surface border border-main text-[10px] font-semibold text-muted hover:text-primary rounded-xl transition-all flex items-center justify-center active:scale-95 uppercase tracking-wider"
             >
               Done
             </button>
@@ -236,7 +239,7 @@ const McqEditor = ({ question, updateQ }) => {
           {/* Selection Toggle */}
           <button 
             onClick={() => updateQ(question.id, { correctOption: oi })} 
-            className={`w-6 h-6 rounded-full border cursor-pointer flex items-center justify-center transition-all shrink-0 ${question.correctOption === oi ? 'bg-primary-500 border-primary-500 text-white shadow-lg shadow-primary-500/20' : 'border-main text-transparent hover:border-primary-500/30'}`}
+            className={`w-6 h-6 rounded-full border cursor-pointer flex items-center justify-center transition-all shrink-0 ${question.correctOption === oi ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'border-main text-transparent hover:border-emerald-500/30'}`}
           >
             <Check size={12} strokeWidth={4} />
           </button>
@@ -254,7 +257,7 @@ const McqEditor = ({ question, updateQ }) => {
               options[oi] = e.target.value;
               updateQ(question.id, { options });
             }} 
-            className={`flex-1 px-4 py-2 border rounded-xl text-[13px] font-medium text-primary outline-none transition-all shadow-sm ${question.correctOption === oi ? 'border-primary-500 ring-4 ring-primary-500/5 bg-primary-500/5 font-bold' : 'border-main focus:border-primary-500/30 focus:ring-4 focus:ring-primary-500/5 bg-surface-hover placeholder:text-muted/30'}`} 
+            className={`flex-1 px-4 py-2 border rounded-xl text-[13px] font-medium text-primary outline-none transition-all shadow-sm ${question.correctOption === oi ? 'border-emerald-500 ring-4 ring-emerald-500/5 bg-emerald-500/5 font-bold' : 'border-main focus:border-primary-500/30 focus:ring-4 focus:ring-primary-500/5 bg-surface-hover placeholder:text-muted/30'}`} 
             placeholder={`Option ${String.fromCharCode(65 + oi)}...`}
           />
 
@@ -1598,10 +1601,10 @@ export default function CreateExam() {
                                          {s.type === 'mcq' && s.options && (
                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                                              {s.options.map((opt, oi) => (
-                                               <div key={oi} className={`text-[10px] px-2.5 py-1.5 rounded-lg border flex items-center gap-2 ${s.correctOption === oi ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-500' : 'bg-surface-hover/50 border-main text-muted'}`}>
+                                               <div key={oi} className={`text-[10px] px-2.5 py-1.5 rounded-lg border flex items-center gap-2 ${s.correctOption === oi ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500' : 'bg-surface-hover/50 border-main text-muted'}`}>
                                                  <span className="font-black opacity-40">{String.fromCharCode(65 + oi)}</span>
                                                  <span className="truncate">{opt}</span>
-                                                 {s.correctOption === oi && <Check size={10} className="ml-auto text-indigo-500" />}
+                                                 {s.correctOption === oi && <Check size={10} className="ml-auto text-emerald-500" />}
                                                </div>
                                              ))}
                                            </div>
@@ -2047,9 +2050,6 @@ export default function CreateExam() {
               
               {/* Alert Message */}
               <div className="bg-indigo-500/[0.03] border border-indigo-500/10 p-8 rounded-[2.5rem] flex items-start gap-6 relative overflow-hidden group/warning">
-                  <div className="absolute top-0 right-0 p-6 opacity-[0.03] group-hover/warning:scale-110 transition-transform text-indigo-500">
-                    <AlertCircle size={120} />
-                  </div>
                   <div className="w-14 h-14 rounded-2xl bg-indigo-500 text-white flex items-center justify-center shadow-2xl shadow-indigo-500/30 shrink-0">
                       <AlertCircle size={28} strokeWidth={3} />
                   </div>

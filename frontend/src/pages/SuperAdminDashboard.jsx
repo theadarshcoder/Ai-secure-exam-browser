@@ -215,7 +215,7 @@ export default function SuperAdminDashboard() {
  />
 
  <main className="flex-1 flex flex-col h-screen overflow-hidden">
- <header className="h-14 bg-surface/80 backdrop-blur-md border-b border-main flex items-center justify-between px-8 shrink-0">
+ <header className="h-14 bg-surface/80 backdrop-blur-md border-b border-main flex items-center justify-between px-8 shrink-0 relative z-40">
  <div className="flex items-center gap-3 text-base font-semibold text-muted">
  <span className="hover:text-primary transition-colors cursor-pointer">Platform Engine</span>
  <ChevronRight size={14} className="opacity-40" />
@@ -223,10 +223,6 @@ export default function SuperAdminDashboard() {
  </div>
 
                     <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/20">
-                            <Activity size={12} className="text-emerald-500 animate-pulse" />
-                            <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">v1.5.0 — Managed</span>
-                        </div>
                         <ThemeToggle />
                         <div className="relative">
                             <button 
@@ -306,17 +302,17 @@ export default function SuperAdminDashboard() {
  {/* Summary Stats Row */}
  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
  {[
- { label: 'Active Tenants', val: stats.activeTenants, icon: Building, color: 'primary' },
- { label: 'Platform Users', val: stats.totalUsers, icon: Users, color: 'emerald' },
- { label: 'Exams Provisioned', val: stats.totalExams, icon: FileText, color: 'primary' },
- { label: 'Sys Uptime', val: formatUptime(stats.uptime), icon: Clock, color: 'amber' },
+ { label: 'Institutions', sub: 'Registered on platform', val: stats.activeTenants, icon: Building, color: 'primary' },
+ { label: 'Total Users', sub: 'Active accounts', val: stats.totalUsers, icon: Users, color: 'emerald' },
+ { label: 'Total Exams', sub: 'Created globally', val: stats.totalExams, icon: FileText, color: 'primary' },
+ { label: 'System Uptime', sub: 'Server running time', val: formatUptime(stats.uptime), icon: Clock, color: 'amber' },
  ].map((s, i) => (
  <div key={i} className="bg-surface border border-main rounded-2xl p-5 flex items-center justify-between shadow-sm hover:border-primary-500/30 transition-all group h-full gap-4">
  <div className="flex items-center gap-3">
  <s.icon className={`text-${s.color}-500 shrink-0`} size={22} />
  <div>
- <h3 className="text-[13px] font-medium text-primary leading-none">{s.label}</h3>
- <p className="text-[10px] font-medium text-muted uppercase tracking-tight mt-1 opacity-70">Live platform count</p>
+ <h3 className="text-[14px] font-medium text-primary leading-none">{s.label}</h3>
+ <p className="text-[11px] text-muted mt-1 opacity-90">{s.sub}</p>
  </div>
  </div>
  <p className="text-2xl font-medium text-primary tabular-nums tracking-tight">{s.val}</p>
@@ -399,14 +395,14 @@ export default function SuperAdminDashboard() {
  <div>
  <div className="flex items-center gap-2">
  <h3 className="text-base font-medium text-primary">{req.institutionId?.name || 'Unknown Institution'}</h3>
- <Badge color="indigo">{req.plan} Plan</Badge>
+ <Badge color="indigo"><span className="capitalize">{req.plan}</span> Plan</Badge>
  </div>
- <div className="flex gap-3 mt-1 text-sm text-muted">
- <span className="flex items-center gap-1"><Users size={11} /> {req.requestedBy?.name || 'Unknown'}</span>
- <span className="opacity-20">|</span>
- <span className="font-mono bg-main px-1.5 py-0.5 rounded text-[10px]">TXN: {req.transactionId}</span>
- <span className="opacity-20">|</span>
- <span>{new Date(req.createdAt).toLocaleDateString()}</span>
+ <div className="flex items-center gap-3 mt-1 text-sm text-muted">
+ <span className="flex items-center gap-1.5"><Users size={13} className="opacity-70" /> <span className="leading-none mt-0.5">{req.requestedBy?.name || 'Unknown'}</span></span>
+ <span className="opacity-20 leading-none mt-0.5">|</span>
+ <span className="font-mono text-[11px] uppercase tracking-wider leading-none mt-0.5">TXN: {req.transactionId}</span>
+ <span className="opacity-20 leading-none mt-0.5">|</span>
+ <span className="leading-none mt-0.5">{new Date(req.createdAt).toLocaleDateString()}</span>
  </div>
  </div>
  </div>
@@ -496,11 +492,11 @@ export default function SuperAdminDashboard() {
 
  {/* Active Leaders */}
  <div className="bg-surface border border-main rounded-2xl overflow-hidden shadow-sm">
- <div className="px-6 py-5 border-b border-main flex items-center gap-2.5">
- <Building size={15} className="text-primary-500" />
+ <div className="px-6 py-5 border-b border-main flex items-start gap-2.5">
+ <Building size={15} className="text-primary-500 mt-1" />
  <div>
- <h3 className="text-base font-medium text-primary">Active Leaders</h3>
- <p className="text-sm text-muted mt-0.5">Top institutions by exam activity</p>
+ <h3 className="text-base font-medium text-primary leading-tight">Active Leaders</h3>
+ <p className="text-sm text-muted mt-1">Top institutions by exam activity</p>
  </div>
  </div>
  <div className="divide-y divide-main">
@@ -526,15 +522,15 @@ export default function SuperAdminDashboard() {
 
  {/* Proctoring Integrity */}
  <div className="bg-surface border border-main rounded-2xl overflow-hidden shadow-sm">
- <div className="px-6 py-5 border-b border-main flex items-center justify-between">
- <div className="flex items-center gap-2.5">
- <ShieldAlert size={15} className="text-rose-400" />
+ <div className="px-6 py-5 border-b border-main flex items-start justify-between">
+ <div className="flex items-start gap-2.5">
+ <ShieldAlert size={15} className="text-primary-400 mt-1" />
  <div>
- <h3 className="text-base font-medium text-primary">Proctoring Integrity</h3>
- <p className="text-sm text-muted mt-0.5">Global security snapshot</p>
+ <h3 className="text-base font-medium text-primary leading-tight">Proctoring Integrity</h3>
+ <p className="text-sm text-muted mt-1">Global security snapshot</p>
  </div>
  </div>
- <Badge color={intelligenceData?.security?.integrityScore > 90 ? 'emerald' : 'rose'}>
+ <Badge color={intelligenceData?.security?.integrityScore > 85 ? 'emerald' : 'amber'}>
  {intelligenceData?.security?.integrityScore}% Clean
  </Badge>
  </div>
@@ -551,7 +547,7 @@ export default function SuperAdminDashboard() {
  initial={{ width: 0 }}
  animate={{ width: `${intelligenceData?.security?.integrityScore || 0}%` }}
  transition={{ duration: 1, ease: 'easeOut' }}
- className={`h-full rounded-full ${intelligenceData?.security?.integrityScore > 90 ? 'bg-emerald-500' : 'bg-rose-500'}`}
+ className={`h-full rounded-full ${intelligenceData?.security?.integrityScore > 85 ? 'bg-emerald-500' : 'bg-amber-500'}`}
  />
  </div>
  </div>
@@ -564,14 +560,14 @@ export default function SuperAdminDashboard() {
  </div>
  <div className="p-4 bg-main/40 rounded-xl border border-main">
  <p className="text-[11px] uppercase tracking-wider text-muted mb-2">Critical Alerts</p>
- <p className="text-3xl font-medium text-rose-500 tabular-nums">{intelligenceData?.security?.criticalAlerts || 0}</p>
+ <p className="text-3xl font-medium text-amber-500 tabular-nums">{intelligenceData?.security?.criticalAlerts || 0}</p>
  </div>
  </div>
 
  {/* Info Banner */}
- <div className="flex items-start gap-3 p-4 bg-rose-500/5 border border-rose-500/10 rounded-xl">
- <ShieldAlert size={16} className="text-rose-500 mt-0.5 shrink-0" />
- <p className="text-sm text-rose-600/80 leading-relaxed">
+ <div className="flex items-start gap-3 p-4 bg-primary-500/5 border border-primary-500/10 rounded-xl">
+ <ShieldAlert size={16} className="text-primary-500 mt-0.5 shrink-0" />
+ <p className="text-sm text-primary/80 leading-relaxed">
  System automatically monitors behavioral anomalies. Higher flags may indicate coordinated attempt patterns.
  </p>
  </div>
@@ -600,50 +596,50 @@ export default function SuperAdminDashboard() {
  )}
 
  {activeTab === 'audit-trail' && (
- <div className="bg-surface border border-main rounded-xl overflow-hidden shadow-sm flex flex-col h-[calc(100vh-320px)]">
- <div className="px-5 py-4 border-b border-main bg-surface-hover/30 flex items-center justify-between shrink-0">
- <h3 className="text-base font-medium text-primary flex items-center gap-2"><FileText size={16} className="text-primary-500" /> Global Event Stream</h3>
- <button onClick={fetchData} className="flex items-center gap-2 px-3 py-1.5 bg-main border border-main rounded-lg text-[11px] font-medium hover:text-primary-500 transition-all">
- <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
+ <div className="bg-surface border border-main rounded-xl overflow-hidden shadow-sm flex flex-col h-[calc(100vh-230px)]">
+ <div className="px-6 py-5 border-b border-main bg-surface-hover/30 flex items-center justify-between shrink-0">
+ <h3 className="text-lg font-medium text-primary flex items-center gap-2"><FileText size={18} className="text-primary-500" /> Global Event Stream</h3>
+ <button onClick={fetchData} className="flex items-center gap-2 px-4 py-2 bg-main border border-main rounded-lg text-sm font-medium hover:text-primary-500 transition-all">
+ <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
  Refresh Stream
  </button>
  </div>
  <div className="overflow-hidden flex flex-col flex-1">
  <table className="w-full text-left table-fixed">
  <thead className="bg-surface">
- <tr className="border-b border-main">
- <th className="px-6 py-2 text-[10px] font-medium text-muted uppercase tracking-tight w-44">Event Timestamp</th>
- <th className="px-6 py-2 text-[10px] font-medium text-muted uppercase tracking-tight w-48">Actor Identity</th>
- <th className="px-6 py-2 text-[10px] font-medium text-muted uppercase tracking-tight w-28">Severity</th>
- <th className="px-6 py-2 text-[10px] font-medium text-muted uppercase tracking-tight w-56">Action Context</th>
- <th className="px-6 py-2 text-[10px] font-medium text-muted uppercase tracking-tight">Target Entity</th>
+ <tr>
+ <th className="px-6 py-2 text-[11px] font-medium text-muted uppercase tracking-tight w-52">Event Timestamp</th>
+ <th className="px-6 py-2 text-[11px] font-medium text-muted uppercase tracking-tight w-64">Actor Identity</th>
+ <th className="px-6 py-2 text-[11px] font-medium text-muted uppercase tracking-tight w-32">Severity</th>
+ <th className="px-6 py-2 text-[11px] font-medium text-muted uppercase tracking-tight w-72">Action Context</th>
+ <th className="px-6 py-2 text-[11px] font-medium text-muted uppercase tracking-tight">Target Entity</th>
  </tr>
  </thead>
  </table>
  <div className="flex-1 overflow-y-auto custom-scrollbar">
  <table className="w-full text-left table-fixed">
  <colgroup>
- <col className="w-44" /><col className="w-48" /><col className="w-28" /><col className="w-56" /><col />
+ <col className="w-52" /><col className="w-64" /><col className="w-32" /><col className="w-72" /><col />
  </colgroup>
  <tbody className="divide-y-0">
  {auditLogs.map((log) => (
  <tr key={log._id} className="hover:bg-surface-hover/20 transition-colors border-b border-main last:border-0">
- <td className="px-6 py-2.5 text-[11px] font-medium text-muted whitespace-nowrap">{new Date(log.createdAt).toLocaleString()}</td>
- <td className="px-6 py-2.5">
+ <td className="px-6 py-2 text-[13px] font-medium text-muted whitespace-nowrap">{new Date(log.createdAt).toLocaleString()}</td>
+ <td className="px-6 py-2">
  <div className="flex flex-col">
- <span className="text-[11px] font-medium text-primary leading-tight">{log.performedBy?.name || 'System'}</span>
- <span className="text-[10px] text-muted">{log.performedBy?.email || 'automated@platform'}</span>
+ <span className="text-[13px] font-medium text-primary leading-tight">{log.performedBy?.name || 'System'}</span>
+ <span className="text-[11px] text-muted">{log.performedBy?.email || 'automated@platform'}</span>
  </div>
  </td>
- <td className="px-6 py-2.5">
+ <td className="px-6 py-2">
  <Badge color={log.severity === 'critical' ? 'rose' : log.severity === 'warning' ? 'amber' : 'blue'}>
- <span className="text-[9px] uppercase font-bold">{log.severity || 'info'}</span>
+ <span className="text-[9px] uppercase font-bold tracking-wide">{log.severity || 'info'}</span>
  </Badge>
  </td>
- <td className="px-6 py-2.5">
- <span className="text-[11px] font-medium text-primary">{log.action.replace(/_/g, ' ')}</span>
+ <td className="px-6 py-2">
+ <span className="text-[13px] font-medium text-primary">{log.action.replace(/_/g, ' ')}</span>
  </td>
- <td className="px-6 py-2.5 text-[11px] font-medium text-primary truncate max-w-[200px]">
+ <td className="px-6 py-2 text-[13px] font-medium text-primary truncate">
  {log.institutionId?.name || 'VISION PLATFORM'}
  </td>
  </tr>

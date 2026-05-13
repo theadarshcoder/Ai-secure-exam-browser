@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getStudentReport } from '../services/api';
 import { ThemeToggle } from '../contexts/ThemeContext';
+import BouncingDotLoader from '../components/BouncingDotLoader';
 import { 
     TrendingUp, 
     AlertTriangle, 
@@ -136,7 +137,7 @@ const StudentIntelligenceDashboard = () => {
     if (loading && !report) {
         return (
             <div className="flex justify-center items-center min-h-screen bg-main">
-                <div className="w-8 h-8 border-2 border-primary-500/20 border-t-primary-500 rounded-full animate-spin"></div>
+                <BouncingDotLoader text="Analyzing behavioral blueprint..." />
             </div>
         );
     }

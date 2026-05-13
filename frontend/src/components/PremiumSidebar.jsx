@@ -90,7 +90,7 @@ export default function PremiumSidebar({
       variants={sidebarVariants}
       animate={expanded ? 'expanded' : 'collapsed'}
       initial={false}
-      className="relative shrink-0 flex flex-col h-full z-30 overflow-visible"
+      className="relative shrink-0 flex flex-col h-full z-50 overflow-visible"
       style={{
         background: colors.bg,
         borderRight: `1px solid ${colors.border}`,
