@@ -290,17 +290,17 @@ const EvaluationModal = ({ sessionData, onClose, onGradeSubmit, submitStatus }) 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {q.options?.map((opt, oi) => (
                     <div key={oi} className={`flex items-center gap-3 px-4 py-3 rounded-xl text-[11px] border transition-all ${
-                      oi === q.correctChoice && oi === q.studentChoice ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 font-black' :
-                      oi === q.correctChoice ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 font-black' :
+                      oi === q.correctOption && oi === q.studentChoice ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 font-black' :
+                      oi === q.correctOption ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 font-black' :
                       oi === q.studentChoice ? 'bg-red-500/10 text-red-500 border-red-500/20 font-black' :
                       'bg-surface border-main text-muted font-bold'
                     }`}>
                       <div className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 shadow-sm ${
-                         oi === q.correctChoice ? 'bg-emerald-500 text-white' :
+                         oi === q.correctOption ? 'bg-emerald-500 text-white' :
                          oi === q.studentChoice ? 'bg-red-500 text-white' : 
                          'bg-surface-hover text-muted/30 border border-main'
                       }`}>
-                        {oi === q.correctChoice ? <Check size={12} strokeWidth={3} /> : oi === q.studentChoice ? <X size={12} strokeWidth={3} /> : <div className="w-1.5 h-1.5 rounded-full bg-current" />}
+                        {oi === q.correctOption ? <Check size={12} strokeWidth={3} /> : oi === q.studentChoice ? <X size={12} strokeWidth={3} /> : <div className="w-1.5 h-1.5 rounded-full bg-current" />}
                       </div>
                       <span>{opt}</span>
                     </div>

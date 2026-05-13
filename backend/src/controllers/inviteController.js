@@ -290,7 +290,7 @@ exports.bulkInvite = asyncHandler(async (req, res) => {
 
         return {
             inviteId,
-            email: job.email,
+            to: job.email,
             studentName: job.studentName,
             password: job.password,
             examName: job.examName,
@@ -534,7 +534,7 @@ exports.resendInvite = asyncHandler(async (req, res) => {
     // Queue new email
     await dispatchBulkNotifications([{
         inviteId: invite._id.toString(),
-        email: invite.email,
+        to: invite.email,
         studentName: student?.name || 'Student',
         password: 'Use your existing password',
         examName: exam.title,

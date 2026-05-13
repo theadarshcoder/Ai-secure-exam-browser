@@ -95,10 +95,20 @@ exports.globalLimiter = createLimiter({
     max: 120 // 2 requests per second avg
 });
 
+// 💓 Heartbeat Limiter (Specifically for frequent status checks)
+exports.heartbeatLimiter = createLimiter({
+    category: 'heartbeat',
+    windowMs: 15 * 60 * 1000, // 15 mins
+    max: 150, // Allows 10 requests per minute avg (More than enough for 30s/45s interval)
+    message: 'System activity limit exceeded. Please wait a moment.'
+});
+
+
 // 🔗 Legacy Aliases for Backward Compatibility
 exports.telemetryLimiter = exports.publicLimiter;
 exports.autosaveLimiter = exports.globalLimiter;
-exports.secureActionLimiter = exports.authLimiter;
+exports.secureActionLimiter = exports.globalLimiter; // Changed from authLimiter to avoid 429 on heartbeats
+
 exports.codeExecutionLimiter = exports.publicLimiter;
 exports.importLimiter = exports.publicLimiter;
 exports.demoRequestLimiter = exports.publicLimiter;
