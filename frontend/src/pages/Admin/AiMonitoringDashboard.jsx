@@ -9,7 +9,7 @@ import {
     ExternalLink, 
     CheckCircle2, 
     XCircle,
-    Brain,
+    Radar,
     Clock,
     Zap,
     ChevronRight,
@@ -21,6 +21,7 @@ import {
     Download,
     ChevronDown
 } from 'lucide-react';
+import BouncingDotLoader from '../../components/BouncingDotLoader';
 import { 
     AreaChart, 
     Area, 
@@ -96,18 +97,9 @@ const AiMonitoringDashboard = () => {
         }
     };
 
-    if (loading && !analytics) return (
+    if (loading) return (
         <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="flex flex-col items-center gap-6">
-                <div className="relative">
-                    <div className="w-16 h-16 border-4 border-primary-500/10 border-t-primary-500 rounded-full animate-spin"></div>
-                    <Brain className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-primary-500 animate-pulse" size={24} />
-                </div>
-                <div className="text-center">
-                    <p className="text-primary font-black text-sm uppercase tracking-[0.3em]">AI Intelligence Engine</p>
-                    <p className="text-muted text-[10px] mt-1 uppercase font-bold">Synchronizing Governance Nodes...</p>
-                </div>
-            </div>
+            <BouncingDotLoader text="Initializing secure neural systems..." />
         </div>
     );
 
@@ -115,56 +107,54 @@ const AiMonitoringDashboard = () => {
 
     return (
         <div className="space-y-8 animate-in fade-in duration-700">
-            {/* --- TOP MISSION CONTROL BAR --- */}
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-surface/40 backdrop-blur-md border border-main p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden">
+            {/* --- TOP CONTROL BAR --- */}
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 bg-surface/40 backdrop-blur-md border border-main p-4 rounded-2xl shadow-sm relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/5 blur-[100px] -z-10" />
                 
-                <div className="flex items-center gap-6">
-                    <div className="w-16 h-16 rounded-3xl bg-primary-500/10 flex items-center justify-center border border-primary-500/20 shadow-inner group transition-transform hover:scale-105">
-                        <Brain className="text-primary-500" size={32} />
-                    </div>
+                <div className="flex items-center gap-3">
+                    <Radar className="text-primary-500" size={22} />
                     <div>
-                        <h1 className="text-2xl font-black tracking-tight text-primary flex items-center gap-3">
-                            AI GOVERNANCE <span className="text-primary-500/40 font-thin">|</span> OPS
+                        <h1 className="text-lg font-bold tracking-tight text-primary flex items-center gap-2">
+                            AI Monitoring
                         </h1>
-                        <div className="flex items-center gap-3 mt-1.5">
-                            <span className="text-[10px] font-black text-muted uppercase tracking-[0.2em] px-2 py-0.5 border border-main rounded-md">Human-in-the-loop</span>
-                            <div className="flex items-center gap-1.5 text-[9px] font-bold text-emerald-500 uppercase tracking-widest">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                Monitoring Active
+                        <div className="flex items-center gap-3 mt-0.5">
+                            <span className="text-[9px] font-semibold text-muted uppercase tracking-wider px-2 py-0.5 border border-main rounded-md">Human Review</span>
+                            <div className="flex items-center gap-1.5 text-[9px] font-medium text-primary-500 uppercase tracking-wider">
+                                <span className="w-1.5 h-1.5 rounded-full bg-primary-500 animate-pulse" />
+                                Active
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4 w-full lg:w-auto">
-                    <div className="flex-1 lg:flex-none bg-main/50 border border-main px-6 py-3 rounded-2xl flex items-center gap-4">
+                <div className="flex items-center gap-3 w-full lg:w-auto">
+                    <div className="flex-1 lg:flex-none bg-main/50 border border-main px-4 py-2 rounded-xl flex items-center gap-3">
                         <div className="text-right">
-                            <p className="text-[9px] font-black text-muted uppercase tracking-tighter">Engine Status</p>
-                            <p className={`text-xs font-black ${aiEnabled ? 'text-emerald-500' : 'text-rose-500'}`}>{aiEnabled ? 'ACTIVE' : 'SUSPENDED'}</p>
+                            <p className="text-[9px] font-semibold text-muted uppercase tracking-wider">AI Status</p>
+                            <p className={`text-[11px] font-semibold ${aiEnabled ? 'text-primary-500' : 'text-muted'}`}>{aiEnabled ? 'Active' : 'Paused'}</p>
                         </div>
-                        <div className={`w-3 h-3 rounded-full ${aiEnabled ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.4)] animate-pulse' : 'bg-rose-500'}`} />
+                        <div className={`w-2 h-2 rounded-full ${aiEnabled ? 'bg-primary-500 shadow-[0_0_6px_rgba(var(--primary-500-rgb),0.4)] animate-pulse' : 'bg-muted/40'}`} />
                     </div>
                     
                     <button 
                         onClick={() => handleToggleAI('institution')}
-                        className={`flex-1 lg:flex-none px-8 py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all shadow-lg active:scale-95 ${
+                        className={`flex-1 lg:flex-none px-5 py-2.5 rounded-xl font-semibold text-[10px] uppercase tracking-wider transition-all shadow-sm active:scale-95 ${
                             aiEnabled 
-                            ? 'bg-rose-500 text-white hover:bg-rose-600 shadow-rose-500/20' 
-                            : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-500/20'
+                            ? 'bg-primary-500 text-white hover:bg-primary-600 shadow-primary-500/20' 
+                            : 'bg-primary-500 text-white hover:bg-primary-600 shadow-primary-500/20'
                         }`}
                     >
                         {aiEnabled ? (
-                            <div className="flex items-center gap-2"><ZapOff size={14} /> Kill Switch</div>
+                            <div className="flex items-center gap-2"><ZapOff size={13} /> Disable AI</div>
                         ) : (
-                            <div className="flex items-center gap-2"><Zap size={14} /> Enable Proctors</div>
+                            <div className="flex items-center gap-2"><Zap size={13} /> Enable AI</div>
                         )}
                     </button>
                 </div>
             </div>
 
             {/* --- METRIC GRID --- */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <MetricCard 
                     title="Total Violations" 
                     value={stats?.totalViolations || 0} 
@@ -173,14 +163,14 @@ const AiMonitoringDashboard = () => {
                     color="primary"
                 />
                 <MetricCard 
-                    title="Avg Risk Index" 
+                    title="Avg Risk Score" 
                     value={stats?.avgRiskScore?.toFixed(1) || 0} 
                     icon={Target} 
                     trend={{ val: "Stable", type: "stable" }}
                     color="amber"
                 />
                 <MetricCard 
-                    title="FP Rate" 
+                    title="False Alarms" 
                     value={`${analytics?.fpRate?.toFixed(1) || 0}%`} 
                     icon={ShieldCheck} 
                     trend={{ val: "-2%", type: "down" }}
@@ -196,17 +186,17 @@ const AiMonitoringDashboard = () => {
             </div>
 
             {/* --- ANALYTICS LAYER --- */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 bg-surface/30 border border-main rounded-[2.5rem] p-8 shadow-sm group">
-                    <div className="flex items-center justify-between mb-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 bg-surface/30 border border-main rounded-2xl p-6 shadow-sm group">
+                    <div className="flex items-center justify-between mb-6">
                         <div>
-                            <h3 className="text-lg font-black text-primary flex items-center gap-3">
-                                <Activity size={20} className="text-primary-500" />
-                                VIOLATION TIMELINE
+                            <h3 className="text-base font-semibold text-primary flex items-center gap-2">
+                                <Activity size={18} className="text-primary-500" />
+                                Activity Timeline
                             </h3>
-                            <p className="text-[10px] text-muted font-bold uppercase tracking-widest mt-1">Real-time pattern analysis</p>
+                            <p className="text-[11px] text-muted font-medium tracking-wide mt-1">Recent violation trends</p>
                         </div>
-                        <div className="flex items-center gap-2 bg-main/50 px-4 py-1.5 rounded-xl border border-main text-[10px] font-black text-muted uppercase tracking-widest">
+                        <div className="flex items-center gap-2 bg-main/50 px-3 py-1.5 rounded-lg border border-main text-[10px] font-semibold text-muted uppercase tracking-wider">
                             <Clock size={12} /> 7 Day Trend
                         </div>
                     </div>
@@ -232,10 +222,10 @@ const AiMonitoringDashboard = () => {
                     </div>
                 </div>
 
-                <div className="bg-surface/30 border border-main rounded-[2.5rem] p-8 shadow-sm">
-                    <h3 className="text-lg font-black text-primary flex items-center gap-3 mb-8">
-                        <BarChart3 size={20} className="text-primary-500" />
-                        TYPE DISTRIBUTION
+                <div className="bg-surface/30 border border-main rounded-2xl p-6 shadow-sm">
+                    <h3 className="text-base font-semibold text-primary flex items-center gap-2 mb-6">
+                        <BarChart3 size={18} className="text-primary-500" />
+                        Violation Types
                     </h3>
                     <div className="h-[280px] w-full relative">
                         <ResponsiveContainer width="100%" height="100%" key={analytics ? 'pie-active' : 'pie-loading'} minWidth={0}>
@@ -258,8 +248,8 @@ const AiMonitoringDashboard = () => {
                             </PieChart>
                         </ResponsiveContainer>
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-                            <p className="text-2xl font-black text-primary">{analytics?.typeBreakdown?.length || 0}</p>
-                            <p className="text-[9px] font-black text-muted uppercase tracking-tighter leading-none">Unique<br/>Types</p>
+                            <p className="text-2xl font-semibold text-primary">{analytics?.typeBreakdown?.length || 0}</p>
+                            <p className="text-[10px] font-medium text-muted uppercase tracking-wider leading-none">Unique<br/>Types</p>
                         </div>
                     </div>
                     <div className="grid grid-cols-1 gap-3 mt-6">
@@ -267,9 +257,9 @@ const AiMonitoringDashboard = () => {
                             <div key={t._id} className="flex items-center justify-between p-3 bg-main/30 rounded-xl border border-main group hover:border-primary-500/20 transition-all">
                                 <div className="flex items-center gap-3">
                                     <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                                    <span className="text-[11px] font-bold text-primary truncate max-w-[120px]">{t._id}</span>
+                                    <span className="text-[11px] font-medium text-primary truncate max-w-[120px]">{t._id}</span>
                                 </div>
-                                <span className="text-xs font-black text-primary tabular-nums">{t.count}</span>
+                                <span className="text-xs font-semibold text-primary tabular-nums">{t.count}</span>
                             </div>
                         ))}
                     </div>
@@ -277,19 +267,19 @@ const AiMonitoringDashboard = () => {
             </div>
 
             {/* --- OPERATIONS FEED --- */}
-            <div className="bg-surface/40 backdrop-blur-md border border-main rounded-[2.5rem] overflow-hidden shadow-xl">
-                <div className="p-8 border-b border-main flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="bg-surface/40 backdrop-blur-md border border-main rounded-2xl overflow-hidden shadow-sm">
+                <div className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
-                        <h3 className="text-xl font-black text-primary">OPERATIONS FEED</h3>
-                        <p className="text-[10px] text-muted font-bold uppercase tracking-widest mt-1">Live aggregated suspicious sessions</p>
+                        <h3 className="text-lg font-semibold text-primary">Live Feed</h3>
+                        <p className="text-[11px] text-muted font-medium tracking-wide mt-1">Recent suspicious activity</p>
                     </div>
                     <div className="flex items-center gap-3 w-full md:w-auto">
-                        <div className="flex-1 md:w-64 bg-main/50 border border-main rounded-2xl px-4 py-2 flex items-center gap-3 group focus-within:border-primary-500/50 transition-all">
+                        <div className="flex-1 md:w-64 bg-main/50 border border-main rounded-xl px-4 py-2 flex items-center gap-3 group focus-within:border-primary-500/50 transition-all">
                             <Search size={16} className="text-muted group-focus-within:text-primary-500" />
                             <input 
                                 type="text" 
                                 placeholder="Search candidates..." 
-                                className="bg-transparent border-none outline-none text-xs font-bold w-full"
+                                className="bg-transparent border-none outline-none text-xs font-medium w-full"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
@@ -299,12 +289,12 @@ const AiMonitoringDashboard = () => {
                         <div className="relative">
                             <button 
                                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                                className="bg-main/50 border border-main rounded-2xl px-6 py-2.5 flex items-center gap-4 group hover:border-primary-500/50 transition-all min-w-[200px] justify-between shadow-inner"
+                                className="bg-main/50 border border-main rounded-xl px-4 py-2.5 flex items-center gap-3 group hover:border-primary-500/50 transition-all min-w-[180px] justify-between shadow-sm"
                             >
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2">
                                     <Filter size={14} className="text-primary-500" />
-                                    <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">
-                                        {filter.status === 'all' ? 'All Status' : filter.status === 'pending' ? 'Pending Review' : filter.status === 'confirmed' ? 'Confirmed' : 'False Positives'}
+                                    <span className="text-[11px] font-semibold text-primary uppercase tracking-wider">
+                                        {filter.status === 'all' ? 'All' : filter.status === 'pending' ? 'Pending' : filter.status === 'confirmed' ? 'Confirmed' : 'False Alarms'}
                                     </span>
                                 </div>
                                 <ChevronDown size={14} className={`text-muted transition-transform duration-300 ${dropdownOpen ? 'rotate-180' : ''}`} />
@@ -316,20 +306,20 @@ const AiMonitoringDashboard = () => {
                                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
                                         animate={{ opacity: 1, y: 5, scale: 1 }}
                                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                        className="absolute top-full left-0 mt-2 w-full min-w-[220px] bg-surface/90 backdrop-blur-xl border border-main rounded-2xl shadow-2xl z-[100] p-2 overflow-hidden"
+                                        className="absolute top-full left-0 mt-2 w-full min-w-[200px] bg-surface/90 backdrop-blur-xl border border-main rounded-xl shadow-lg z-[100] p-1.5 overflow-hidden"
                                     >
                                         {[
-                                            { id: 'all', label: 'All Status', icon: Target },
-                                            { id: 'pending', label: 'Pending Review', icon: Clock },
+                                            { id: 'all', label: 'All', icon: Target },
+                                            { id: 'pending', label: 'Pending', icon: Clock },
                                             { id: 'confirmed', label: 'Confirmed', icon: ShieldAlert },
-                                            { id: 'false_positive', label: 'False Positives', icon: ShieldCheck }
+                                            { id: 'false_positive', label: 'False Alarms', icon: ShieldCheck }
                                         ].map((opt) => (
                                             <button
                                                 key={opt.id}
                                                 onClick={() => { setFilter({...filter, status: opt.id}); setDropdownOpen(false); }}
-                                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                                                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[11px] font-semibold uppercase tracking-wider transition-all ${
                                                     filter.status === opt.id 
-                                                    ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/20' 
+                                                    ? 'bg-primary-500 text-white shadow-md shadow-primary-500/20' 
                                                     : 'text-muted hover:bg-main hover:text-primary'
                                                 }`}
                                             >
@@ -347,44 +337,44 @@ const AiMonitoringDashboard = () => {
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead>
-                            <tr className="bg-main/20 text-[10px] font-black text-muted uppercase tracking-[0.2em]">
-                                <th className="px-8 py-5">Target Node</th>
-                                <th className="px-8 py-5">Risk Matrix</th>
-                                <th className="px-8 py-5">Latest Violation</th>
-                                <th className="px-8 py-5">Governance Status</th>
-                                <th className="px-8 py-5 text-right">Actions</th>
+                            <tr className="text-[11px] font-semibold text-muted uppercase tracking-wider">
+                                <th className="px-6 py-4">Student</th>
+                                <th className="px-6 py-4">Risk Level</th>
+                                <th className="px-6 py-4">Latest Event</th>
+                                <th className="px-6 py-4">Status</th>
+                                <th className="px-6 py-4 text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-main">
+                        <tbody className="">
                             {analytics?.recentSuspicious?.length > 0 ? (
                                 analytics.recentSuspicious.map((session, idx) => (
                                     <tr key={session._id} className="hover:bg-main/30 transition-all group">
-                                        <td className="px-8 py-6">
-                                            <div className="font-black text-sm text-primary group-hover:text-primary-500 transition-colors">{session.studentName || 'Unknown Student'}</div>
-                                            <div className="text-[10px] text-muted font-bold uppercase tracking-tight mt-0.5">{session.examName}</div>
+                                        <td className="px-6 py-4">
+                                            <div className="font-semibold text-sm text-primary group-hover:text-primary-500 transition-colors">{session.studentName || 'Unknown Student'}</div>
+                                            <div className="text-[11px] text-muted font-medium tracking-wide mt-0.5">{session.examName}</div>
                                         </td>
-                                        <td className="px-8 py-6">
+                                        <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <div className={`px-3 py-1 rounded-lg text-[9px] font-black border ${
+                                                <div className={`px-2 py-1 rounded-md text-[10px] font-semibold border ${
                                                     session.riskLevel === 'CRITICAL' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
                                                     session.riskLevel === 'HIGH' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
                                                     'bg-indigo-500/10 text-indigo-500 border-indigo-500/20'
                                                 }`}>
                                                     {session.riskLevel}
                                                 </div>
-                                                <div className="text-xs font-black text-muted tabular-nums">{session.riskScore.toFixed(0)}</div>
+                                                <div className="text-xs font-semibold text-muted tabular-nums">{session.riskScore.toFixed(0)}</div>
                                             </div>
                                         </td>
-                                        <td className="px-8 py-6">
-                                            <div className="text-xs font-black text-primary uppercase tracking-tight">{session.latestViolationType}</div>
-                                            <div className="text-[9px] text-muted font-bold flex items-center gap-1.5 mt-1 uppercase">
+                                        <td className="px-6 py-4">
+                                            <div className="text-xs font-semibold text-primary uppercase tracking-wider">{session.latestViolationType}</div>
+                                            <div className="text-[10px] text-muted font-medium flex items-center gap-1.5 mt-1 uppercase">
                                                 <Clock size={10} /> {new Date(session.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </div>
                                         </td>
-                                        <td className="px-8 py-6">
+                                        <td className="px-6 py-4">
                                             <StatusBadge status={session.reviewStatus} />
                                         </td>
-                                        <td className="px-8 py-6 text-right">
+                                        <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 <button 
                                                     onClick={() => window.open(`/mentor/exam/${session.examId}/monitoring`, '_blank')}
@@ -404,10 +394,10 @@ const AiMonitoringDashboard = () => {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="5" className="px-8 py-24 text-center">
-                                        <div className="flex flex-col items-center gap-4 opacity-30">
-                                            <ShieldCheck size={48} className="text-emerald-500" />
-                                            <p className="text-sm font-black uppercase tracking-widest text-muted">Awaiting Security Events</p>
+                                    <td colSpan="5" className="px-6 py-20 text-center">
+                                        <div className="flex flex-col items-center gap-3 opacity-40">
+                                            <ShieldCheck size={40} className="text-emerald-500" />
+                                            <p className="text-xs font-semibold uppercase tracking-wider text-muted">Awaiting Security Events</p>
                                         </div>
                                     </td>
                                 </tr>
@@ -420,68 +410,68 @@ const AiMonitoringDashboard = () => {
             {/* --- REVIEW MODAL (ENHANCED) --- */}
             <AnimatePresence>
                 {selectedViolation && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-xl">
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
                         <motion.div 
                             initial={{ scale: 0.95, opacity: 0, y: 20 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             exit={{ scale: 0.95, opacity: 0, y: 20 }}
-                            className="bg-surface border border-main rounded-[2.5rem] w-full max-w-xl p-10 shadow-2xl relative"
+                            className="bg-surface border border-main rounded-2xl w-full max-w-xl p-8 shadow-xl relative"
                         >
                             <div className="absolute -top-12 -left-12 w-64 h-64 bg-primary-500/10 blur-[80px] -z-10" />
                             
-                            <div className="flex items-center gap-4 mb-8">
-                                <div className="p-3 bg-primary-500/20 rounded-2xl text-primary-500 border border-primary-500/20">
-                                    <ShieldAlert size={24} />
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="p-3 bg-primary-500/10 rounded-xl text-primary-500 border border-primary-500/20">
+                                    <ShieldAlert size={20} />
                                 </div>
                                 <div>
-                                    <h2 className="text-2xl font-black text-primary tracking-tight">SECURITY REVIEW</h2>
-                                    <p className="text-[10px] text-muted font-bold uppercase tracking-widest">Manual Override Authorization Required</p>
+                                    <h2 className="text-xl font-semibold text-primary tracking-tight">Review Activity</h2>
+                                    <p className="text-[11px] text-muted font-medium tracking-wide">Please review and confirm this event</p>
                                 </div>
                             </div>
                             
-                            <div className="bg-main/50 rounded-2xl p-6 border border-main mb-8 space-y-4">
-                                <div className="flex justify-between items-center pb-4 border-b border-main">
-                                    <span className="text-[10px] font-black text-muted uppercase tracking-widest">Target Node</span>
-                                    <span className="text-sm font-black text-primary">{selectedViolation.studentName}</span>
+                            <div className="bg-main/50 rounded-xl p-5 border border-main mb-6 space-y-4">
+                                <div className="flex justify-between items-center pb-3 border-b border-main">
+                                    <span className="text-[10px] font-semibold text-muted uppercase tracking-wider">Student</span>
+                                    <span className="text-sm font-semibold text-primary">{selectedViolation.studentName}</span>
                                 </div>
                                 <div className="flex justify-between items-center">
-                                    <span className="text-[10px] font-black text-muted uppercase tracking-widest">Violation Detected</span>
-                                    <span className="text-xs font-black text-rose-500 px-3 py-1 bg-rose-500/10 rounded-lg">{selectedViolation.latestViolationType}</span>
+                                    <span className="text-[10px] font-semibold text-muted uppercase tracking-wider">Event Detected</span>
+                                    <span className="text-xs font-semibold text-rose-500 px-3 py-1 bg-rose-500/10 rounded-md">{selectedViolation.latestViolationType}</span>
                                 </div>
                             </div>
 
-                            <div className="space-y-4 mb-8">
-                                <label className="flex items-center gap-2 text-[10px] font-black text-muted uppercase tracking-widest ml-1">
-                                    <Settings size={12} /> Audit Trail Justification
+                            <div className="space-y-3 mb-6">
+                                <label className="flex items-center gap-2 text-[10px] font-semibold text-muted uppercase tracking-wider ml-1">
+                                    <Settings size={12} /> Reason for Decision
                                 </label>
                                 <textarea 
-                                    className="w-full bg-main/30 border border-main rounded-2xl p-6 text-sm text-primary outline-none focus:border-primary-500/50 transition-all h-36 resize-none shadow-inner"
-                                    placeholder="Provide detailed justification for this human-in-the-loop override..."
+                                    className="w-full bg-main/30 border border-main rounded-xl p-4 text-sm text-primary outline-none focus:border-primary-500/50 transition-all h-32 resize-none shadow-sm"
+                                    placeholder="Add a note explaining your decision..."
                                     value={reviewReason}
                                     onChange={(e) => setReviewReason(e.target.value)}
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 gap-3">
                                 <button 
                                     onClick={() => handleReview('false_positive')}
-                                    className="flex items-center justify-center gap-3 py-5 rounded-[1.5rem] bg-rose-500/10 text-rose-500 border border-rose-500/20 font-black text-xs uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all shadow-lg active:scale-95"
+                                    className="flex items-center justify-center gap-2 py-3 rounded-xl bg-rose-500/10 text-rose-500 border border-rose-500/20 font-semibold text-[11px] uppercase tracking-wider hover:bg-rose-500 hover:text-white transition-all shadow-sm active:scale-95"
                                 >
-                                    <XCircle size={18} /> Flag False Pos
+                                    <XCircle size={16} /> Mark as Safe
                                 </button>
                                 <button 
                                     onClick={() => handleReview('confirmed')}
-                                    className="flex items-center justify-center gap-3 py-5 rounded-[1.5rem] bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-black text-xs uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-all shadow-lg active:scale-95"
+                                    className="flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-semibold text-[11px] uppercase tracking-wider hover:bg-emerald-500 hover:text-white transition-all shadow-sm active:scale-95"
                                 >
-                                    <CheckCircle2 size={18} /> Confirm Breach
+                                    <CheckCircle2 size={16} /> Confirm Cheating
                                 </button>
                             </div>
                             
                             <button 
                                 onClick={() => { setSelectedViolation(null); setReviewReason(''); }}
-                                className="w-full mt-6 text-muted font-black text-[10px] uppercase tracking-[0.3em] py-2 hover:text-primary transition-colors"
+                                className="w-full mt-4 text-muted font-semibold text-[11px] uppercase tracking-wider py-2 hover:text-primary transition-colors"
                             >
-                                Abandon Review
+                                Cancel
                             </button>
                         </motion.div>
                     </div>
@@ -492,58 +482,39 @@ const AiMonitoringDashboard = () => {
 };
 
 const MetricCard = ({ title, value, icon: Icon, trend, color }) => {
-    const colors = {
-        primary: "bg-primary-500/10 text-primary-500 border-primary-500/20 shadow-primary-500/5",
-        amber: "bg-amber-500/10 text-amber-500 border-amber-500/20 shadow-amber-500/5",
-        emerald: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20 shadow-emerald-500/5",
-        rose: "bg-rose-500/10 text-rose-500 border-rose-500/20 shadow-rose-500/5"
-    };
-
     return (
-        <div className="bg-surface/30 border border-main p-8 rounded-[2.5rem] shadow-sm relative overflow-hidden group hover:border-primary-500/20 transition-all">
-            <div className={`absolute -top-12 -right-12 w-32 h-32 bg-gradient-to-br from-primary-500/10 to-transparent blur-3xl opacity-20 group-hover:opacity-40 transition-opacity`} />
-            
-            <div className="flex items-center justify-between mb-6">
-                <div className={`w-12 h-12 rounded-2xl ${colors[color]} flex items-center justify-center border shadow-inner transition-transform group-hover:scale-110`}>
-                    <Icon size={24} />
-                </div>
-                <div className="flex flex-col items-end">
-                    <div className="text-[9px] font-black text-muted uppercase tracking-widest">Platform Node</div>
-                    <div className="flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        <span className="text-[9px] font-black text-emerald-500 uppercase tracking-tighter">Live</span>
+        <div className="bg-surface border border-main rounded-xl p-4 flex items-center justify-between shadow-sm hover:border-primary-500/30 transition-all group h-full gap-4">
+            <div className="flex items-center gap-3">
+                <Icon className={`text-${color}-500 shrink-0`} size={20} />
+                <div>
+                    <h3 className="text-[12px] font-semibold text-primary leading-none">{title}</h3>
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                        <span className={`text-[9px] font-medium uppercase tracking-wider ${
+                            trend.type === 'up' ? 'text-rose-500' : 
+                            trend.type === 'down' ? 'text-emerald-500' : 
+                            'text-muted'
+                        }`}>
+                            {trend.val}
+                        </span>
                     </div>
                 </div>
             </div>
-            
-            <div className="space-y-1">
-                <p className="text-4xl font-black text-primary tracking-tighter tabular-nums">{value}</p>
-                <p className="text-[11px] font-bold text-muted uppercase tracking-widest">{title}</p>
-            </div>
-            
-            <div className={`mt-6 pt-4 border-t border-main flex items-center gap-2 text-[9px] font-black uppercase tracking-widest ${
-                trend.type === 'up' ? 'text-rose-500' : 
-                trend.type === 'down' ? 'text-emerald-500' : 
-                'text-muted'
-            }`}>
-                <ChevronRight size={12} className="text-primary-500" />
-                {trend.val} <span className="text-muted/40 ml-1 font-bold">Performance Delta</span>
-            </div>
+            <p className="text-xl font-semibold text-primary tabular-nums tracking-tight">{value}</p>
         </div>
     );
 };
 
 const StatusBadge = ({ status }) => {
     const config = {
-        pending: { label: 'Awaiting Review', bg: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
-        confirmed: { label: 'Confirmed Breach', bg: 'bg-rose-500/10 text-rose-500 border-rose-500/20' },
-        false_positive: { label: 'False Positive', bg: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
+        pending: { label: 'Pending', bg: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
+        confirmed: { label: 'Confirmed', bg: 'bg-rose-500/10 text-rose-500 border-rose-500/20' },
+        false_positive: { label: 'False Alarm', bg: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
     };
 
     const s = config[status] || config.pending;
 
     return (
-        <span className={`px-4 py-1.5 rounded-xl text-[9px] font-black border uppercase tracking-widest shadow-sm ${s.bg}`}>
+        <span className={`px-3 py-1 rounded-md text-[10px] font-semibold border uppercase tracking-wider shadow-sm ${s.bg}`}>
             {s.label}
         </span>
     );

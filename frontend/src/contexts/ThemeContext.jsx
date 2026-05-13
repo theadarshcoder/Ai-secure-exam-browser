@@ -15,7 +15,12 @@ export const ThemeProvider = ({ children }) => {
     localStorage.setItem('vision_theme', theme);
   }, [theme]);
 
-  const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
+  const toggleTheme = () => {
+    const html = document.documentElement;
+    html.classList.add('theme-transitioning');
+    setTheme(t => t === 'dark' ? 'light' : 'dark');
+    setTimeout(() => html.classList.remove('theme-transitioning'), 300);
+  };
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>

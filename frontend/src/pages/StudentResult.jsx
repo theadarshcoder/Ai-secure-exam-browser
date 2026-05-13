@@ -175,27 +175,33 @@ const StudentResult = () => {
 
                                         {/* Questions in this Section */}
                                         <div className="flex flex-col space-y-1">
-                                            {questions.map((q, i) => (
+                                            {questions.map((q, i) => {
+                                                // Smart status: derive visual status from actual marks
+                                                const effectiveStatus = (q.marksObtained != null && q.maxMarks != null)
+                                                  ? (q.marksObtained >= q.maxMarks ? 'correct' : q.marksObtained > 0 ? 'partial' : (q.status || 'incorrect'))
+                                                  : q.status;
+
+                                                return (
                                                 <div 
                                                     key={i} 
                                                     className="flex items-center justify-between py-4 px-4 hover:bg-white hover:shadow-xl hover:shadow-indigo-500/5 rounded-2xl transition-all duration-300 -mx-4 group relative overflow-hidden"
                                                 >
                                                     {/* Decorative sidebar for status */}
                                                     <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity ${
-                                                        q.status === 'correct' ? 'bg-emerald-500' : q.status === 'incorrect' ? 'bg-rose-500' : 'bg-slate-200'
+                                                        effectiveStatus === 'correct' ? 'bg-emerald-500' : effectiveStatus === 'incorrect' ? 'bg-rose-500' : 'bg-slate-200'
                                                     }`} />
 
-                                                    <div className="flex items-center gap-5">
-                                                        <span className="text-[10px] font-bold text-slate-300 w-6 font-mono group-hover:text-indigo-500 transition-colors">
+                                                    <div className="flex items-center gap-5 min-w-0 flex-1">
+                                                        <span className="text-[10px] font-bold text-slate-300 w-6 font-mono group-hover:text-indigo-500 transition-colors shrink-0">
                                                             {String(i + 1).padStart(2, '0')}
                                                         </span>
-                                                        <div className="flex flex-col">
-                                                            <span className="text-[13px] font-semibold text-slate-700 group-hover:text-slate-900 transition-colors">
+                                                        <div className="flex flex-col min-w-0 flex-1">
+                                                            <span className="text-[13px] font-semibold text-slate-700 group-hover:text-slate-900 transition-colors truncate">
                                                                 {q.questionText || `Evaluation Item ${i+1}`}
                                                             </span>
                                                             <div className="flex items-center gap-2 mt-1">
                                                                 <span className="text-[8px] font-bold text-slate-400 uppercase tracking-[0.1em]">{q.type}</span>
-                                                                {q.status === 'correct' && (
+                                                                {effectiveStatus === 'correct' && (
                                                                     <div className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest border border-emerald-100/50">
                                                                         <CheckCircle2 size={8} />
                                                                         Verified
@@ -217,11 +223,11 @@ const StudentResult = () => {
                                                             <span className="text-[7px] font-bold text-slate-400 uppercase tracking-widest leading-none">Score</span>
                                                         </div>
                                                         <div className="w-5 h-5 flex items-center justify-center">
-                                                            {q.status === 'correct' ? (
+                                                            {effectiveStatus === 'correct' ? (
                                                                 <div className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-500 flex items-center justify-center border border-emerald-100/50">
                                                                     <CheckCircle2 size={13} />
                                                                 </div>
-                                                            ) : q.status === 'incorrect' ? (
+                                                            ) : effectiveStatus === 'incorrect' ? (
                                                                 <div className="w-6 h-6 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center border border-rose-100/50">
                                                                     <XCircle size={13} />
                                                                 </div>
@@ -231,7 +237,8 @@ const StudentResult = () => {
                                                         </div>
                                                     </div>
                                                 </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 ))}

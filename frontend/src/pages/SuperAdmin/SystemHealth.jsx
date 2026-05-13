@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import BouncingDotLoader from '../../components/BouncingDotLoader';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Activity, 
@@ -15,6 +16,7 @@ import {
     Layers,
     Terminal,
     ChevronLeft,
+    ChevronRight,
     BarChart
 } from 'lucide-react';
 import api from '../../services/api';
@@ -70,58 +72,93 @@ export default function SystemHealth() {
     if (loading) {
         return (
             <div className="h-screen bg-main flex items-center justify-center">
-                <RefreshCw className="animate-spin text-primary-500" size={32} />
+                <BouncingDotLoader text="Syncing system state..." />
             </div>
         );
     }
 
     const StatCard = ({ title, status, latency, icon: Icon, color }) => (
-        <div className="bg-surface border border-main rounded-3xl p-6 flex items-center justify-between shadow-sm group hover:border-primary-500/20 transition-all">
-            <div className="flex items-center gap-4">
-                <div className={`w-14 h-14 rounded-2xl bg-${color}-500/10 text-${color}-500 flex items-center justify-center border border-${color}-500/20 shadow-inner`}>
-                    <Icon size={28} />
-                </div>
+        <div className="bg-surface border border-main rounded-xl p-4 flex items-center justify-between shadow-sm hover:shadow-md transition-all gap-3">
+            <div className="flex items-center gap-3">
+                <Icon className={`text-${color}-500 shrink-0`} size={16} />
                 <div>
-                    <h3 className="text-sm font-bold text-primary">{title}</h3>
-                    <div className="flex items-center gap-2 mt-1">
-                        <span className={`w-2 h-2 rounded-full ${status === 'up' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-muted">{status === 'up' ? 'Operational' : 'Critical Failure'}</span>
+                    <h3 className="text-sm font-medium text-primary leading-tight">{title}</h3>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${status === 'up' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+                        <span className="text-[10px] uppercase tracking-wide text-muted">{status === 'up' ? 'Operational' : 'Critical'}</span>
                     </div>
                 </div>
             </div>
-            <div className="text-right">
-                <p className="text-xs font-black text-muted uppercase tracking-widest">Latency</p>
-                <p className="text-xl font-black text-primary tabular-nums">{latency}ms</p>
+            <div className="text-right shrink-0">
+                <p className="text-[10px] text-muted uppercase tracking-wide">Latency</p>
+                <p className="text-sm font-medium text-primary tabular-nums mt-0.5">{latency}ms</p>
             </div>
         </div>
     );
 
+    const AIEnginesCard = ({ geminiStatus, groqStatus }) => {
+        const isAllUp = geminiStatus === 'up' && groqStatus === 'up';
+        const isSomeUp = geminiStatus === 'up' || groqStatus === 'up';
+        
+        return (
+            <div className="bg-surface border border-main rounded-xl p-4 flex items-center justify-between shadow-sm hover:shadow-md transition-all gap-3">
+                <div className="flex items-center gap-3">
+                    <BarChart className="text-blue-500 shrink-0" size={16} />
+                    <div>
+                        <h3 className="text-sm font-medium text-primary leading-tight">AI Engines</h3>
+                        <div className="flex items-center gap-3 mt-0.5">
+                            <div className="flex items-center gap-1.5">
+                                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${geminiStatus === 'up' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+                                <span className="text-[10px] uppercase tracking-wide text-muted">Gemini</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${groqStatus === 'up' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+                                <span className="text-[10px] uppercase tracking-wide text-muted">Groq</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div className="text-right shrink-0">
+                    <p className="text-[10px] text-muted uppercase tracking-wide">Latency</p>
+                    <p className="text-sm font-medium text-primary tabular-nums mt-0.5">{health?.ai?.latency || 0}ms</p>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="flex h-screen bg-main font-sans text-primary select-none antialiased">
-            <PremiumSidebar
+            <PremiumSidebar 
                 expanded={sidebarExpanded}
                 onToggle={setSidebarExpanded}
                 navItems={[
-                    { id: 'back', label: 'Dashboard', icon: ChevronLeft },
+                    { 
+                        id: 'back', 
+                        label: 'Dashboard', 
+                        icon: ChevronLeft, 
+                        onClick: () => {
+                            sessionStorage.setItem('sa_active_tab', 'demo-requests');
+                            navigate('/super-admin');
+                        }
+                    },
                 ]}
                 activeTab={null}
                 setActiveTab={() => navigate('/super-admin')}
                 userName={userName}
                 userRole="super_admin"
                 onLogout={() => { sessionStorage.clear(); window.location.href = '/login'; }}
-                brandLabel="HEALTH"
+                brandLabel="VISION"
             />
 
             <main className="flex-1 flex flex-col h-screen overflow-hidden">
                 <header className="h-14 bg-surface/80 backdrop-blur-md border-b border-main flex items-center justify-between px-8 shrink-0 relative z-40">
                     <div className="flex items-center gap-3 text-sm font-semibold text-muted">
-                        <Activity size={16} className="text-emerald-500" />
-                        <span>Platform Operations</span>
-                        <ChevronLeft size={14} className="opacity-30 mx-1" />
-                        <span className="text-primary font-bold">Infrastructure Cockpit</span>
+                        <span className="hover:text-primary transition-colors cursor-pointer" onClick={() => navigate('/super-admin')}>Platform Engine</span>
+                        <ChevronRight size={14} className="opacity-40" />
+                        <span className="text-primary font-bold">System Health</span>
                     </div>
                     <div className="flex items-center gap-4">
-                        <span className="text-[10px] font-black uppercase text-muted tracking-[0.2em]">{refreshing ? 'Syncing...' : 'Live Engine Status'}</span>
+                        <span className="text-xs font-medium uppercase text-muted tracking-wide">{refreshing ? 'Syncing...' : 'Live Engine Status'}</span>
                         <ThemeToggle />
                         <button onClick={() => fetchData(true)} className={`p-2 text-muted hover:text-primary-500 transition-all ${refreshing ? 'animate-spin' : ''}`}>
                             <RefreshCw size={20} />
@@ -130,148 +167,120 @@ export default function SystemHealth() {
                 </header>
 
                 <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-main/50">
-                    <div className="max-w-6xl mx-auto space-y-8">
+                    <div className="space-y-6">
                         
                         {/* Core Infrastructure */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
                             <StatCard title="MongoDB Cluster" status={health?.database?.status} latency={health?.database?.latency || 0} icon={Database} color="emerald" />
                             <StatCard title="Redis Cache" status={health?.cache?.status} latency={health?.cache?.latency || 0} icon={Zap} color="amber" />
                             <StatCard title="Judge0 Engine" status={health?.judge0?.status} latency={health?.judge0?.latency || 0} icon={Terminal} color="indigo" />
-                            <div className="bg-surface border border-main rounded-3xl p-6 flex items-center justify-between shadow-sm group hover:border-primary-500/20 transition-all">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-14 h-14 rounded-2xl bg-violet-500/10 text-violet-500 flex items-center justify-center border border-violet-500/20 shadow-inner">
-                                        <BarChart size={28} />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-sm font-bold text-primary">AI Engines</h3>
-                                        <div className="flex flex-col gap-1 mt-1">
-                                            <div className="flex items-center gap-2">
-                                                <span className={`w-1.5 h-1.5 rounded-full ${health?.ai?.gemini === 'up' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                                                <span className="text-[9px] font-black uppercase text-muted tracking-widest">Gemini Engine</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className={`w-1.5 h-1.5 rounded-full ${health?.ai?.groq === 'up' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                                                <span className="text-[9px] font-black uppercase text-muted tracking-widest">Groq Engine</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Live Status Row */}
-                        <div className="bg-primary-500/5 border border-primary-500/10 rounded-2xl p-6 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-primary-500/20 rounded-xl text-primary-500">
-                                    <Activity size={18} />
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-black text-muted uppercase tracking-widest">Live Active Connections</p>
-                                    <p className="text-xl font-black text-primary tabular-nums">{health?.connections?.active || 0} <span className="text-[10px] font-bold text-muted ml-1 uppercase tracking-tighter">Nodes Online</span></p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Real-time Stream Active</span>
-                            </div>
+                            <AIEnginesCard geminiStatus={health?.ai?.gemini} groqStatus={health?.ai?.groq} />
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                             
                             {/* Resource Consumption */}
-                            <section className="lg:col-span-1 space-y-6">
-                                <div className="bg-surface border border-main rounded-3xl p-8 space-y-6 shadow-sm">
-                                    <h3 className="text-lg font-bold text-primary flex items-center gap-3"><Cpu size={20} className="text-primary-500" /> Node Resources</h3>
-                                    <div className="space-y-6">
+                            <section className="lg:col-span-1 space-y-4">
+                                <div className="bg-surface border border-main rounded-xl p-5 space-y-4 shadow-sm">
+                                    <div className="flex items-center gap-2">
+                                        <Cpu size={14} className="text-indigo-400" />
+                                        <h3 className="text-sm font-medium text-primary">Node Resources</h3>
+                                    </div>
+
+                                    <div className="space-y-4">
                                         <div>
-                                            <div className="flex justify-between text-[11px] font-black text-muted uppercase tracking-widest mb-2">
+                                            <div className="flex justify-between text-xs text-muted uppercase tracking-wide mb-1.5">
                                                 <span>Heap Memory</span>
                                                 <span>{health?.memory ? Math.round(health.memory.heapUsed / 1024 / 1024) : 0}MB</span>
                                             </div>
-                                            <div className="h-2 bg-main rounded-full overflow-hidden">
+                                            <div className="h-1.5 bg-main rounded-full overflow-hidden">
                                                 <motion.div 
                                                     initial={{ width: 0 }}
                                                     animate={{ width: `${health?.memory ? (health.memory.heapUsed / health.memory.heapTotal) * 100 : 0}%` }}
-                                                    className="h-full bg-primary-500 rounded-full shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]" 
+                                                    className="h-full bg-primary-500 rounded-full" 
                                                 />
                                             </div>
                                         </div>
                                         <div>
-                                            <div className="flex justify-between text-[11px] font-black text-muted uppercase tracking-widest mb-2">
+                                            <div className="flex justify-between text-xs text-muted uppercase tracking-wide mb-1.5">
                                                 <span>RSS Usage</span>
                                                 <span>{health?.memory ? Math.round(health.memory.rss / 1024 / 1024) : 0}MB</span>
                                             </div>
-                                            <div className="h-2 bg-main rounded-full overflow-hidden">
+                                            <div className="h-1.5 bg-main rounded-full overflow-hidden">
                                                 <motion.div 
                                                     initial={{ width: 0 }}
                                                     animate={{ width: `${Math.min((health?.memory?.rss / (512 * 1024 * 1024)) * 100, 100)}%` }}
-                                                    className="h-full bg-indigo-500 rounded-full shadow-[0_0_8px_rgba(99,102,241,0.5)]" 
+                                                    className="h-full bg-primary-500/70 rounded-full" 
                                                 />
                                             </div>
                                         </div>
-                                        <div className="pt-4 border-t border-main flex items-center justify-between">
-                                            <div className="flex items-center gap-2 text-xs font-bold text-muted"><Clock size={14} /> Node Uptime</div>
-                                            <span className="text-sm font-black text-primary tabular-nums">{health?.uptime ? `${Math.floor(health.uptime / 3600)}h ${Math.floor((health.uptime % 3600) / 60)}m` : '0h 0m'}</span>
+                                        <div className="pt-3 border-t border-main flex items-center justify-between">
+                                            <div className="flex items-center gap-1.5 text-xs text-muted"><Clock size={12} /> Node Uptime</div>
+                                            <span className="text-sm font-medium text-primary tabular-nums">{health?.uptime ? `${Math.floor(health.uptime / 3600)}h ${Math.floor((health.uptime % 3600) / 60)}m` : '0h 0m'}</span>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="bg-surface border border-main rounded-3xl p-8 space-y-4 shadow-sm">
-                                    <h3 className="text-sm font-bold text-primary flex items-center gap-2"><ShieldCheck size={16} className={health?.security?.criticalAlerts > 0 ? 'text-rose-500' : 'text-emerald-500'} /> Security Telemetry</h3>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="p-3 bg-main/50 rounded-2xl border border-main">
-                                            <p className="text-[10px] font-black text-muted uppercase tracking-tighter">Critical Alerts</p>
-                                            <p className={`text-lg font-black ${health?.security?.criticalAlerts > 0 ? 'text-rose-500' : 'text-primary'}`}>{health?.security?.criticalAlerts || 0}</p>
+                                <div className="bg-surface border border-main rounded-xl p-4 space-y-3 shadow-sm">
+                                    <div className="flex items-center gap-2">
+                                        <ShieldCheck size={14} className={health?.security?.criticalAlerts > 0 ? 'text-rose-500' : 'text-emerald-500'} />
+                                        <h3 className="text-sm font-medium text-primary">Security Telemetry</h3>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="p-3 bg-main/50 rounded-lg border border-main">
+                                            <p className="text-[10px] text-muted uppercase tracking-wide">Critical Alerts</p>
+                                            <p className={`text-base font-medium mt-0.5 ${health?.security?.criticalAlerts > 0 ? 'text-rose-500' : 'text-primary'}`}>{health?.security?.criticalAlerts || 0}</p>
                                         </div>
-                                        <div className="p-3 bg-main/50 rounded-2xl border border-main">
-                                            <p className="text-[10px] font-black text-muted uppercase tracking-tighter">Warnings</p>
-                                            <p className={`text-lg font-black ${health?.security?.warnings > 5 ? 'text-amber-500' : 'text-primary'}`}>{health?.security?.warnings || 0}</p>
+                                        <div className="p-3 bg-main/50 rounded-lg border border-main">
+                                            <p className="text-[10px] text-muted uppercase tracking-wide">Warnings</p>
+                                            <p className={`text-base font-medium mt-0.5 ${health?.security?.warnings > 5 ? 'text-amber-500' : 'text-primary'}`}>{health?.security?.warnings || 0}</p>
                                         </div>
                                     </div>
-                                    <div className={`p-4 rounded-2xl border ${health?.security?.criticalAlerts > 0 ? 'bg-rose-500/5 border-rose-500/10' : 'bg-emerald-500/5 border-emerald-500/10'}`}>
-                                        <p className={`text-[11px] font-medium leading-relaxed italic ${health?.security?.criticalAlerts > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                                            {health?.security?.criticalAlerts > 0 
-                                                ? '🚨 Security breach attempt detected! Immediate review of audit logs required.' 
-                                                : '🛡️ All firewall rules active. No intrusion detected in recent socket handshakes.'}
-                                        </p>
+                                    <div className={`px-3 py-2.5 rounded-lg border text-xs leading-relaxed ${health?.security?.criticalAlerts > 0 ? 'bg-rose-500/5 border-rose-500/10 text-rose-600' : 'bg-emerald-500/5 border-emerald-500/10 text-emerald-600'}`}>
+                                        {health?.security?.criticalAlerts > 0
+                                            ? '🚨 Security breach attempt detected! Immediate review required.'
+                                            : '🛡️ All firewall rules active. No intrusion detected.'}
                                     </div>
                                 </div>
                             </section>
 
                             {/* Queue Monitor */}
-                            <section className="lg:col-span-2 bg-surface border border-main rounded-3xl overflow-hidden shadow-sm flex flex-col">
-                                <div className="p-6 border-b border-main bg-surface-hover/30 flex items-center justify-between">
-                                    <h3 className="text-lg font-bold text-primary flex items-center gap-3"><Layers size={20} className="text-amber-500" /> Queue Manager (BullMQ)</h3>
+                            <section className="lg:col-span-2 bg-surface border border-main rounded-xl overflow-hidden shadow-sm flex flex-col">
+                                <div className="px-5 py-4 border-b border-main flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <Layers size={14} className="text-indigo-400" />
+                                        <h3 className="text-sm font-medium text-primary">Queue Manager (BullMQ)</h3>
+                                    </div>
                                     <Badge color="emerald">Cluster Active</Badge>
                                 </div>
                                 <div className="flex-1 overflow-x-auto">
                                     <table className="w-full text-left">
-                                        <thead className="bg-surface-hover/50 text-[10px] font-black uppercase tracking-[0.2em] text-muted">
-                                            <tr>
-                                                <th className="px-6 py-4">Queue Name</th>
-                                                <th className="px-6 py-4">Waiting</th>
-                                                <th className="px-6 py-4">Active</th>
-                                                <th className="px-6 py-4">Failed</th>
-                                                <th className="px-6 py-4 text-right">Actions</th>
+                                        <thead className="bg-surface-hover/50">
+                                            <tr className="border-b border-main">
+                                                <th className="px-5 py-2.5 text-[11px] font-semibold text-primary/60 uppercase tracking-wider">Queue Name</th>
+                                                <th className="px-5 py-2.5 text-[11px] font-semibold text-primary/60 uppercase tracking-wider">Waiting</th>
+                                                <th className="px-5 py-2.5 text-[11px] font-semibold text-primary/60 uppercase tracking-wider">Active</th>
+                                                <th className="px-5 py-2.5 text-[11px] font-semibold text-primary/60 uppercase tracking-wider">Failed</th>
+                                                <th className="px-5 py-2.5 text-[11px] font-semibold text-primary/60 uppercase tracking-wider text-right">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-main">
                                             {queues.map((q, i) => (
-                                                <tr key={i} className="hover:bg-surface-hover/20 transition-colors">
-                                                    <td className="px-6 py-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                                                            <span className="text-xs font-bold text-primary capitalize">{q.name.replace(/-/g, ' ')}</span>
+                                                <tr key={i} className="hover:bg-surface-hover/20 transition-colors border-b border-main last:border-0">
+                                                    <td className="px-5 py-3">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                                            <span className="text-xs font-medium text-primary capitalize">{q.name.replace(/-/g, ' ')}</span>
                                                         </div>
                                                     </td>
-                                                    <td className="px-6 py-4 text-sm font-bold text-primary tabular-nums">{q.waiting}</td>
-                                                    <td className="px-6 py-4 text-sm font-bold text-emerald-500 tabular-nums">{q.active}</td>
-                                                    <td className="px-6 py-4">
-                                                        <span className={`px-2 py-1 rounded-lg text-[10px] font-black ${q.failed > 0 ? 'bg-rose-500/10 text-rose-500' : 'bg-slate-500/10 text-slate-500'}`}>
+                                                    <td className="px-5 py-3 text-xs font-medium text-primary tabular-nums">{q.waiting}</td>
+                                                    <td className="px-5 py-3 text-xs font-medium text-emerald-500 tabular-nums">{q.active}</td>
+                                                    <td className="px-5 py-3">
+                                                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-medium ${q.failed > 0 ? 'bg-rose-500/10 text-rose-500' : 'bg-slate-500/10 text-slate-500'}`}>
                                                             {q.failed} FAILED
                                                         </span>
                                                     </td>
-                                                    <td className="px-6 py-4 text-right">
+                                                    <td className="px-5 py-3 text-right">
                                                         <button 
                                                             disabled={q.failed === 0}
                                                             onClick={() => handleRetryQueue(q.id)}
@@ -303,7 +312,7 @@ const Badge = ({ children, color }) => {
         indigo: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
     };
     return (
-        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border uppercase tracking-wider ${styles[color] || 'bg-slate-500/10 text-slate-500 border-slate-500/20'}`}>
+        <span className={`px-2.5 py-1 rounded-lg text-xs font-medium border uppercase tracking-wider ${styles[color] || 'bg-slate-500/10 text-slate-500 border-slate-500/20'}`}>
             {children}
         </span>
     );

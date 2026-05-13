@@ -23,7 +23,7 @@ const RiskBadge = ({ score }) => {
   }
 
   return (
-    <div className={`px-2.5 py-1 rounded-lg border text-[10px] font-black uppercase tracking-widest ${color}`}>
+    <div className={`px-2 py-0.5 rounded-md border text-[9px] font-semibold uppercase tracking-wider ${color}`}>
       {label} ({score})
     </div>
   );
@@ -39,12 +39,12 @@ const StudentLiveCard = ({ student, onTerminate }) => {
       layout
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className={`relative group bg-surface border rounded-[2rem] p-6 transition-all duration-300 ${student.riskScore > 50 ? 'border-red-500/30 bg-red-500/5 shadow-lg shadow-red-500/5' : 'border-main hover:border-primary-500/30 shadow-xl'}`}
+      className={`relative group bg-surface border rounded-2xl p-5 transition-all duration-300 ${student.riskScore > 50 ? 'border-red-500/30 bg-red-500/5 shadow-lg shadow-red-500/5' : 'border-main hover:border-primary-500/30 shadow-md'}`}
     >
-      <div className="flex items-start justify-between mb-6">
-        <div className="flex items-center gap-4">
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center gap-3">
           <div className="relative">
-            <div className={`w-14 h-14 rounded-2xl bg-surface-hover border border-main flex items-center justify-center overflow-hidden ${isOnline ? 'ring-2 ring-emerald-500 ring-offset-4 ring-offset-black' : ''}`}>
+            <div className={`w-11 h-11 rounded-xl bg-surface-hover border border-main flex items-center justify-center overflow-hidden ${isOnline ? 'ring-2 ring-emerald-500 ring-offset-2 ring-offset-black' : ''}`}>
               {student.student?.image ? (
                 <img src={student.student.image} alt="" className="w-full h-full object-cover" />
               ) : (
@@ -52,12 +52,12 @@ const StudentLiveCard = ({ student, onTerminate }) => {
               )}
             </div>
             {isOnline && (
-              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-4 border-black animate-pulse" />
+              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-black animate-pulse" />
             )}
           </div>
           <div>
-            <h3 className="text-lg font-bold text-primary truncate max-w-[140px]">{student.student?.name}</h3>
-            <p className="text-[10px] font-medium text-muted uppercase tracking-widest">{student.student?.email?.split('@')[0]}</p>
+            <h3 className="text-[13px] font-semibold text-primary truncate max-w-[140px]">{student.student?.name}</h3>
+            <p className="text-[10px] font-medium text-muted uppercase tracking-wider">{student.student?.email?.split('@')[0]}</p>
           </div>
         </div>
         <button className="p-2 text-muted hover:text-primary transition-colors">
@@ -65,9 +65,9 @@ const StudentLiveCard = ({ student, onTerminate }) => {
         </button>
       </div>
 
-      <div className="space-y-4 mb-6">
+      <div className="space-y-3 mb-4">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-bold text-muted uppercase tracking-widest">Risk Analysis</span>
+          <span className="text-[10px] font-semibold text-muted uppercase tracking-wider">Risk Analysis</span>
           <RiskBadge score={student.riskScore} />
         </div>
         <div className="w-full h-1.5 bg-surface-hover rounded-full overflow-hidden border border-main">
@@ -79,23 +79,23 @@ const StudentLiveCard = ({ student, onTerminate }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mb-6">
-        <div className="bg-surface-hover rounded-2xl p-3 border border-main flex flex-col items-center justify-center">
-          <span className="text-[9px] font-black text-muted uppercase tracking-[0.1em] mb-1">Violations</span>
-          <span className={`text-sm font-bold tabular-nums ${student.violationsCount > 0 ? 'text-red-500' : 'text-primary'}`}>{student.violationsCount}</span>
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        <div className="bg-surface-hover rounded-xl p-2.5 border border-main flex flex-col items-center justify-center">
+          <span className="text-[9px] font-semibold text-muted uppercase tracking-wider mb-0.5">Violations</span>
+          <span className={`text-[13px] font-semibold tabular-nums ${student.violationsCount > 0 ? 'text-red-500' : 'text-primary'}`}>{student.violationsCount}</span>
         </div>
-        <div className="bg-surface-hover rounded-2xl p-3 border border-main flex flex-col items-center justify-center">
-          <span className="text-[9px] font-black text-muted uppercase tracking-[0.1em] mb-1">Time Left</span>
-          <span className="text-sm font-bold tabular-nums text-primary">{Math.floor(student.remainingTime / 60)}m</span>
+        <div className="bg-surface-hover rounded-xl p-2.5 border border-main flex flex-col items-center justify-center">
+          <span className="text-[9px] font-semibold text-muted uppercase tracking-wider mb-0.5">Time Left</span>
+          <span className="text-[13px] font-semibold tabular-nums text-primary">{Math.floor(student.remainingTime / 60)}m</span>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 mb-6">
-        <div className={`px-2 py-0.5 rounded-md border text-[9px] font-bold uppercase tracking-wider flex items-center gap-1.5 ${student.secureClient ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'}`}>
+      <div className="flex items-center gap-2 mb-4">
+        <div className={`px-2 py-0.5 rounded-md border text-[9px] font-semibold uppercase tracking-wider flex items-center gap-1 ${student.secureClient ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'}`}>
           {student.secureClient ? <ShieldCheck size={10} /> : <ShieldAlert size={10} />}
           {student.secureClient ? 'Secure Client' : 'Untrusted'}
         </div>
-        <div className="px-2 py-0.5 rounded-md border border-main bg-surface-hover text-muted text-[9px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+        <div className="px-2 py-0.5 rounded-md border border-main bg-surface-hover text-muted text-[9px] font-semibold uppercase tracking-wider flex items-center gap-1">
           <Monitor size={10} /> {student.resolution || 'N/A'}
         </div>
       </div>
@@ -103,12 +103,12 @@ const StudentLiveCard = ({ student, onTerminate }) => {
       <div className="flex gap-2">
         <button 
           onClick={() => onTerminate(student.id)}
-          className="flex-1 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 transition-all text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-2"
+          className="flex-1 py-2 rounded-xl bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 transition-all text-[10px] font-semibold uppercase tracking-wider flex items-center justify-center gap-2"
         >
           <Ban size={14} /> Terminate
         </button>
         <button 
-          className="w-10 h-10 rounded-xl bg-surface-hover border border-main flex items-center justify-center text-muted hover:text-primary transition-all"
+          className="w-9 h-9 rounded-xl bg-surface-hover border border-main flex items-center justify-center text-muted hover:text-primary transition-all"
         >
           <Activity size={16} />
         </button>
@@ -166,9 +166,9 @@ export default function MentorLiveMonitoring() {
   );
 
   return (
-    <div className="min-h-screen bg-page p-8">
+    <div className="min-h-screen bg-page p-6">
       {/* ── Header ── */}
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-6">
           <button 
             onClick={() => navigate(-1)}
@@ -177,10 +177,10 @@ export default function MentorLiveMonitoring() {
             <ChevronLeft size={24} />
           </button>
           <div>
-            <h1 className="text-3xl font-semibold text-primary tracking-tight flex items-center gap-3" style={{ fontFamily: "'Inter', sans-serif" }}>
-              Live Monitoring <Activity className="text-emerald-500 animate-pulse" />
+            <h1 className="text-xl font-semibold text-primary tracking-tight flex items-center gap-2" style={{ fontFamily: "'Inter', sans-serif" }}>
+              Live Monitoring <Activity size={20} className="text-emerald-500 animate-pulse" />
             </h1>
-            <p className="text-sm font-medium text-muted">Real-time proctoring & risk analysis grid</p>
+            <p className="text-[11px] font-medium text-muted tracking-wide">Real-time proctoring & risk analysis grid</p>
           </div>
         </div>
 
@@ -192,51 +192,43 @@ export default function MentorLiveMonitoring() {
               placeholder="Search student..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="bg-surface border border-main rounded-2xl pl-12 pr-6 py-3.5 text-sm font-medium text-primary focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/5 transition-all w-[260px]"
+              className="bg-surface border border-main rounded-xl pl-10 pr-4 py-2.5 text-[12px] font-medium text-primary focus:outline-none focus:border-primary-500 transition-all w-[240px] placeholder:text-muted/40"
             />
           </div>
-          <button className="w-12 h-12 rounded-2xl bg-surface border border-main flex items-center justify-center text-muted hover:text-primary transition-all">
-            <Filter size={18} />
+          <button className="w-10 h-10 rounded-xl bg-surface border border-main flex items-center justify-center text-muted hover:text-primary transition-all">
+            <Filter size={16} />
           </button>
         </div>
       </header>
 
       {/* ── Stats Bar ── */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-10" style={{ fontFamily: "'Inter', sans-serif" }}>
-        <div className="bg-surface border border-main rounded-2xl p-4 flex items-center gap-4 shadow-sm">
-          <div className="w-10 h-10 rounded-xl bg-primary-500/10 text-primary-500 flex items-center justify-center">
-            <Users size={18} />
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6" style={{ fontFamily: "'Inter', sans-serif" }}>
+        <div className="bg-surface border border-main rounded-xl p-4 flex items-center gap-3">
+          <Users size={18} className="text-primary-500 shrink-0" />
           <div>
-            <p className="text-[9px] font-bold text-muted uppercase tracking-wider">Total Registered</p>
-            <p className="text-xl font-bold text-primary tabular-nums">{sessions.length}</p>
+            <p className="text-[10px] font-semibold text-muted uppercase tracking-wider">Total Registered</p>
+            <p className="text-lg font-semibold text-primary tabular-nums">{sessions.length}</p>
           </div>
         </div>
-        <div className="bg-surface border border-main rounded-2xl p-4 flex items-center gap-4 shadow-sm">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-            <Activity size={18} />
-          </div>
+        <div className="bg-surface border border-main rounded-xl p-4 flex items-center gap-3">
+          <Activity size={18} className="text-emerald-500 shrink-0" />
           <div>
-            <p className="text-[9px] font-bold text-muted uppercase tracking-wider">Live Now</p>
-            <p className="text-xl font-bold text-primary tabular-nums">{stats.active}</p>
+            <p className="text-[10px] font-semibold text-muted uppercase tracking-wider">Live Now</p>
+            <p className="text-lg font-semibold text-primary tabular-nums">{stats.active}</p>
           </div>
         </div>
-        <div className="bg-surface border border-main rounded-2xl p-4 flex items-center gap-4 shadow-sm border-amber-500/20 bg-amber-500/5">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
-            <AlertTriangle size={18} />
-          </div>
+        <div className="bg-surface border border-amber-500/20 rounded-xl p-4 flex items-center gap-3">
+          <AlertTriangle size={18} className="text-amber-500 shrink-0" />
           <div>
-            <p className="text-[9px] font-bold text-amber-900/60 uppercase tracking-wider">Suspicious</p>
-            <p className="text-xl font-bold text-amber-900 tabular-nums">{stats.flagged}</p>
+            <p className="text-[10px] font-semibold text-amber-500 uppercase tracking-wider">Suspicious</p>
+            <p className="text-lg font-semibold text-amber-500 tabular-nums">{stats.flagged}</p>
           </div>
         </div>
-        <div className="bg-surface border border-main rounded-2xl p-4 flex items-center gap-4 shadow-sm border-red-500/20 bg-red-500/5">
-          <div className="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center">
-            <ShieldAlert size={18} />
-          </div>
+        <div className="bg-surface border border-red-500/20 rounded-xl p-4 flex items-center gap-3">
+          <ShieldAlert size={18} className="text-red-500 shrink-0" />
           <div>
-            <p className="text-[9px] font-bold text-red-900/60 uppercase tracking-wider">Critical Risk</p>
-            <p className="text-xl font-bold text-red-900 tabular-nums">{stats.critical}</p>
+            <p className="text-[10px] font-semibold text-red-500 uppercase tracking-wider">Critical Risk</p>
+            <p className="text-lg font-semibold text-red-500 tabular-nums">{stats.critical}</p>
           </div>
         </div>
       </div>
@@ -245,10 +237,10 @@ export default function MentorLiveMonitoring() {
       {loading ? (
         <div className="h-[400px] flex flex-col items-center justify-center gap-4">
           <RefreshCcw size={32} className="text-primary-500 animate-spin" />
-          <p className="text-xs font-black text-muted uppercase tracking-widest">Synchronizing Live Feed...</p>
+          <p className="text-[11px] font-semibold text-muted uppercase tracking-wider">Synchronizing Live Feed...</p>
         </div>
       ) : filteredSessions.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           <AnimatePresence>
             {filteredSessions.map((session) => (
               <StudentLiveCard 
@@ -260,31 +252,14 @@ export default function MentorLiveMonitoring() {
           </AnimatePresence>
         </div>
       ) : (
-        <div className="h-[400px] bg-surface-hover border-2 border-dashed border-main rounded-[3rem] flex flex-col items-center justify-center text-center p-12">
-          <div className="w-20 h-20 rounded-3xl bg-surface border border-main flex items-center justify-center text-muted mb-6 shadow-xl">
-            <Users size={32} className="opacity-20" />
-          </div>
-          <h2 className="text-xl font-bold text-primary mb-2">No Active Sessions</h2>
-          <p className="text-sm text-muted max-w-[280px]">Once students start the exam via the secure browser, they will appear here in real-time.</p>
+        <div className="h-[300px] border border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center text-center">
+          <Users size={28} className="text-muted/20 mb-3" />
+          <h2 className="text-[13px] font-semibold text-primary mb-1">No Active Sessions</h2>
+          <p className="text-[11px] text-muted/60 max-w-[240px]">Once students start the exam via the secure browser, they will appear here in real-time.</p>
         </div>
       )}
 
-      {/* ── Footer ── */}
-      <footer className="mt-16 flex items-center justify-between px-6 py-4 border-t border-main">
-        <p className="text-[10px] font-black text-muted uppercase tracking-widest flex items-center gap-2">
-          <ShieldCheck size={14} className="text-emerald-500" /> Secure Proctoring Active • Auto-Refresh every 15s
-        </p>
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span className="text-[10px] font-bold text-muted uppercase tracking-wider">Online</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-slate-700" />
-            <span className="text-[10px] font-bold text-muted uppercase tracking-wider">Offline</span>
-          </div>
-        </div>
-      </footer>
+
     </div>
   );
 }
