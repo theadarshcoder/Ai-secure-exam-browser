@@ -812,10 +812,12 @@ io.on('connection', (socket) => {
             if (!targetId) return;
 
             logger.info({ studentId: targetId }, `🔓 Unblocking student ${targetId}`);
+            // Relaxed filter: Allow unblocking regardless of current status to ensure reliability
             await ExamSession.findOneAndUpdate(
-                { status: 'blocked', $or: [{ student: targetId, exam: examId }, { _id: sessionId || targetId }] },
+                { $or: [{ student: targetId, exam: examId }, { _id: sessionId || targetId }] },
                 { status: 'in_progress', isBlocked: false, blockReason: '' }
             );
+
             io.to(`user_${targetId}`).emit('unblock_screen');
         } catch (err) {
             console.error('Unblock student DB fail:', err.message);

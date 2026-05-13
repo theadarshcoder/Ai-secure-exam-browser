@@ -64,7 +64,11 @@ const setupNotificationWorker = (concurrency = 5) => {
     const worker = new Worker('Notifications', async (job) => {
         const { name, data } = job;
         
-        logger.info({ jobId: job.id, type: name, to: data.to }, `📧 [Notification Worker] Processing: ${name}`);
+        // 🛡️ Robustness Fix: Ensure 'to' field exists (allows retrying old failed jobs)
+        if (!data.to && data.email) data.to = data.email;
+        
+        const recipient = data.to || 'unknown';
+        logger.info({ jobId: job.id, type: name, to: recipient }, `📧 [Notification Worker] Processing: ${name}`);
 
         // Dynamic mapper for email service functions
         const serviceMap = {

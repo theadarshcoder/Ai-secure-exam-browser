@@ -13,8 +13,10 @@ const {
     autosaveLimiter, 
     secureActionLimiter,
     codeExecutionLimiter,
-    importLimiter
+    importLimiter,
+    heartbeatLimiter
 } = require('../middlewares/rateLimiter');
+
 const { checkQuota, checkFeature } = require('../middlewares/subscriptionMiddleware');
 const validate = require('../middleware/validate');
 const { startExamSchema, saveProgressSchema, submitExamSchema, exitExamSchema, incidentSchema } = require('../validations/exam.schema');
@@ -30,7 +32,8 @@ router.post('/telemetry/log', verifyToken, telemetryLimiter, telemetryController
 router.post('/incident', verifyToken, validate(incidentSchema), telemetryLimiter, examController.logIncident);
 
 // 💓 Heartbeat — Continuous secure client verification
-router.post('/heartbeat', verifyToken, secureActionLimiter, examController.heartbeat);
+router.post('/heartbeat', verifyToken, heartbeatLimiter, examController.heartbeat);
+
 
 
 // ═══════════════════════════════════════════════════════════
@@ -64,7 +67,8 @@ router.post('/import-from-link', verifyToken, checkRole(['admin', 'super_mentor'
 router.get('/active', verifyToken, examController.getActiveExams);
 
 // Exam start karo — naya session banega ya purana resume hoga
-router.post('/start', verifyToken, validate(startExamSchema), secureActionLimiter, examController.startExam);
+router.post('/start', verifyToken, validate(startExamSchema), heartbeatLimiter, examController.startExam);
+
 
 // ⭐ Live Progress Save — har 30 sec mein auto-call hoga
 router.post('/save-progress', verifyToken, validate(saveProgressSchema), autosaveLimiter, examController.saveProgress);

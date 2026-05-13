@@ -24,7 +24,7 @@ function gradeMCQ(question, studentAnswer) {
             maxMarks,
             status: 'incorrect',
             studentChoice: null,
-            correctChoice: question.correctOption
+            correctOption: question.correctOption
         };
     }
 
@@ -35,7 +35,7 @@ function gradeMCQ(question, studentAnswer) {
         maxMarks,
         status: isCorrect ? 'correct' : 'incorrect',
         studentChoice: Number(studentAnswer),
-        correctChoice: question.correctOption
+        correctOption: question.correctOption
     };
 }
 
